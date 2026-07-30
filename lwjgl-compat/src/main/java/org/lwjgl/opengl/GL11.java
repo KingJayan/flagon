@@ -1,10 +1,18 @@
 package org.lwjgl.opengl;
 
+import dev.flagon.lwjgl.internal.ClientArray;
+import dev.flagon.lwjgl.internal.DrawMode;
 import dev.flagon.lwjgl.internal.GLState;
-import dev.flagon.lwjgl.internal.ImmediateMode;
+import dev.flagon.lwjgl.internal.VertexArrays;
+import dev.flagon.platform.graphics.AttributeType;
 import dev.flagon.platform.graphics.BlendFactor;
+import dev.flagon.platform.graphics.BufferTarget;
 import dev.flagon.platform.graphics.CompareFunc;
 import dev.flagon.platform.graphics.GraphicsDevice;
+import dev.flagon.platform.graphics.IndexType;
+
+import java.nio.ByteBuffer;
+import java.nio.FloatBuffer;
 
 /**
  * gl 1.1 over webgl2.
@@ -68,7 +76,20 @@ public final class GL11 {
     public static final int GL_TEXTURE_MIN_FILTER = 0x2801;
 
     public static final int GL_RGBA = 0x1908;
+
+    public static final int GL_BYTE = 0x1400;
     public static final int GL_UNSIGNED_BYTE = 0x1401;
+    public static final int GL_SHORT = 0x1402;
+    public static final int GL_UNSIGNED_SHORT = 0x1403;
+    public static final int GL_INT = 0x1404;
+    public static final int GL_UNSIGNED_INT = 0x1405;
+    public static final int GL_FLOAT = 0x1406;
+
+    public static final int GL_VERTEX_ARRAY = 0x8074;
+    public static final int GL_NORMAL_ARRAY = 0x8075;
+    public static final int GL_COLOR_ARRAY = 0x8076;
+    public static final int GL_INDEX_ARRAY = 0x8077;
+    public static final int GL_TEXTURE_COORD_ARRAY = 0x8078;
 
     private GL11() {
     }
@@ -218,6 +239,88 @@ public final class GL11 {
         state().texCoord(s, t);
     }
 
+    // vertex arrays
+
+    public static void glEnableClientState(int array) {
+        clientArray(array, "glEnableClientState").setEnabled(true);
+    }
+
+    public static void glDisableClientState(int array) {
+        clientArray(array, "glDisableClientState").setEnabled(false);
+    }
+
+    public static void glVertexPointer(int size, int stride, FloatBuffer pointer) {
+        state().arrays().position().pointAt(pointer, size, AttributeType.FLOAT, false, stride);
+    }
+
+    public static void glVertexPointer(int size, int type, int stride, long offset) {
+        pointIntoBuffer(state().arrays().position(), size, componentType(type, "glVertexPointer"),
+                false, stride, offset, "glVertexPointer");
+    }
+
+    public static void glColorPointer(int size, int stride, FloatBuffer pointer) {
+        state().arrays().color().pointAt(pointer, size, AttributeType.FLOAT, false, stride);
+    }
+
+    /** the byte form is always normalised: gl reads integer colour components as 0..1. */
+    public static void glColorPointer(int size, boolean unsigned, int stride, ByteBuffer pointer) {
+        AttributeType type = unsigned ? AttributeType.UNSIGNED_BYTE : AttributeType.BYTE;
+        state().arrays().color().pointAt(pointer, size, type, true, stride);
+    }
+
+    public static void glColorPointer(int size, int type, int stride, long offset) {
+        AttributeType component = componentType(type, "glColorPointer");
+        pointIntoBuffer(state().arrays().color(), size, component,
+                component != AttributeType.FLOAT, stride, offset, "glColorPointer");
+    }
+
+    public static void glTexCoordPointer(int size, int stride, FloatBuffer pointer) {
+        state().arrays().texCoord().pointAt(pointer, size, AttributeType.FLOAT, false, stride);
+    }
+
+    public static void glTexCoordPointer(int size, int type, int stride, long offset) {
+        pointIntoBuffer(state().arrays().texCoord(), size,
+                componentType(type, "glTexCoordPointer"), false, stride, offset,
+                "glTexCoordPointer");
+    }
+
+    public static void glDrawArrays(int mode, int first, int count) {
+        state().drawArrays(primitive(mode), first, count);
+    }
+
+    public static void glDrawElements(int mode, int count, int type, long offset) {
+        if (offset < 0 || offset > Integer.MAX_VALUE) {
+            throw new IllegalArgumentException("index offset out of range: " + offset);
+        }
+        state().drawElements(primitive(mode), count, indexType(type), (int) offset);
+    }
+
+    private static void pointIntoBuffer(ClientArray array, int size, AttributeType type,
+                                        boolean normalized, int stride, long offset, String call) {
+        int buffer = state().boundBuffer(BufferTarget.ARRAY);
+        if (buffer == GraphicsDevice.NO_BUFFER) {
+            throw new UnsupportedOperationException(
+                    call + " was given an offset with no GL_ARRAY_BUFFER bound. that form names a "
+                            + "location inside a buffer object; pass a Buffer instead to read from "
+                            + "client memory");
+        }
+        if (offset < 0 || offset > Integer.MAX_VALUE) {
+            throw new IllegalArgumentException(call + ": offset out of range: " + offset);
+        }
+        array.pointAt(buffer, (int) offset, size, type, normalized, stride);
+    }
+
+    private static ClientArray clientArray(int array, String call) {
+        VertexArrays arrays = state().arrays();
+        return switch (array) {
+            case GL_VERTEX_ARRAY -> arrays.position();
+            case GL_COLOR_ARRAY -> arrays.color();
+            case GL_TEXTURE_COORD_ARRAY -> arrays.texCoord();
+            default -> throw new UnsupportedOperationException(
+                    call + " does not yet emulate array 0x" + Integer.toHexString(array));
+        };
+    }
+
     // textures
 
     public static int glGenTextures() {
@@ -263,18 +366,42 @@ public final class GL11 {
 
     // translation
 
-    private static ImmediateMode primitive(int mode) {
+    private static DrawMode primitive(int mode) {
         return switch (mode) {
-            case GL_POINTS -> ImmediateMode.POINTS;
-            case GL_LINES -> ImmediateMode.LINES;
-            case GL_LINE_STRIP -> ImmediateMode.LINE_STRIP;
-            case GL_LINE_LOOP -> ImmediateMode.LINE_LOOP;
-            case GL_TRIANGLES -> ImmediateMode.TRIANGLES;
-            case GL_TRIANGLE_STRIP -> ImmediateMode.TRIANGLE_STRIP;
-            case GL_TRIANGLE_FAN -> ImmediateMode.TRIANGLE_FAN;
-            case GL_QUADS -> ImmediateMode.QUADS;
+            case GL_POINTS -> DrawMode.POINTS;
+            case GL_LINES -> DrawMode.LINES;
+            case GL_LINE_STRIP -> DrawMode.LINE_STRIP;
+            case GL_LINE_LOOP -> DrawMode.LINE_LOOP;
+            case GL_TRIANGLES -> DrawMode.TRIANGLES;
+            case GL_TRIANGLE_STRIP -> DrawMode.TRIANGLE_STRIP;
+            case GL_TRIANGLE_FAN -> DrawMode.TRIANGLE_FAN;
+            case GL_QUADS -> DrawMode.QUADS;
             default -> throw new IllegalArgumentException(
                     "unknown primitive 0x" + Integer.toHexString(mode));
+        };
+    }
+
+    private static AttributeType componentType(int type, String call) {
+        return switch (type) {
+            case GL_BYTE -> AttributeType.BYTE;
+            case GL_UNSIGNED_BYTE -> AttributeType.UNSIGNED_BYTE;
+            case GL_SHORT -> AttributeType.SHORT;
+            case GL_UNSIGNED_SHORT -> AttributeType.UNSIGNED_SHORT;
+            case GL_INT -> AttributeType.INT;
+            case GL_UNSIGNED_INT -> AttributeType.UNSIGNED_INT;
+            case GL_FLOAT -> AttributeType.FLOAT;
+            default -> throw new UnsupportedOperationException(
+                    call + " does not emulate component type 0x" + Integer.toHexString(type));
+        };
+    }
+
+    private static IndexType indexType(int type) {
+        return switch (type) {
+            case GL_UNSIGNED_BYTE -> IndexType.UNSIGNED_BYTE;
+            case GL_UNSIGNED_SHORT -> IndexType.UNSIGNED_SHORT;
+            case GL_UNSIGNED_INT -> IndexType.UNSIGNED_INT;
+            default -> throw new IllegalArgumentException(
+                    "glDrawElements: indices must be unsigned, got 0x" + Integer.toHexString(type));
         };
     }
 

@@ -144,7 +144,7 @@ class GL11Test {
         drawQuads(1);
 
         assertArrayEquals(new int[] {0, 1, 2, 0, 2, 3}, device.lastElementData);
-        assertEquals(java.util.List.of("drawElements TRIANGLES 6"), device.calls("drawElements"));
+        assertEquals(java.util.List.of("drawElements TRIANGLES 6 UNSIGNED_INT 0"), device.calls("drawElements"));
         assertTrue(device.calls("drawArrays").isEmpty());
         // the vertices go up untouched; only the index order changes
         assertEquals(4 * 9, device.lastBufferData.length);
@@ -157,7 +157,7 @@ class GL11Test {
         assertArrayEquals(
                 new int[] {0, 1, 2, 0, 2, 3, 4, 5, 6, 4, 6, 7, 8, 9, 10, 8, 10, 11},
                 device.lastElementData);
-        assertEquals(java.util.List.of("drawElements TRIANGLES 18"), device.calls("drawElements"));
+        assertEquals(java.util.List.of("drawElements TRIANGLES 18 UNSIGNED_INT 0"), device.calls("drawElements"));
     }
 
     @Test
@@ -180,7 +180,7 @@ class GL11Test {
         }
         GL11.glEnd();
 
-        assertEquals(java.util.List.of("drawElements TRIANGLES 6"), device.calls("drawElements"));
+        assertEquals(java.util.List.of("drawElements TRIANGLES 6 UNSIGNED_INT 0"), device.calls("drawElements"));
     }
 
     @Test
