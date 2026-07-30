@@ -55,23 +55,26 @@ becomes a JavaScript `TypeError` that `catch (NullPointerException)` cannot catc
 
 ## Depending on a version
 
-Releases are published to GitHub Packages, which requires authentication even for public
-packages. In `~/.m2/settings.xml`:
-
-```xml
-<server>
-  <id>flagon</id>
-  <username>your-github-username</username>
-  <password>a-token-with-read:packages</password>
-</server>
-```
+Releases are published via [jitpack.io](https://jitpack.io), which builds straight from the
+tagged commit, no auth req.
 
 ```xml
 <repository>
-  <id>flagon</id>
-  <url>https://maven.pkg.github.com/KingJayan/flagon</url>
+  <id>jitpack.io</id>
+  <url>https://jitpack.io</url>
 </repository>
 ```
+
+Each module is available as `com.github.KingJayan.flagon:<artifactId>:<tag>`, e.g.:
+
+```xml
+<dependency>
+  <groupId>com.github.KingJayan.flagon</groupId>
+  <artifactId>runtime</artifactId>
+  <version>v0.4.0</version>
+</dependency>
+```
+
 
 To work against an unreleased Flagon instead, run `./mvnw install` here and depend on the
 snapshot version in the root `pom.xml`.

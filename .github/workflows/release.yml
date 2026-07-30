@@ -6,10 +6,11 @@ on:
 
 permissions:
   contents: read
-  packages: write
 
 jobs:
-  publish:
+  # jitpack.io builds and publishes from the tagged commit itself on first request;
+  # this job just proves the tag builds before anyone depends on it.
+  verify:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -19,9 +20,6 @@ jobs:
           distribution: temurin
           java-version: '21'
           cache: maven
-          server-id: github
-          server-username: MAVEN_USERNAME
-          server-password: MAVEN_TOKEN
 
       # the tag is the version. the poms carry the next release as a snapshot between tags,
       # so nothing has to be committed to cut one.
@@ -30,9 +28,3 @@ jobs:
 
       - name: Build and test
         run: ./mvnw -B package
-
-      - name: Publish to GitHub Packages
-        run: ./mvnw -B deploy -DskipTests
-        env:
-          MAVEN_USERNAME: ${{ github.actor }}
-          MAVEN_TOKEN: ${{ secrets.GITHUB_TOKEN }}

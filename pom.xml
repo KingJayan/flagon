@@ -40,15 +40,8 @@
     <flagon.bundleOutput>${maven.multiModuleProjectDirectory}/web/public/flagon</flagon.bundleOutput>
   </properties>
 
-  <!-- consumed by downstream repositories; see docs/DOWNSTREAM.md for details. release workflow sets
-       the version from the tag, so this stays a snapshot of the next release between them-->
-  <distributionManagement>
-    <repository>
-      <id>github</id>
-      <name>GitHub Packages</name>
-      <url>https://maven.pkg.github.com/KingJayan/flagon</url>
-    </repository>
-  </distributionManagement>
+  <!-- published via jitpack.io, which builds straight from tagged commits; see docs/DOWNSTREAM.md.
+       release workflow sets the version from the tag, so this stays a snapshot of the next release between them-->
 
   <dependencyManagement>
     <dependencies>
