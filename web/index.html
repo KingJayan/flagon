@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Decanter — runtime sandbox</title>
+    <link rel="icon" href="data:," />
+    <link rel="stylesheet" href="/src/shell.css" />
+  </head>
+  <body>
+    <main id="app" data-state="loading">
+      <header>
+        <h1>Decanter</h1>
+        <p class="tagline">A desktop Java/LWJGL environment for the browser.</p>
+      </header>
+
+      <section class="panel">
+        <div class="row">
+          <label for="program">Program</label>
+          <select id="program">
+            <option value="hello">hello</option>
+            <option value="selftest">selftest</option>
+          </select>
+          <button id="run" type="button">Run</button>
+          <span id="state" class="badge" data-testid="state">loading</span>
+        </div>
+        <ol id="phases" class="phases" data-testid="phases"></ol>
+      </section>
+
+      <section class="panel">
+        <h2>Console</h2>
+        <pre id="log" class="log" data-testid="log"></pre>
+      </section>
+    </main>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
