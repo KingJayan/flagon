@@ -1,6 +1,7 @@
 package dev.flagon.platform.display;
 
 import dev.flagon.platform.graphics.GraphicsDevice;
+import dev.flagon.platform.input.InputSource;
 
 /**
  * a window with a rendering context.
@@ -34,6 +35,8 @@ public interface DisplaySurface {
     void requestClose();
 
     GraphicsDevice graphics();
+
+    InputSource input();
 
     /** displays the current frame and returns when the next one should be drawn. */
     void present();

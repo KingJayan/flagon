@@ -1,10 +1,12 @@
 package dev.flagon.platform.browser.display;
 
+import dev.flagon.platform.Clock;
 import dev.flagon.platform.UnsupportedCapabilityException;
 import dev.flagon.platform.browser.graphics.WebGL2;
 import dev.flagon.platform.browser.graphics.WebGLGraphicsDevice;
 import dev.flagon.platform.display.DisplaySurface;
 import dev.flagon.platform.graphics.GraphicsDevice;
+import dev.flagon.platform.input.InputSource;
 import org.teavm.jso.JSObject;
 
 public final class CanvasSurface implements DisplaySurface {
@@ -13,14 +15,16 @@ public final class CanvasSurface implements DisplaySurface {
 
     private final JSObject canvas;
     private final WebGLGraphicsDevice graphics;
+    private final BrowserInput input;
     private boolean destroyed;
 
-    private CanvasSurface(JSObject canvas, WebGLGraphicsDevice graphics) {
+    private CanvasSurface(JSObject canvas, WebGLGraphicsDevice graphics, BrowserInput input) {
         this.canvas = canvas;
         this.graphics = graphics;
+        this.input = input;
     }
 
-    public static CanvasSurface open(int width, int height, String title) {
+    public static CanvasSurface open(int width, int height, String title, Clock clock) {
         JSObject canvas = Canvas.findOrCreate(CANVAS_ID, width, height);
         WebGL2 gl = Canvas.context(canvas);
         if (gl == null) {
@@ -29,7 +33,9 @@ public final class CanvasSurface implements DisplaySurface {
                             + "or hardware acceleration disabled");
         }
         Canvas.setTitle(title);
-        return new CanvasSurface(canvas, new WebGLGraphicsDevice(gl));
+        BrowserInput input = new BrowserInput(canvas, clock);
+        input.attach();
+        return new CanvasSurface(canvas, new WebGLGraphicsDevice(gl), input);
     }
 
     @Override
@@ -78,6 +84,11 @@ public final class CanvasSurface implements DisplaySurface {
     }
 
     @Override
+    public InputSource input() {
+        return input;
+    }
+
+    @Override
     public void present() {
         // webgl presents implicitly when the frame callback returns, so there is nothing to
         // swap; what desktop code is really waiting for here is the next frame
@@ -88,6 +99,7 @@ public final class CanvasSurface implements DisplaySurface {
     public void destroy() {
         if (!destroyed) {
             destroyed = true;
+            input.detach();
             Canvas.remove(canvas);
         }
     }
