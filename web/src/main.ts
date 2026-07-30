@@ -1,11 +1,16 @@
 import { runBundle, type HostBridge } from './bundle';
 
-const BUNDLE_URL = '/flagon/sandbox.js';
+/** only bundles this shell ships may be imported; the name comes from the url. */
+const BUNDLES: Record<string, string> = {
+  sandbox: '/flagon/sandbox.js',
+  example: '/flagon/example.js',
+};
 
 const app = document.querySelector<HTMLElement>('#app')!;
 const stateBadge = document.querySelector<HTMLElement>('#state')!;
 const phaseList = document.querySelector<HTMLOListElement>('#phases')!;
 const logView = document.querySelector<HTMLPreElement>('#log')!;
+const bundleSelect = document.querySelector<HTMLSelectElement>('#bundle')!;
 const programSelect = document.querySelector<HTMLSelectElement>('#program')!;
 const runButton = document.querySelector<HTMLButtonElement>('#run')!;
 
@@ -33,14 +38,16 @@ function addPhase(phase: string, detail: string): void {
   phaseList.append(item);
 }
 
-function readRequest(): { program: string; args: string[] } {
+function readRequest(): { bundle: string; program: string; args: string[] } {
   const params = new URLSearchParams(location.search);
-  const program = params.get('program') ?? 'hello';
+  const bundle = params.get('bundle') ?? 'sandbox';
+  const program = params.get('program') ?? (bundle === 'sandbox' ? 'hello' : 'spinner');
   const args = params.getAll('arg');
-  return { program, args };
+  return { bundle, program, args };
 }
 
 const request = readRequest();
+bundleSelect.value = request.bundle;
 programSelect.value = request.program;
 if (programSelect.value !== request.program) {
   // an unknown program stays selectable so the failure path can be exercised from a url
@@ -50,6 +57,7 @@ if (programSelect.value !== request.program) {
 
 runButton.addEventListener('click', () => {
   const next = new URLSearchParams();
+  next.set('bundle', bundleSelect.value);
   next.set('program', programSelect.value);
   location.search = next.toString();
 });
@@ -82,11 +90,18 @@ const host: HostBridge = {
 runButton.disabled = true;
 setState('loading');
 
-runBundle(BUNDLE_URL, host, [request.program, ...request.args])
-  .catch((error: unknown) => {
-    setState('failed');
-    append(`could not start the runtime: ${String(error)}`, 'error');
-  })
-  .finally(() => {
-    runButton.disabled = false;
-  });
+const bundleUrl = BUNDLES[request.bundle];
+if (!bundleUrl) {
+  setState('failed');
+  append(`no bundle named '${request.bundle}'; try ${Object.keys(BUNDLES).join(', ')}`, 'error');
+  runButton.disabled = false;
+} else {
+  runBundle(bundleUrl, host, [request.program, ...request.args])
+    .catch((error: unknown) => {
+      setState('failed');
+      append(`could not start the runtime: ${String(error)}`, 'error');
+    })
+    .finally(() => {
+      runButton.disabled = false;
+    });
+}

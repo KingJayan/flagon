@@ -39,6 +39,7 @@ public final class FlagonRuntime {
             Platforms.install(platform);
 
             ConsoleSink console = platform.console();
+            ConsoleStreams.install(console);
             console.info("Flagon runtime starting on platform '" + platform.name() + "'");
 
             phase = PHASE_SELECT;
@@ -64,6 +65,8 @@ public final class FlagonRuntime {
         } catch (Throwable error) {
             reportFatal(platform, phase, error);
             return -1;
+        } finally {
+            ConsoleStreams.restore();
         }
     }
 

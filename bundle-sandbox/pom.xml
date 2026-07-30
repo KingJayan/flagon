@@ -6,12 +6,19 @@
   <parent>
     <groupId>dev.flagon</groupId>
     <artifactId>flagon-parent</artifactId>
-    <version>0.1.0-SNAPSHOT</version>
+    <version>0.4.0-SNAPSHOT</version>
   </parent>
 
   <artifactId>bundle-sandbox</artifactId>
   <name>Flagon :: Sandbox Bundle</name>
   <description>Compiles the runtime plus diagnostic programs to a browser bundle.</description>
+
+  <properties>
+    <!-- a bundle is an artifact of this repository, not something downstream consumes -->
+    <maven.deploy.skip>true</maven.deploy.skip>
+    <flagon.bundle.mainClass>dev.flagon.sandbox.SandboxMain</flagon.bundle.mainClass>
+    <flagon.bundle.fileName>sandbox.js</flagon.bundle.fileName>
+  </properties>
 
   <dependencies>
     <dependency>
@@ -39,27 +46,6 @@
       <plugin>
         <groupId>org.teavm</groupId>
         <artifactId>teavm-maven-plugin</artifactId>
-        <executions>
-          <execution>
-            <id>compile-sandbox-bundle</id>
-            <goals>
-              <goal>compile</goal>
-            </goals>
-            <configuration>
-              <mainClass>dev.flagon.sandbox.SandboxMain</mainClass>
-              <targetType>${flagon.target}</targetType>
-              <targetDirectory>${flagon.bundleOutput}</targetDirectory>
-              <targetFileName>sandbox.js</targetFileName>
-              <jsModuleType>ES2015</jsModuleType>
-              <optimizationLevel>${flagon.optimization}</optimizationLevel>
-              <minifying>${flagon.minify}</minifying>
-              <sourceMapsGenerated>${flagon.sourceMaps}</sourceMapsGenerated>
-              <debugInformationGenerated>${flagon.sourceMaps}</debugInformationGenerated>
-              <stopOnErrors>true</stopOnErrors>
-              <strict>${flagon.strict}</strict>
-            </configuration>
-          </execution>
-        </executions>
       </plugin>
     </plugins>
   </build>

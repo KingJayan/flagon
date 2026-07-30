@@ -25,6 +25,7 @@ Java is compiled ahead-of-time (AoT) to JavaScript utilizing [TeaVM](https://tea
 
 * **[Architecture Guidelines](docs/ARCHITECTURE.md):** Layering rules and system design.
 * **[Compatibility Matrix](docs/COMPATIBILITY.md):** Detailed breakdown of supported and unsupported features.
+* **[Running Your Own Application](docs/DOWNSTREAM.md):** Compiling an application jar to a bundle.
 
 ## Goals
 
@@ -37,7 +38,7 @@ Java is compiled ahead-of-time (AoT) to JavaScript utilizing [TeaVM](https://tea
 | Keyboard and mouse input | `Done` |
 | NIO buffers (`BufferUtils`, `MemoryUtil`) | `Done` |
 | Vertex arrays and buffer objects (`GL15`) | `Done` |
-| Loading an application jar | `In Progress` |
+| Loading an application jar | `Done` |
 | Shader objects (`GL20`) | `Pending` |
 | Virtual filesystem on OPFS | `Pending` |
 | Audio (`OpenAL` → WebAudio) | `Pending` |
@@ -54,7 +55,9 @@ Requires **JDK 17+** and **[bun](https://bun.sh)**. Maven is provided via the wr
 # initialize and run the development server
 cd web && bun install && bun run dev
 ```
-Once running, open `http://localhost:5273`. Select a program and run it.
+Once running, open `http://localhost:5273`. Select a bundle and a program, and run it. The
+`example` bundle runs [an application jar](example-app/) built against the real LWJGL and never
+modified; the `sandbox` bundle holds the diagnostic programs.
 > [!NOTE]
 > Appending ?program=selftest to the URL runs the compilation-backend regression suite.
 

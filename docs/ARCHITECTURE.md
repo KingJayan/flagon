@@ -29,8 +29,14 @@ dependency injection: LWJGL's public API is static (`Display.create()`, `GL11.gl
 compatibility layer cannot thread a platform argument through without breaking the source
 compatibility that is the entire point of the project.
 
-Each bundle module (`bundle-sandbox`, later a game bundle) is a composition root: it is the only
-place that knows both which host it targets and which programs exist.
+Each bundle module (`bundle-sandbox`, `bundle-example`) is a composition root: it is the only
+place that knows both which host it targets and which programs exist. Everything else about how
+a bundle is compiled lives in the root POM, so a bundle declares only its main class and output
+file — including bundles in other repositories, which inherit the same parent.
+
+`System.out` and `System.err` are redirected into the platform console as the runtime boots. An
+unmodified application reports through the standard streams and has never heard of `ConsoleSink`;
+without the redirect, everything it prints lands somewhere the host cannot see.
 
 ## Ahead-of-time compilation
 
@@ -40,7 +46,9 @@ class loading at runtime, which has two consequences that shape the code:
 - **Reachability decides what ships.** Reflection and `ServiceLoader` are unreliable, so programs
   are registered explicitly in a `ProgramRegistry`.
 - **An application jar is a build input, not a runtime input.** Loading a jar means compiling it,
-  so each application ships as a Maven module that takes the jar on its classpath.
+  so each application ships as a Maven module that takes the jar on its classpath. `example-app`
+  and `bundle-example` are that arrangement in miniature, and the shape a downstream repository
+  copies — see [DOWNSTREAM.md](DOWNSTREAM.md).
 
 ## Backend selection
 

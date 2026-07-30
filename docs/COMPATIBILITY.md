@@ -9,6 +9,7 @@ What the browser environment does and does not provide. Updated as each stage la
 | Wall clock | works | `Date.now()` |
 | Monotonic clock | works, degraded resolution | `performance.now()`, clamped non-decreasing |
 | Console / logging | works | mapped onto `console.*` levels |
+| `System.out` / `System.err` | works | split into lines and forwarded to the console |
 | Lifecycle reporting | works | `window.__flagonHost` |
 | Filesystem | not started | OPFS-backed virtual home directory |
 | Threading | partial | blocking frame loops work via TeaVM green threads |
@@ -37,7 +38,7 @@ Verified in Chromium by the `selftest` program (80 checks), which runs in CI as 
 ## LWJGL
 
 Verified in Chromium by the `lwjgl`, `input` and `arrays` demos, which assert on pixels read back
-from the live WebGL2 framebuffer and drive real key, button and wheel events, plus 64 JVM tests
+from the live WebGL2 framebuffer and drive real key, button and wheel events, plus 79 JVM tests
 that run the emulation against recording and fake devices.
 
 | Call group | State |
