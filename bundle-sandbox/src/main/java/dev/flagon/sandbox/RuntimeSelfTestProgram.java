@@ -53,6 +53,7 @@ public final class RuntimeSelfTestProgram implements Program {
         lambdasAndClosures();
         clockBehaviour();
         nioBuffers();
+        entryPointArguments(arguments);
 
         console.info("selftest: " + (checks - failures.size()) + "/" + checks + " checks passed");
         if (!failures.isEmpty()) {
@@ -199,10 +200,43 @@ public final class RuntimeSelfTestProgram implements Program {
 
         try {
             String nothing = null;
-            check("npe throws", true, nothing.isEmpty());
+            check("npe is catchable", true, nothing.isEmpty());
         } catch (NullPointerException expected) {
-            check("npe throws", true, true);
+            check("npe is catchable", true, true);
         }
+
+        try {
+            check("npe crosses a call boundary", true, lengthOf(null) < 0);
+        } catch (NullPointerException expected) {
+            check("npe crosses a call boundary", true, true);
+        }
+    }
+
+    private static int lengthOf(String text) {
+        return text.length();
+    }
+
+    private void entryPointArguments(String[] arguments) {
+        Object raw = arguments;
+        boolean typed;
+        try {
+            String[] cast = (String[]) raw;
+            typed = cast.length == arguments.length;
+        } catch (ClassCastException failure) {
+            typed = false;
+        }
+        check("main receives a real String[]", true, typed);
+
+        StringBuilder joined = new StringBuilder();
+        for (int i = 0; i < arguments.length; i++) {
+            if (i > 0) {
+                joined.append(',');
+            }
+            // reading an element as a string is the other half: the array may be typed while
+            // its contents are not
+            joined.append(arguments[i].trim());
+        }
+        Platforms.get().console().info("arguments: [" + joined + "]");
     }
 
     private interface Shape {
