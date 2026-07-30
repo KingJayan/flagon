@@ -12,7 +12,12 @@
 
 <br />
 
-The long-term target of this project is **Minecraft Java Edition 1.8.9**, running directly from an untouched `minecraft.jar`.
+Flagon is a compatibility layer, not a rewrite: it reimplements the interfaces a desktop
+application already compiles against — `Display`, `GL11`, `Keyboard`, `Mouse`, `BufferUtils` —
+on top of WebGL2, DOM events and the browser's own APIs. Application code is not modified.
+
+Flagon itself is application-agnostic. Work on any particular application lives downstream;
+[flagon-mc](https://github.com/KingJayan/flagon-mc) is one such target.
 
 ## Docs
 
@@ -29,12 +34,13 @@ Java is compiled ahead-of-time (AoT) to JavaScript utilizing [TeaVM](https://tea
 | Runtime boots in browser | `Done` |
 | Java programs execute | `Done` |
 | LWJGL demo renders | `Done` |
-| Game classes load | `In Progress` |
-| Splash screen | `Pending` |
-| Main menu | `Pending` |
-| World generation | `Pending` |
-| Player movement | `Pending` |
-| Stable gameplay | `Pending` |
+| Keyboard and mouse input | `Done` |
+| NIO buffers (`BufferUtils`, `MemoryUtil`) | `Done` |
+| Loading an application jar | `In Progress` |
+| Vertex arrays and VBOs (`GL15`, `GL20`) | `Pending` |
+| Virtual filesystem on OPFS | `Pending` |
+| Audio (`OpenAL` → WebAudio) | `Pending` |
+| Networking through a proxy | `Pending` |
 
 ## Quickstart
 
@@ -61,4 +67,4 @@ Once running, open `http://localhost:5273`. Select a program and run it.
 cd web && bunx playwright test
 ```
 
-*Notice*: The Minecraft game .jar is not committed, nor is it distributed within this repository.
+*Notice*: No application jar is committed to or distributed from this repository.

@@ -3,11 +3,12 @@
 ## Layers
 
 ```
-minecraft.jar (unmodified)
+application.jar (unmodified)
       ↓  compiled together, ahead of time
 LWJGL compatibility layer      org.lwjgl.* source-compatible classes
       ↓
-platform-api                   Platform, Clock, ConsoleSink, RuntimeHost
+platform-api                   Platform, Clock, ConsoleSink, RuntimeHost,
+                               GraphicsDevice, DisplaySurface, InputSource
       ↓
 platform-browser               the only module that may touch browser APIs
       ↓
@@ -38,9 +39,8 @@ class loading at runtime, which has two consequences that shape the code:
 
 - **Reachability decides what ships.** Reflection and `ServiceLoader` are unreliable, so programs
   are registered explicitly in a `ProgramRegistry`.
-- **The game jar is a build input, not a runtime input.** Loading `minecraft.jar` means compiling
-  it, so the bundle for the game is produced by a Maven module that takes the jar on its
-  classpath.
+- **An application jar is a build input, not a runtime input.** Loading a jar means compiling it,
+  so each application ships as a Maven module that takes the jar on its classpath.
 
 ## Backend selection
 
@@ -48,7 +48,8 @@ TeaVM can target JavaScript or WebAssembly GC. The default is JavaScript (`flago
 for two reasons:
 
 - Its green-thread support (`Thread`, `synchronized`, `wait`/`notify` via CPS transformation) is
-  mature, and Minecraft 1.8.9 is threaded. The WASM GC backend's threading story is not there yet.
+  mature, and desktop applications are threaded. The WASM GC backend's threading story is not
+  there yet.
 - Correctness first. The property exists so the WASM GC backend can be evaluated at the rendering
   stage, where its performance would actually matter.
 
@@ -69,6 +70,20 @@ rebuilt above `platform-api`:
 
 None of this touches a browser API, which is why it is covered by JVM unit tests running against
 a recording `GraphicsDevice` rather than only in a browser.
+
+## Input
+
+`InputSource` hangs off `DisplaySurface`, because input belongs to a window on every host. Events
+are queued and drained by the caller rather than delivered to a listener: that is the shape
+desktop code already has, a loop polling between frames.
+
+Scancodes are the numbering `platform-api` fixes and every host maps onto. They are DirectInput
+codes — the numbering desktop applications already compare against — because a host-neutral
+numbering of our own would only be translated straight back into these one layer up.
+
+The browser implementation needs no locking despite events arriving asynchronously: the JS
+backend is single-threaded and cooperative, so a DOM listener only ever runs while the game loop
+is parked in `Frames.awaitNextFrame()`. The queues are never written while being drained.
 
 ## Host contract
 
