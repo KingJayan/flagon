@@ -1,9 +1,9 @@
-package dev.decanter.runtime;
+package dev.flagon.runtime;
 
-import dev.decanter.platform.Clock;
-import dev.decanter.platform.ConsoleSink;
-import dev.decanter.platform.Platform;
-import dev.decanter.platform.RuntimeHost;
+import dev.flagon.platform.Clock;
+import dev.flagon.platform.ConsoleSink;
+import dev.flagon.platform.Platform;
+import dev.flagon.platform.RuntimeHost;
 
 import java.util.ArrayList;
 import java.util.List;

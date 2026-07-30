@@ -1,4 +1,4 @@
-package dev.decanter.platform;
+package dev.flagon.platform;
 
 /**
  * services a host must provide for desktop java programs to run.

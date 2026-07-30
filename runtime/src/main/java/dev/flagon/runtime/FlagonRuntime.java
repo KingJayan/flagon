@@ -1,9 +1,9 @@
-package dev.decanter.runtime;
+package dev.flagon.runtime;
 
-import dev.decanter.platform.ConsoleSink;
-import dev.decanter.platform.Platform;
-import dev.decanter.platform.Platforms;
-import dev.decanter.platform.RuntimeHost;
+import dev.flagon.platform.ConsoleSink;
+import dev.flagon.platform.Platform;
+import dev.flagon.platform.Platforms;
+import dev.flagon.platform.RuntimeHost;
 
 import java.util.Arrays;
 
@@ -11,13 +11,13 @@ import java.util.Arrays;
  * the boot sequence. each phase is announced before it starts so an embedder can tell
  * "platform never came up" from "program threw". exactly one of exited/fatal is delivered.
  */
-public final class DecanterRuntime {
+public final class FlagonRuntime {
 
     public static final String PHASE_PLATFORM = "platform";
     public static final String PHASE_SELECT = "select";
     public static final String PHASE_PROGRAM = "program";
 
-    private DecanterRuntime() {
+    private FlagonRuntime() {
     }
 
     /**
@@ -39,7 +39,7 @@ public final class DecanterRuntime {
             Platforms.install(platform);
 
             ConsoleSink console = platform.console();
-            console.info("Decanter runtime starting on platform '" + platform.name() + "'");
+            console.info("Flagon runtime starting on platform '" + platform.name() + "'");
 
             phase = PHASE_SELECT;
             String[] arguments = host.arguments();

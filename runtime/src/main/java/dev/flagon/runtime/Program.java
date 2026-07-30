@@ -1,4 +1,4 @@
-package dev.decanter.runtime;
+package dev.flagon.runtime;
 
 /** a unit of work the runtime can boot into — the runtime's equivalent of a main class. */
 public interface Program {

@@ -3,7 +3,7 @@
   "configVersion": 1,
   "workspaces": {
     "": {
-      "name": "decanter-web",
+      "name": "flagon-web",
       "devDependencies": {
         "@playwright/test": "^1.49.1",
         "@types/node": "^22.10.5",

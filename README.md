@@ -1,4 +1,4 @@
-# Decanter
+# Flagon
 
 Run unmodified desktop Java/LWJGL applications in a modern browser. The long-term target is
 Minecraft Java Edition 1.8.9, running from an untouched `minecraft.jar`.

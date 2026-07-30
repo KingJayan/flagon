@@ -1,6 +1,6 @@
-package dev.decanter.platform.browser;
+package dev.flagon.platform.browser;
 
-import dev.decanter.platform.ConsoleSink;
+import dev.flagon.platform.ConsoleSink;
 import org.teavm.jso.JSBody;
 
 /** writes to the devtools console, and to the page's bridge when one is installed. */
@@ -27,7 +27,7 @@ public final class BrowserConsole implements ConsoleSink {
     @Override
     public void write(Level level, String message, Throwable error) {
         String body = error == null ? message : message + "\n" + describe(error);
-        String text = "[decanter] " + body;
+        String text = "[flagon] " + body;
         switch (level) {
             case DEBUG -> consoleDebug(text);
             case INFO -> consoleInfo(text);

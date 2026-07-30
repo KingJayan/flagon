@@ -4,7 +4,7 @@ dist/
 .DS_Store
 
 # build artifacts served to the browser
-web/public/decanter/
+web/public/flagon/
 
 # playwright
 web/test-results/

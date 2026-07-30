@@ -1,6 +1,6 @@
 import { runBundle, type HostBridge } from './bundle';
 
-const BUNDLE_URL = '/decanter/sandbox.js';
+const BUNDLE_URL = '/flagon/sandbox.js';
 
 const app = document.querySelector<HTMLElement>('#app')!;
 const stateBadge = document.querySelector<HTMLElement>('#state')!;

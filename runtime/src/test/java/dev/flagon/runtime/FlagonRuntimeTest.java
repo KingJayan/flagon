@@ -1,6 +1,6 @@
-package dev.decanter.runtime;
+package dev.flagon.runtime;
 
-import dev.decanter.platform.Platforms;
+import dev.flagon.platform.Platforms;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 
@@ -13,7 +13,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-class DecanterRuntimeTest {
+class FlagonRuntimeTest {
 
     @AfterEach
     void tearDown() {
@@ -45,7 +45,7 @@ class DecanterRuntimeTest {
         FakePlatform platform = new FakePlatform("hello", "world");
         ProgramRegistry registry = new ProgramRegistry().register(program("hello", ran));
 
-        int code = DecanterRuntime.boot(platform, registry);
+        int code = FlagonRuntime.boot(platform, registry);
 
         assertEquals(0, code);
         assertEquals(List.of("helloworld"), ran);
@@ -80,7 +80,7 @@ class DecanterRuntimeTest {
             }
         });
 
-        assertEquals(0, DecanterRuntime.boot(platform, registry));
+        assertEquals(0, FlagonRuntime.boot(platform, registry));
         assertEquals(List.of("fake"), ran);
     }
 
@@ -92,7 +92,7 @@ class DecanterRuntimeTest {
                 .register(program("first", ran))
                 .register(program("second", ran));
 
-        assertEquals(0, DecanterRuntime.boot(platform, registry));
+        assertEquals(0, FlagonRuntime.boot(platform, registry));
         assertEquals(List.of("first"), ran);
     }
 
@@ -101,7 +101,7 @@ class DecanterRuntimeTest {
         FakePlatform platform = new FakePlatform("nope");
         ProgramRegistry registry = new ProgramRegistry().register(program("hello", new ArrayList<>()));
 
-        assertEquals(-1, DecanterRuntime.boot(platform, registry));
+        assertEquals(-1, FlagonRuntime.boot(platform, registry));
         assertTrue(platform.events.contains("fatal:select"), platform.events.toString());
         assertInstanceOf(IllegalArgumentException.class, platform.fatalError);
         assertTrue(platform.fatalError.getMessage().contains("hello"));
@@ -127,7 +127,7 @@ class DecanterRuntimeTest {
             }
         });
 
-        assertEquals(-1, DecanterRuntime.boot(platform, registry));
+        assertEquals(-1, FlagonRuntime.boot(platform, registry));
         assertEquals("fatal:program", platform.events.get(platform.events.size() - 1));
         assertNotNull(platform.fatalError);
         assertEquals("expected failure", platform.fatalError.getMessage());
@@ -142,7 +142,7 @@ class DecanterRuntimeTest {
     @Test
     void reportsAnEmptyRegistryAsFatal() {
         FakePlatform platform = new FakePlatform();
-        assertEquals(-1, DecanterRuntime.boot(platform, new ProgramRegistry()));
+        assertEquals(-1, FlagonRuntime.boot(platform, new ProgramRegistry()));
         assertTrue(platform.events.contains("fatal:select"), platform.events.toString());
     }
 }

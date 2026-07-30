@@ -1,9 +1,9 @@
-package dev.decanter.platform.browser;
+package dev.flagon.platform.browser;
 
-import dev.decanter.platform.Clock;
-import dev.decanter.platform.ConsoleSink;
-import dev.decanter.platform.Platform;
-import dev.decanter.platform.RuntimeHost;
+import dev.flagon.platform.Clock;
+import dev.flagon.platform.ConsoleSink;
+import dev.flagon.platform.Platform;
+import dev.flagon.platform.RuntimeHost;
 
 public final class BrowserPlatform implements Platform {
 
@@ -22,7 +22,7 @@ public final class BrowserPlatform implements Platform {
         HostBridge bridge = HostBridges.installed();
         BrowserConsole console = new BrowserConsole(bridge);
         if (bridge == null) {
-            console.warn("no window.__decanterHost installed; reporting to the console only");
+            console.warn("no window.__flagonHost installed; reporting to the console only");
         }
         RuntimeHost host = new BrowserRuntimeHost(bridge, console, copyOf(arguments));
         return new BrowserPlatform(new BrowserClock(), console, host);

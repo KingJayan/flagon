@@ -1,8 +1,8 @@
-package dev.decanter.platform.browser;
+package dev.flagon.platform.browser;
 
 import org.teavm.jso.JSObject;
 
-/** what a page installs as {@code window.__decanterHost} to observe the runtime. */
+/** what a page installs as {@code window.__flagonHost} to observe the runtime. */
 public interface HostBridge extends JSObject {
 
     void log(String level, String text);

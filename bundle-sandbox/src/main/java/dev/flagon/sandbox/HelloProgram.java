@@ -1,8 +1,8 @@
-package dev.decanter.sandbox;
+package dev.flagon.sandbox;
 
-import dev.decanter.platform.Platform;
-import dev.decanter.platform.Platforms;
-import dev.decanter.runtime.Program;
+import dev.flagon.platform.Platform;
+import dev.flagon.platform.Platforms;
+import dev.flagon.runtime.Program;
 
 /** smallest hosted program: proves a java main reached the browser. */
 public final class HelloProgram implements Program {

@@ -1,4 +1,4 @@
-package dev.decanter.platform;
+package dev.flagon.platform;
 
 /** channel from the runtime back to whatever embedded it. hosted programs never call this. */
 public interface RuntimeHost {

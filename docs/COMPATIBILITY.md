@@ -9,7 +9,7 @@ What the browser environment does and does not provide. Updated as milestones la
 | Wall clock | works | `Date.now()` |
 | Monotonic clock | works, degraded resolution | `performance.now()`, clamped non-decreasing |
 | Console / logging | works | mapped onto `console.*` levels |
-| Lifecycle reporting | works | `window.__decanterHost` |
+| Lifecycle reporting | works | `window.__flagonHost` |
 | Filesystem | not started | OPFS-backed `.minecraft`, milestone 5 |
 | Threading | not started | TeaVM green threads on the JS backend |
 | Networking | not started | needs a proxy; browsers have no raw TCP |
@@ -54,5 +54,5 @@ a cast, then it surfaces as a bare `ClassCastException` far from the cause.
 
 ### Vite will not serve `public/` files through the module pipeline
 The compiled bundle is a build artifact, correctly placed in `public/`, but a bare
-`import('/decanter/sandbox.js')` makes Vite try to transform it and fail. `runBundle` resolves the
+`import('/flagon/sandbox.js')` makes Vite try to transform it and fail. `runBundle` resolves the
 path to an absolute URL so the bundler treats it as external and the browser fetches it as-is.

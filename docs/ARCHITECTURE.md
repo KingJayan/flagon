@@ -44,7 +44,7 @@ class loading at runtime, which has two consequences that shape the code:
 
 ## Backend selection
 
-TeaVM can target JavaScript or WebAssembly GC. The default is JavaScript (`decanter.target`),
+TeaVM can target JavaScript or WebAssembly GC. The default is JavaScript (`flagon.target`),
 for two reasons:
 
 - Its green-thread support (`Thread`, `synchronized`, `wait`/`notify` via CPS transformation) is
@@ -58,7 +58,7 @@ cannot catch. Desktop Java code relies on catching those.
 
 ## Host contract
 
-A page drives a bundle through `window.__decanterHost`, a five-method object
+A page drives a bundle through `window.__flagonHost`, a five-method object
 (`log`, `status`, `ready`, `exited`, `fatal`). Keeping it this small means a test harness or an
 embedding page needs to know nothing about how the bundle was compiled. A bundle loaded without a
 bridge still runs and reports to the console.

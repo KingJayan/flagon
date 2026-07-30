@@ -37,10 +37,10 @@ test('runs a simple java program', async ({ page }) => {
 });
 
 test('passes arguments through to the program', async ({ page }) => {
-  await page.goto('/?program=hello&arg=decanter');
+  await page.goto('/?program=hello&arg=flagon');
 
   await expect(page.getByTestId('state')).toHaveText('exited', { timeout: 30_000 });
-  await expect(page.getByTestId('log')).toContainText('Hello, decanter!');
+  await expect(page.getByTestId('log')).toContainText('Hello, flagon!');
 });
 
 test('java semantics survive compilation to the browser', async ({ page }) => {
@@ -80,6 +80,6 @@ test('still runs when the page installs no host bridge', async ({ page }) => {
     .poll(() => lines.some((line) => line.includes('Hello, bare!')), { timeout: 30_000 })
     .toBe(true);
 
-  expect(lines.some((line) => line.includes('no window.__decanterHost installed'))).toBe(true);
+  expect(lines.some((line) => line.includes('no window.__flagonHost installed'))).toBe(true);
   expect(crashes).toEqual([]);
 });

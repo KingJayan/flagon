@@ -1,4 +1,4 @@
-/** contract between the page and a teavm-compiled decanter bundle. */
+/** contract between the page and a teavm-compiled flagon bundle. */
 
 export interface HostBridge {
   log(level: string, text: string): void;
@@ -10,7 +10,7 @@ export interface HostBridge {
 
 declare global {
   interface Window {
-    __decanterHost?: HostBridge;
+    __flagonHost?: HostBridge;
   }
 }
 
@@ -19,7 +19,7 @@ interface BundleModule {
 }
 
 export async function runBundle(url: string, host: HostBridge, args: string[]): Promise<void> {
-  window.__decanterHost = host;
+  window.__flagonHost = host;
   const absolute = new URL(url, location.origin).href;
   const module = (await import(/* @vite-ignore */ absolute)) as BundleModule;
   if (typeof module.main !== 'function') {

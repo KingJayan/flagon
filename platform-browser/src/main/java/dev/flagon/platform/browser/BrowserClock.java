@@ -1,6 +1,6 @@
-package dev.decanter.platform.browser;
+package dev.flagon.platform.browser;
 
-import dev.decanter.platform.Clock;
+import dev.flagon.platform.Clock;
 import org.teavm.jso.JSBody;
 
 public final class BrowserClock implements Clock {

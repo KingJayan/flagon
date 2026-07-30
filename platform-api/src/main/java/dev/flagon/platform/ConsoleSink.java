@@ -1,4 +1,4 @@
-package dev.decanter.platform;
+package dev.flagon.platform;
 
 public interface ConsoleSink {
 

@@ -1,8 +1,8 @@
-package dev.decanter.sandbox;
+package dev.flagon.sandbox;
 
-import dev.decanter.platform.browser.BrowserPlatform;
-import dev.decanter.runtime.DecanterRuntime;
-import dev.decanter.runtime.ProgramRegistry;
+import dev.flagon.platform.browser.BrowserPlatform;
+import dev.flagon.runtime.FlagonRuntime;
+import dev.flagon.runtime.ProgramRegistry;
 
 /**
  * Entry point of the sandbox bundle.
@@ -20,6 +20,6 @@ public final class SandboxMain {
         ProgramRegistry registry = new ProgramRegistry()
                 .register(new HelloProgram())
                 .register(new RuntimeSelfTestProgram());
-        DecanterRuntime.boot(BrowserPlatform.create(arguments), registry);
+        FlagonRuntime.boot(BrowserPlatform.create(arguments), registry);
     }
 }

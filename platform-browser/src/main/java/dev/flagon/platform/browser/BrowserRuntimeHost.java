@@ -1,7 +1,7 @@
-package dev.decanter.platform.browser;
+package dev.flagon.platform.browser;
 
-import dev.decanter.platform.ConsoleSink;
-import dev.decanter.platform.RuntimeHost;
+import dev.flagon.platform.ConsoleSink;
+import dev.flagon.platform.RuntimeHost;
 
 public final class BrowserRuntimeHost implements RuntimeHost {
 
@@ -46,7 +46,7 @@ public final class BrowserRuntimeHost implements RuntimeHost {
 
     @Override
     public void fatal(String phase, Throwable error) {
-        // the console copy was already written by DecanterRuntime before it called us
+        // the console copy was already written by FlagonRuntime before it called us
         if (bridge == null) {
             return;
         }

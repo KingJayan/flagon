@@ -4,22 +4,22 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
   <parent>
-    <groupId>dev.decanter</groupId>
-    <artifactId>decanter-parent</artifactId>
+    <groupId>dev.flagon</groupId>
+    <artifactId>flagon-parent</artifactId>
     <version>0.1.0-SNAPSHOT</version>
   </parent>
 
   <artifactId>bundle-sandbox</artifactId>
-  <name>Decanter :: Sandbox Bundle</name>
+  <name>Flagon :: Sandbox Bundle</name>
   <description>Compiles the runtime plus diagnostic programs to a browser bundle.</description>
 
   <dependencies>
     <dependency>
-      <groupId>dev.decanter</groupId>
+      <groupId>dev.flagon</groupId>
       <artifactId>runtime</artifactId>
     </dependency>
     <dependency>
-      <groupId>dev.decanter</groupId>
+      <groupId>dev.flagon</groupId>
       <artifactId>platform-browser</artifactId>
     </dependency>
 
@@ -42,17 +42,17 @@
               <goal>compile</goal>
             </goals>
             <configuration>
-              <mainClass>dev.decanter.sandbox.SandboxMain</mainClass>
-              <targetType>${decanter.target}</targetType>
-              <targetDirectory>${decanter.bundleOutput}</targetDirectory>
+              <mainClass>dev.flagon.sandbox.SandboxMain</mainClass>
+              <targetType>${flagon.target}</targetType>
+              <targetDirectory>${flagon.bundleOutput}</targetDirectory>
               <targetFileName>sandbox.js</targetFileName>
               <jsModuleType>ES2015</jsModuleType>
-              <optimizationLevel>${decanter.optimization}</optimizationLevel>
-              <minifying>${decanter.minify}</minifying>
-              <sourceMapsGenerated>${decanter.sourceMaps}</sourceMapsGenerated>
-              <debugInformationGenerated>${decanter.sourceMaps}</debugInformationGenerated>
+              <optimizationLevel>${flagon.optimization}</optimizationLevel>
+              <minifying>${flagon.minify}</minifying>
+              <sourceMapsGenerated>${flagon.sourceMaps}</sourceMapsGenerated>
+              <debugInformationGenerated>${flagon.sourceMaps}</debugInformationGenerated>
               <stopOnErrors>true</stopOnErrors>
-              <strict>${decanter.strict}</strict>
+              <strict>${flagon.strict}</strict>
             </configuration>
           </execution>
         </executions>

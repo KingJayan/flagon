@@ -1,9 +1,9 @@
-package dev.decanter.sandbox;
+package dev.flagon.sandbox;
 
-import dev.decanter.platform.Clock;
-import dev.decanter.platform.ConsoleSink;
-import dev.decanter.platform.Platforms;
-import dev.decanter.runtime.Program;
+import dev.flagon.platform.Clock;
+import dev.flagon.platform.ConsoleSink;
+import dev.flagon.platform.Platforms;
+import dev.flagon.runtime.Program;
 
 import java.util.ArrayList;
 import java.util.HashMap;
