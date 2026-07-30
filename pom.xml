@@ -1,0 +1,110 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <groupId>dev.decanter</groupId>
+  <artifactId>decanter-parent</artifactId>
+  <version>0.1.0-SNAPSHOT</version>
+  <packaging>pom</packaging>
+
+  <name>Decanter</name>
+  <description>A desktop Java/LWJGL compatibility environment for the browser.</description>
+
+  <modules>
+    <module>platform-api</module>
+    <module>platform-browser</module>
+    <module>runtime</module>
+    <module>bundle-sandbox</module>
+  </modules>
+
+  <properties>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <maven.compiler.release>17</maven.compiler.release>
+    <teavm.version>0.12.0</teavm.version>
+    <junit.version>5.11.4</junit.version>
+    <!-- Compilation backend for browser bundles: JAVASCRIPT or WEBASSEMBLY_GC.
+         See docs/ARCHITECTURE.md "Backend selection" for why JAVASCRIPT is the default. -->
+    <decanter.target>JAVASCRIPT</decanter.target>
+    <decanter.optimization>SIMPLE</decanter.optimization>
+    <decanter.minify>false</decanter.minify>
+    <!-- strict adds null/bounds checks so java exceptions are thrown instead of js TypeErrors -->
+    <decanter.strict>true</decanter.strict>
+    <decanter.sourceMaps>true</decanter.sourceMaps>
+    <!-- Where browser bundles are emitted for the web shell to serve. -->
+    <decanter.bundleOutput>${maven.multiModuleProjectDirectory}/web/public/decanter</decanter.bundleOutput>
+  </properties>
+
+  <dependencyManagement>
+    <dependencies>
+      <dependency>
+        <groupId>dev.decanter</groupId>
+        <artifactId>platform-api</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>dev.decanter</groupId>
+        <artifactId>platform-browser</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>dev.decanter</groupId>
+        <artifactId>runtime</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.teavm</groupId>
+        <artifactId>teavm-jso-apis</artifactId>
+        <version>${teavm.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.teavm</groupId>
+        <artifactId>teavm-classlib</artifactId>
+        <version>${teavm.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.junit</groupId>
+        <artifactId>junit-bom</artifactId>
+        <version>${junit.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+    </dependencies>
+  </dependencyManagement>
+
+  <dependencies>
+    <dependency>
+      <groupId>org.junit.jupiter</groupId>
+      <artifactId>junit-jupiter</artifactId>
+      <scope>test</scope>
+    </dependency>
+  </dependencies>
+
+  <build>
+    <pluginManagement>
+      <plugins>
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-compiler-plugin</artifactId>
+          <version>3.13.0</version>
+          <configuration>
+            <compilerArgs>
+              <arg>-Xlint:all,-serial,-processing</arg>
+            </compilerArgs>
+          </configuration>
+        </plugin>
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-surefire-plugin</artifactId>
+          <version>3.5.2</version>
+        </plugin>
+        <plugin>
+          <groupId>org.teavm</groupId>
+          <artifactId>teavm-maven-plugin</artifactId>
+          <version>${teavm.version}</version>
+        </plugin>
+      </plugins>
+    </pluginManagement>
+  </build>
+</project>

@@ -1,0 +1,15 @@
+target/
+node_modules/
+dist/
+.DS_Store
+
+# build artifacts served to the browser
+web/public/decanter/
+
+# playwright
+web/test-results/
+web/playwright-report/
+web/blob-report/
+
+# the game jar
+vendor/
