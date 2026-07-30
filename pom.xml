@@ -16,6 +16,7 @@
     <module>platform-api</module>
     <module>platform-browser</module>
     <module>runtime</module>
+    <module>lwjgl-compat</module>
     <module>bundle-sandbox</module>
   </modules>
 
@@ -54,8 +55,18 @@
         <version>${project.version}</version>
       </dependency>
       <dependency>
+        <groupId>dev.flagon</groupId>
+        <artifactId>lwjgl-compat</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+      <dependency>
         <groupId>org.teavm</groupId>
         <artifactId>teavm-jso-apis</artifactId>
+        <version>${teavm.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.teavm</groupId>
+        <artifactId>teavm-platform</artifactId>
         <version>${teavm.version}</version>
       </dependency>
       <dependency>

@@ -4,6 +4,8 @@ import dev.flagon.platform.Clock;
 import dev.flagon.platform.ConsoleSink;
 import dev.flagon.platform.Platform;
 import dev.flagon.platform.RuntimeHost;
+import dev.flagon.platform.UnsupportedCapabilityException;
+import dev.flagon.platform.display.DisplaySurface;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -40,6 +42,16 @@ final class FakePlatform implements Platform, Clock, ConsoleSink, RuntimeHost {
     @Override
     public RuntimeHost host() {
         return this;
+    }
+
+    @Override
+    public boolean hasDisplay() {
+        return false;
+    }
+
+    @Override
+    public DisplaySurface display(int width, int height, String title) {
+        throw new UnsupportedCapabilityException("the test host is headless");
     }
 
     @Override

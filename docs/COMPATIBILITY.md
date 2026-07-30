@@ -11,11 +11,11 @@ What the browser environment does and does not provide. Updated as each stage la
 | Console / logging | works | mapped onto `console.*` levels |
 | Lifecycle reporting | works | `window.__flagonHost` |
 | Filesystem | not started | OPFS-backed `.minecraft` |
-| Threading | not started | TeaVM green threads on the JS backend |
+| Threading | partial | blocking frame loops work via TeaVM green threads |
 | Networking | not started | needs a proxy; browsers have no raw TCP |
-| Input | not started | rendering stage |
+| Input | not started | Keyboard/Mouse, next stage |
 | Audio | not started | OpenAL → WebAudio |
-| Graphics | not started | GL → WebGL2, rendering stage |
+| Graphics | partial | GL 1.1 fixed-function over WebGL2, see below |
 
 ## Java language and library
 
@@ -33,6 +33,43 @@ Verified in Chromium by the `selftest` program (66 checks), which runs in CI as 
 | Interfaces, default methods, records, virtual dispatch | works |
 | Lambdas, method references, captured locals | works |
 | Reflection | untested — likely a problem for the game |
+
+## LWJGL
+
+Verified in Chromium by the `lwjgl` demo, which asserts on pixels read back from the live
+WebGL2 framebuffer, plus 22 JVM tests that run the emulation against a recording device.
+
+| Call group | State |
+|------------|-------|
+| `Display` create/destroy/update/title/size/fullscreen | works |
+| Blocking `while (!isCloseRequested()) { ...; Display.update(); }` | works |
+| `GL11` clear, viewport, colour/depth mask, depth func, blend func | works |
+| `GL11` matrix stacks: push/pop/load/translate/rotate/scale/ortho/frustum | works |
+| Immediate mode: `glBegin`/`glVertex`/`glColor`/`glTexCoord`/`glEnd` | works |
+| Textures: gen/bind/delete, RGBA upload, nearest and linear filtering | works |
+| Alpha test | `GL_GREATER` only |
+| `GL_QUADS` | **not emulated** |
+| Lighting, fog, display lists, `glTexEnv` | not emulated |
+| `BufferUtils`, `MemoryUtil`, `Keyboard`, `Mouse`, `OpenAL` | not started |
+
+Every unimplemented entry point throws `UnsupportedOperationException` naming the call. Nothing
+is silently ignored: a dropped state change produces a rendering bug that is far more expensive
+to track down than a stack trace.
+
+### GL_QUADS has no WebGL equivalent
+WebGL2 dropped `GL_QUADS`, and Minecraft 1.8.9 draws nearly everything with it. Emulating it
+means expanding each quad into two triangles during immediate-mode capture — cheap to do, but it
+changes vertex counts and index order, so it lands with the work that needs it rather than
+speculatively now.
+
+### The frame loop depends on TeaVM's async transformation
+`Display.update()` suspends the calling green thread and resumes on `requestAnimationFrame`.
+This only works for code reachable from an `@Async` method on a TeaVM-started thread, which
+`main` is. Calling it from a plain JS callback would deadlock the loop.
+
+### Display.sync(fps) does not sleep
+Desktop LWJGL blocks to hit a frame rate. `requestAnimationFrame` already paces frames, and
+sleeping would cost a frame rather than save one, so the request is recorded and ignored.
 
 ## Known gaps and shims
 

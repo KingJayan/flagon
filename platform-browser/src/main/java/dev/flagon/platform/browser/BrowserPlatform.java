@@ -4,12 +4,15 @@ import dev.flagon.platform.Clock;
 import dev.flagon.platform.ConsoleSink;
 import dev.flagon.platform.Platform;
 import dev.flagon.platform.RuntimeHost;
+import dev.flagon.platform.browser.display.CanvasSurface;
+import dev.flagon.platform.display.DisplaySurface;
 
 public final class BrowserPlatform implements Platform {
 
     private final Clock clock;
     private final ConsoleSink console;
     private final RuntimeHost host;
+    private DisplaySurface surface;
 
     private BrowserPlatform(Clock clock, ConsoleSink console, RuntimeHost host) {
         this.clock = clock;
@@ -58,5 +61,18 @@ public final class BrowserPlatform implements Platform {
     @Override
     public RuntimeHost host() {
         return host;
+    }
+
+    @Override
+    public boolean hasDisplay() {
+        return true;
+    }
+
+    @Override
+    public DisplaySurface display(int width, int height, String title) {
+        if (surface == null) {
+            surface = CanvasSurface.open(width, height, title);
+        }
+        return surface;
     }
 }

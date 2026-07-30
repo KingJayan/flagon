@@ -22,6 +22,10 @@
       <groupId>dev.flagon</groupId>
       <artifactId>platform-browser</artifactId>
     </dependency>
+    <dependency>
+      <groupId>dev.flagon</groupId>
+      <artifactId>lwjgl-compat</artifactId>
+    </dependency>
 
     <dependency>
       <groupId>org.teavm</groupId>

@@ -22,5 +22,9 @@
       <groupId>org.teavm</groupId>
       <artifactId>teavm-jso-apis</artifactId>
     </dependency>
+    <dependency>
+      <groupId>org.teavm</groupId>
+      <artifactId>teavm-platform</artifactId>
+    </dependency>
   </dependencies>
 </project>
