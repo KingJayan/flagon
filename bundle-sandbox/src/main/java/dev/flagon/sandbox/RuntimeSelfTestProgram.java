@@ -3,8 +3,15 @@ package dev.flagon.sandbox;
 import dev.flagon.platform.Clock;
 import dev.flagon.platform.ConsoleSink;
 import dev.flagon.platform.Platforms;
+import dev.flagon.platform.UnsupportedCapabilityException;
 import dev.flagon.runtime.Program;
+import org.lwjgl.BufferUtils;
+import org.lwjgl.MemoryUtil;
 
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
+import java.nio.FloatBuffer;
+import java.nio.IntBuffer;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -13,9 +20,7 @@ import java.util.TreeMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
- * checks that java semantics survive ahead-of-time compilation to the browser.
- * this is the regression suite for the compilation backend itself — if a check here fails,
- * everything above it is unreliable, so a failure aborts the boot.
+ * checks that java semantics survive aot compilation to the browser
  */
 public final class RuntimeSelfTestProgram implements Program {
 
@@ -47,6 +52,7 @@ public final class RuntimeSelfTestProgram implements Program {
         polymorphism();
         lambdasAndClosures();
         clockBehaviour();
+        nioBuffers();
 
         console.info("selftest: " + (checks - failures.size()) + "/" + checks + " checks passed");
         if (!failures.isEmpty()) {
@@ -268,6 +274,45 @@ public final class RuntimeSelfTestProgram implements Program {
             previous = now;
         }
         check("nanoTime never decreases", true, monotonic);
+    }
+
+    /** nio buffers are how the game hands vertex and pixel data to gl, so they run here too. */
+    private void nioBuffers() {
+        ByteBuffer bytes = BufferUtils.createByteBuffer(16);
+        check("byte buffer capacity", 16, bytes.capacity());
+        check("buffers are native order", ByteOrder.nativeOrder(), bytes.order());
+
+        FloatBuffer floats = BufferUtils.createFloatBuffer(4);
+        floats.put(0, 1.5f).put(1, -2.25f);
+        check("float buffer round trip", 1.5f, floats.get(0));
+        check("float buffer holds negatives", -2.25f, floats.get(1));
+
+        IntBuffer view = bytes.asIntBuffer();
+        view.put(0, 0x0A0B0C0D);
+        check("typed views alias the same bytes", 0x0A0B0C0D, bytes.asIntBuffer().get(0));
+
+        IntBuffer zeroed = BufferUtils.createIntBuffer(2);
+        zeroed.put(0, 5).put(1, 5);
+        zeroed.position(1);
+        BufferUtils.zeroBuffer(zeroed);
+        check("zeroBuffer skips consumed elements", 5, zeroed.get(0));
+        check("zeroBuffer clears the rest", 0, zeroed.get(1));
+
+        check("ascii round trip", "flagon",
+                MemoryUtil.decodeASCII(MemoryUtil.encodeASCII("flagon")));
+        check("utf8 round trip", "héllo ☃",
+                MemoryUtil.decodeUTF8(MemoryUtil.encodeUTF8("héllo ☃")));
+        check("utf8 encodes bytes not chars", 3, MemoryUtil.encodeUTF8("☃").remaining());
+        check("utf16 round trip", "héllo ☃",
+                MemoryUtil.decodeUTF16(MemoryUtil.encodeUTF16("héllo ☃")));
+
+        boolean refused = false;
+        try {
+            MemoryUtil.getAddress(bytes);
+        } catch (UnsupportedCapabilityException expected) {
+            refused = true;
+        }
+        check("buffer addresses are refused", true, refused);
     }
 
     private void check(String name, Object expected, Object actual) {

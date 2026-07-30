@@ -55,7 +55,7 @@ test('java semantics survive compilation to the browser', async ({ page }) => {
   const match = /selftest: (\d+)\/(\d+) checks passed/.exec(summary ?? '');
   expect(match, `no selftest summary in log:\n${summary}`).not.toBeNull();
   expect(match![1]).toBe(match![2]);
-  expect(Number(match![2])).toBeGreaterThan(50);
+  expect(Number(match![2])).toBeGreaterThanOrEqual(78);
   expect(failures).toEqual([]);
 });
 
