@@ -16,6 +16,11 @@
 
       <section class="panel">
         <div class="row">
+          <label for="bundle">Bundle</label>
+          <select id="bundle">
+            <option value="sandbox">sandbox</option>
+            <option value="example">example</option>
+          </select>
           <label for="program">Program</label>
           <select id="program">
             <option value="hello">hello</option>
@@ -23,6 +28,7 @@
             <option value="lwjgl">lwjgl</option>
             <option value="input">input</option>
             <option value="arrays">arrays</option>
+            <option value="spinner">spinner</option>
           </select>
           <button id="run" type="button">Run</button>
           <span id="state" class="badge" data-testid="state">loading</span>

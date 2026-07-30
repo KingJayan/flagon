@@ -6,7 +6,7 @@
 
   <groupId>dev.flagon</groupId>
   <artifactId>flagon-parent</artifactId>
-  <version>0.1.0-SNAPSHOT</version>
+  <version>0.4.0-SNAPSHOT</version>
   <packaging>pom</packaging>
 
   <name>Flagon</name>
@@ -18,6 +18,8 @@
     <module>runtime</module>
     <module>lwjgl-compat</module>
     <module>bundle-sandbox</module>
+    <module>example-app</module>
+    <module>bundle-example</module>
   </modules>
 
   <properties>
@@ -25,17 +27,28 @@
     <maven.compiler.release>17</maven.compiler.release>
     <teavm.version>0.12.0</teavm.version>
     <junit.version>5.11.4</junit.version>
-    <!-- Compilation backend for browser bundles: JAVASCRIPT or WEBASSEMBLY_GC.
-         See docs/ARCHITECTURE.md "Backend selection" for why JAVASCRIPT is the default. -->
+    <lwjgl.version>2.9.3</lwjgl.version>
+    <!-- comp backend for browser bundles: JAVASCRIPT or WEBASSEMBLY_GC.
+         see docs/ARCHITECTURE.md "Backend selection" for why JAVASCRIPT is the default -->
     <flagon.target>JAVASCRIPT</flagon.target>
     <flagon.optimization>SIMPLE</flagon.optimization>
     <flagon.minify>false</flagon.minify>
     <!-- strict adds null/bounds checks so java exceptions are thrown instead of js TypeErrors -->
     <flagon.strict>true</flagon.strict>
     <flagon.sourceMaps>true</flagon.sourceMaps>
-    <!-- Where browser bundles are emitted for the web shell to serve. -->
+    <!-- where browser bundles are emitted for the web shell to serve. -->
     <flagon.bundleOutput>${maven.multiModuleProjectDirectory}/web/public/flagon</flagon.bundleOutput>
   </properties>
+
+  <!-- consumed by downstream repositories; see docs/DOWNSTREAM.md for details. release workflow sets
+       the version from the tag, so this stays a snapshot of the next release between them-->
+  <distributionManagement>
+    <repository>
+      <id>github</id>
+      <name>GitHub Packages</name>
+      <url>https://maven.pkg.github.com/KingJayan/flagon</url>
+    </repository>
+  </distributionManagement>
 
   <dependencyManagement>
     <dependencies>
@@ -114,6 +127,27 @@
           <groupId>org.teavm</groupId>
           <artifactId>teavm-maven-plugin</artifactId>
           <version>${teavm.version}</version>
+          <executions>
+            <execution>
+              <id>compile-bundle</id>
+              <goals>
+                <goal>compile</goal>
+              </goals>
+              <configuration>
+                <mainClass>${flagon.bundle.mainClass}</mainClass>
+                <targetType>${flagon.target}</targetType>
+                <targetDirectory>${flagon.bundleOutput}</targetDirectory>
+                <targetFileName>${flagon.bundle.fileName}</targetFileName>
+                <jsModuleType>ES2015</jsModuleType>
+                <optimizationLevel>${flagon.optimization}</optimizationLevel>
+                <minifying>${flagon.minify}</minifying>
+                <sourceMapsGenerated>${flagon.sourceMaps}</sourceMapsGenerated>
+                <debugInformationGenerated>${flagon.sourceMaps}</debugInformationGenerated>
+                <stopOnErrors>true</stopOnErrors>
+                <strict>${flagon.strict}</strict>
+              </configuration>
+            </execution>
+          </executions>
         </plugin>
       </plugins>
     </pluginManagement>
