@@ -41,8 +41,13 @@ public interface GraphicsDevice {
 
     void bindArrayBuffer(int buffer);
 
+    void bindElementBuffer(int buffer);
+
     /** uploads {@code length} floats from {@code data}, replacing the bound buffer's contents. */
     void bufferData(float[] data, int length, BufferUsage usage);
+
+    /** uploads {@code length} indices from {@code data} into the bound element buffer. */
+    void elementData(int[] data, int length, BufferUsage usage);
 
     /**
      * @throws ShaderException if either stage fails to compile, or the program fails to link
@@ -85,6 +90,9 @@ public interface GraphicsDevice {
     void setTextureFilter(boolean smooth);
 
     void drawArrays(Primitive primitive, int first, int count);
+
+    /** draws {@code count} indices from the bound element buffer. */
+    void drawElements(Primitive primitive, int count);
 
     int width();
 

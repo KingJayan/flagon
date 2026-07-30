@@ -140,8 +140,66 @@ class GL11Test {
     }
 
     @Test
-    void quadsAreReportedAsNotYetEmulated() {
-        assertThrows(UnsupportedOperationException.class, () -> GL11.glBegin(GL11.GL_QUADS));
+    void quadsExpandIntoTwoTrianglesPerQuad() {
+        drawQuads(1);
+
+        assertArrayEquals(new int[] {0, 1, 2, 0, 2, 3}, device.lastElementData);
+        assertEquals(java.util.List.of("drawElements TRIANGLES 6"), device.calls("drawElements"));
+        assertTrue(device.calls("drawArrays").isEmpty());
+        // the vertices go up untouched; only the index order changes
+        assertEquals(4 * 9, device.lastBufferData.length);
+    }
+
+    @Test
+    void quadIndicesAreBasedOnEachQuadsFirstVertex() {
+        drawQuads(3);
+
+        assertArrayEquals(
+                new int[] {0, 1, 2, 0, 2, 3, 4, 5, 6, 4, 6, 7, 8, 9, 10, 8, 10, 11},
+                device.lastElementData);
+        assertEquals(java.util.List.of("drawElements TRIANGLES 18"), device.calls("drawElements"));
+    }
+
+    @Test
+    void quadIndicesAreUploadedOnlyWhenTheyHaveToGrow() {
+        drawQuads(4);
+        drawQuads(2);
+        assertEquals(1, device.calls("elementData").size());
+
+        drawQuads(9);
+        assertEquals(java.util.List.of("elementData 24 STATIC", "elementData 54 STATIC"),
+                device.calls("elementData"));
+    }
+
+    /** gl drops a trailing partial primitive rather than drawing a malformed one. */
+    @Test
+    void aTrailingIncompleteQuadIsDropped() {
+        GL11.glBegin(GL11.GL_QUADS);
+        for (int i = 0; i < 6; i++) {
+            GL11.glVertex2f(i, 0.0f);
+        }
+        GL11.glEnd();
+
+        assertEquals(java.util.List.of("drawElements TRIANGLES 6"), device.calls("drawElements"));
+    }
+
+    @Test
+    void aQuadWithTooFewVerticesDrawsNothing() {
+        GL11.glBegin(GL11.GL_QUADS);
+        GL11.glVertex2f(0.0f, 0.0f);
+        GL11.glVertex2f(1.0f, 0.0f);
+        GL11.glEnd();
+
+        assertTrue(device.calls("drawElements").isEmpty());
+        assertTrue(device.calls("drawArrays").isEmpty());
+    }
+
+    private void drawQuads(int quads) {
+        GL11.glBegin(GL11.GL_QUADS);
+        for (int i = 0; i < quads * 4; i++) {
+            GL11.glVertex2f(i, 0.0f);
+        }
+        GL11.glEnd();
     }
 
     @Test

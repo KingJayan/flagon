@@ -1,10 +1,10 @@
 package org.lwjgl.opengl;
 
 import dev.flagon.lwjgl.internal.GLState;
+import dev.flagon.lwjgl.internal.ImmediateMode;
 import dev.flagon.platform.graphics.BlendFactor;
 import dev.flagon.platform.graphics.CompareFunc;
 import dev.flagon.platform.graphics.GraphicsDevice;
-import dev.flagon.platform.graphics.Primitive;
 
 /**
  * gl 1.1 over webgl2.
@@ -263,17 +263,16 @@ public final class GL11 {
 
     // translation
 
-    private static Primitive primitive(int mode) {
+    private static ImmediateMode primitive(int mode) {
         return switch (mode) {
-            case GL_POINTS -> Primitive.POINTS;
-            case GL_LINES -> Primitive.LINES;
-            case GL_LINE_STRIP -> Primitive.LINE_STRIP;
-            case GL_LINE_LOOP -> Primitive.LINE_LOOP;
-            case GL_TRIANGLES -> Primitive.TRIANGLES;
-            case GL_TRIANGLE_STRIP -> Primitive.TRIANGLE_STRIP;
-            case GL_TRIANGLE_FAN -> Primitive.TRIANGLE_FAN;
-            case GL_QUADS -> throw new UnsupportedOperationException(
-                    "GL_QUADS has no webgl equivalent and needs index expansion; not yet emulated");
+            case GL_POINTS -> ImmediateMode.POINTS;
+            case GL_LINES -> ImmediateMode.LINES;
+            case GL_LINE_STRIP -> ImmediateMode.LINE_STRIP;
+            case GL_LINE_LOOP -> ImmediateMode.LINE_LOOP;
+            case GL_TRIANGLES -> ImmediateMode.TRIANGLES;
+            case GL_TRIANGLE_STRIP -> ImmediateMode.TRIANGLE_STRIP;
+            case GL_TRIANGLE_FAN -> ImmediateMode.TRIANGLE_FAN;
+            case GL_QUADS -> ImmediateMode.QUADS;
             default -> throw new IllegalArgumentException(
                     "unknown primitive 0x" + Integer.toHexString(mode));
         };

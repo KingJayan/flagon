@@ -10,13 +10,13 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * records every call instead of drawing, so the fixed-function emulation can be tested on a
- * plain jvm. this is what the layering is for: nothing above platform-api needs a browser.
+ * records every call instead of drawing; nothing above platform-api needs a browser.
  */
 final class RecordingGraphicsDevice implements GraphicsDevice {
 
     final List<String> calls = new ArrayList<>();
     float[] lastBufferData = new float[0];
+    int[] lastElementData = new int[0];
     float[] lastModelView = new float[16];
     float[] lastProjection = new float[16];
 
@@ -95,10 +95,22 @@ final class RecordingGraphicsDevice implements GraphicsDevice {
     }
 
     @Override
+    public void bindElementBuffer(int buffer) {
+        calls.add("bindElementBuffer " + buffer);
+    }
+
+    @Override
     public void bufferData(float[] data, int length, BufferUsage usage) {
         lastBufferData = new float[length];
         System.arraycopy(data, 0, lastBufferData, 0, length);
         calls.add("bufferData " + length + " " + usage);
+    }
+
+    @Override
+    public void elementData(int[] data, int length, BufferUsage usage) {
+        lastElementData = new int[length];
+        System.arraycopy(data, 0, lastElementData, 0, length);
+        calls.add("elementData " + length + " " + usage);
     }
 
     @Override
@@ -201,6 +213,11 @@ final class RecordingGraphicsDevice implements GraphicsDevice {
     @Override
     public void drawArrays(Primitive primitive, int first, int count) {
         calls.add("drawArrays " + primitive + " " + first + " " + count);
+    }
+
+    @Override
+    public void drawElements(Primitive primitive, int count) {
+        calls.add("drawElements " + primitive + " " + count);
     }
 
     @Override

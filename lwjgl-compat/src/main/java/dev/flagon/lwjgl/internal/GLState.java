@@ -3,7 +3,6 @@ package dev.flagon.lwjgl.internal;
 import dev.flagon.platform.graphics.BlendFactor;
 import dev.flagon.platform.graphics.CompareFunc;
 import dev.flagon.platform.graphics.GraphicsDevice;
-import dev.flagon.platform.graphics.Primitive;
 
 import java.util.ArrayDeque;
 import java.util.Deque;
@@ -38,7 +37,7 @@ public final class GLState {
     private float[] vertices = new float[FixedFunctionPipeline.VERTEX_FLOATS * 256];
     private int floatCount;
     private int vertexCount;
-    private Primitive primitive;
+    private ImmediateMode primitive;
     private boolean building;
 
     private float red = 1.0f;
@@ -158,7 +157,7 @@ public final class GLState {
 
     // immediate mode
 
-    public void begin(Primitive mode) {
+    public void begin(ImmediateMode mode) {
         if (building) {
             throw new IllegalStateException("glBegin called inside glBegin/glEnd");
         }
