@@ -3,20 +3,20 @@
 Run unmodified desktop Java/LWJGL applications in a modern browser. The long-term target is
 Minecraft Java Edition 1.8.9, running from an untouched `minecraft.jar`.
 
-## Status
+## Roadmap
 
-| # | Milestone | State |
-|---|-----------|-------|
-| 1 | Project builds | done |
-| 2 | Browser launches runtime | done |
-| 3 | Simple Java program executes | done |
-| 4 | LWJGL demo renders | next |
-| 5 | Minecraft classes load | |
-| 6 | Minecraft splash screen | |
-| 7 | Main menu | |
-| 8 | World generation | |
-| 9 | Player movement | |
-| 10 | Stable gameplay | |
+| Stage | State |
+|-------|-------|
+| Build pipeline | done |
+| Runtime boots in the browser | done |
+| Java programs execute | done |
+| LWJGL demo renders | in progress |
+| Game classes load | |
+| Splash screen | |
+| Main menu | |
+| World generation | |
+| Player movement | |
+| Stable gameplay | |
 
 ## Structure
 

@@ -5,7 +5,7 @@
 ```
 minecraft.jar (unmodified)
       ↓  compiled together, ahead of time
-LWJGL compatibility layer      org.lwjgl.* source-compatible classes   [milestone 4]
+LWJGL compatibility layer      org.lwjgl.* source-compatible classes
       ↓
 platform-api                   Platform, Clock, ConsoleSink, RuntimeHost
       ↓
@@ -50,7 +50,7 @@ for two reasons:
 - Its green-thread support (`Thread`, `synchronized`, `wait`/`notify` via CPS transformation) is
   mature, and Minecraft 1.8.9 is threaded. The WASM GC backend's threading story is not there yet.
 - Correctness first. The property exists so the WASM GC backend can be evaluated at the rendering
-  milestone, where its performance would actually matter.
+  stage, where its performance would actually matter.
 
 `strict` mode is on. It costs about 9% bundle size and inserts null and bounds checks, without
 which a null dereference surfaces as a JavaScript `TypeError` that `catch (NullPointerException)`

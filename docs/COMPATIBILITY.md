@@ -1,6 +1,6 @@
 # Compatibility matrix
 
-What the browser environment does and does not provide. Updated as milestones land.
+What the browser environment does and does not provide. Updated as each stage lands.
 
 ## Platform services
 
@@ -10,12 +10,12 @@ What the browser environment does and does not provide. Updated as milestones la
 | Monotonic clock | works, degraded resolution | `performance.now()`, clamped non-decreasing |
 | Console / logging | works | mapped onto `console.*` levels |
 | Lifecycle reporting | works | `window.__flagonHost` |
-| Filesystem | not started | OPFS-backed `.minecraft`, milestone 5 |
+| Filesystem | not started | OPFS-backed `.minecraft` |
 | Threading | not started | TeaVM green threads on the JS backend |
 | Networking | not started | needs a proxy; browsers have no raw TCP |
-| Input | not started | milestone 4 |
+| Input | not started | rendering stage |
 | Audio | not started | OpenAL → WebAudio |
-| Graphics | not started | GL → WebGL2, milestone 4 |
+| Graphics | not started | GL → WebGL2, rendering stage |
 
 ## Java language and library
 
