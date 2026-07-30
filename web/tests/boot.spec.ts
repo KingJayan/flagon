@@ -45,17 +45,19 @@ test('passes arguments through to the program', async ({ page }) => {
 
 test('java semantics survive compilation to the browser', async ({ page }) => {
   const { failures } = watchForFailures(page);
-  await page.goto('/?program=selftest');
+  await page.goto('/?program=selftest&arg=alpha&arg=beta');
 
   const log = page.getByTestId('log');
   await expect(page.getByTestId('state')).toHaveText('exited', { timeout: 30_000 });
   await expect(log).not.toContainText('selftest failure');
 
+  await expect(log).toContainText('arguments: [alpha,beta]');
+
   const summary = await log.textContent();
   const match = /selftest: (\d+)\/(\d+) checks passed/.exec(summary ?? '');
   expect(match, `no selftest summary in log:\n${summary}`).not.toBeNull();
   expect(match![1]).toBe(match![2]);
-  expect(Number(match![2])).toBeGreaterThanOrEqual(78);
+  expect(Number(match![2])).toBeGreaterThanOrEqual(80);
   expect(failures).toEqual([]);
 });
 
