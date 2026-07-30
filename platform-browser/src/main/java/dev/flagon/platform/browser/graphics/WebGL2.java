@@ -1,0 +1,181 @@
+package dev.flagon.platform.browser.graphics;
+
+import org.teavm.jso.JSObject;
+import org.teavm.jso.JSProperty;
+import org.teavm.jso.typedarrays.Float32Array;
+import org.teavm.jso.typedarrays.Uint8Array;
+
+/**
+ * the slice of WebGL2RenderingContext this project uses.
+ *
+ * <p>teavm ships jso bindings for webgl1 only, so the context is declared here directly. only
+ * methods actually called are listed; anything missing is a compile error rather than a
+ * runtime surprise.
+ */
+public interface WebGL2 extends JSObject {
+
+    int DEPTH_BUFFER_BIT = 0x0100;
+    int STENCIL_BUFFER_BIT = 0x0400;
+    int COLOR_BUFFER_BIT = 0x4000;
+
+    int POINTS = 0x0000;
+    int LINES = 0x0001;
+    int LINE_LOOP = 0x0002;
+    int LINE_STRIP = 0x0003;
+    int TRIANGLES = 0x0004;
+    int TRIANGLE_STRIP = 0x0005;
+    int TRIANGLE_FAN = 0x0006;
+
+    int ZERO = 0;
+    int ONE = 1;
+    int SRC_COLOR = 0x0300;
+    int ONE_MINUS_SRC_COLOR = 0x0301;
+    int SRC_ALPHA = 0x0302;
+    int ONE_MINUS_SRC_ALPHA = 0x0303;
+    int DST_ALPHA = 0x0304;
+    int ONE_MINUS_DST_ALPHA = 0x0305;
+    int DST_COLOR = 0x0306;
+    int ONE_MINUS_DST_COLOR = 0x0307;
+
+    int NEVER = 0x0200;
+    int LESS = 0x0201;
+    int EQUAL = 0x0202;
+    int LEQUAL = 0x0203;
+    int GREATER = 0x0204;
+    int NOTEQUAL = 0x0205;
+    int GEQUAL = 0x0206;
+    int ALWAYS = 0x0207;
+
+    int CULL_FACE = 0x0B44;
+    int DEPTH_TEST = 0x0B71;
+    int BLEND = 0x0BE2;
+
+    int TEXTURE_2D = 0x0DE1;
+    int UNSIGNED_BYTE = 0x1401;
+    int FLOAT = 0x1406;
+    int RGBA = 0x1908;
+
+    int NEAREST = 0x2600;
+    int LINEAR = 0x2601;
+    int TEXTURE_MAG_FILTER = 0x2800;
+    int TEXTURE_MIN_FILTER = 0x2801;
+    int TEXTURE_WRAP_S = 0x2802;
+    int TEXTURE_WRAP_T = 0x2803;
+    int CLAMP_TO_EDGE = 0x812F;
+    int TEXTURE0 = 0x84C0;
+
+    int ARRAY_BUFFER = 0x8892;
+    int STREAM_DRAW = 0x88E0;
+    int STATIC_DRAW = 0x88E4;
+    int DYNAMIC_DRAW = 0x88E8;
+
+    int FRAGMENT_SHADER = 0x8B30;
+    int VERTEX_SHADER = 0x8B31;
+    int COMPILE_STATUS = 0x8B81;
+    int LINK_STATUS = 0x8B82;
+
+    int UNPACK_PREMULTIPLY_ALPHA_WEBGL = 0x9241;
+
+    void viewport(int x, int y, int width, int height);
+
+    void clearColor(float red, float green, float blue, float alpha);
+
+    void clearDepth(float depth);
+
+    void clear(int mask);
+
+    void enable(int capability);
+
+    void disable(int capability);
+
+    void depthFunc(int func);
+
+    void depthMask(boolean enabled);
+
+    void blendFunc(int source, int destination);
+
+    void colorMask(boolean red, boolean green, boolean blue, boolean alpha);
+
+    void pixelStorei(int name, int value);
+
+    JSObject createBuffer();
+
+    void deleteBuffer(JSObject buffer);
+
+    void bindBuffer(int target, JSObject buffer);
+
+    void bufferData(int target, Float32Array data, int usage);
+
+    void bufferData(int target, Float32Array data, int usage, int sourceOffset, int length);
+
+    JSObject createShader(int type);
+
+    void shaderSource(JSObject shader, String source);
+
+    void compileShader(JSObject shader);
+
+    boolean getShaderParameter(JSObject shader, int name);
+
+    String getShaderInfoLog(JSObject shader);
+
+    void deleteShader(JSObject shader);
+
+    JSObject createProgram();
+
+    void attachShader(JSObject program, JSObject shader);
+
+    void linkProgram(JSObject program);
+
+    boolean getProgramParameter(JSObject program, int name);
+
+    String getProgramInfoLog(JSObject program);
+
+    void deleteProgram(JSObject program);
+
+    void useProgram(JSObject program);
+
+    JSObject getUniformLocation(JSObject program, String name);
+
+    void uniformMatrix4fv(JSObject location, boolean transpose, Float32Array value);
+
+    void uniform1i(JSObject location, int value);
+
+    void uniform1f(JSObject location, float value);
+
+    void uniform4f(JSObject location, float x, float y, float z, float w);
+
+    int getAttribLocation(JSObject program, String name);
+
+    void enableVertexAttribArray(int index);
+
+    void disableVertexAttribArray(int index);
+
+    void vertexAttribPointer(int index, int size, int type, boolean normalized, int stride, int offset);
+
+    JSObject createVertexArray();
+
+    void bindVertexArray(JSObject array);
+
+    JSObject createTexture();
+
+    void deleteTexture(JSObject texture);
+
+    void activeTexture(int unit);
+
+    void bindTexture(int target, JSObject texture);
+
+    void texImage2D(int target, int level, int internalFormat, int width, int height,
+                    int border, int format, int type, Uint8Array pixels);
+
+    void texParameteri(int target, int name, int value);
+
+    void drawArrays(int mode, int first, int count);
+
+    int getError();
+
+    @JSProperty
+    int getDrawingBufferWidth();
+
+    @JSProperty
+    int getDrawingBufferHeight();
+}

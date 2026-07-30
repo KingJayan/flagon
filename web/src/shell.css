@@ -144,6 +144,16 @@ button:disabled {
   color: var(--muted);
 }
 
+canvas {
+  display: block;
+  width: 100%;
+  max-width: 40rem;
+  height: auto;
+  border-radius: 6px;
+  background: #000;
+  image-rendering: pixelated;
+}
+
 .log {
   margin: 0;
   max-height: 26rem;

@@ -20,11 +20,17 @@
           <select id="program">
             <option value="hello">hello</option>
             <option value="selftest">selftest</option>
+            <option value="lwjgl">lwjgl</option>
           </select>
           <button id="run" type="button">Run</button>
           <span id="state" class="badge" data-testid="state">loading</span>
         </div>
         <ol id="phases" class="phases" data-testid="phases"></ol>
+      </section>
+
+      <section class="panel">
+        <h2>Display</h2>
+        <canvas id="flagon-canvas" width="640" height="360"></canvas>
       </section>
 
       <section class="panel">

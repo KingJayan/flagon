@@ -19,7 +19,8 @@ public final class SandboxMain {
     public static void main(String[] arguments) {
         ProgramRegistry registry = new ProgramRegistry()
                 .register(new HelloProgram())
-                .register(new RuntimeSelfTestProgram());
+                .register(new RuntimeSelfTestProgram())
+                .register(new LwjglDemoProgram());
         FlagonRuntime.boot(BrowserPlatform.create(arguments), registry);
     }
 }

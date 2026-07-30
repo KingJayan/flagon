@@ -56,6 +56,20 @@ for two reasons:
 which a null dereference surfaces as a JavaScript `TypeError` that `catch (NullPointerException)`
 cannot catch. Desktop Java code relies on catching those.
 
+## Fixed-function emulation
+
+WebGL2 has no fixed-function pipeline, so the parts of GL 1.x that desktop code relies on are
+rebuilt above `platform-api`:
+
+- `Matrix4` and `GLState` keep the modelview and projection stacks that GL kept internally.
+- `glBegin`/`glEnd` capture interleaved vertices into a growable array and issue one draw.
+- `FixedFunctionPipeline` folds per-vertex colour, one texture unit, and the alpha test into a
+  single shader whose uniforms carry what GL would have held as state. Features toggle by
+  uniform rather than by recompiling, so state changes stay cheap.
+
+None of this touches a browser API, which is why it is covered by JVM unit tests running against
+a recording `GraphicsDevice` rather than only in a browser.
+
 ## Host contract
 
 A page drives a bundle through `window.__flagonHost`, a five-method object
