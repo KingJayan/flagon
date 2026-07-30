@@ -1,9 +1,12 @@
 package dev.flagon.platform.browser.graphics;
 
+import dev.flagon.platform.graphics.AttributeType;
 import dev.flagon.platform.graphics.BlendFactor;
+import dev.flagon.platform.graphics.BufferTarget;
 import dev.flagon.platform.graphics.BufferUsage;
 import dev.flagon.platform.graphics.CompareFunc;
 import dev.flagon.platform.graphics.GraphicsDevice;
+import dev.flagon.platform.graphics.IndexType;
 import dev.flagon.platform.graphics.Primitive;
 import dev.flagon.platform.graphics.ShaderException;
 import org.teavm.jso.JSObject;
@@ -13,7 +16,9 @@ import org.teavm.jso.typedarrays.Uint32Array;
 import org.teavm.jso.typedarrays.Uint8Array;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /** {@link GraphicsDevice} on a WebGL2 context. */
 public final class WebGLGraphicsDevice implements GraphicsDevice {
@@ -24,8 +29,8 @@ public final class WebGLGraphicsDevice implements GraphicsDevice {
     // matching gl's convention.
     private final List<JSObject> handles = new ArrayList<>();
     private final List<JSObject> uniforms = new ArrayList<>();
+    private final Map<String, Integer> uniformNames = new HashMap<>();
 
-    private Float32Array scratch = Float32Array.create(0);
     private String pendingError;
 
     public WebGLGraphicsDevice(WebGL2 gl) {
@@ -159,32 +164,56 @@ public final class WebGLGraphicsDevice implements GraphicsDevice {
     }
 
     @Override
-    public void bindArrayBuffer(int buffer) {
-        gl.bindBuffer(WebGL2.ARRAY_BUFFER, buffer == NO_BUFFER ? null : lookup(buffer, "buffer"));
+    public void bindBuffer(BufferTarget target, int buffer) {
+        gl.bindBuffer(targetConstant(target), buffer == NO_BUFFER ? null : lookup(buffer, "buffer"));
     }
 
     @Override
-    public void bindElementBuffer(int buffer) {
-        gl.bindBuffer(WebGL2.ELEMENT_ARRAY_BUFFER,
-                buffer == NO_BUFFER ? null : lookup(buffer, "buffer"));
+    public void bufferData(BufferTarget target, int sizeInBytes, BufferUsage usage) {
+        gl.bufferData(targetConstant(target), sizeInBytes, usageConstant(usage));
     }
 
+    // fromJavaArray views the array's own backing store rather than copying it, and webgl is
+    // told the prefix to read, so growable arrays cost nothing for the slack they carry
     @Override
-    public void bufferData(float[] data, int length, BufferUsage usage) {
-        if (length > data.length) {
-            throw new IllegalArgumentException("length " + length + " exceeds array " + data.length);
-        }
-        scratch = Float32Array.copyFromJavaArray(data);
-        gl.bufferData(WebGL2.ARRAY_BUFFER, scratch, usageConstant(usage), 0, length);
-    }
-
-    @Override
-    public void elementData(int[] data, int length, BufferUsage usage) {
-        if (length > data.length) {
-            throw new IllegalArgumentException("length " + length + " exceeds array " + data.length);
-        }
-        gl.bufferData(WebGL2.ELEMENT_ARRAY_BUFFER, Uint32Array.copyFromJavaArray(data),
+    public void bufferData(BufferTarget target, byte[] data, int length, BufferUsage usage) {
+        require(length, data.length);
+        gl.bufferData(targetConstant(target), Int8Array.fromJavaArray(data),
                 usageConstant(usage), 0, length);
+    }
+
+    @Override
+    public void bufferData(BufferTarget target, float[] data, int length, BufferUsage usage) {
+        require(length, data.length);
+        gl.bufferData(targetConstant(target), Float32Array.fromJavaArray(data),
+                usageConstant(usage), 0, length);
+    }
+
+    @Override
+    public void bufferData(BufferTarget target, int[] data, int length, BufferUsage usage) {
+        require(length, data.length);
+        gl.bufferData(targetConstant(target), Uint32Array.fromJavaArray(data),
+                usageConstant(usage), 0, length);
+    }
+
+    @Override
+    public void bufferSubData(BufferTarget target, int offsetInBytes, byte[] data, int length) {
+        require(length, data.length);
+        gl.bufferSubData(targetConstant(target), offsetInBytes, Int8Array.fromJavaArray(data),
+                0, length);
+    }
+
+    private static void require(int length, int available) {
+        if (length > available) {
+            throw new IllegalArgumentException("length " + length + " exceeds array " + available);
+        }
+    }
+
+    private static int targetConstant(BufferTarget target) {
+        return switch (target) {
+            case ARRAY -> WebGL2.ARRAY_BUFFER;
+            case ELEMENT -> WebGL2.ELEMENT_ARRAY_BUFFER;
+        };
     }
 
     private static int usageConstant(BufferUsage usage) {
@@ -237,14 +266,23 @@ public final class WebGLGraphicsDevice implements GraphicsDevice {
         gl.useProgram(program == NO_PROGRAM ? null : lookup(program, "program"));
     }
 
+    // one int per (program, name), so resolving the same uniform every frame does not grow the
+    // table; webgl location objects are opaque and cannot be compared, hence the name key
     @Override
     public int uniformLocation(int program, String name) {
+        String key = program + "/" + name;
+        Integer known = uniformNames.get(key);
+        if (known != null) {
+            return known;
+        }
         JSObject location = gl.getUniformLocation(lookup(program, "program"), name);
         if (location == null) {
             return -1;
         }
         uniforms.add(location);
-        return uniforms.size() - 1;
+        int assigned = uniforms.size() - 1;
+        uniformNames.put(key, assigned);
+        return assigned;
     }
 
     private JSObject uniform(int location) {
@@ -293,9 +331,27 @@ public final class WebGLGraphicsDevice implements GraphicsDevice {
     }
 
     @Override
-    public void attributePointer(int location, int components, int strideInFloats, int offsetInFloats) {
-        gl.vertexAttribPointer(location, components, WebGL2.FLOAT, false,
-                strideInFloats * Float.BYTES, offsetInFloats * Float.BYTES);
+    public void attributePointer(int location, int components, AttributeType type,
+                                 boolean normalized, int strideInBytes, int offsetInBytes) {
+        gl.vertexAttribPointer(location, components, attributeType(type), normalized,
+                strideInBytes, offsetInBytes);
+    }
+
+    @Override
+    public void constantAttribute(int location, float x, float y, float z, float w) {
+        gl.vertexAttrib4f(location, x, y, z, w);
+    }
+
+    private static int attributeType(AttributeType type) {
+        return switch (type) {
+            case BYTE -> WebGL2.BYTE;
+            case UNSIGNED_BYTE -> WebGL2.UNSIGNED_BYTE;
+            case SHORT -> WebGL2.SHORT;
+            case UNSIGNED_SHORT -> WebGL2.UNSIGNED_SHORT;
+            case INT -> WebGL2.INT;
+            case UNSIGNED_INT -> WebGL2.UNSIGNED_INT;
+            case FLOAT -> WebGL2.FLOAT;
+        };
     }
 
     @Override
@@ -351,8 +407,16 @@ public final class WebGLGraphicsDevice implements GraphicsDevice {
     }
 
     @Override
-    public void drawElements(Primitive primitive, int count) {
-        gl.drawElements(mode(primitive), count, WebGL2.UNSIGNED_INT, 0);
+    public void drawElements(Primitive primitive, int count, IndexType type, int offsetInBytes) {
+        gl.drawElements(mode(primitive), count, indexType(type), offsetInBytes);
+    }
+
+    private static int indexType(IndexType type) {
+        return switch (type) {
+            case UNSIGNED_BYTE -> WebGL2.UNSIGNED_BYTE;
+            case UNSIGNED_SHORT -> WebGL2.UNSIGNED_SHORT;
+            case UNSIGNED_INT -> WebGL2.UNSIGNED_INT;
+        };
     }
 
     private static int mode(Primitive primitive) {

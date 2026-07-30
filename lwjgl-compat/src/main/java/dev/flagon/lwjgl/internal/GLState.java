@@ -1,8 +1,10 @@
 package dev.flagon.lwjgl.internal;
 
 import dev.flagon.platform.graphics.BlendFactor;
+import dev.flagon.platform.graphics.BufferTarget;
 import dev.flagon.platform.graphics.CompareFunc;
 import dev.flagon.platform.graphics.GraphicsDevice;
+import dev.flagon.platform.graphics.IndexType;
 
 import java.util.ArrayDeque;
 import java.util.Deque;
@@ -13,7 +15,7 @@ import java.util.Deque;
  * <p>a singleton because gl's api is a singleton; {@link #attach} is called once the display
  * exists and {@link #detach} when it is destroyed.
  */
-public final class GLState {
+public final class GLState implements RenderState {
 
     public static final int MODELVIEW = 0x1700;
     public static final int PROJECTION = 0x1701;
@@ -37,8 +39,12 @@ public final class GLState {
     private float[] vertices = new float[FixedFunctionPipeline.VERTEX_FLOATS * 256];
     private int floatCount;
     private int vertexCount;
-    private ImmediateMode primitive;
+    private DrawMode primitive;
     private boolean building;
+
+    private final VertexArrays arrays = new VertexArrays();
+    private int arrayBuffer;
+    private int elementBuffer;
 
     private float red = 1.0f;
     private float green = 1.0f;
@@ -147,17 +153,19 @@ public final class GLState {
         Matrix4.multiply(active(), matrix);
     }
 
+    @Override
     public float[] modelView() {
         return modelView;
     }
 
+    @Override
     public float[] projection() {
         return projection;
     }
 
     // immediate mode
 
-    public void begin(ImmediateMode mode) {
+    public void begin(DrawMode mode) {
         if (building) {
             throw new IllegalStateException("glBegin called inside glBegin/glEnd");
         }
@@ -208,8 +216,75 @@ public final class GLState {
         if (vertexCount == 0) {
             return;
         }
-        pipeline.draw(primitive, vertices, floatCount, vertexCount, modelView, projection,
-                textureEnabled, alphaTestEnabled, alphaTestThreshold);
+        pipeline.drawImmediate(primitive, vertices, floatCount, vertexCount, this);
+        restoreBindings();
+    }
+
+    // buffer objects and vertex arrays
+
+    public VertexArrays arrays() {
+        return arrays;
+    }
+
+    public int createBuffer() {
+        return device.createBuffer();
+    }
+
+    public void deleteBuffer(int buffer) {
+        if (buffer == GraphicsDevice.NO_BUFFER) {
+            return;
+        }
+        // gl unbinds a deleted buffer from every target it was bound to
+        if (arrayBuffer == buffer) {
+            arrayBuffer = GraphicsDevice.NO_BUFFER;
+        }
+        if (elementBuffer == buffer) {
+            elementBuffer = GraphicsDevice.NO_BUFFER;
+        }
+        device.deleteBuffer(buffer);
+    }
+
+    public void bindBuffer(BufferTarget target, int buffer) {
+        if (target == BufferTarget.ELEMENT) {
+            elementBuffer = buffer;
+        } else {
+            arrayBuffer = buffer;
+        }
+        device.bindBuffer(target, buffer);
+    }
+
+    public int boundBuffer(BufferTarget target) {
+        return target == BufferTarget.ELEMENT ? elementBuffer : arrayBuffer;
+    }
+
+    public void drawArrays(DrawMode mode, int first, int count) {
+        requireNotBuilding("glDrawArrays");
+        pipeline.drawArrays(mode, first, count, arrays, this);
+        restoreBindings();
+    }
+
+    public void drawElements(DrawMode mode, int count, IndexType indexType, int offsetInBytes) {
+        requireNotBuilding("glDrawElements");
+        if (elementBuffer == GraphicsDevice.NO_BUFFER) {
+            throw new UnsupportedOperationException(
+                    "glDrawElements needs indices in a buffer object; webgl has no client-side "
+                            + "index arrays, so bind one with glBindBuffer first");
+        }
+        pipeline.drawElements(mode, count, indexType, offsetInBytes, arrays, this);
+        restoreBindings();
+    }
+
+    private void requireNotBuilding(String call) {
+        if (building) {
+            throw new IllegalStateException(call + " called inside glBegin/glEnd");
+        }
+    }
+
+    // the pipeline binds its own staging and index buffers to draw; the application's bindings
+    // are gl state and have to survive that
+    private void restoreBindings() {
+        device.bindBuffer(BufferTarget.ARRAY, arrayBuffer);
+        device.bindBuffer(BufferTarget.ELEMENT, elementBuffer);
     }
 
     // capability state
@@ -218,12 +293,53 @@ public final class GLState {
         textureEnabled = enabled;
     }
 
+    @Override
     public boolean isTextureEnabled() {
         return textureEnabled;
     }
 
     public void setAlphaTestEnabled(boolean enabled) {
         alphaTestEnabled = enabled;
+    }
+
+    @Override
+    public boolean isAlphaTestEnabled() {
+        return alphaTestEnabled;
+    }
+
+    @Override
+    public float alphaTestThreshold() {
+        return alphaTestThreshold;
+    }
+
+    @Override
+    public float red() {
+        return red;
+    }
+
+    @Override
+    public float green() {
+        return green;
+    }
+
+    @Override
+    public float blue() {
+        return blue;
+    }
+
+    @Override
+    public float alpha() {
+        return alpha;
+    }
+
+    @Override
+    public float s() {
+        return s;
+    }
+
+    @Override
+    public float t() {
+        return t;
     }
 
     /**

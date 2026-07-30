@@ -3,6 +3,7 @@ package dev.flagon.platform.browser.graphics;
 import org.teavm.jso.JSObject;
 import org.teavm.jso.JSProperty;
 import org.teavm.jso.typedarrays.Float32Array;
+import org.teavm.jso.typedarrays.Int8Array;
 import org.teavm.jso.typedarrays.Uint8Array;
 import org.teavm.jso.typedarrays.Uint32Array;
 
@@ -52,7 +53,12 @@ public interface WebGL2 extends JSObject {
     int BLEND = 0x0BE2;
 
     int TEXTURE_2D = 0x0DE1;
+    int BYTE = 0x1400;
     int UNSIGNED_BYTE = 0x1401;
+    int SHORT = 0x1402;
+    int UNSIGNED_SHORT = 0x1403;
+    int INT = 0x1404;
+    int UNSIGNED_INT = 0x1405;
     int FLOAT = 0x1406;
     int RGBA = 0x1908;
 
@@ -64,8 +70,6 @@ public interface WebGL2 extends JSObject {
     int TEXTURE_WRAP_T = 0x2803;
     int CLAMP_TO_EDGE = 0x812F;
     int TEXTURE0 = 0x84C0;
-
-    int UNSIGNED_INT = 0x1405;
 
     int ARRAY_BUFFER = 0x8892;
     int ELEMENT_ARRAY_BUFFER = 0x8893;
@@ -108,11 +112,15 @@ public interface WebGL2 extends JSObject {
 
     void bindBuffer(int target, JSObject buffer);
 
-    void bufferData(int target, Float32Array data, int usage);
+    void bufferData(int target, int sizeInBytes, int usage);
+
+    void bufferData(int target, Int8Array data, int usage, int sourceOffset, int length);
 
     void bufferData(int target, Float32Array data, int usage, int sourceOffset, int length);
 
     void bufferData(int target, Uint32Array data, int usage, int sourceOffset, int length);
+
+    void bufferSubData(int target, int offsetInBytes, Int8Array data, int sourceOffset, int length);
 
     JSObject createShader(int type);
 
@@ -157,6 +165,8 @@ public interface WebGL2 extends JSObject {
     void disableVertexAttribArray(int index);
 
     void vertexAttribPointer(int index, int size, int type, boolean normalized, int stride, int offset);
+
+    void vertexAttrib4f(int index, float x, float y, float z, float w);
 
     JSObject createVertexArray();
 

@@ -36,8 +36,9 @@ Java is compiled ahead-of-time (AoT) to JavaScript utilizing [TeaVM](https://tea
 | LWJGL demo renders | `Done` |
 | Keyboard and mouse input | `Done` |
 | NIO buffers (`BufferUtils`, `MemoryUtil`) | `Done` |
+| Vertex arrays and buffer objects (`GL15`) | `Done` |
 | Loading an application jar | `In Progress` |
-| Vertex arrays and VBOs (`GL15`, `GL20`) | `Pending` |
+| Shader objects (`GL20`) | `Pending` |
 | Virtual filesystem on OPFS | `Pending` |
 | Audio (`OpenAL` → WebAudio) | `Pending` |
 | Networking through a proxy | `Pending` |

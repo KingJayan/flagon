@@ -1,11 +1,7 @@
 package dev.flagon.platform.graphics;
 
 /**
- * a modern, host-agnostic rendering surface: roughly gl es 3.0, addressed by int names.
- *
- * <p>int names rather than objects because the layer above speaks lwjgl, where every resource
- * is already an int. anything older than this — matrix stacks, immediate mode, fixed-function
- * state — is emulated above, not here.
+ a modern, host-agnostic rendering surface: roughly gl es 3.0, addressed by int names
  */
 public interface GraphicsDevice {
 
@@ -39,15 +35,22 @@ public interface GraphicsDevice {
 
     void deleteBuffer(int buffer);
 
-    void bindArrayBuffer(int buffer);
+    void bindBuffer(BufferTarget target, int buffer);
 
-    void bindElementBuffer(int buffer);
+    /** reserves {@code sizeInBytes} of uninitialised storage, replacing any contents. */
+    void bufferData(BufferTarget target, int sizeInBytes, BufferUsage usage);
+
+    /** uploads {@code length} bytes from {@code data}, replacing the bound buffer's contents. */
+    void bufferData(BufferTarget target, byte[] data, int length, BufferUsage usage);
 
     /** uploads {@code length} floats from {@code data}, replacing the bound buffer's contents. */
-    void bufferData(float[] data, int length, BufferUsage usage);
+    void bufferData(BufferTarget target, float[] data, int length, BufferUsage usage);
 
-    /** uploads {@code length} indices from {@code data} into the bound element buffer. */
-    void elementData(int[] data, int length, BufferUsage usage);
+    /** uploads {@code length} ints from {@code data}, replacing the bound buffer's contents. */
+    void bufferData(BufferTarget target, int[] data, int length, BufferUsage usage);
+
+    /** overwrites {@code length} bytes at {@code offsetInBytes}, leaving the rest in place. */
+    void bufferSubData(BufferTarget target, int offsetInBytes, byte[] data, int length);
 
     /**
      * @throws ShaderException if either stage fails to compile, or the program fails to link
@@ -75,8 +78,11 @@ public interface GraphicsDevice {
 
     void disableAttribute(int location);
 
-    /** offsets and strides are in floats, not bytes; the layer above never sees byte layout. */
-    void attributePointer(int location, int components, int strideInFloats, int offsetInFloats);
+    /** reads the attribute from the bound array buffer; offsets and strides are in bytes. */
+    void attributePointer(int location, int components, AttributeType type, boolean normalized,
+                          int strideInBytes, int offsetInBytes);
+
+    void constantAttribute(int location, float x, float y, float z, float w);
 
     int createTexture();
 
@@ -91,8 +97,8 @@ public interface GraphicsDevice {
 
     void drawArrays(Primitive primitive, int first, int count);
 
-    /** draws {@code count} indices from the bound element buffer. */
-    void drawElements(Primitive primitive, int count);
+    /** draws {@code count} indices read from the bound element buffer at {@code offsetInBytes}. */
+    void drawElements(Primitive primitive, int count, IndexType type, int offsetInBytes);
 
     int width();
 

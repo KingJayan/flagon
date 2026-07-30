@@ -1,7 +1,10 @@
 package dev.flagon.lwjgl.internal;
 
+import dev.flagon.platform.graphics.AttributeType;
+import dev.flagon.platform.graphics.BufferTarget;
 import dev.flagon.platform.graphics.BufferUsage;
 import dev.flagon.platform.graphics.GraphicsDevice;
+import dev.flagon.platform.graphics.IndexType;
 
 /**
  * reproduces gl 1.x fixed-function output with a single shader.
@@ -10,6 +13,10 @@ public final class FixedFunctionPipeline {
 
     /** floats per vertex: xyz, rgba, st. */
     public static final int VERTEX_FLOATS = 9;
+
+    private static final int VERTEX_STRIDE = VERTEX_FLOATS * Float.BYTES;
+    private static final int COLOR_OFFSET = 3 * Float.BYTES;
+    private static final int TEX_COORD_OFFSET = 7 * Float.BYTES;
 
     private static final String VERTEX_SHADER = """
             #version 300 es
@@ -62,10 +69,11 @@ public final class FixedFunctionPipeline {
     private final GraphicsDevice device;
     private final int program;
     private final int buffer;
-    private final int elementBuffer;
+    private final QuadIndices quadIndices;
 
-    private int[] quadIndices = new int[0];
-    private int uploadedQuads;
+    // one staging buffer per slot, for arrays that live in client memory rather than a vbo
+    private final int[] stagingBuffers = new int[VertexArrays.SLOTS];
+    private final byte[][] stagingBytes = new byte[VertexArrays.SLOTS][];
 
     private final int modelViewUniform;
     private final int projectionUniform;
@@ -78,7 +86,7 @@ public final class FixedFunctionPipeline {
         this.device = device;
         this.program = device.createProgram(VERTEX_SHADER, FRAGMENT_SHADER);
         this.buffer = device.createBuffer();
-        this.elementBuffer = device.createBuffer();
+        this.quadIndices = new QuadIndices(device);
 
         modelViewUniform = device.uniformLocation(program, "u_modelView");
         projectionUniform = device.uniformLocation(program, "u_projection");
@@ -88,62 +96,141 @@ public final class FixedFunctionPipeline {
         alphaTestThresholdUniform = device.uniformLocation(program, "u_alphaTestThreshold");
 
         device.useProgram(program);
-        device.bindArrayBuffer(buffer);
-        for (int location = 0; location < 3; location++) {
-            device.enableAttribute(location);
-        }
-        device.attributePointer(0, 3, VERTEX_FLOATS, 0);
-        device.attributePointer(1, 4, VERTEX_FLOATS, 3);
-        device.attributePointer(2, 2, VERTEX_FLOATS, 7);
         device.uniform1i(textureUniform, 0);
     }
 
     /** uploads and draws {@code vertexCount} vertices of interleaved data. */
-    public void draw(ImmediateMode mode, float[] vertices, int floatCount, int vertexCount,
-                     float[] modelView, float[] projection,
-                     boolean textureEnabled, boolean alphaTestEnabled, float alphaTestThreshold) {
+    public void drawImmediate(DrawMode mode, float[] vertices, int floatCount, int vertexCount,
+                              RenderState render) {
         int drawable = mode.usableVertices(vertexCount);
         if (drawable == 0) {
             return;
         }
+        begin(render);
 
-        device.useProgram(program);
-        device.bindArrayBuffer(buffer);
-        device.bufferData(vertices, floatCount, BufferUsage.STREAM);
+        device.bindBuffer(BufferTarget.ARRAY, buffer);
+        device.bufferData(BufferTarget.ARRAY, vertices, floatCount, BufferUsage.STREAM);
+        for (int slot = 0; slot < VertexArrays.SLOTS; slot++) {
+            device.enableAttribute(slot);
+        }
+        device.attributePointer(VertexArrays.POSITION, 3, AttributeType.FLOAT, false,
+                VERTEX_STRIDE, 0);
+        device.attributePointer(VertexArrays.COLOR, 4, AttributeType.FLOAT, false,
+                VERTEX_STRIDE, COLOR_OFFSET);
+        device.attributePointer(VertexArrays.TEX_COORD, 2, AttributeType.FLOAT, false,
+                VERTEX_STRIDE, TEX_COORD_OFFSET);
 
-        device.attributePointer(0, 3, VERTEX_FLOATS, 0);
-        device.attributePointer(1, 4, VERTEX_FLOATS, 3);
-        device.attributePointer(2, 2, VERTEX_FLOATS, 7);
+        issue(mode, 0, drawable);
+    }
 
-        device.uniformMatrix4(modelViewUniform, modelView);
-        device.uniformMatrix4(projectionUniform, projection);
-        device.uniform1i(textureEnabledUniform, textureEnabled ? 1 : 0);
-        device.uniform1i(alphaTestEnabledUniform, alphaTestEnabled ? 1 : 0);
-        device.uniform1f(alphaTestThresholdUniform, alphaTestThreshold);
+    /** draws {@code count} vertices from {@code first}, read through the client arrays. */
+    public void drawArrays(DrawMode mode, int first, int count, VertexArrays arrays,
+                           RenderState render) {
+        int drawable = mode.usableVertices(count);
+        if (drawable == 0 || !arrays.canDraw()) {
+            return;
+        }
+        begin(render);
+        bindArrays(arrays, render);
+        issue(mode, first, drawable);
+    }
 
+    /**
+     * draws through the client arrays, indexed by the element buffer the caller has bound.
+     */
+    public void drawElements(DrawMode mode, int count, IndexType indexType, int offsetInBytes,
+                             VertexArrays arrays, RenderState render) {
+        if (count == 0 || !arrays.canDraw()) {
+            return;
+        }
         if (mode.isIndexed()) {
-            int quads = drawable / ImmediateMode.QUAD_VERTICES;
-            bindQuadIndices(quads);
-            device.drawElements(mode.primitive(), quads * ImmediateMode.QUAD_INDICES);
+            throw new UnsupportedOperationException(
+                    "glDrawElements cannot emulate GL_QUADS: expanding quads into triangle pairs "
+                            + "means rewriting the index buffer, which belongs to the caller. draw "
+                            + "the quads with glDrawArrays, or supply triangle indices");
+        }
+        begin(render);
+        bindArrays(arrays, render);
+        device.drawElements(mode.primitive(), count, indexType, offsetInBytes);
+    }
+
+    private void issue(DrawMode mode, int first, int drawable) {
+        if (mode.isIndexed()) {
+            int quads = drawable / DrawMode.QUAD_VERTICES;
+            quadIndices.bind(quads, first);
+            device.drawElements(mode.primitive(), quads * DrawMode.QUAD_INDICES,
+                    IndexType.UNSIGNED_INT, 0);
         } else {
-            device.drawArrays(mode.primitive(), 0, drawable);
+            device.drawArrays(mode.primitive(), first, drawable);
         }
     }
 
-    private void bindQuadIndices(int quads) {
-        device.bindElementBuffer(elementBuffer);
-        if (quads <= uploadedQuads) {
+    private void begin(RenderState render) {
+        device.useProgram(program);
+        device.uniformMatrix4(modelViewUniform, render.modelView());
+        device.uniformMatrix4(projectionUniform, render.projection());
+        device.uniform1i(textureEnabledUniform, render.isTextureEnabled() ? 1 : 0);
+        device.uniform1i(alphaTestEnabledUniform, render.isAlphaTestEnabled() ? 1 : 0);
+        device.uniform1f(alphaTestThresholdUniform, render.alphaTestThreshold());
+    }
+
+    private void bindArrays(VertexArrays arrays, RenderState render) {
+        bindSlot(VertexArrays.POSITION, arrays.position(), 0.0f, 0.0f, 0.0f, 1.0f);
+        bindSlot(VertexArrays.COLOR, arrays.color(),
+                render.red(), render.green(), render.blue(), render.alpha());
+        bindSlot(VertexArrays.TEX_COORD, arrays.texCoord(), render.s(), render.t(), 0.0f, 1.0f);
+    }
+
+    /**
+     * a disabled array means gl feeds every vertex the current constant — the colour set by
+     * {@code glColor}, the coordinate set by {@code glTexCoord} — rather than nothing at all.
+     */
+    private void bindSlot(int slot, ClientArray array, float x, float y, float z, float w) {
+        if (!array.isEnabled() || !array.isBound()) {
+            device.disableAttribute(slot);
+            device.constantAttribute(slot, x, y, z, w);
             return;
         }
-        quadIndices = new int[quads * ImmediateMode.QUAD_INDICES];
-        ImmediateMode.writeQuadIndices(quadIndices, quads);
-        device.elementData(quadIndices, quadIndices.length, BufferUsage.STATIC);
-        uploadedQuads = quads;
+        device.enableAttribute(slot);
+        if (array.buffer() != GraphicsDevice.NO_BUFFER) {
+            device.bindBuffer(BufferTarget.ARRAY, array.buffer());
+        } else {
+            device.bindBuffer(BufferTarget.ARRAY, stagingBuffer(slot));
+            byte[] bytes = staging(slot, array);
+            device.bufferData(BufferTarget.ARRAY, bytes, bytes.length, BufferUsage.STREAM);
+        }
+        device.attributePointer(slot, array.components(), array.type(), array.isNormalized(),
+                array.stride(), array.offset());
+    }
+
+    private int stagingBuffer(int slot) {
+        if (stagingBuffers[slot] == GraphicsDevice.NO_BUFFER) {
+            stagingBuffers[slot] = device.createBuffer();
+        }
+        return stagingBuffers[slot];
+    }
+
+    private byte[] staging(int slot, ClientArray array) {
+        int needed = array.client().capacity() * Buffers.elementSize(array.client());
+        byte[] bytes = stagingBytes[slot];
+        if (bytes == null || bytes.length != needed) {
+            bytes = new byte[needed];
+            stagingBytes[slot] = bytes;
+        }
+        Buffers.readAll(array.client(), bytes);
+        return bytes;
     }
 
     public void dispose() {
+        for (int slot = 0; slot < VertexArrays.SLOTS; slot++) {
+            if (stagingBuffers[slot] != GraphicsDevice.NO_BUFFER) {
+                device.deleteBuffer(stagingBuffers[slot]);
+                stagingBuffers[slot] = GraphicsDevice.NO_BUFFER;
+            }
+            stagingBytes[slot] = null;
+        }
+        quadIndices.dispose();
         device.deleteBuffer(buffer);
-        device.deleteBuffer(elementBuffer);
         device.deleteProgram(program);
     }
 }

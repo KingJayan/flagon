@@ -64,6 +64,9 @@ rebuilt above `platform-api`:
 
 - `Matrix4` and `GLState` keep the modelview and projection stacks that GL kept internally.
 - `glBegin`/`glEnd` capture interleaved vertices into a growable array and issue one draw.
+- Client arrays feed the same three attributes, so vertex arrays and immediate mode share a
+  program rather than needing one each. WebGL has no client-side memory, so an array that is not
+  already in a buffer object is staged into one at draw time.
 - `FixedFunctionPipeline` folds per-vertex colour, one texture unit, and the alpha test into a
   single shader whose uniforms carry what GL would have held as state. Features toggle by
   uniform rather than by recompiling, so state changes stay cheap.

@@ -36,9 +36,9 @@ Verified in Chromium by the `selftest` program (80 checks), which runs in CI as 
 
 ## LWJGL
 
-Verified in Chromium by the `lwjgl` and `input` demos, which assert on pixels read back from the
-live WebGL2 framebuffer and drive real key, button and wheel events, plus 46 JVM tests that run
-the emulation against recording and fake devices.
+Verified in Chromium by the `lwjgl`, `input` and `arrays` demos, which assert on pixels read back
+from the live WebGL2 framebuffer and drive real key, button and wheel events, plus 64 JVM tests
+that run the emulation against recording and fake devices.
 
 | Call group | State |
 |------------|-------|
@@ -55,8 +55,12 @@ the emulation against recording and fake devices.
 | `Mouse.setCursorPosition` | no-op, see below |
 | `BufferUtils` allocation, `MemoryUtil` text encoding | works |
 | `MemoryUtil.getAddress` | refused, see below |
+| Client arrays: `glVertexPointer`, `glColorPointer`, `glTexCoordPointer` | works |
+| `glDrawArrays`, `glDrawElements` | works, except indexed `GL_QUADS` |
+| `GL15` buffer objects: gen/bind/delete, data, sub-data | works |
+| `glNormalPointer`, `glIndexPointer` | not emulated |
 | Lighting, fog, display lists, `glTexEnv` | not emulated |
-| Vertex arrays and VBOs (`GL15`, `GL20`) | not started |
+| Shader objects (`GL20`) | not started |
 | `OpenAL` | not started |
 
 Every unimplemented entry point throws `UnsupportedOperationException` naming the call. Nothing
@@ -69,6 +73,27 @@ element buffer, preserving GL's winding so face culling behaves the same, and a 
 incomplete quad is discarded as desktop GL does. The index pattern depends only on the quad
 count and the indices for *n* quads are a prefix of those for any larger *n*, so the element
 buffer is uploaded once and re-uploaded only when it grows.
+
+### Client arrays are uploaded, because WebGL has no client memory
+A pointer into a plain NIO buffer names memory the GPU cannot reach. The buffer is kept rather
+than read once, and copied into an internal buffer object on every draw — desktop code sets a
+pointer once and refills what is behind it every frame, and reading it at pointer-set time would
+render whatever happened to be there.
+
+A pointer into a buffer object costs nothing extra: the data is already on the GPU, and only the
+attribute layout is set. That is the path worth taking for geometry that does not change.
+
+A *disabled* array is not an absent one. GL feeds every vertex the current `glColor` or
+`glTexCoord` instead, which maps onto a constant generic attribute; leaving the attribute
+undefined would render black rather than the colour that was set.
+
+Buffer bindings belong to the application. The pipeline binds buffers of its own to stage client
+arrays and to hold quad indices, then restores what the caller had bound, so a draw is not
+visible in `GL_ARRAY_BUFFER` afterwards.
+
+`glDrawElements` refuses `GL_QUADS` rather than approximating it. Expanding quads means
+rewriting the index buffer, and that buffer belongs to the caller — `glDrawArrays` can expand
+quads because it generates the indices itself.
 
 ### Input conventions are converted at the browser boundary
 Three differ, and each would be a subtle bug if left to callers:

@@ -1,9 +1,12 @@
 package dev.flagon.lwjgl;
 
+import dev.flagon.platform.graphics.AttributeType;
 import dev.flagon.platform.graphics.BlendFactor;
+import dev.flagon.platform.graphics.BufferTarget;
 import dev.flagon.platform.graphics.BufferUsage;
 import dev.flagon.platform.graphics.CompareFunc;
 import dev.flagon.platform.graphics.GraphicsDevice;
+import dev.flagon.platform.graphics.IndexType;
 import dev.flagon.platform.graphics.Primitive;
 
 import java.util.ArrayList;
@@ -17,6 +20,7 @@ final class RecordingGraphicsDevice implements GraphicsDevice {
     final List<String> calls = new ArrayList<>();
     float[] lastBufferData = new float[0];
     int[] lastElementData = new int[0];
+    byte[] lastByteData = new byte[0];
     float[] lastModelView = new float[16];
     float[] lastProjection = new float[16];
 
@@ -90,27 +94,41 @@ final class RecordingGraphicsDevice implements GraphicsDevice {
     }
 
     @Override
-    public void bindArrayBuffer(int buffer) {
-        calls.add("bindArrayBuffer " + buffer);
+    public void bindBuffer(BufferTarget target, int buffer) {
+        calls.add("bind" + target + " " + buffer);
     }
 
     @Override
-    public void bindElementBuffer(int buffer) {
-        calls.add("bindElementBuffer " + buffer);
+    public void bufferData(BufferTarget target, int sizeInBytes, BufferUsage usage) {
+        calls.add("reserve" + target + " " + sizeInBytes + " " + usage);
     }
 
     @Override
-    public void bufferData(float[] data, int length, BufferUsage usage) {
+    public void bufferData(BufferTarget target, byte[] data, int length, BufferUsage usage) {
+        lastByteData = new byte[length];
+        System.arraycopy(data, 0, lastByteData, 0, length);
+        calls.add("byteData" + target + " " + length + " " + usage);
+    }
+
+    @Override
+    public void bufferData(BufferTarget target, float[] data, int length, BufferUsage usage) {
         lastBufferData = new float[length];
         System.arraycopy(data, 0, lastBufferData, 0, length);
         calls.add("bufferData " + length + " " + usage);
     }
 
     @Override
-    public void elementData(int[] data, int length, BufferUsage usage) {
+    public void bufferData(BufferTarget target, int[] data, int length, BufferUsage usage) {
         lastElementData = new int[length];
         System.arraycopy(data, 0, lastElementData, 0, length);
         calls.add("elementData " + length + " " + usage);
+    }
+
+    @Override
+    public void bufferSubData(BufferTarget target, int offsetInBytes, byte[] data, int length) {
+        lastByteData = new byte[length];
+        System.arraycopy(data, 0, lastByteData, 0, length);
+        calls.add("byteSubData" + target + " " + offsetInBytes + " " + length);
     }
 
     @Override
@@ -180,9 +198,15 @@ final class RecordingGraphicsDevice implements GraphicsDevice {
     }
 
     @Override
-    public void attributePointer(int location, int components, int strideInFloats, int offsetInFloats) {
-        calls.add("attributePointer " + location + " " + components + " "
-                + strideInFloats + " " + offsetInFloats);
+    public void attributePointer(int location, int components, AttributeType type,
+                                 boolean normalized, int strideInBytes, int offsetInBytes) {
+        calls.add("attributePointer " + location + " " + components + " " + type + " "
+                + normalized + " " + strideInBytes + " " + offsetInBytes);
+    }
+
+    @Override
+    public void constantAttribute(int location, float x, float y, float z, float w) {
+        calls.add("constantAttribute " + location + " " + x + " " + y + " " + z + " " + w);
     }
 
     @Override
@@ -216,8 +240,8 @@ final class RecordingGraphicsDevice implements GraphicsDevice {
     }
 
     @Override
-    public void drawElements(Primitive primitive, int count) {
-        calls.add("drawElements " + primitive + " " + count);
+    public void drawElements(Primitive primitive, int count, IndexType type, int offsetInBytes) {
+        calls.add("drawElements " + primitive + " " + count + " " + type + " " + offsetInBytes);
     }
 
     @Override

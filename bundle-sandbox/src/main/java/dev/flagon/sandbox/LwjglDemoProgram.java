@@ -7,9 +7,7 @@ import org.lwjgl.opengl.DisplayMode;
 import org.lwjgl.opengl.GL11;
 
 /**
- * a desktop-shaped lwjgl program: create a display, loop until it closes, present each frame.
- * the loop below is written exactly as it would be for a real jvm — it blocks on
- * {@code Display.update()} and never yields to a callback.
+ create a display, loop until it closes, present each frame
  */
 public final class LwjglDemoProgram implements Program {
 
