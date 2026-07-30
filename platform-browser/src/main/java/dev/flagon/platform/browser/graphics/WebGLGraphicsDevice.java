@@ -9,6 +9,7 @@ import dev.flagon.platform.graphics.ShaderException;
 import org.teavm.jso.JSObject;
 import org.teavm.jso.typedarrays.Float32Array;
 import org.teavm.jso.typedarrays.Int8Array;
+import org.teavm.jso.typedarrays.Uint32Array;
 import org.teavm.jso.typedarrays.Uint8Array;
 
 import java.util.ArrayList;
@@ -163,16 +164,35 @@ public final class WebGLGraphicsDevice implements GraphicsDevice {
     }
 
     @Override
+    public void bindElementBuffer(int buffer) {
+        gl.bindBuffer(WebGL2.ELEMENT_ARRAY_BUFFER,
+                buffer == NO_BUFFER ? null : lookup(buffer, "buffer"));
+    }
+
+    @Override
     public void bufferData(float[] data, int length, BufferUsage usage) {
         if (length > data.length) {
             throw new IllegalArgumentException("length " + length + " exceeds array " + data.length);
         }
         scratch = Float32Array.copyFromJavaArray(data);
-        gl.bufferData(WebGL2.ARRAY_BUFFER, scratch, switch (usage) {
+        gl.bufferData(WebGL2.ARRAY_BUFFER, scratch, usageConstant(usage), 0, length);
+    }
+
+    @Override
+    public void elementData(int[] data, int length, BufferUsage usage) {
+        if (length > data.length) {
+            throw new IllegalArgumentException("length " + length + " exceeds array " + data.length);
+        }
+        gl.bufferData(WebGL2.ELEMENT_ARRAY_BUFFER, Uint32Array.copyFromJavaArray(data),
+                usageConstant(usage), 0, length);
+    }
+
+    private static int usageConstant(BufferUsage usage) {
+        return switch (usage) {
             case STATIC -> WebGL2.STATIC_DRAW;
             case DYNAMIC -> WebGL2.DYNAMIC_DRAW;
             case STREAM -> WebGL2.STREAM_DRAW;
-        }, 0, length);
+        };
     }
 
     @Override
@@ -327,7 +347,16 @@ public final class WebGLGraphicsDevice implements GraphicsDevice {
 
     @Override
     public void drawArrays(Primitive primitive, int first, int count) {
-        gl.drawArrays(switch (primitive) {
+        gl.drawArrays(mode(primitive), first, count);
+    }
+
+    @Override
+    public void drawElements(Primitive primitive, int count) {
+        gl.drawElements(mode(primitive), count, WebGL2.UNSIGNED_INT, 0);
+    }
+
+    private static int mode(Primitive primitive) {
+        return switch (primitive) {
             case POINTS -> WebGL2.POINTS;
             case LINES -> WebGL2.LINES;
             case LINE_STRIP -> WebGL2.LINE_STRIP;
@@ -335,7 +364,7 @@ public final class WebGLGraphicsDevice implements GraphicsDevice {
             case TRIANGLES -> WebGL2.TRIANGLES;
             case TRIANGLE_STRIP -> WebGL2.TRIANGLE_STRIP;
             case TRIANGLE_FAN -> WebGL2.TRIANGLE_FAN;
-        }, first, count);
+        };
     }
 
     @Override

@@ -2,15 +2,9 @@ package dev.flagon.lwjgl.internal;
 
 import dev.flagon.platform.graphics.BufferUsage;
 import dev.flagon.platform.graphics.GraphicsDevice;
-import dev.flagon.platform.graphics.Primitive;
 
 /**
  * reproduces gl 1.x fixed-function output with a single shader.
- *
- * <p>webgl2 has no fixed-function pipeline at all, so the parts of it desktop code relies on —
- * the matrix stacks, per-vertex colour, one texture unit, and the alpha test — are folded into
- * one program whose uniforms carry the state gl would have kept internally. features are toggled
- * by uniform rather than by recompiling, which keeps state changes cheap.
  */
 public final class FixedFunctionPipeline {
 
@@ -68,6 +62,10 @@ public final class FixedFunctionPipeline {
     private final GraphicsDevice device;
     private final int program;
     private final int buffer;
+    private final int elementBuffer;
+
+    private int[] quadIndices = new int[0];
+    private int uploadedQuads;
 
     private final int modelViewUniform;
     private final int projectionUniform;
@@ -80,6 +78,7 @@ public final class FixedFunctionPipeline {
         this.device = device;
         this.program = device.createProgram(VERTEX_SHADER, FRAGMENT_SHADER);
         this.buffer = device.createBuffer();
+        this.elementBuffer = device.createBuffer();
 
         modelViewUniform = device.uniformLocation(program, "u_modelView");
         projectionUniform = device.uniformLocation(program, "u_projection");
@@ -100,9 +99,14 @@ public final class FixedFunctionPipeline {
     }
 
     /** uploads and draws {@code vertexCount} vertices of interleaved data. */
-    public void draw(Primitive primitive, float[] vertices, int floatCount, int vertexCount,
+    public void draw(ImmediateMode mode, float[] vertices, int floatCount, int vertexCount,
                      float[] modelView, float[] projection,
                      boolean textureEnabled, boolean alphaTestEnabled, float alphaTestThreshold) {
+        int drawable = mode.usableVertices(vertexCount);
+        if (drawable == 0) {
+            return;
+        }
+
         device.useProgram(program);
         device.bindArrayBuffer(buffer);
         device.bufferData(vertices, floatCount, BufferUsage.STREAM);
@@ -117,11 +121,29 @@ public final class FixedFunctionPipeline {
         device.uniform1i(alphaTestEnabledUniform, alphaTestEnabled ? 1 : 0);
         device.uniform1f(alphaTestThresholdUniform, alphaTestThreshold);
 
-        device.drawArrays(primitive, 0, vertexCount);
+        if (mode.isIndexed()) {
+            int quads = drawable / ImmediateMode.QUAD_VERTICES;
+            bindQuadIndices(quads);
+            device.drawElements(mode.primitive(), quads * ImmediateMode.QUAD_INDICES);
+        } else {
+            device.drawArrays(mode.primitive(), 0, drawable);
+        }
+    }
+
+    private void bindQuadIndices(int quads) {
+        device.bindElementBuffer(elementBuffer);
+        if (quads <= uploadedQuads) {
+            return;
+        }
+        quadIndices = new int[quads * ImmediateMode.QUAD_INDICES];
+        ImmediateMode.writeQuadIndices(quadIndices, quads);
+        device.elementData(quadIndices, quadIndices.length, BufferUsage.STATIC);
+        uploadedQuads = quads;
     }
 
     public void dispose() {
         device.deleteBuffer(buffer);
+        device.deleteBuffer(elementBuffer);
         device.deleteProgram(program);
     }
 }

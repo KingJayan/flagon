@@ -54,6 +54,24 @@ test.describe('lwjgl rendering', () => {
     expect(failures).toEqual([]);
   });
 
+  /**
+   the panel is drawn with GL_QUADS, which becomes triangles (0,1,2) and (0,2,3)
+   */
+  test('fills a whole GL_QUADS quad, not just one of its triangles', async ({ page }) => {
+    await page.goto('/?program=lwjgl');
+    await expect(page.getByTestId('state')).toHaveText('running', { timeout: 30_000 });
+
+    const green = [0, 204, 51];
+    expectColor(await readPixel(page, 165, 95), green, 'bottom-left corner');
+    expectColor(await readPixel(page, 475, 95), green, 'bottom-right corner');
+    expectColor(await readPixel(page, 165, 265), green, 'top-left corner');
+    expectColor(await readPixel(page, 475, 265), green, 'top-right corner');
+
+    // just outside the panel is still the clear colour, so the quad is not oversized
+    expectColor(await readPixel(page, 155, 180), [26, 38, 77], 'left of the panel');
+    expectColor(await readPixel(page, 485, 180), [26, 38, 77], 'right of the panel');
+  });
+
   test('keeps presenting frames', async ({ page }) => {
     await page.goto('/?program=lwjgl');
     await expect(page.getByTestId('state')).toHaveText('running', { timeout: 30_000 });

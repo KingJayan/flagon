@@ -4,6 +4,7 @@ import org.teavm.jso.JSObject;
 import org.teavm.jso.JSProperty;
 import org.teavm.jso.typedarrays.Float32Array;
 import org.teavm.jso.typedarrays.Uint8Array;
+import org.teavm.jso.typedarrays.Uint32Array;
 
 /**
  * the slice of WebGL2RenderingContext this project uses.
@@ -64,7 +65,10 @@ public interface WebGL2 extends JSObject {
     int CLAMP_TO_EDGE = 0x812F;
     int TEXTURE0 = 0x84C0;
 
+    int UNSIGNED_INT = 0x1405;
+
     int ARRAY_BUFFER = 0x8892;
+    int ELEMENT_ARRAY_BUFFER = 0x8893;
     int STREAM_DRAW = 0x88E0;
     int STATIC_DRAW = 0x88E4;
     int DYNAMIC_DRAW = 0x88E8;
@@ -107,6 +111,8 @@ public interface WebGL2 extends JSObject {
     void bufferData(int target, Float32Array data, int usage);
 
     void bufferData(int target, Float32Array data, int usage, int sourceOffset, int length);
+
+    void bufferData(int target, Uint32Array data, int usage, int sourceOffset, int length);
 
     JSObject createShader(int type);
 
@@ -170,6 +176,8 @@ public interface WebGL2 extends JSObject {
     void texParameteri(int target, int name, int value);
 
     void drawArrays(int mode, int first, int count);
+
+    void drawElements(int mode, int count, int type, int offset);
 
     int getError();
 
