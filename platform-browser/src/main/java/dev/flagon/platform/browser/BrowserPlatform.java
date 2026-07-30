@@ -71,7 +71,7 @@ public final class BrowserPlatform implements Platform {
     @Override
     public DisplaySurface display(int width, int height, String title) {
         if (surface == null) {
-            surface = CanvasSurface.open(width, height, title);
+            surface = CanvasSurface.open(width, height, title, clock);
         }
         return surface;
     }

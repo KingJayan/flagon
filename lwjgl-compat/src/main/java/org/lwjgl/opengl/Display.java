@@ -1,6 +1,7 @@
 package org.lwjgl.opengl;
 
 import dev.flagon.lwjgl.internal.GLState;
+import dev.flagon.lwjgl.internal.InputState;
 import dev.flagon.platform.Platform;
 import dev.flagon.platform.Platforms;
 import dev.flagon.platform.UnsupportedCapabilityException;
@@ -34,6 +35,7 @@ public final class Display {
         }
         surface.graphics().viewport(0, 0, surface.width(), surface.height());
         GLState.attach(surface.graphics());
+        InputState.attach(surface.input());
     }
 
     public static void create(PixelFormat format) throws LWJGLException {
@@ -46,6 +48,7 @@ public final class Display {
 
     public static void destroy() {
         if (surface != null) {
+            InputState.detach();
             GLState.detach();
             surface.destroy();
             surface = null;
