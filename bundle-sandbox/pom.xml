@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+  <parent>
+    <groupId>dev.decanter</groupId>
+    <artifactId>decanter-parent</artifactId>
+    <version>0.1.0-SNAPSHOT</version>
+  </parent>
+
+  <artifactId>bundle-sandbox</artifactId>
+  <name>Decanter :: Sandbox Bundle</name>
+  <description>Compiles the runtime plus diagnostic programs to a browser bundle.</description>
+
+  <dependencies>
+    <dependency>
+      <groupId>dev.decanter</groupId>
+      <artifactId>runtime</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>dev.decanter</groupId>
+      <artifactId>platform-browser</artifactId>
+    </dependency>
+
+    <dependency>
+      <groupId>org.teavm</groupId>
+      <artifactId>teavm-classlib</artifactId>
+      <scope>provided</scope>
+    </dependency>
+  </dependencies>
+
+  <build>
+    <plugins>
+      <plugin>
+        <groupId>org.teavm</groupId>
+        <artifactId>teavm-maven-plugin</artifactId>
+        <executions>
+          <execution>
+            <id>compile-sandbox-bundle</id>
+            <goals>
+              <goal>compile</goal>
+            </goals>
+            <configuration>
+              <mainClass>dev.decanter.sandbox.SandboxMain</mainClass>
+              <targetType>${decanter.target}</targetType>
+              <targetDirectory>${decanter.bundleOutput}</targetDirectory>
+              <targetFileName>sandbox.js</targetFileName>
+              <jsModuleType>ES2015</jsModuleType>
+              <optimizationLevel>${decanter.optimization}</optimizationLevel>
+              <minifying>${decanter.minify}</minifying>
+              <sourceMapsGenerated>${decanter.sourceMaps}</sourceMapsGenerated>
+              <debugInformationGenerated>${decanter.sourceMaps}</debugInformationGenerated>
+              <stopOnErrors>true</stopOnErrors>
+              <strict>${decanter.strict}</strict>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+    </plugins>
+  </build>
+</project>
