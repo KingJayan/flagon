@@ -8,9 +8,12 @@ import dev.flagon.platform.graphics.CompareFunc;
 import dev.flagon.platform.graphics.GraphicsDevice;
 import dev.flagon.platform.graphics.IndexType;
 import dev.flagon.platform.graphics.Primitive;
+import dev.flagon.platform.graphics.ShaderStage;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * records every call instead of drawing; nothing above platform-api needs a browser.
@@ -21,10 +24,15 @@ final class RecordingGraphicsDevice implements GraphicsDevice {
     float[] lastBufferData = new float[0];
     int[] lastElementData = new int[0];
     byte[] lastByteData = new byte[0];
+    float[] lastUniformFloats = new float[0];
+    int[] lastUniformInts = new int[0];
     float[] lastModelView = new float[16];
     float[] lastProjection = new float[16];
 
+    private final Map<Integer, String> shaderSources = new HashMap<>();
     private int nextName = 1;
+    boolean compilesShaders = true;
+    boolean linksPrograms = true;
     private int modelViewLocation = -1;
     private int projectionLocation = -1;
 
@@ -137,8 +145,104 @@ final class RecordingGraphicsDevice implements GraphicsDevice {
     }
 
     @Override
+    public int createShader(ShaderStage stage) {
+        int shader = nextName++;
+        calls.add("createShader " + stage + " " + shader);
+        return shader;
+    }
+
+    @Override
+    public void shaderSource(int shader, String source) {
+        shaderSources.put(shader, source);
+        calls.add("shaderSource " + shader);
+    }
+
+    @Override
+    public void compileShader(int shader) {
+        calls.add("compileShader " + shader);
+    }
+
+    @Override
+    public boolean isShaderCompiled(int shader) {
+        return compilesShaders;
+    }
+
+    @Override
+    public String shaderInfoLog(int shader) {
+        return compilesShaders ? "" : "compile failed";
+    }
+
+    @Override
+    public void deleteShader(int shader) {
+        shaderSources.remove(shader);
+        calls.add("deleteShader " + shader);
+    }
+
+    @Override
+    public boolean isShader(int shader) {
+        return shaderSources.containsKey(shader);
+    }
+
+    @Override
+    public int createProgram() {
+        int program = nextName++;
+        calls.add("createProgram " + program);
+        return program;
+    }
+
+    @Override
+    public void attachShader(int program, int shader) {
+        calls.add("attachShader " + program + " " + shader);
+    }
+
+    @Override
+    public void detachShader(int program, int shader) {
+        calls.add("detachShader " + program + " " + shader);
+    }
+
+    @Override
+    public void bindAttributeLocation(int program, int location, String name) {
+        calls.add("bindAttributeLocation " + program + " " + location + " " + name);
+    }
+
+    @Override
+    public void linkProgram(int program) {
+        calls.add("linkProgram " + program);
+    }
+
+    @Override
+    public boolean isProgramLinked(int program) {
+        return linksPrograms;
+    }
+
+    @Override
+    public void validateProgram(int program) {
+        calls.add("validateProgram " + program);
+    }
+
+    @Override
+    public boolean isProgramValid(int program) {
+        return linksPrograms;
+    }
+
+    @Override
+    public String programInfoLog(int program) {
+        return linksPrograms ? "" : "link failed";
+    }
+
+    @Override
+    public boolean isProgram(int program) {
+        return program > 0;
+    }
+
+    @Override
     public void deleteProgram(int program) {
         calls.add("deleteProgram " + program);
+    }
+
+    /** @return the source the device was given for {@code shader}, after translation */
+    String sourceOf(int shader) {
+        return shaderSources.get(shader);
     }
 
     @Override
@@ -178,13 +282,65 @@ final class RecordingGraphicsDevice implements GraphicsDevice {
     }
 
     @Override
+    public void uniform2f(int location, float x, float y) {
+        calls.add("uniform2f " + location + " " + x + " " + y);
+    }
+
+    @Override
+    public void uniform3f(int location, float x, float y, float z) {
+        calls.add("uniform3f " + location + " " + x + " " + y + " " + z);
+    }
+
+    @Override
     public void uniform4f(int location, float x, float y, float z, float w) {
         calls.add("uniform4f " + location);
     }
 
     @Override
+    public void uniform2i(int location, int x, int y) {
+        calls.add("uniform2i " + location + " " + x + " " + y);
+    }
+
+    @Override
+    public void uniform3i(int location, int x, int y, int z) {
+        calls.add("uniform3i " + location + " " + x + " " + y + " " + z);
+    }
+
+    @Override
+    public void uniform4i(int location, int x, int y, int z, int w) {
+        calls.add("uniform4i " + location + " " + x + " " + y + " " + z + " " + w);
+    }
+
+    @Override
+    public void uniformFloats(int location, int components, float[] values, int count) {
+        lastUniformFloats = new float[components * count];
+        System.arraycopy(values, 0, lastUniformFloats, 0, lastUniformFloats.length);
+        calls.add("uniformFloats " + location + " " + components + " " + count);
+    }
+
+    @Override
+    public void uniformInts(int location, int components, int[] values, int count) {
+        lastUniformInts = new int[components * count];
+        System.arraycopy(values, 0, lastUniformInts, 0, lastUniformInts.length);
+        calls.add("uniformInts " + location + " " + components + " " + count);
+    }
+
+    @Override
+    public void uniformMatrices(int location, int size, boolean transpose, float[] values,
+                                int count) {
+        lastUniformFloats = new float[size * size * count];
+        System.arraycopy(values, 0, lastUniformFloats, 0, lastUniformFloats.length);
+        calls.add("uniformMatrices " + location + " " + size + " " + transpose + " " + count);
+    }
+
+    @Override
     public int attributeLocation(int program, String name) {
         return nextName++;
+    }
+
+    @Override
+    public int maxAttributes() {
+        return 16;
     }
 
     @Override

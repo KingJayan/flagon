@@ -47,9 +47,9 @@ test.describe('lwjgl rendering', () => {
     await expect(page.getByTestId('state')).toHaveText('running', { timeout: 30_000 });
     await expect(page.getByTestId('log')).toContainText('display created at 640x360');
 
-    expectColor(await readPixel(page, 320, 180), [0, 204, 51], 'centre panel');
+    expectColor(await readPixel(page, 320, 180), [0, 204, 51], 'center panel');
 
-    expectColor(await readPixel(page, 5, 5), [26, 38, 77], 'clear colour');
+    expectColor(await readPixel(page, 5, 5), [26, 38, 77], 'clear color');
 
     expect(failures).toEqual([]);
   });
@@ -67,7 +67,7 @@ test.describe('lwjgl rendering', () => {
     expectColor(await readPixel(page, 165, 265), green, 'top-left corner');
     expectColor(await readPixel(page, 475, 265), green, 'top-right corner');
 
-    // just outside the panel is still the clear colour, so the quad is not oversized
+    // just outside the panel is still the clear color, so the quad is not oversized
     expectColor(await readPixel(page, 155, 180), [26, 38, 77], 'left of the panel');
     expectColor(await readPixel(page, 485, 180), [26, 38, 77], 'right of the panel');
   });

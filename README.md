@@ -39,7 +39,7 @@ Java is compiled ahead-of-time (AoT) to JavaScript utilizing [TeaVM](https://tea
 | NIO buffers (`BufferUtils`, `MemoryUtil`) | `Done` |
 | Vertex arrays and buffer objects (`GL15`) | `Done` |
 | Loading an application jar | `Done` |
-| Shader objects (`GL20`) | `Pending` |
+| Shader objects (`GL20`) | `Done` |
 | Virtual filesystem on OPFS | `Pending` |
 | Audio (`OpenAL` → WebAudio) | `Pending` |
 | Networking through a proxy | `Pending` |

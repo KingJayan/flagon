@@ -262,7 +262,7 @@ public final class GL11 {
         state().arrays().color().pointAt(pointer, size, AttributeType.FLOAT, false, stride);
     }
 
-    /** the byte form is always normalised: gl reads integer colour components as 0..1. */
+    /** the byte form is always normalised: gl reads integer color components as 0..1. */
     public static void glColorPointer(int size, boolean unsigned, int stride, ByteBuffer pointer) {
         AttributeType type = unsigned ? AttributeType.UNSIGNED_BYTE : AttributeType.BYTE;
         state().arrays().color().pointAt(pointer, size, type, true, stride);

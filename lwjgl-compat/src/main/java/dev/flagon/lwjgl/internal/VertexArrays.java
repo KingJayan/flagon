@@ -1,10 +1,7 @@
 package dev.flagon.lwjgl.internal;
 
 /**
- * the three client arrays the fixed-function shader has attributes for.
- *
- * <p>the slot numbers are the shader's attribute locations, so a slot needs no translation on
- * its way to the device.
+ * the three client arrays the fixed-function shader has attributes for
  */
 public final class VertexArrays {
 

@@ -128,8 +128,8 @@ public final class VertexArrayDemoProgram implements Program {
     }
 
     /**
-     * the same pointer every frame over a buffer whose contents change, and no colour array at
-     * all — so the quad takes the colour from glColor, as it would on the desktop.
+     * the same pointer every frame over a buffer whose contents change, and no color array at
+     * all — so the quad takes the color from glColor, as it would on the desktop.
      */
     private void drawClientQuad(int frame) {
         float left = WIDTH * 0.55f;

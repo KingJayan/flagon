@@ -22,7 +22,8 @@ public final class SandboxMain {
                 .register(new RuntimeSelfTestProgram())
                 .register(new LwjglDemoProgram())
                 .register(new InputDemoProgram())
-                .register(new VertexArrayDemoProgram());
+                .register(new VertexArrayDemoProgram())
+                .register(new ShaderDemoProgram());
         FlagonRuntime.boot(BrowserPlatform.create(arguments), registry);
     }
 }

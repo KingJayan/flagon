@@ -3,6 +3,7 @@ package dev.flagon.platform.browser.graphics;
 import org.teavm.jso.JSObject;
 import org.teavm.jso.JSProperty;
 import org.teavm.jso.typedarrays.Float32Array;
+import org.teavm.jso.typedarrays.Int32Array;
 import org.teavm.jso.typedarrays.Int8Array;
 import org.teavm.jso.typedarrays.Uint8Array;
 import org.teavm.jso.typedarrays.Uint32Array;
@@ -81,6 +82,8 @@ public interface WebGL2 extends JSObject {
     int VERTEX_SHADER = 0x8B31;
     int COMPILE_STATUS = 0x8B81;
     int LINK_STATUS = 0x8B82;
+    int VALIDATE_STATUS = 0x8B83;
+    int MAX_VERTEX_ATTRIBS = 0x8869;
 
     int UNPACK_PREMULTIPLY_ALPHA_WEBGL = 0x9241;
 
@@ -138,6 +141,16 @@ public interface WebGL2 extends JSObject {
 
     void attachShader(JSObject program, JSObject shader);
 
+    void detachShader(JSObject program, JSObject shader);
+
+    boolean isShader(JSObject shader);
+
+    boolean isProgram(JSObject program);
+
+    void validateProgram(JSObject program);
+
+    void bindAttribLocation(JSObject program, int index, String name);
+
     void linkProgram(JSObject program);
 
     boolean getProgramParameter(JSObject program, int name);
@@ -152,11 +165,41 @@ public interface WebGL2 extends JSObject {
 
     void uniformMatrix4fv(JSObject location, boolean transpose, Float32Array value);
 
+    void uniformMatrix2fv(JSObject location, boolean transpose, Float32Array value);
+
+    void uniformMatrix3fv(JSObject location, boolean transpose, Float32Array value);
+
     void uniform1i(JSObject location, int value);
 
     void uniform1f(JSObject location, float value);
 
+    void uniform2f(JSObject location, float x, float y);
+
+    void uniform3f(JSObject location, float x, float y, float z);
+
     void uniform4f(JSObject location, float x, float y, float z, float w);
+
+    void uniform2i(JSObject location, int x, int y);
+
+    void uniform3i(JSObject location, int x, int y, int z);
+
+    void uniform4i(JSObject location, int x, int y, int z, int w);
+
+    void uniform1fv(JSObject location, Float32Array value);
+
+    void uniform2fv(JSObject location, Float32Array value);
+
+    void uniform3fv(JSObject location, Float32Array value);
+
+    void uniform4fv(JSObject location, Float32Array value);
+
+    void uniform1iv(JSObject location, Int32Array value);
+
+    void uniform2iv(JSObject location, Int32Array value);
+
+    void uniform3iv(JSObject location, Int32Array value);
+
+    void uniform4iv(JSObject location, Int32Array value);
 
     int getAttribLocation(JSObject program, String name);
 
@@ -188,6 +231,8 @@ public interface WebGL2 extends JSObject {
     void drawArrays(int mode, int first, int count);
 
     void drawElements(int mode, int count, int type, int offset);
+
+    int getParameter(int name);
 
     int getError();
 
