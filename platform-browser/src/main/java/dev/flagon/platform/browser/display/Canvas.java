@@ -16,6 +16,7 @@ final class Canvas {
             if (!canvas) {
                 canvas = document.createElement('canvas');
                 canvas.id = id;
+                canvas.dataset.flagonCreated = 'true';
                 document.body.appendChild(canvas);
             }
             canvas.width = width;
@@ -84,7 +85,12 @@ final class Canvas {
             """)
     static native boolean exitFullscreen();
 
-    @JSBody(params = "canvas", script = "canvas.remove();")
+    /** a canvas the page wrote belongs to the page, and outlives the display opened on it. */
+    @JSBody(params = "canvas", script = """
+            if (canvas.dataset.flagonCreated === 'true') {
+                canvas.remove();
+            }
+            """)
     static native void remove(JSObject canvas);
 
     /** the page asks for shutdown by setting this flag; nothing else may close the window. */

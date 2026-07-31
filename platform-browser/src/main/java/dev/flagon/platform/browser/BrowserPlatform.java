@@ -25,7 +25,7 @@ public final class BrowserPlatform implements Platform {
     private final FileStore files;
     private final AudioDevice audio;
     private final Network network;
-    private DisplaySurface surface;
+    private CanvasSurface surface;
 
     private BrowserPlatform(Clock clock, ConsoleSink console, RuntimeHost host, FileStore files,
                             AudioDevice audio, Network network) {
@@ -148,7 +148,8 @@ public final class BrowserPlatform implements Platform {
 
     @Override
     public DisplaySurface display(int width, int height, String title) {
-        if (surface == null) {
+        // destroying a display and opening another is how desktop code changes mode
+        if (surface == null || surface.isDestroyed()) {
             surface = CanvasSurface.open(width, height, title, clock);
         }
         return surface;

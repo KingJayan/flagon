@@ -95,6 +95,10 @@ public final class CanvasSurface implements DisplaySurface {
         Frames.awaitNextFrame();
     }
 
+    public boolean isDestroyed() {
+        return destroyed;
+    }
+
     @Override
     public void destroy() {
         if (!destroyed) {
