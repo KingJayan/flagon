@@ -29,7 +29,7 @@ Flagon itself is application-agnostic. Work on any particular application lives 
 
 - Run existing desktop Java/LWJGL applications directly in the browser
 - No application source modifications required
-- Ahead-of-time Java → JavaScript compilation with TeaVM
+- Ahead-of-time Java → JavaScript compilation with TeaVM (WASM-GC support is WIP)
 - WebGL2 implementation of core LWJGL APIs
 - Browser-native implementations of input, filesystem, audio, networking, and platform APIs
 - Application-agnostic architecture for downstream projects
@@ -40,6 +40,20 @@ Flagon itself is application-agnostic. Work on any particular application lives 
 * **[Compatibility Matrix](docs/COMPATIBILITY.md):** Detailed breakdown of supported and unsupported features.
 * **[Running Existing Applications](docs/DOWNSTREAM.md):** Compiling an application jar to a bundle.
 
+## Roadmap for WASM-GC Support
+
+Flagon compiles to JS today. TeaVM can also target WebAssembly GC, which keeps Java objects
+in the WebAssembly heap and hands garbage collection to the engine. These are the stages to running
+every bundle on it.
+
+| Stage | Status |
+| :--- | :--- |
+| Toolchain able to emit WASM GC | `✔` |
+| Bundles compile and boot in the browser | `⧖` |
+| Graphics and input | `⧖` |
+| Files, audio, and networking | `⧖` |
+| Browser suite green on both backends | `⧖` |
+| WASM GC as the default backend | `⧖` |
 
 ## Quickstart
 

@@ -11,11 +11,11 @@ import dev.flagon.platform.graphics.Primitive;
 import dev.flagon.platform.graphics.ShaderException;
 import dev.flagon.platform.graphics.ShaderStage;
 import dev.flagon.platform.UnsupportedCapabilityException;
+import dev.flagon.platform.browser.js.JsArrays;
 import org.teavm.jso.JSObject;
 import org.teavm.jso.typedarrays.Float32Array;
 import org.teavm.jso.typedarrays.Int32Array;
 import org.teavm.jso.typedarrays.Int8Array;
-import org.teavm.jso.typedarrays.Uint32Array;
 import org.teavm.jso.typedarrays.Uint8Array;
 
 import java.util.ArrayList;
@@ -176,40 +176,30 @@ public final class WebGLGraphicsDevice implements GraphicsDevice {
         gl.bufferData(targetConstant(target), sizeInBytes, usageConstant(usage));
     }
 
-    // fromJavaArray views the array's own backing store rather than copying it, and webgl is
-    // told the prefix to read, so growable arrays cost nothing for the slack they carry
+    // only the prefix the caller means is handed over, so growable arrays cost nothing for the
+    // slack they carry; JsArrays decides whether that is a view or a copy
     @Override
     public void bufferData(BufferTarget target, byte[] data, int length, BufferUsage usage) {
-        require(length, data.length);
-        gl.bufferData(targetConstant(target), Int8Array.fromJavaArray(data),
+        gl.bufferData(targetConstant(target), JsArrays.bytes(data, length),
                 usageConstant(usage), 0, length);
     }
 
     @Override
     public void bufferData(BufferTarget target, float[] data, int length, BufferUsage usage) {
-        require(length, data.length);
-        gl.bufferData(targetConstant(target), Float32Array.fromJavaArray(data),
+        gl.bufferData(targetConstant(target), JsArrays.floats(data, length),
                 usageConstant(usage), 0, length);
     }
 
     @Override
     public void bufferData(BufferTarget target, int[] data, int length, BufferUsage usage) {
-        require(length, data.length);
-        gl.bufferData(targetConstant(target), Uint32Array.fromJavaArray(data),
+        gl.bufferData(targetConstant(target), JsArrays.unsignedInts(data, length),
                 usageConstant(usage), 0, length);
     }
 
     @Override
     public void bufferSubData(BufferTarget target, int offsetInBytes, byte[] data, int length) {
-        require(length, data.length);
-        gl.bufferSubData(targetConstant(target), offsetInBytes, Int8Array.fromJavaArray(data),
+        gl.bufferSubData(targetConstant(target), offsetInBytes, JsArrays.bytes(data, length),
                 0, length);
-    }
-
-    private static void require(int length, int available) {
-        if (length > available) {
-            throw new IllegalArgumentException("length " + length + " exceeds array " + available);
-        }
     }
 
     private static int targetConstant(BufferTarget target) {
@@ -481,7 +471,7 @@ public final class WebGLGraphicsDevice implements GraphicsDevice {
         if (location == NO_UNIFORM) {
             return;
         }
-        Float32Array data = floats(values, components * count);
+        Float32Array data = JsArrays.floats(values, components * count);
         JSObject at = uniform(location);
         switch (components) {
             case 1 -> gl.uniform1fv(at, data);
@@ -498,7 +488,7 @@ public final class WebGLGraphicsDevice implements GraphicsDevice {
         if (location == NO_UNIFORM) {
             return;
         }
-        Int32Array data = ints(values, components * count);
+        Int32Array data = JsArrays.ints(values, components * count);
         JSObject at = uniform(location);
         switch (components) {
             case 1 -> gl.uniform1iv(at, data);
@@ -516,7 +506,7 @@ public final class WebGLGraphicsDevice implements GraphicsDevice {
         if (location == NO_UNIFORM) {
             return;
         }
-        Float32Array data = floats(values, size * size * count);
+        Float32Array data = JsArrays.floats(values, size * size * count);
         JSObject at = uniform(location);
         switch (size) {
             case 2 -> gl.uniformMatrix2fv(at, transpose, data);
@@ -525,20 +515,6 @@ public final class WebGLGraphicsDevice implements GraphicsDevice {
             default -> throw new IllegalArgumentException(
                     "a uniform matrix is 2x2 to 4x4, got " + size + "x" + size);
         }
-    }
-
-    // a view over the array's own storage, cut to the length webgl is allowed to read: these
-    // entry points take no length of their own and would otherwise read the slack too
-    private static Float32Array floats(float[] values, int length) {
-        require(length, values.length);
-        Float32Array whole = Float32Array.fromJavaArray(values);
-        return Float32Array.create(whole.getBuffer(), whole.getByteOffset(), length);
-    }
-
-    private static Int32Array ints(int[] values, int length) {
-        require(length, values.length);
-        Int32Array whole = Int32Array.fromJavaArray(values);
-        return Int32Array.create(whole.getBuffer(), whole.getByteOffset(), length);
     }
 
     @Override

@@ -90,7 +90,7 @@ If your project inherits `flagon-parent`, only three properties are required:
 ```xml
 <properties>
     <flagon.bundle.mainClass>com.example.BrowserMain</flagon.bundle.mainClass>
-    <flagon.bundle.fileName>app.js</flagon.bundle.fileName>
+    <flagon.bundle.name>app</flagon.bundle.name>
     <flagon.bundleOutput>...</flagon.bundleOutput>
 </properties>
 ```
@@ -108,9 +108,13 @@ Leave `flagon.strict` enabled. Without it, Java null dereferences become JavaScr
 ```
 
 TeaVM compiles the application, Flagon, and your bundle entry point into a single JavaScript
-bundle.
+bundle, `app.js`.
 
 There is no runtime class loading. Every reachable class is included during compilation.
+
+Adding `-Pwasm` compiles the same sources to WebAssembly GC instead, emitting `app.wasm` beside
+the loader it is started through. See the roadmap in the [README](../README.md) for how far that
+backend has come.
 
 ## Publishing
 

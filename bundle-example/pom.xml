@@ -17,7 +17,7 @@
     <!-- a bundle is an artifact of this repository, not something downstream consumes -->
     <maven.deploy.skip>true</maven.deploy.skip>
     <flagon.bundle.mainClass>dev.flagon.example.ExampleMain</flagon.bundle.mainClass>
-    <flagon.bundle.fileName>example.js</flagon.bundle.fileName>
+    <flagon.bundle.name>example</flagon.bundle.name>
   </properties>
 
   <dependencies>

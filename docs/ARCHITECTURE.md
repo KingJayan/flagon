@@ -49,8 +49,20 @@ loading, so two constraints shape the project:
 
 ## Backend selection
 
-TeaVM targets either JavaScript or WebAssembly GC. JavaScript (`flagon.target`) is the default
-because its green-thread implementation is mature, while WASM GC threading is not.
+TeaVM targets either JavaScript or WebAssembly GC; `flagon.target` chooses, and `-Pwasm` sets it
+along with the file extension bundles are emitted under. JavaScript is the default while the WASM
+GC backend is brought to parity with it.
+
+The two backends differ in one place that reaches into this codebase: a Java array compiled to
+JavaScript *is* a typed array, so a browser API can be handed a view over its storage, while under
+WASM GC it lives in the WebAssembly heap where JavaScript cannot see it and has to be copied out.
+`JsArrays` is that seam. Its branch is folded away at compile time, so each bundle carries only the
+path its backend needs, and callers say how many elements they mean rather than passing a whole
+growable array.
+
+A WASM GC bundle is a `.wasm` module rather than an ES module, and is started through the loader
+TeaVM ships. The build unpacks that loader from the compiler's own jar next to the bundles, so it
+cannot drift from the toolchain that produced them.
 
 `strict` mode is always enabled. It inserts Java null and bounds checks so desktop exception
 semantics (`NullPointerException`, etc.) continue to work correctly.
