@@ -107,90 +107,141 @@ final class Opfs {
         };
     }
 
+    /**
+     * written without {@code async}, {@code await} or arrow functions on purpose: teavm parses
+     * every {@code @JSBody} script, and its parser predates all three. the browser would run the
+     * shorter form, but a script the compiler cannot read is one it cannot process.
+     */
     @JSBody(script = """
             if (window.__flagonOpfs) { return; }
-            const walk = async (path, createDirectories) => {
-                let directory = await navigator.storage.getDirectory();
-                const parts = path.split('/').filter(part => part.length > 0);
-                const name = parts.pop();
-                for (const part of parts) {
-                    directory = await directory.getDirectoryHandle(part, { create: createDirectories });
+            var root = function() { return navigator.storage.getDirectory(); };
+            var parts = function(path) {
+                var all = path.split('/');
+                var kept = [];
+                for (var at = 0; at < all.length; at++) {
+                    if (all[at].length > 0) { kept.push(all[at]); }
                 }
-                return { directory, name };
+                return kept;
             };
-            const settle = (promise, done) => promise.then(
-                value => done(null, value === undefined ? null : value),
-                error => done(String(error && error.message ? error.message : error), null));
+            var descend = function(directory, names, at) {
+                if (at >= names.length) { return Promise.resolve(directory); }
+                return directory.getDirectoryHandle(names[at]).then(function(child) {
+                    return descend(child, names, at + 1);
+                });
+            };
+            var walk = function(path) {
+                var names = parts(path);
+                var name = names.pop();
+                return root().then(function(directory) {
+                    return descend(directory, names, 0);
+                }).then(function(directory) {
+                    return { directory: directory, name: name };
+                });
+            };
+            var settle = function(promise, done) {
+                promise.then(function(value) {
+                    done(null, value === undefined ? null : value);
+                }, function(error) {
+                    done(String(error && error.message ? error.message : error), null);
+                });
+            };
+            var collect = function(iterator, names) {
+                return iterator.next().then(function(step) {
+                    if (step.done) { return names; }
+                    names.push(step.value);
+                    return collect(iterator, names);
+                });
+            };
+            var absent = { exists: false, directory: false, size: 0, modified: 0 };
+            var directoryEntry = { exists: true, directory: true, size: 0, modified: 0 };
             window.__flagonOpfs = {
-                stat: (path, done) => settle((async () => {
-                    const root = await navigator.storage.getDirectory();
-                    if (path === '/') {
-                        return { exists: true, directory: true, size: 0, modified: 0 };
-                    }
-                    const { directory, name } = await walk(path, false);
-                    try {
-                        const handle = await directory.getFileHandle(name);
-                        const file = await handle.getFile();
-                        return { exists: true, directory: false, size: file.size,
-                                 modified: file.lastModified };
-                    } catch (missingFile) {
-                        try {
-                            await directory.getDirectoryHandle(name);
-                            return { exists: true, directory: true, size: 0, modified: 0 };
-                        } catch (missingDirectory) {
-                            return { exists: false, directory: false, size: 0, modified: 0 };
-                        }
-                    }
-                })(), done),
-                list: (path, done) => settle((async () => {
-                    let directory = await navigator.storage.getDirectory();
-                    for (const part of path.split('/').filter(part => part.length > 0)) {
-                        directory = await directory.getDirectoryHandle(part);
-                    }
-                    const names = [];
-                    for await (const name of directory.keys()) { names.push(name); }
-                    return names;
-                })(), done),
-                read: (path, done) => settle((async () => {
-                    const { directory, name } = await walk(path, false);
-                    const handle = await directory.getFileHandle(name);
-                    const file = await handle.getFile();
-                    return new Int8Array(await file.arrayBuffer());
-                })(), done),
-                write: (path, data, done) => settle((async () => {
-                    const { directory, name } = await walk(path, false);
-                    const handle = await directory.getFileHandle(name, { create: true });
-                    const writable = await handle.createWritable();
-                    await writable.write(data);
-                    await writable.close();
-                })(), done),
-                create: (path, isDirectory, done) => settle((async () => {
-                    const { directory, name } = await walk(path, false);
-                    if (isDirectory) {
-                        await directory.getDirectoryHandle(name, { create: true });
-                    } else {
-                        await directory.getFileHandle(name, { create: true });
-                    }
-                })(), done),
-                remove: (path, done) => settle((async () => {
-                    const { directory, name } = await walk(path, false);
-                    await directory.removeEntry(name);
-                })(), done),
-                move: (from, to, done) => settle((async () => {
-                    const source = await walk(from, false);
-                    const target = await walk(to, false);
-                    const handle = await source.directory.getFileHandle(source.name);
-                    if (typeof handle.move === 'function') {
-                        await handle.move(target.directory, target.name);
-                        return;
-                    }
-                    const file = await handle.getFile();
-                    const copy = await target.directory.getFileHandle(target.name, { create: true });
-                    const writable = await copy.createWritable();
-                    await writable.write(await file.arrayBuffer());
-                    await writable.close();
-                    await source.directory.removeEntry(source.name);
-                })(), done),
+                stat: function(path, done) {
+                    if (path === '/') { done(null, directoryEntry); return; }
+                    settle(walk(path).then(function(at) {
+                        return at.directory.getFileHandle(at.name).then(function(handle) {
+                            return handle.getFile().then(function(file) {
+                                return { exists: true, directory: false, size: file.size,
+                                         modified: file.lastModified };
+                            });
+                        }, function() {
+                            return at.directory.getDirectoryHandle(at.name).then(function() {
+                                return directoryEntry;
+                            }, function() { return absent; });
+                        });
+                    // a path whose parent does not exist is a path that does not exist, which is
+                    // what File.exists() asks about and what it expects to hear back
+                    }, function() { return absent; }), done);
+                },
+                list: function(path, done) {
+                    settle(root().then(function(directory) {
+                        return descend(directory, parts(path), 0);
+                    }).then(function(directory) {
+                        return collect(directory.keys(), []);
+                    }), done);
+                },
+                read: function(path, done) {
+                    settle(walk(path).then(function(at) {
+                        return at.directory.getFileHandle(at.name);
+                    }).then(function(handle) {
+                        return handle.getFile();
+                    }).then(function(file) {
+                        return file.arrayBuffer();
+                    }).then(function(buffer) {
+                        return new Int8Array(buffer);
+                    }), done);
+                },
+                write: function(path, data, done) {
+                    settle(walk(path).then(function(at) {
+                        return at.directory.getFileHandle(at.name, { create: true });
+                    }).then(function(handle) {
+                        return handle.createWritable();
+                    }).then(function(writable) {
+                        return writable.write(data).then(function() {
+                            return writable.close();
+                        });
+                    }), done);
+                },
+                create: function(path, isDirectory, done) {
+                    settle(walk(path).then(function(at) {
+                        return isDirectory
+                            ? at.directory.getDirectoryHandle(at.name, { create: true })
+                            : at.directory.getFileHandle(at.name, { create: true });
+                    }), done);
+                },
+                remove: function(path, done) {
+                    settle(walk(path).then(function(at) {
+                        return at.directory.removeEntry(at.name);
+                    }), done);
+                },
+                move: function(from, to, done) {
+                    settle(walk(from).then(function(source) {
+                        return walk(to).then(function(target) {
+                            return source.directory.getFileHandle(source.name)
+                                    .then(function(handle) {
+                                if (typeof handle.move === 'function') {
+                                    return handle.move(target.directory, target.name);
+                                }
+                                // chrome gained FileSystemHandle.move late; everywhere else a
+                                // rename is a copy followed by a delete
+                                return handle.getFile().then(function(file) {
+                                    return file.arrayBuffer();
+                                }).then(function(buffer) {
+                                    return target.directory
+                                            .getFileHandle(target.name, { create: true })
+                                            .then(function(copy) {
+                                        return copy.createWritable();
+                                    }).then(function(writable) {
+                                        return writable.write(buffer).then(function() {
+                                            return writable.close();
+                                        });
+                                    });
+                                }).then(function() {
+                                    return source.directory.removeEntry(source.name);
+                                });
+                            });
+                        });
+                    }), done);
+                }
             };
             """)
     static native void install();
