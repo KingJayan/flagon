@@ -11,11 +11,11 @@ What the browser environment does and does not provide. Updated as each stage la
 | Console / logging | works | mapped onto `console.*` levels |
 | `System.out` / `System.err` | works | split into lines and forwarded to the console |
 | Lifecycle reporting | works | `window.__flagonHost` |
-| Filesystem | works | `java.io` on the origin private file system, see below |
-| Threading | partial | blocking frame loops work via TeaVM green threads |
-| Networking | works through a proxy | tcp over a websocket; no raw sockets in a browser, see below |
+| Filesystem | works | `java.io` on the Origin Private File System, see below |
+| Threading | partial | blocking frame loops via TeaVM green threads |
+| Networking | works through a proxy | TCP over a websocket; no raw sockets, see below |
 | Input | works | DOM events and Pointer Lock, see below |
-| Audio | works | `OpenAL` on web audio, see below |
+| Audio | works | `OpenAL` over Web Audio, see below |
 | Graphics | partial | GL 1.1 fixed-function and GL 2.0 shaders over WebGL2, see below |
 
 ## Java language and library
@@ -35,42 +35,42 @@ Verified in Chromium by the `selftest` program (80 checks), which runs in CI as 
 | Lambdas, method references, captured locals | works |
 | Reflection | untested — likely a problem for the game |
 | `File`, `FileInputStream`, `FileOutputStream`, `RandomAccessFile` | works, see below |
-| `java.net.URL`, `HttpURLConnection` over http | works through a proxy, see below |
+| `java.net.URL`, `HttpURLConnection` over HTTP | works through a proxy, see below |
 | `java.net.Socket`, `ServerSocket`, `DatagramSocket` | absent from the classlib |
 
 ### Files are real, and they persist
-`java.io` reaches its filesystem through TeaVM's `VirtualFileSystem`, whose default is a heap tree
-that a page loses on reload. Flagon replaces it at boot with one backed by the **origin private
-file system**: a per-origin directory tree the browser keeps. Unmodified file code works, and what
-it writes is still there on the next load. The `files` demo proves it by counting its own runs
-across a reload.
 
-OPFS is asynchronous on the main thread — every handle arrives in a promise, and the synchronous
-access handles that would avoid that exist only inside a worker. Each call suspends the calling
-green thread and resumes when the browser answers, the same mechanism the frame loop uses.
+TeaVM normally backs `java.io` with an in-memory `VirtualFileSystem` that disappears on reload.
+Flagon replaces it at boot with one backed by the **Origin Private File System (OPFS)**, so
+unmodified file code persists across page loads. The `files` demo proves this by counting its own
+runs across a reload.
 
-An open file is held whole in memory. The browser hands out a file at a time rather than a byte at
-a time, so reading any part of one costs a read of all of it; edits happen in the heap and go back
-on flush or close. The cost is that a file is as large in memory as on disk while it is open.
+OPFS is asynchronous on the main thread. Each filesystem operation suspends the calling green
+thread and resumes when the browser responds, so everything above the store continues to behave as
+blocking I/O.
 
-Where OPFS is unavailable the store falls back to the heap, and says so on the console — an
-application that saves its work would otherwise appear to succeed and lose it.
+Files are cached in memory while open. Reading any part of a file requires loading the whole file,
+and changes are written back on flush or close.
+
+Where OPFS is unavailable, Flagon falls back to an in-memory store and reports the fallback on the
+console rather than silently discarding persistent data.
 
 ### RandomAccessFile writes straight through
-`TRandomAccessFile.close()` in TeaVM 0.12.0 drops its accessor without closing or flushing it, and
-`autoFlush` is only set for modes `rws` and `rwd`. Against TeaVM's in-memory filesystem writes
-mutate shared state as they happen and nothing is lost; against any store that writes contents
-back, everything is.
 
-`RandomAccessFile` is the only caller that opens a file both readable and writable, so those
-accessors write through on every write. Streams, which do close properly, keep the cheaper path.
+TeaVM 0.12.0's `TRandomAccessFile.close()` drops its accessor without flushing it unless opened
+with `rws` or `rwd`. Against TeaVM's default in-memory filesystem this goes unnoticed; against a
+real backing store it loses data.
+
+`RandomAccessFile` is the only caller that opens a file for both reading and writing, so its
+accessors write through on every write. Streams still use the cheaper buffered path because they
+close correctly.
 
 ## LWJGL
 
-Verified in Chromium by the `lwjgl`, `input`, `arrays`, `shaders` and `audio` demos, which
-assert on pixels read back from the live WebGL2 framebuffer, drive real key, button and wheel
-events, and play a tone through to its end, plus 115 JVM tests that run the emulation against
-recording and fake devices.
+Verified in Chromium by the `lwjgl`, `input`, `arrays`, `shaders`, and `audio` demos, which
+assert framebuffer output, drive real keyboard, mouse and wheel events, and play audio through to
+completion. The compatibility layer is also covered by 115 JVM tests running against recording and
+fake devices.
 
 | Call group | State |
 |------------|-------|
@@ -87,208 +87,208 @@ recording and fake devices.
 | `Mouse.setCursorPosition` | no-op, see below |
 | `BufferUtils` allocation, `MemoryUtil` text encoding | works |
 | `MemoryUtil.getAddress` | refused, see below |
-| Client arrays: `glVertexPointer`, `glColorPointer`, `glTexCoordPointer` | works |
+| Client arrays | works |
 | `glDrawArrays`, `glDrawElements` | works, except indexed `GL_QUADS` |
-| `GL15` buffer objects: gen/bind/delete, data, sub-data | works |
+| `GL15` buffer objects | works |
 | `glNormalPointer`, `glIndexPointer` | not emulated |
 | Lighting, fog, display lists, `glTexEnv` | not emulated |
-| `GL20` shader and program objects, info logs, `glValidateProgram` | works |
-| `GL20` uniforms: scalar, vector and matrix forms | works |
-| `GL20` generic attributes: pointer, enable, bind and query location | works |
-| Desktop GLSL 1.10 and 1.20 shader source | works, translated |
-| GLSL 1.30 and above, fixed-function GLSL built-ins | refused, see below |
-| `glBegin`/`glEnd` while a program is bound | refused, see below |
-| `AL` create/destroy, `AL10` buffers, sources and listener | works |
-| `alGetError` latching, `AL_INVALID_NAME` on a name that is gone | works |
-| Source gain, pitch, looping, position, relative positioning | works |
-| Distance attenuation: reference distance, rolloff, max distance | works |
+| `GL20` shader/program objects, uniforms and generic attributes | works |
+| Desktop GLSL 1.10 / 1.20 | works, translated |
+| GLSL 1.30+, fixed-function GLSL built-ins | refused |
+| `glBegin`/`glEnd` with a bound program | refused |
+| `AL` / `AL10` buffers, sources and listener | works |
+| `alGetError` latching | works |
+| Source gain, pitch, looping, positioning | works |
+| Distance attenuation | works |
 | `AL_NONE`, `AL_INVERSE_DISTANCE`, `AL_INVERSE_DISTANCE_CLAMPED` | works |
-| Other distance models, cone angles, min and max gain, `AL_DIRECTION` | refused, see below |
-| Doppler shift, `AL_VELOCITY` | recorded, no effect, see below |
-| Streaming: `alSourceQueueBuffers` and its queue counters | refused, see below |
+| Other distance models, cone angles, min/max gain | refused |
+| Doppler (`AL_VELOCITY`) | recorded, no effect |
+| Streaming (`alSourceQueueBuffers`) | refused |
 | `ALC10`, capture, `WaveData` | not emulated |
 
-Every unimplemented entry point throws `UnsupportedOperationException` naming the call. Nothing
-is silently ignored: a dropped state change produces a rendering bug that is far more expensive
-to track down than a stack trace.
+Every unsupported entry point throws `UnsupportedOperationException` naming the call. Nothing is
+silently ignored: a stack trace is cheaper than debugging incorrect rendering.
 
-### GL_QUADS is expanded, not dropped
-WebGL2 has no `GL_QUADS`. Each quad becomes triangles `(0,1,2)` and `(0,2,3)` drawn through an
-element buffer, preserving GL's winding so face culling behaves the same, and a trailing
-incomplete quad is discarded as desktop GL does. The index pattern depends only on the quad
-count and the indices for *n* quads are a prefix of those for any larger *n*, so the element
-buffer is uploaded once and re-uploaded only when it grows.
+### GL_QUADS
 
-### Client arrays are uploaded, because WebGL has no client memory
-A pointer into a plain NIO buffer names memory the GPU cannot reach. The buffer is kept rather
-than read once, and copied into an internal buffer object on every draw — desktop code sets a
-pointer once and refills what is behind it every frame, and reading it at pointer-set time would
-render whatever happened to be there.
+WebGL2 has no `GL_QUADS`.
 
-A pointer into a buffer object costs nothing extra: the data is already on the GPU, and only the
-attribute layout is set. That is the path worth taking for geometry that does not change.
+Flagon expands every quad into indexed triangles while preserving winding order. Incomplete quads
+are discarded, matching desktop GL. The generated index buffer is uploaded only when it grows.
 
-A *disabled* array is not an absent one. GL feeds every vertex the current `glColor` or
-`glTexCoord` instead, which maps onto a constant generic attribute; leaving the attribute
-undefined would render black rather than the color that was set.
+### Client arrays
 
-Buffer bindings belong to the application. The pipeline binds buffers of its own to stage client
-arrays and to hold quad indices, then restores what the caller had bound, so a draw is not
-visible in `GL_ARRAY_BUFFER` afterwards.
+WebGL cannot read client memory directly.
 
-`glDrawElements` refuses `GL_QUADS` rather than approximating it. Expanding quads means
-rewriting the index buffer, and that buffer belongs to the caller — `glDrawArrays` can expand
-quads because it generates the indices itself.
+Pointers into NIO buffers are staged into internal buffer objects at draw time. Pointers into VBOs
+are used directly.
 
-### A bound program replaces the fixed-function pipeline
-`glUseProgram` decides which pipeline a draw goes through. With a program bound, draws read the
-generic attribute arrays set by `glVertexAttribPointer` and nothing of GL's own state reaches the
-shader; with none bound, they read the client arrays of `GL11` and the built-in shader that
-reproduces fixed-function output. `glUseProgram(0)` puts the second one back.
+Disabled arrays become constant generic attributes, matching fixed-function OpenGL. Temporary
+buffer bindings are restored after every draw, so caller state is preserved.
 
-`glBegin` is refused while a program is bound. Immediate mode exists to feed the fixed-function
-pipeline, and on the desktop a shader reads those vertices through `gl_Vertex` and its
-neighbours — which GLSL ES does not have. Drawing them through the program anyway would put
-geometry on screen with the wrong shader reading it.
+Indexed `GL_QUADS` are refused rather than rewritten, because rewriting the caller's index buffer
+would change application-owned data.
 
-### Desktop GLSL is translated, and only so far
-WebGL2 compiles GLSL ES 1.00 and 3.00. Desktop GLSL 1.10 and 1.20 are close enough to the first
-that the version directive is dropped and the source passes through: `attribute`, `varying`,
-`texture2D` and `gl_FragColor` mean the same thing in both. A fragment shader is given
-`precision mediump float;` if it declares no precision of its own, which desktop GLSL has no way
-to express and ES requires.
+### Shader programs
 
-Two things are refused by name rather than handed to the browser as a syntax error. GLSL 1.30 and
-above diverge too far to rewrite. The fixed-function built-ins —
-`gl_ModelViewProjectionMatrix`, `gl_Vertex`, `gl_MultiTexCoord0`, `ftransform()` and the rest —
-are GL state that GL ES never had; a shader using them needs its matrices and attributes passed
-in as its own uniforms and attributes.
+`glUseProgram` switches between two rendering pipelines.
 
-### Vertex attributes must be aligned
-WebGL requires an attribute's offset and stride to be a multiple of its component size, where
-desktop GL does not. An interleaved format of two floats plus three colour bytes has an 11-byte
-stride: legal on the desktop, and rejected here. Flagon throws
-`UnsupportedCapabilityException` naming the offending value, because the browser's own answer is
-an `INVALID_OPERATION` that draws nothing and reports nothing.
+With a program bound, draws use generic vertex attributes and the application's shader. With no
+program bound, draws use fixed-function client arrays and the built-in compatibility shader.
 
-### Sound is silent until the page is touched
-A browser suspends an `AudioContext` created without a user gesture, and every source it plays is
-inaudible until the page is clicked or typed into. Flagon asks for the context back on the first
-of either and says on the console that it is waiting, because a run that made no sound and
-reported nothing looks like a broken mixer rather than a browser policy.
+Immediate mode is refused while a program is bound. Desktop GLSL reads `gl_Vertex` and related
+built-ins that GLSL ES does not provide, so attempting to emulate the combination would silently
+produce incorrect rendering.
 
-`AudioDevice.isOutputLive()` is the honest answer to "can anything be heard right now", and the
-`audio` demo prints it. Playback itself is unaffected: a suspended context still advances a
-source to its end, so code waiting on `AL_STOPPED` is never stranded.
+### Desktop GLSL
 
-### One buffer per source, played whole
-Web audio plays a buffer from beginning to end and reports only that it finished.
-`alSourceQueueBuffers` needs a mixer that says how much of a queue it has consumed, so streaming
-is refused by name rather than approximated — a music track that silently plays its first chunk
-forever is worse than a stack trace. Attach a single buffer with `alSourcei(AL_BUFFER)`.
+Desktop GLSL 1.10 and 1.20 are translated into GLSL ES where possible. Version directives are
+removed, equivalent language features are preserved, and fragment shaders are given a default
+precision qualifier when required.
 
-A source's node is rebuilt on every `alSourcePlay`, because a web audio source that has been
-started cannot be started again. Its gain and panner outlive it and hold what OpenAL keeps on the
-source, so gain, pitch and position survive a stop and a replay.
+GLSL 1.30+ and fixed-function GLSL built-ins (`gl_Vertex`,
+`gl_ModelViewProjectionMatrix`, `ftransform()`, etc.) are refused. They depend on functionality
+that does not exist in GL ES.
 
-### Distance attenuation maps onto the panner; doppler does not
-`AL_REFERENCE_DISTANCE`, `AL_ROLLOFF_FACTOR` and `AL_MAX_DISTANCE` are the same three numbers a
-`PannerNode` takes, and inverse attenuation is the model both default to. `AL_NONE` is expressed
-as a rolloff of zero, and `alGetSourcef` still reports the factor that was set rather than the
-zero the browser was given. Linear and exponential models are refused by name.
+### Vertex attributes
 
-Web audio removed velocity and doppler shift from its panner and listener outright.
-`AL_VELOCITY` is recorded so a caller reading it back sees what it set, and warns once that it
-produces no pitch shift. `AL_SOURCE_RELATIVE` has no counterpart either and is emulated by
-offsetting the source by the listener, which is what OpenAL means by it.
+WebGL requires attribute offsets and strides to be aligned to their component size.
 
-### A socket the page cannot open
-A browser has no raw TCP, and no API added to it will change that. What a page can do is ask
-something that has one. `Network.connect` opens a websocket to a proxy served alongside the page,
-which opens the real socket and pipes the bytes back; `Connection` is then an ordinary blocking
-byte stream, and a read parks the green thread rather than handing the caller a callback.
+Formats that are legal on desktop GL but illegal in WebGL throw
+`UnsupportedCapabilityException` naming the offending value rather than failing with an opaque
+`INVALID_OPERATION`.
 
-The proxy decides who may be reached. The one in the dev server is the reference implementation
-and is told about `localhost` only — every other address is refused by name, with the reason,
-rather than left to time out. A deployment that ships Flagon supplies its own and makes the same
-decision for itself; there is no default that is safe everywhere.
+### Audio activation
 
-`java.net.URL` goes the same way. Flagon installs a `URLStreamHandlerFactory` at boot, so an
-application that opens an http url reaches the proxy without knowing one exists — the seam
-`StoreFileSystem` is for `java.io`. It speaks HTTP/1.1 with `Connection: close`, and understands
-`Content-Length`, chunked bodies and bodies that end when the connection does.
+Browsers suspend `AudioContext` until a user gesture.
 
-Three things are genuinely out of reach:
+Flagon resumes audio after the first click or key press and reports the wait on the console.
+Playback timing continues while suspended, so sources still reach `AL_STOPPED` and code waiting on
+them is not stranded.
 
-- **https.** TLS down a raw socket would have to be implemented in javascript, and a page that
-  cannot verify a certificate has no business claiming it did. https urls are left to TeaVM's own
-  handler, which fetches them over XHR and is subject to CORS.
-- **Listening.** `ServerSocket` has no meaning in a page; nothing can connect to a tab.
-- **UDP.** The proxy carries one stream per socket. Datagrams would need a protocol of their own.
+### Audio playback
 
-### Input conventions are converted at the browser boundary
-Three differ, and each would be a subtle bug if left to callers:
+Web Audio plays complete buffers and exposes no queue progress.
 
-- **Y axis.** The DOM measures down from the top, GL-era input up from the bottom.
-- **Button order.** The DOM orders buttons left, middle, right; LWJGL left, right, middle.
-- **Wheel units.** The DOM reports pixels, positive toward the user. Deltas accumulate to a
-  120-unit notch rather than emitting one per event, so a trackpad does not scroll many times
-  faster than a wheel. Line and page delta modes are approximated at 40 and 400 pixels.
+`alSourceQueueBuffers` is therefore refused rather than approximated. Attach a single buffer with
+`alSourcei(AL_BUFFER)`.
 
-Keys are identified by `KeyboardEvent.code`, which names the physical key and ignores the
-layout — the same thing a scancode means. Using `KeyboardEvent.key` would report the key left of
-`1` as `²` on an AZERTY keyboard and match no scancode.
+Each call to `alSourcePlay` creates a new Web Audio source node. Gain, pitch and position are
+stored separately so they survive stop and replay.
 
-Pointer lock requires a user gesture and may be refused, so `Mouse.setGrabbed` reports whether
-the request was accepted and `isGrabbed()` is the authority on whether it took effect. Event
-queues hold 256 events and drop the oldest, so an application that stops draining cannot grow
-them without limit.
+### Distance attenuation
 
-### Mouse.setCursorPosition does nothing
-A page may not warp the pointer. A grabbed pointer has no position to set and a free one belongs
-to the user. Desktop code calls this to re-center a pointer it has already grabbed, where it
-changes nothing — the one call implemented as a no-op rather than a refusal.
+Reference distance, rolloff factor and maximum distance map directly onto a `PannerNode`.
 
-### Buffers have no address
-`MemoryUtil.getAddress` and friends throw `UnsupportedCapabilityException`. Buffers live in the
-VM heap, nothing on the page can reach them, and a fabricated pointer would be used as a real
-one. `BufferUtils` allocates through `allocateDirect` in native byte order: callers routinely
-write through one typed view and read through another, and Java's big-endian default would
-silently scramble every one of them.
+Linear and exponential distance models are refused.
 
-### The frame loop depends on TeaVM's async transformation
-`Display.update()` suspends the calling green thread and resumes on `requestAnimationFrame`.
-This only works for code reachable from an `@Async` method on a TeaVM-started thread, which
-`main` is. Calling it from a plain JS callback would deadlock the loop.
+Velocity is recorded for compatibility but produces no Doppler effect because Web Audio removed
+that functionality. `AL_SOURCE_RELATIVE` is emulated by offsetting the source relative to the
+listener.
 
-### Display.sync(fps) does not sleep
-Desktop LWJGL blocks to hit a frame rate. `requestAnimationFrame` already paces frames, and
-sleeping would cost a frame rather than save one, so the request is recorded and ignored.
+### Networking
+
+A browser cannot open raw TCP sockets.
+
+`Network.connect()` opens a websocket to a proxy, which owns the real socket and forwards bytes in
+both directions. To callers, a `Connection` remains a blocking byte stream; reads suspend the
+current green thread until data arrives.
+
+The proxy decides which hosts may be reached. The development proxy allowlists `localhost`; a
+deployment supplies its own policy.
+
+`java.net.URL` follows the same path. Flagon installs a `URLStreamHandlerFactory` at boot so
+unmodified HTTP code transparently uses the active `Network` implementation.
+
+Three capabilities remain unavailable:
+
+- **HTTPS.** TLS over raw sockets is not implemented. HTTPS URLs fall back to TeaVM's XHR-based
+  handler and remain subject to CORS.
+- **Listening.** Browsers cannot accept inbound socket connections.
+- **UDP.** The proxy transports streams only.
+
+### Input
+
+Input belongs to a `DisplaySurface`, so `InputSource` hangs from it. Events are queued and polled
+rather than delivered through callbacks, matching desktop application structure.
+
+`platform-api` defines the scancode numbering. Each host maps onto those values so applications
+see consistent input regardless of platform.
+
+The browser implementation requires no locking. DOM events execute only while the game loop is
+suspended in `Frames.awaitNextFrame()`, so event queues are never modified while being drained.
+
+### Browser input conventions
+
+The browser differs from desktop input in three places:
+
+- **Y axis.** DOM coordinates grow downward; desktop GL input grows upward.
+- **Mouse buttons.** DOM orders buttons left, middle, right; LWJGL uses left, right, middle.
+- **Mouse wheel.** DOM reports pixel deltas. Flagon accumulates them into 120-unit wheel notches
+  so trackpads and wheels behave consistently.
+
+Keys are identified by `KeyboardEvent.code`, preserving physical key positions regardless of
+keyboard layout.
+
+Pointer lock requires a user gesture and may be refused. `Mouse.setGrabbed()` reports whether the
+request succeeded, and `isGrabbed()` is the authoritative state.
+
+Event queues are bounded to 256 entries and discard the oldest events when full.
+
+### Mouse.setCursorPosition
+
+Browsers do not allow pages to warp the cursor.
+
+A grabbed pointer has no position to set, and an ungrabbed pointer belongs to the user. The method
+is therefore implemented as a no-op, matching the common desktop use of recentering an already
+grabbed cursor.
+
+### Buffer addresses
+
+`MemoryUtil.getAddress()` and related methods throw
+`UnsupportedCapabilityException`.
+
+Buffers live in the managed heap and cannot be exposed as native pointers. `BufferUtils`
+continues to allocate direct, native-endian buffers so typed views behave as desktop code expects.
+
+### Frame timing
+
+`Display.update()` suspends the current green thread and resumes on
+`requestAnimationFrame()`. This depends on TeaVM's async transformation and only works from a
+TeaVM-managed thread.
+
+`Display.sync(fps)` records the requested frame rate but does not sleep.
+`requestAnimationFrame()` already paces rendering, and delaying further would only skip frames.
 
 ## Known gaps and shims
 
-### `Integer::sum` is missing from TeaVM's classlib
-Linking fails with `Method java.lang.Integer.sum(II)I was not found`. Sibling methods
-(`Integer.parseInt`, `Long.sum`) are unaffected. Worked around at the call site with a lambda.
-This will not be the last gap: any large jar reaches further into `java.*` than the sandbox does.
-The pattern that worked here — link, read the missing-method name, then choose between a
-call-site change and a classlib supplement — is the one to repeat rather than pre-empt.
+### `Integer::sum`
 
-### Null dereference does not throw `NullPointerException` by default
-Without `strict`, TeaVM's JS backend emits no null checks, so a null dereference becomes a
-JavaScript `TypeError` that `catch (NullPointerException)` cannot catch. Enabled `strict` in the
-root POM; costs about 9% bundle size. Non-negotiable — desktop Java catches NPEs. The self-test
-checks an NPE is catchable in place and across a call boundary, so losing the flag fails the
-suite rather than quietly changing exception behaviour everywhere.
+TeaVM 0.12.0 omits `Integer.sum(int, int)` from its class library.
 
-### TeaVM's JS entry point marshals `main`'s arguments as `Object[]`
-`$rt_mainStarter` builds the argument array with `$rt_createArray($rt_objcls(), n)`, so `main`
-receives an `Object[]` where its signature says `String[]`. Invisible until `strict` mode checks
-a cast, then it surfaces as a bare `ClassCastException` far from the cause.
-`BrowserPlatform.copyOf` re-types the array at the entry point, and the self-test casts its own
-parameter back to `String[]` and echoes what it received so a regression fails at the boundary.
+The current workaround replaces the call site with an equivalent lambda. Similar gaps are expected
+as larger applications exercise more of `java.*`; the recommended approach is to fix them
+individually rather than pre-emptively patch the class library.
 
-### Vite will not serve `public/` files through the module pipeline
-The compiled bundle is a build artifact, correctly placed in `public/`, but a bare
-`import('/flagon/sandbox.js')` makes Vite try to transform it and fail. `runBundle` resolves the
-path to an absolute URL so the bundler treats it as external and the browser fetches it as-is.
+### `NullPointerException`
+
+TeaVM's JavaScript backend omits null checks unless `strict` mode is enabled, causing null
+dereferences to surface as JavaScript `TypeError`s instead of catchable
+`NullPointerException`s.
+
+`strict` is enabled in the root POM despite the bundle-size cost. The self-test verifies that NPEs
+remain catchable both directly and across call boundaries.
+
+### `main(String[])`
+
+TeaVM's generated entry point constructs `main`'s arguments as `Object[]` rather than `String[]`.
+
+`BrowserPlatform.copyOf()` re-types the array at the entry point, and the self-test verifies the
+conversion so regressions fail immediately.
+
+### Vite module loading
+
+The compiled bundle is a build artifact under `public/`.
+
+Importing it directly causes Vite to treat it as a module and attempt a transform. `runBundle`
+instead resolves the bundle to an absolute URL so the browser fetches it unchanged.

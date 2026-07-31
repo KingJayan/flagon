@@ -31,7 +31,7 @@ Flagon itself is application-agnostic. Work on any particular application lives 
 - No application source modifications required
 - Ahead-of-time Java → JavaScript compilation with TeaVM
 - WebGL2 implementation of core LWJGL APIs
-- Browser-native implementations of input, filesystem, and platform APIs
+- Browser-native implementations of input, filesystem, audio, networking, and platform APIs
 - Application-agnostic architecture for downstream projects
 
 ## Documentation
@@ -40,22 +40,6 @@ Flagon itself is application-agnostic. Work on any particular application lives 
 * **[Compatibility Matrix](docs/COMPATIBILITY.md):** Detailed breakdown of supported and unsupported features.
 * **[Running Existing Applications](docs/DOWNSTREAM.md):** Compiling an application jar to a bundle.
 
-## Roadmap
-
-| Stage | Status |
-| :--- | :--- |
-| Build pipeline | `✔` |
-| Runtime boots in browser | `✔` |
-| Java programs execute | `✔` |
-| LWJGL demo renders | `✔` |
-| Keyboard and mouse input | `✔` |
-| NIO buffers (`BufferUtils`, `MemoryUtil`) | `✔` |
-| Vertex arrays and buffer objects (`GL15`) | `✔` |
-| Loading an application jar | `✔` |
-| Shader objects (`GL20`) | `✔` |
-| Virtual filesystem on OPFS | `✔` |
-| Audio (`OpenAL` → WebAudio) | `✔` |
-| Networking through a proxy | `✔` |
 
 ## Quickstart
 
