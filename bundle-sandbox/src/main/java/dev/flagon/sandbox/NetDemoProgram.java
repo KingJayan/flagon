@@ -8,6 +8,9 @@ import dev.flagon.platform.net.NetworkException;
 import dev.flagon.runtime.Program;
 
 import java.io.ByteArrayOutputStream;
+import java.io.InputStream;
+import java.net.URL;
+import java.net.URLConnection;
 import java.nio.charset.StandardCharsets;
 
 /**
@@ -40,6 +43,7 @@ public final class NetDemoProgram implements Program {
         int port = Integer.parseInt(address.substring(address.lastIndexOf(':') + 1));
 
         fetch(console, network, host, port);
+        fetchByUrl(console, "http://" + address + PROBE);
         refused(console, network, host);
         disallowed(console, network);
         console.info("net: done");
@@ -70,6 +74,23 @@ public final class NetDemoProgram implements Program {
             connection.close();
         }
         console.info("closed: " + !connection.isOpen());
+    }
+
+    /** the same file again, this time through code that has never heard of a proxy */
+    private void fetchByUrl(ConsoleSink console, String address) throws Exception {
+        URLConnection connection = new URL(address).openConnection();
+        console.info("url type: " + connection.getContentType());
+        try (InputStream body = connection.getInputStream()) {
+            ByteArrayOutputStream collected = new ByteArrayOutputStream();
+            byte[] chunk = new byte[256];
+            int count = body.read(chunk);
+            while (count >= 0) {
+                collected.write(chunk, 0, count);
+                count = body.read(chunk);
+            }
+            console.info("url body: "
+                    + new String(collected.toByteArray(), StandardCharsets.UTF_8).trim());
+        }
     }
 
     /** nothing is listening on port 1, and a connection that cannot be made has to say so */

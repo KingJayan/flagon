@@ -33,6 +33,15 @@ test.describe('sockets through a proxy', () => {
     await expect(page.getByTestId('log')).toContainText('closed: true');
   });
 
+  test('answers an unmodified java.net.URL over the same proxy', async ({ page }) => {
+    await runDemo(page);
+
+    await expect(page.getByTestId('log')).toContainText('url type: text/plain');
+    await expect(page.getByTestId('log')).toContainText(
+      'url body: flagon reached this server through a socket it could not open',
+    );
+  });
+
   test('reports a port with nothing behind it rather than waiting', async ({ page }) => {
     await runDemo(page);
 
