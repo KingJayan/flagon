@@ -212,6 +212,63 @@ class NetworkHttpConnectionTest {
     }
 
     @Test
+    void refusesToSendAHeaderValueWithALineBreakInIt() throws Exception {
+        answer("HTTP/1.1 200 OK\r\nContent-Length: 0\r\n\r\n");
+
+        HttpURLConnection connection = open("http://host:7/");
+        connection.setRequestProperty("X-Name", "value\r\nInjected: yes");
+
+        IOException failed = assertThrows(IOException.class, connection::getInputStream);
+        assertTrue(failed.getMessage().contains("line break"), failed.getMessage());
+        assertEquals("", asked.get());
+    }
+
+    @Test
+    void refusesToSendAHeaderNameWithALineBreakInIt() throws Exception {
+        answer("HTTP/1.1 200 OK\r\nContent-Length: 0\r\n\r\n");
+
+        HttpURLConnection connection = open("http://host:7/");
+        connection.setRequestProperty("X-Name\r\nInjected", "yes");
+
+        assertThrows(IOException.class, connection::getInputStream);
+        assertEquals("", asked.get());
+    }
+
+    @Test
+    void refusesToAskForATargetThatWouldBreakTheRequestLine() throws Exception {
+        answer("HTTP/1.1 200 OK\r\nContent-Length: 0\r\n\r\n");
+
+        HttpURLConnection connection = open("http://host:7/some where");
+
+        assertThrows(IOException.class, connection::getInputStream);
+        assertEquals("", asked.get());
+    }
+
+    @Test
+    void givesUpOnALineTooLongToBeOneAServerMeant() {
+        answer("HTTP/1.1 200 OK\r\nX-Long: " + "a".repeat(HttpLines.MAX_LINE) + "\r\n\r\n");
+
+        HttpURLConnection connection = open("http://host:7/");
+
+        IOException failed = assertThrows(IOException.class, connection::getInputStream);
+        assertTrue(failed.getMessage().contains("longer than"), failed.getMessage());
+    }
+
+    @Test
+    void givesUpOnMoreHeadersThanAServerWouldSend() {
+        StringBuilder response = new StringBuilder("HTTP/1.1 200 OK\r\n");
+        for (int at = 0; at < 200; at++) {
+            response.append("X-Filler-").append(at).append(": one\r\n");
+        }
+        answer(response.append("\r\n").toString());
+
+        HttpURLConnection connection = open("http://host:7/");
+
+        IOException failed = assertThrows(IOException.class, connection::getInputStream);
+        assertTrue(failed.getMessage().contains("headers"), failed.getMessage());
+    }
+
+    @Test
     void saysItIsGoingThroughAProxy() {
         assertTrue(open("http://host:7/").usingProxy());
     }

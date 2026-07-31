@@ -20,6 +20,8 @@ import java.util.Map;
  */
 final class HttpExchange {
 
+    private static final int MAX_HEADERS = 100;
+
     private final Connection connection;
     private final int status;
     private final String message;
@@ -40,10 +42,10 @@ final class HttpExchange {
             throws IOException {
         String host = url.getHost();
         int port = url.getPort() < 0 ? 80 : url.getPort();
+        byte[] head = head(url, method, host, port, requestHeaders, requestBody).getBytes(
+                StandardCharsets.ISO_8859_1);
         Connection connection = open(network, host, port);
         try {
-            byte[] head = head(url, method, host, port, requestHeaders, requestBody).getBytes(
-                    StandardCharsets.ISO_8859_1);
             connection.write(head, 0, head.length);
             if (requestBody != null && requestBody.length > 0) {
                 connection.write(requestBody, 0, requestBody.length);
@@ -84,7 +86,8 @@ final class HttpExchange {
     }
 
     private static String head(URL url, String method, String host, int port,
-                               Map<String, List<String>> requestHeaders, byte[] requestBody) {
+                               Map<String, List<String>> requestHeaders, byte[] requestBody)
+            throws IOException {
         StringBuilder head = new StringBuilder();
         head.append(method).append(' ').append(target(url)).append(" HTTP/1.1\r\n");
         head.append("Host: ").append(port == 80 ? host : host + ":" + port).append("\r\n");
@@ -92,8 +95,10 @@ final class HttpExchange {
             if (isOurs(header.getKey())) {
                 continue;
             }
+            String name = onOneLine(header.getKey(), "a header name");
             for (String value : header.getValue()) {
-                head.append(header.getKey()).append(": ").append(value).append("\r\n");
+                head.append(name).append(": ").append(onOneLine(value, "a header value"))
+                        .append("\r\n");
             }
         }
         if (requestBody != null) {
@@ -109,9 +114,27 @@ final class HttpExchange {
         return lower.equals("host") || lower.equals("connection") || lower.equals("content-length");
     }
 
-    private static String target(URL url) {
+    private static String target(URL url) throws IOException {
         String path = url.getPath() == null || url.getPath().isEmpty() ? "/" : url.getPath();
-        return url.getQuery() == null ? path : path + "?" + url.getQuery();
+        String target = url.getQuery() == null ? path : path + "?" + url.getQuery();
+        for (int at = 0; at < target.length(); at++) {
+            if (target.charAt(at) <= ' ' || target.charAt(at) == 0x7f) {
+                throw new IOException("the address '" + url + "' has a character in it that "
+                        + "cannot be asked for unescaped");
+            }
+        }
+        return target;
+    }
+
+    /** nothing an application supplies may end the line it is written on */
+    private static String onOneLine(String part, String what) throws IOException {
+        for (int at = 0; at < part.length(); at++) {
+            char one = part.charAt(at);
+            if (one == '\r' || one == '\n' || one == 0) {
+                throw new IOException(what + " may not contain a line break");
+            }
+        }
+        return part;
     }
 
     private static HttpExchange read(Connection connection, String method) throws IOException {
@@ -140,7 +163,11 @@ final class HttpExchange {
     private static Map<String, List<String>> readHeaders(InputStream raw) throws IOException {
         Map<String, List<String>> headers = new LinkedHashMap<>();
         String line = HttpLines.readLine(raw);
+        int count = 0;
         while (!line.isEmpty()) {
+            if (++count > MAX_HEADERS) {
+                throw new IOException("the server sent more than " + MAX_HEADERS + " headers");
+            }
             int colon = line.indexOf(':');
             if (colon > 0) {
                 String name = line.substring(0, colon).trim();
