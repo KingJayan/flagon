@@ -17,6 +17,9 @@ jobs:
           java-version: '21'
           cache: maven
 
+      - name: Fetch maven
+        run: for attempt in 1 2 3; do ./mvnw -B -v && exit 0; sleep 10; done; exit 1
+
       - name: Build and unit test
         run: ./mvnw -B package
 
