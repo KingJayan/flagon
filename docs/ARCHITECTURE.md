@@ -8,7 +8,8 @@ application.jar (unmodified)
 LWJGL compatibility layer      org.lwjgl.* source-compatible classes
       ↓
 platform-api                   Platform, Clock, ConsoleSink, RuntimeHost,
-                               GraphicsDevice, DisplaySurface, InputSource
+                               GraphicsDevice, DisplaySurface, InputSource,
+                               FileStore, AudioDevice
       ↓
 platform-browser               the only module that may touch browser APIs
       ↓
@@ -107,6 +108,20 @@ what makes unmodified `File` and stream code work rather than reimplementing any
 The store is where the asynchrony stops. `OpfsFileStore` blocks a green thread per call so
 everything above it — the accessor, the classlib, the application — is written as if storage
 answered immediately.
+
+## Sound
+
+`AudioDevice` is the host-agnostic mixer: PCM buffers, sources that play them, one listener, all
+addressed by int names the way `GraphicsDevice` addresses buffers and textures. `SilentAudioDevice`
+implements it in the heap for hosts without output, and times playback off the clock rather than
+doing nothing — code that waits for a sound to finish has to be let go, and that is what makes the
+contract testable on a plain JVM.
+
+`ALState` above it holds what OpenAL keeps in the context rather than on a source: the latched
+error `alGetError` hands back one call later, and the distance model, which is global in OpenAL
+and per-node in web audio. That translation belongs in `lwjgl-compat` for the same reason
+`GlslTranslator` does — the layer below deals in what the browser actually offers, and it is
+`org.lwjgl` that promises OpenAL's semantics.
 
 ## Input
 

@@ -18,7 +18,7 @@
 Flagon lets existing desktop Java/LWJGL applications run directly in the browser,
 without modifying application code.
 
-It achieves this by reimplementing the desktop APIs applications already compile
+It achieves this by reimplementing the desktop APIs that applications already compile
 against (`Display`, `GL11`, `Keyboard`, `Mouse`, `BufferUtils`, etc.) on top of
 WebGL2, DOM events, and browser APIs.
 
@@ -35,8 +35,6 @@ Flagon itself is application-agnostic. Work on any particular application lives 
 - Application-agnostic architecture for downstream projects
 
 ## Documentation
-
-Java is compiled ahead-of-time (AoT) to JavaScript using [TeaVM](https://teavm.org).
 
 * **[Architecture Guidelines (for contributing)](docs/ARCHITECTURE.md):** Layering rules and system design.
 * **[Compatibility Matrix](docs/COMPATIBILITY.md):** Detailed breakdown of supported and unsupported features.
@@ -56,7 +54,7 @@ Java is compiled ahead-of-time (AoT) to JavaScript using [TeaVM](https://teavm.o
 | Loading an application jar | `✔` |
 | Shader objects (`GL20`) | `✔` |
 | Virtual filesystem on OPFS | `✔` |
-| Audio (`OpenAL` → WebAudio) | `⧖` |
+| Audio (`OpenAL` → WebAudio) | `✔` |
 | Networking through a proxy | `⧖` |
 
 ## Quickstart
@@ -73,6 +71,7 @@ cd web && bun install && bun run dev
 Once running, open <http://localhost:5273>. Select a bundle and a program, and run it.
 The `example` bundle contains [an unmodified LWJGL application](example-app/).
 The `sandbox` bundle contains diagnostics and regression programs.
+
 
 > [!NOTE]
 > Appending ?program=selftest to the URL runs the compilation-backend regression suite.

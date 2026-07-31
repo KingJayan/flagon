@@ -4,6 +4,8 @@ import dev.flagon.platform.Clock;
 import dev.flagon.platform.ConsoleSink;
 import dev.flagon.platform.Platform;
 import dev.flagon.platform.RuntimeHost;
+import dev.flagon.platform.audio.AudioDevice;
+import dev.flagon.platform.audio.SilentAudioDevice;
 import dev.flagon.platform.UnsupportedCapabilityException;
 import dev.flagon.platform.display.DisplaySurface;
 import dev.flagon.platform.fs.FileStore;
@@ -20,6 +22,7 @@ final class FakePlatform implements Platform, Clock, ConsoleSink, RuntimeHost {
     Throwable fatalError;
 
     private final FileStore files = new MemoryFileStore();
+    private final AudioDevice audio = new SilentAudioDevice(this);
     private final String[] arguments;
     private long nanos;
 
@@ -45,6 +48,11 @@ final class FakePlatform implements Platform, Clock, ConsoleSink, RuntimeHost {
     @Override
     public FileStore files() {
         return files;
+    }
+
+    @Override
+    public AudioDevice audio() {
+        return audio;
     }
 
     @Override

@@ -10,7 +10,17 @@ export default defineConfig({
     baseURL: 'http://localhost:5273',
     trace: 'on-first-retry',
   },
-  projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
+  projects: [
+    {
+      name: 'chromium',
+      use: {
+        ...devices['Desktop Chrome'],
+        // a page that has not been clicked gets a suspended AudioContext, and the audio demo
+        // runs from the url rather than from a button
+        launchOptions: { args: ['--autoplay-policy=no-user-gesture-required', '--mute-audio'] },
+      },
+    },
+  ],
   webServer: {
     command: 'bun run dev',
     url: 'http://localhost:5273',

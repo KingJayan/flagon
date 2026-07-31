@@ -4,6 +4,9 @@ import dev.flagon.platform.Clock;
 import dev.flagon.platform.ConsoleSink;
 import dev.flagon.platform.Platform;
 import dev.flagon.platform.RuntimeHost;
+import dev.flagon.platform.audio.AudioDevice;
+import dev.flagon.platform.audio.SilentAudioDevice;
+import dev.flagon.platform.browser.audio.WebAudioDevice;
 import dev.flagon.platform.browser.display.CanvasSurface;
 import dev.flagon.platform.browser.fs.OpfsFileStore;
 import dev.flagon.platform.browser.fs.StoreFileSystem;
@@ -17,13 +20,16 @@ public final class BrowserPlatform implements Platform {
     private final ConsoleSink console;
     private final RuntimeHost host;
     private final FileStore files;
+    private final AudioDevice audio;
     private DisplaySurface surface;
 
-    private BrowserPlatform(Clock clock, ConsoleSink console, RuntimeHost host, FileStore files) {
+    private BrowserPlatform(Clock clock, ConsoleSink console, RuntimeHost host, FileStore files,
+                            AudioDevice audio) {
         this.clock = clock;
         this.console = console;
         this.host = host;
         this.files = files;
+        this.audio = audio;
     }
 
     /** @param arguments the entry point's own arguments, as the page passed them to main */
@@ -37,7 +43,22 @@ public final class BrowserPlatform implements Platform {
         FileStore files = openStorage(console);
         // installed before anything can open a file, because java.io resolves the filesystem once
         StoreFileSystem.install(files);
-        return new BrowserPlatform(new BrowserClock(), console, host, files);
+        Clock clock = new BrowserClock();
+        return new BrowserPlatform(clock, console, host, files, openAudio(console, clock));
+    }
+
+    /**
+     * web audio, or a silent mixer that still keeps the books. a host without output is worth
+     * saying out loud once: an application that waits for a sound to finish still needs to hear
+     * that it did.
+     */
+    private static AudioDevice openAudio(ConsoleSink console, Clock clock) {
+        WebAudioDevice audio = WebAudioDevice.createIfAvailable(console);
+        if (audio != null) {
+            return audio;
+        }
+        console.warn("no web audio here; sound is tracked but never heard");
+        return new SilentAudioDevice(clock);
     }
 
     /**
@@ -89,6 +110,11 @@ public final class BrowserPlatform implements Platform {
     @Override
     public FileStore files() {
         return files;
+    }
+
+    @Override
+    public AudioDevice audio() {
+        return audio;
     }
 
     @Override
