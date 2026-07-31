@@ -154,6 +154,15 @@ canvas {
   image-rendering: pixelated;
 }
 
+canvas:focus {
+  outline: none;
+}
+
+canvas:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
 .log {
   margin: 0;
   max-height: 26rem;

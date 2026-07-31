@@ -106,6 +106,57 @@ for (const backend of BACKENDS) {
       expect((await readPixel(page, 200, 60))[1]).toBeLessThan(100);
     });
 
+    test('takes the keyboard only while the canvas has focus', async ({ page }) => {
+      await start(page, backend);
+      const focused = () => page.evaluate(() => document.activeElement?.id ?? '');
+
+      expect(await focused()).toBe('flagon-canvas');
+
+      // tab is the way out: nothing on the page may be left unreachable
+      await page.keyboard.press('Tab');
+      expect(await focused()).not.toBe('flagon-canvas');
+
+      // whether the page still gets to act on a key is what preventDefault decides
+      await page.evaluate(() => {
+        const seen: boolean[] = [];
+        (window as unknown as { swallowed: boolean[] }).swallowed = seen;
+        window.addEventListener('keydown', (event) => seen.push(event.defaultPrevented));
+      });
+      const swallowed = () =>
+        page.evaluate(() => (window as unknown as { swallowed: boolean[] }).swallowed.pop());
+
+      await page.locator('#program').focus();
+      await page.keyboard.press('Space');
+      expect(await swallowed()).toBe(false);
+
+      // and a key pressed elsewhere is the page's, not the program's
+      await page.keyboard.down('KeyW');
+      expect((await readPixel(page, 600, 300))[0]).toBeLessThan(60);
+      await page.keyboard.up('KeyW');
+
+      await page.locator(CANVAS).click();
+      await page.keyboard.press('Space');
+      expect(await swallowed()).toBe(true);
+    });
+
+    test('reports the pointer in canvas pixels, not css pixels', async ({ page }) => {
+      await page.setViewportSize({ width: 420, height: 800 });
+      await start(page, backend);
+      const log = page.getByTestId('log');
+
+      const box = await page.locator(CANVAS).boundingBox();
+      if (!box) {
+        throw new Error('the canvas has no box');
+      }
+      expect(box.width).toBeLessThan(500);
+
+      await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+      await page.mouse.down();
+      await page.mouse.up();
+
+      await expect(log).toContainText(/button 0 down at 3[12]\d,1[78]\d/);
+    });
+
     test('runs the whole demo without a console error', async ({ page }) => {
       const { failures } = watchForFailures(page);
 

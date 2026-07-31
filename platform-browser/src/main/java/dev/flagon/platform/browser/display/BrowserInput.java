@@ -52,7 +52,7 @@ final class BrowserInput implements InputSource {
             return;
         }
         listeners = DomInput.attach(canvas, this::onKey, this::onButton, this::onMove,
-                this::onWheel, this::onPresence);
+                this::onWheel, this::onPresence, this::onFocus);
     }
 
     void detach() {
@@ -140,6 +140,13 @@ final class BrowserInput implements InputSource {
 
     private void onPresence(boolean pointerInside) {
         inside = pointerInside;
+    }
+
+    /** a key released after the canvas lost focus is never seen, so nothing may stay held */
+    private void onFocus(boolean focused) {
+        if (!focused) {
+            java.util.Arrays.fill(keysDown, false);
+        }
     }
 
     /** dom mouse button order vs gl-era apis order */
