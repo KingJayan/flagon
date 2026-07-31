@@ -49,7 +49,7 @@ every bundle on it.
 | Stage | Status |
 | :--- | :--- |
 | Toolchain able to emit WASM GC | `✔` |
-| Bundles compile and boot in the browser | `⧖` |
+| Bundles compile and boot in the browser | `✔` |
 | Graphics and input | `⧖` |
 | Files, audio, and networking | `⧖` |
 | Browser suite green on both backends | `⧖` |
@@ -66,7 +66,9 @@ Requires **JDK 17+** and **[bun](https://bun.sh)**. Maven is provided via the wr
 # initialize and run the development server
 cd web && bun install && bun run dev
 ```
-Once running, open <http://localhost:5273>. Select a bundle and a program, and run it.
+Once running, open <http://localhost:5273>. Select a bundle, a backend, and a program, and run it.
+`./mvnw -Pwasm package` emits the same bundles compiled to WebAssembly GC, which the `wasm` backend
+runs.
 The `example` bundle contains [an unmodified LWJGL application](example-app/).
 The `sandbox` bundle contains diagnostics and regression programs.
 

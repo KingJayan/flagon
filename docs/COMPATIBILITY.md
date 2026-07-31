@@ -2,6 +2,20 @@
 
 What the browser environment does and does not provide. Updated as each stage lands.
 
+## Backends
+
+The same sources compile to either backend: a default build emits JavaScript, `-Pwasm` emits
+WebAssembly GC. Everything below describes both unless a row says otherwise.
+
+| Area | JavaScript | WASM GC |
+|------|------------|---------|
+| Boots, runs a program, exits | works | works |
+| Java language and library | works | works, one gap below |
+| Arguments, console, lifecycle reporting | works | works |
+| Graphics, input, files, audio, networking | works | compiles and runs, not covered by tests yet |
+
+Bringing the second column level with the first is the roadmap in the [README](../README.md).
+
 ## Platform services
 
 | Area | State | Notes |
@@ -20,7 +34,8 @@ What the browser environment does and does not provide. Updated as each stage la
 
 ## Java language and library
 
-Verified in Chromium by the `selftest` program (80 checks), which runs in CI as a Playwright test.
+Verified in Chromium by the `selftest` program (80 checks), which runs in CI as a Playwright test
+on both backends.
 
 | Area | State |
 |------|-------|
@@ -57,7 +72,7 @@ console rather than silently discarding persistent data.
 
 ### RandomAccessFile writes straight through
 
-TeaVM 0.12.0's `TRandomAccessFile.close()` drops its accessor without flushing it unless opened
+TeaVM's `TRandomAccessFile.close()` drops its accessor without flushing it unless opened
 with `rws` or `rwd`. Against TeaVM's default in-memory filesystem this goes unnoticed; against a
 real backing store it loses data.
 
@@ -262,13 +277,15 @@ TeaVM-managed thread.
 
 ## Known gaps and shims
 
-### `Integer::sum`
+### A constant index past the end, under WASM GC
 
-TeaVM 0.12.0 omits `Integer.sum(int, int)` from its class library.
+`strict` inserts bound checks on both backends, but an index the compiler can prove is out of range
+escapes them under WASM GC: the access lowers to a bare `array.get`, which traps in the engine as a
+`RuntimeError` no Java `catch` block can see, where the JavaScript backend throws
+`ArrayIndexOutOfBoundsException`. An index the compiler cannot fold is checked correctly on both.
 
-The current workaround replaces the call site with an equivalent lambda. Similar gaps are expected
-as larger applications exercise more of `java.*`; the recommended approach is to fix them
-individually rather than pre-emptively patch the class library.
+Reported as issue #35. The self test reaches past the end of an array through a value the compiler
+cannot see through, so it tests the semantics rather than the optimizer.
 
 ### `NullPointerException`
 

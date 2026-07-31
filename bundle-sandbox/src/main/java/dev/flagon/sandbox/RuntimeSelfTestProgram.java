@@ -123,18 +123,23 @@ public final class RuntimeSelfTestProgram implements Program {
         check("copyOf pads with null", null, copy[2]);
 
         try {
-            int ignored = numbers[9];
+            int ignored = numbers[beyond(numbers)];
             check("out of bounds throws", true, ignored == 0);
         } catch (ArrayIndexOutOfBoundsException expected) {
             check("out of bounds throws", true, true);
         }
     }
 
+    // an index the compiler cannot fold: a constant one past the end is not bounds checked by the
+    // wasm gc backend and traps where no catch block can see it, see COMPATIBILITY.md
+    private int beyond(int[] array) {
+        return array.length + checks + 4;
+    }
+
     private void collections() {
         Map<String, Integer> counts = new HashMap<>();
         for (String word : "the quick brown the fox the".split(" ")) {
-            // Integer::sum is absent from teavm's classlib (see docs/COMPATIBILITY.md)
-            counts.merge(word, 1, (a, b) -> a + b);
+            counts.merge(word, 1, Integer::sum);
         }
         check("map merge", 3, counts.get("the"));
         check("map size", 4, counts.size());
