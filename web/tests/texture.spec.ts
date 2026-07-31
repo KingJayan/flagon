@@ -1,0 +1,42 @@
+import { test, expect, type Page } from '@playwright/test';
+import { BACKENDS, open, readPixel, expectColor, watchForFailures, type Backend } from './harness';
+
+async function runDemo(page: Page, backend: Backend): Promise<void> {
+  await open(page, backend, 'program=texture');
+  await expect(page.getByTestId('state')).toHaveText('running', { timeout: 30_000 });
+  await expect(page.getByTestId('log')).toContainText('uploaded texture');
+}
+
+for (const backend of BACKENDS) {
+  test.describe(`textures on ${backend}`, () => {
+    test('samples every texel of an uploaded image', async ({ page }) => {
+      const { failures } = watchForFailures(page);
+
+      await runDemo(page, backend);
+
+      // the 2x2 texture, magnified: one quadrant of the quad per texel
+      expectColor(await readPixel(page, 120, 260), [255, 0, 0], 'top left texel');
+      expectColor(await readPixel(page, 280, 260), [0, 255, 0], 'top right texel');
+      expectColor(await readPixel(page, 120, 120), [0, 0, 255], 'bottom left texel');
+      expectColor(await readPixel(page, 280, 120), [255, 255, 0], 'bottom right texel');
+      expect(failures).toEqual([]);
+    });
+
+    /** 0xAARRGGBB has to survive the trip to the typed array in that order. */
+    test('keeps the channel order the pixels were given in', async ({ page }) => {
+      await runDemo(page, backend);
+
+      const red = await readPixel(page, 120, 260);
+      expect(red[3], `top left alpha was ${red}`).toBe(255);
+
+      // half-opaque white blended over the clear color
+      expectColor(await readPixel(page, 560, 260), [135, 135, 141], 'faded quad');
+    });
+
+    test('modulates the texel by the vertex color', async ({ page }) => {
+      await runDemo(page, backend);
+
+      expectColor(await readPixel(page, 420, 260), [128, 0, 0], 'tinted quad');
+    });
+  });
+}

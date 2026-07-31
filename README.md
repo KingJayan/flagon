@@ -50,8 +50,8 @@ every bundle on it.
 | :--- | :--- |
 | Toolchain able to emit WASM GC | `✔` |
 | Bundles compile and boot in the browser | `✔` |
-| Graphics and input | `⧖` |
-| Files, audio, and networking | `⧖` |
+| Graphics and input | `✔` |
+| Files, audio, and networking | `✔` |
 | Browser suite green on both backends | `⧖` |
 | WASM GC as the default backend | `⧖` |
 

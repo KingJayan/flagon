@@ -24,6 +24,7 @@ public final class SandboxMain {
                 .register(new InputDemoProgram())
                 .register(new VertexArrayDemoProgram())
                 .register(new ShaderDemoProgram())
+                .register(new TextureDemoProgram())
                 .register(new FileSystemDemoProgram())
                 .register(new AudioDemoProgram())
                 .register(new NetDemoProgram());
