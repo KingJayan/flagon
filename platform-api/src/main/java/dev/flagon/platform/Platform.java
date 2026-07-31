@@ -1,6 +1,7 @@
 package dev.flagon.platform;
 
 import dev.flagon.platform.display.DisplaySurface;
+import dev.flagon.platform.fs.FileStore;
 
 /**
  * services a host must provide for desktop java programs to run.
@@ -15,6 +16,9 @@ public interface Platform {
     ConsoleSink console();
 
     RuntimeHost host();
+
+    /** @return the storage {@code java.io} reads and writes through */
+    FileStore files();
 
     /** @return whether this host can open a window at all. */
     boolean hasDisplay();

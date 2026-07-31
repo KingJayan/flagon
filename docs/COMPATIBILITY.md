@@ -11,7 +11,7 @@ What the browser environment does and does not provide. Updated as each stage la
 | Console / logging | works | mapped onto `console.*` levels |
 | `System.out` / `System.err` | works | split into lines and forwarded to the console |
 | Lifecycle reporting | works | `window.__flagonHost` |
-| Filesystem | not started | OPFS-backed virtual home directory |
+| Filesystem | works | `java.io` on the origin private file system, see below |
 | Threading | partial | blocking frame loops work via TeaVM green threads |
 | Networking | not started | needs a proxy; browsers have no raw TCP |
 | Input | works | DOM events and Pointer Lock, see below |
@@ -34,6 +34,34 @@ Verified in Chromium by the `selftest` program (80 checks), which runs in CI as 
 | Interfaces, default methods, records, virtual dispatch | works |
 | Lambdas, method references, captured locals | works |
 | Reflection | untested — likely a problem for the game |
+| `File`, `FileInputStream`, `FileOutputStream`, `RandomAccessFile` | works, see below |
+
+### Files are real, and they persist
+`java.io` reaches its filesystem through TeaVM's `VirtualFileSystem`, whose default is a heap tree
+that a page loses on reload. Flagon replaces it at boot with one backed by the **origin private
+file system**: a per-origin directory tree the browser keeps. Unmodified file code works, and what
+it writes is still there on the next load. The `files` demo proves it by counting its own runs
+across a reload.
+
+OPFS is asynchronous on the main thread — every handle arrives in a promise, and the synchronous
+access handles that would avoid that exist only inside a worker. Each call suspends the calling
+green thread and resumes when the browser answers, the same mechanism the frame loop uses.
+
+An open file is held whole in memory. The browser hands out a file at a time rather than a byte at
+a time, so reading any part of one costs a read of all of it; edits happen in the heap and go back
+on flush or close. The cost is that a file is as large in memory as on disk while it is open.
+
+Where OPFS is unavailable the store falls back to the heap, and says so on the console — an
+application that saves its work would otherwise appear to succeed and lose it.
+
+### RandomAccessFile writes straight through
+`TRandomAccessFile.close()` in TeaVM 0.12.0 drops its accessor without closing or flushing it, and
+`autoFlush` is only set for modes `rws` and `rwd`. Against TeaVM's in-memory filesystem writes
+mutate shared state as they happen and nothing is lost; against any store that writes contents
+back, everything is.
+
+`RandomAccessFile` is the only caller that opens a file both readable and writable, so those
+accessors write through on every write. Streams, which do close properly, keep the cheaper path.
 
 ## LWJGL
 

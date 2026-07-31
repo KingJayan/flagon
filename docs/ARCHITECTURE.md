@@ -82,6 +82,32 @@ rebuilt above `platform-api`:
 None of this touches a browser API, which is why it is covered by JVM unit tests running against
 a recording `GraphicsDevice` rather than only in a browser.
 
+## Shader programs
+
+`glUseProgram` chooses between two pipelines rather than switching a shader inside one.
+`FixedFunctionPipeline` owns the built-in shader and the client arrays that feed it;
+`ShaderPipeline` owns nothing but the generic attribute arrays, because everything else belongs to
+the application's program. `GLState` decides which one a draw goes through, and restores the
+caller's buffer bindings afterwards either way.
+
+Desktop GLSL and GLSL ES are different languages, and `GlslTranslator` sits between them in
+`lwjgl-compat` rather than in `platform-api` — the layer below deals in GLSL ES only, and it is
+`org.lwjgl` that promises to accept what a desktop program wrote.
+
+## Files
+
+`FileStore` is the host-agnostic contract: a tree of files and directories addressed by absolute
+path, with every method blocking until it has an answer. `MemoryFileStore` implements it in the
+heap and `OpfsFileStore` on the browser's own storage.
+
+Between `java.io` and the store sits `StoreFileSystem`, which implements TeaVM's
+`VirtualFileSystem`. That is the seam TeaVM's classlib already reads through, so replacing it is
+what makes unmodified `File` and stream code work rather than reimplementing any of it.
+
+The store is where the asynchrony stops. `OpfsFileStore` blocks a green thread per call so
+everything above it — the accessor, the classlib, the application — is written as if storage
+answered immediately.
+
 ## Input
 
 `InputSource` hangs off `DisplaySurface`, because input belongs to a window on every host. Events

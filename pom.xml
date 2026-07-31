@@ -88,6 +88,11 @@
         <version>${teavm.version}</version>
       </dependency>
       <dependency>
+        <groupId>org.teavm</groupId>
+        <artifactId>teavm-core</artifactId>
+        <version>${teavm.version}</version>
+      </dependency>
+      <dependency>
         <groupId>org.junit</groupId>
         <artifactId>junit-bom</artifactId>
         <version>${junit.version}</version>
