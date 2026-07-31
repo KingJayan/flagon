@@ -12,9 +12,10 @@ WebAssembly GC. Everything below describes both unless a row says otherwise.
 | Boots, runs a program, exits | works | works |
 | Java language and library | works | works, one gap below |
 | Arguments, console, lifecycle reporting | works | works |
-| Graphics, input, files, audio, networking | works | compiles and runs, not covered by tests yet |
+| Graphics, input, files, audio, networking | works | works |
 
-Bringing the second column level with the first is the roadmap in the [README](../README.md).
+Every browser test runs once per backend, so the two columns are held level by the same
+assertions. What remains is the roadmap in the [README](../README.md).
 
 ## Platform services
 
@@ -82,9 +83,9 @@ close correctly.
 
 ## LWJGL
 
-Verified in Chromium by the `lwjgl`, `input`, `arrays`, `shaders`, and `audio` demos, which
-assert framebuffer output, drive real keyboard, mouse and wheel events, and play audio through to
-completion. The compatibility layer is also covered by 115 JVM tests running against recording and
+Verified in Chromium on both backends by the `lwjgl`, `input`, `arrays`, `shaders`, `texture`, and
+`audio` demos, which assert framebuffer output, drive real keyboard, mouse and wheel events, and
+play audio through to completion. The compatibility layer is also covered by 115 JVM tests running against recording and
 fake devices.
 
 | Call group | State |

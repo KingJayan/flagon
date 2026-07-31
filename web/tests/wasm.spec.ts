@@ -1,16 +1,5 @@
-import { test, expect, type Page } from '@playwright/test';
-
-/** collects anything the browser itself considers an error. */
-function watchForFailures(page: Page): { failures: string[] } {
-  const failures: string[] = [];
-  page.on('console', (message) => {
-    if (message.type() === 'error') {
-      failures.push(`console.error: ${message.text()}`);
-    }
-  });
-  page.on('pageerror', (error) => failures.push(`pageerror: ${error.message}`));
-  return { failures };
-}
+import { test, expect } from '@playwright/test';
+import { watchForFailures } from './harness';
 
 test.describe('a bundle compiled to wasm gc', () => {
   test('boots the runtime and reports every phase', async ({ page }) => {
