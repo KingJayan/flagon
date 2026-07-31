@@ -5,9 +5,12 @@ import dev.flagon.platform.graphics.BufferTarget;
 import dev.flagon.platform.graphics.CompareFunc;
 import dev.flagon.platform.graphics.GraphicsDevice;
 import dev.flagon.platform.graphics.IndexType;
+import dev.flagon.platform.graphics.ShaderStage;
 
 import java.util.ArrayDeque;
 import java.util.Deque;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * the context state gl keeps internally and exposes only through its setters.
@@ -43,6 +46,10 @@ public final class GLState implements RenderState {
     private boolean building;
 
     private final VertexArrays arrays = new VertexArrays();
+    private final GenericArrays attributes;
+    private final ShaderPipeline shaders;
+    private final Map<Integer, ShaderStage> shaderStages = new HashMap<>();
+    private int program = GraphicsDevice.NO_PROGRAM;
     private int arrayBuffer;
     private int elementBuffer;
 
@@ -56,6 +63,8 @@ public final class GLState implements RenderState {
     private GLState(GraphicsDevice device) {
         this.device = device;
         this.pipeline = new FixedFunctionPipeline(device);
+        this.attributes = new GenericArrays(device.maxAttributes());
+        this.shaders = new ShaderPipeline(device, device.maxAttributes());
     }
 
     public static void attach(GraphicsDevice device) {
@@ -65,6 +74,7 @@ public final class GLState implements RenderState {
     public static void detach() {
         if (current != null) {
             current.pipeline.dispose();
+            current.shaders.dispose();
             current = null;
         }
     }
@@ -169,6 +179,12 @@ public final class GLState implements RenderState {
         if (building) {
             throw new IllegalStateException("glBegin called inside glBegin/glEnd");
         }
+        if (program != GraphicsDevice.NO_PROGRAM) {
+            throw new UnsupportedOperationException(
+                    "glBegin draws through the fixed-function pipeline, which the program bound by "
+                            + "glUseProgram has replaced. call glUseProgram(0) first, or feed the "
+                            + "program a vertex buffer of your own");
+        }
         building = true;
         primitive = mode;
         floatCount = 0;
@@ -259,7 +275,11 @@ public final class GLState implements RenderState {
 
     public void drawArrays(DrawMode mode, int first, int count) {
         requireNotBuilding("glDrawArrays");
-        pipeline.drawArrays(mode, first, count, arrays, this);
+        if (program != GraphicsDevice.NO_PROGRAM) {
+            shaders.drawArrays(mode, first, count, attributes);
+        } else {
+            pipeline.drawArrays(mode, first, count, arrays, this);
+        }
         restoreBindings();
     }
 
@@ -270,8 +290,51 @@ public final class GLState implements RenderState {
                     "glDrawElements needs indices in a buffer object; webgl has no client-side "
                             + "index arrays, so bind one with glBindBuffer first");
         }
-        pipeline.drawElements(mode, count, indexType, offsetInBytes, arrays, this);
+        if (program != GraphicsDevice.NO_PROGRAM) {
+            shaders.drawElements(mode, count, indexType, offsetInBytes, attributes);
+        } else {
+            pipeline.drawElements(mode, count, indexType, offsetInBytes, arrays, this);
+        }
         restoreBindings();
+    }
+
+    // shader programs
+
+    /**
+     * the bound program decides which pipeline a draw goes through: gl's own state feeds the
+     * fixed-function shader, and a program of the application's replaces it wholesale.
+     */
+    public void useProgram(int newProgram) {
+        program = newProgram;
+        device.useProgram(newProgram);
+    }
+
+    public int program() {
+        return program;
+    }
+
+    public GenericArrays attributes() {
+        return attributes;
+    }
+
+    /**
+     * which stage a shader name was created for
+     */
+    public void trackShader(int shader, ShaderStage stage) {
+        shaderStages.put(shader, stage);
+    }
+
+    public ShaderStage shaderStage(int shader) {
+        ShaderStage stage = shaderStages.get(shader);
+        if (stage == null) {
+            throw new IllegalArgumentException(
+                    "not a shader created by glCreateShader: " + shader);
+        }
+        return stage;
+    }
+
+    public void forgetShader(int shader) {
+        shaderStages.remove(shader);
     }
 
     private void requireNotBuilding(String call) {

@@ -8,6 +8,10 @@ public interface GraphicsDevice {
     int NO_BUFFER = 0;
     int NO_TEXTURE = 0;
     int NO_PROGRAM = 0;
+    int NO_SHADER = 0;
+
+    /** a uniform the shader does not use */
+    int NO_UNIFORM = -1;
 
     void viewport(int x, int y, int width, int height);
 
@@ -53,15 +57,55 @@ public interface GraphicsDevice {
     void bufferSubData(BufferTarget target, int offsetInBytes, byte[] data, int length);
 
     /**
-     * @throws ShaderException if either stage fails to compile, or the program fails to link
+     compiles and links in one step, for callers that have both stages in hand
      */
     int createProgram(String vertexSource, String fragmentSource);
+
+    /**
+     * the piecewise form of the above, matching gl's own object lifecycle
+     */
+    int createShader(ShaderStage stage);
+
+    /** the source must be glsl es; a host is free to reject anything else. */
+    void shaderSource(int shader, String source);
+
+    void compileShader(int shader);
+
+    boolean isShaderCompiled(int shader);
+
+    /** @return the compiler's diagnostics, empty when there were none */
+    String shaderInfoLog(int shader);
+
+    void deleteShader(int shader);
+
+    boolean isShader(int shader);
+
+    int createProgram();
+
+    void attachShader(int program, int shader);
+
+    void detachShader(int program, int shader);
+
+    /** binds {@code name} to an attribute location; only takes effect on the next link. */
+    void bindAttributeLocation(int program, int location, String name);
+
+    void linkProgram(int program);
+
+    boolean isProgramLinked(int program);
+
+    void validateProgram(int program);
+
+    boolean isProgramValid(int program);
+
+    String programInfoLog(int program);
+
+    boolean isProgram(int program);
 
     void deleteProgram(int program);
 
     void useProgram(int program);
 
-    /** @return the uniform's location, or -1 when the shader does not use it */
+    /** @return the uniform's location, or {@link #NO_UNIFORM} when the shader does not use it */
     int uniformLocation(int program, String name);
 
     void uniformMatrix4(int location, float[] matrix);
@@ -70,9 +114,31 @@ public interface GraphicsDevice {
 
     void uniform1f(int location, float value);
 
+    void uniform2f(int location, float x, float y);
+
+    void uniform3f(int location, float x, float y, float z);
+
     void uniform4f(int location, float x, float y, float z, float w);
 
+    void uniform2i(int location, int x, int y);
+
+    void uniform3i(int location, int x, int y, int z);
+
+    void uniform4i(int location, int x, int y, int z, int w);
+
+    /** sets {@code count} vectors of {@code components} floats each, read from {@code values}. */
+    void uniformFloats(int location, int components, float[] values, int count);
+
+    /** sets {@code count} vectors of {@code components} ints each, read from {@code values}. */
+    void uniformInts(int location, int components, int[] values, int count);
+
+    /** sets {@code count} square matrices of {@code size}x{@code size} floats, column-major. */
+    void uniformMatrices(int location, int size, boolean transpose, float[] values, int count);
+
     int attributeLocation(int program, String name);
+
+    /** @return how many generic vertex attributes this host allows, at least 16 */
+    int maxAttributes();
 
     void enableAttribute(int location);
 
@@ -90,7 +156,7 @@ public interface GraphicsDevice {
 
     void bindTexture(int unit, int texture);
 
-    /** uploads rgba8 pixels, one int per pixel in 0xAARRGGBB order, top row first. */
+    /** uploads rgba8 pixels */
     void textureImage(int width, int height, int[] pixels);
 
     void setTextureFilter(boolean smooth);
@@ -104,6 +170,6 @@ public interface GraphicsDevice {
 
     int height();
 
-    /** @return the first error since the last call, or {@code null} if there was none */
+    /** @return the first error since the last call, or null */
     String takeError();
 }

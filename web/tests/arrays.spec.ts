@@ -45,7 +45,7 @@ test.describe('vertex arrays and buffer objects', () => {
   test('draws an indexed quad out of a buffer object', async ({ page }) => {
     await runDemo(page);
 
-    expectColor(await readPixel(page, 176, 180), GREEN, 'vbo quad centre');
+    expectColor(await readPixel(page, 176, 180), GREEN, 'vbo quad center');
     expectColor(await readPixel(page, 70, 95), GREEN, 'bottom-left corner');
     expectColor(await readPixel(page, 282, 95), GREEN, 'bottom-right corner');
     expectColor(await readPixel(page, 70, 265), GREEN, 'top-left corner');
@@ -55,12 +55,12 @@ test.describe('vertex arrays and buffer objects', () => {
   /**
    the vertex colors are unsigned bytes
    */
-  test('reads byte colours as normalised components', async ({ page }) => {
+  test('reads byte colors as normalised components', async ({ page }) => {
     await runDemo(page);
     expect((await readPixel(page, 176, 180))[1]).toBeGreaterThan(200);
   });
 
-  test('feeds the current colour where no colour array is enabled', async ({ page }) => {
+  test('feeds the current color where no color array is enabled', async ({ page }) => {
     await runDemo(page);
     expectColor(await readPixel(page, 460, 220), RED, 'client array quad');
   });
@@ -68,7 +68,7 @@ test.describe('vertex arrays and buffer objects', () => {
   test('leaves the space between the two quads alone', async ({ page }) => {
     await runDemo(page);
     expectColor(await readPixel(page, 320, 180), CLEAR, 'between the quads');
-    expectColor(await readPixel(page, 5, 5), CLEAR, 'clear colour');
+    expectColor(await readPixel(page, 5, 5), CLEAR, 'clear color');
   });
 
   /** the pointer is set over one buffer whose contents change every frame. */

@@ -16,7 +16,7 @@ What the browser environment does and does not provide. Updated as each stage la
 | Networking | not started | needs a proxy; browsers have no raw TCP |
 | Input | works | DOM events and Pointer Lock, see below |
 | Audio | not started | OpenAL → WebAudio |
-| Graphics | partial | GL 1.1 fixed-function over WebGL2, see below |
+| Graphics | partial | GL 1.1 fixed-function and GL 2.0 shaders over WebGL2, see below |
 
 ## Java language and library
 
@@ -37,15 +37,15 @@ Verified in Chromium by the `selftest` program (80 checks), which runs in CI as 
 
 ## LWJGL
 
-Verified in Chromium by the `lwjgl`, `input` and `arrays` demos, which assert on pixels read back
-from the live WebGL2 framebuffer and drive real key, button and wheel events, plus 79 JVM tests
-that run the emulation against recording and fake devices.
+Verified in Chromium by the `lwjgl`, `input`, `arrays` and `shaders` demos, which assert on
+pixels read back from the live WebGL2 framebuffer and drive real key, button and wheel events,
+plus 108 JVM tests that run the emulation against recording and fake devices.
 
 | Call group | State |
 |------------|-------|
 | `Display` create/destroy/update/title/size/fullscreen | works |
 | Blocking `while (!isCloseRequested()) { ...; Display.update(); }` | works |
-| `GL11` clear, viewport, colour/depth mask, depth func, blend func | works |
+| `GL11` clear, viewport, color/depth mask, depth func, blend func | works |
 | `GL11` matrix stacks: push/pop/load/translate/rotate/scale/ortho/frustum | works |
 | Immediate mode: `glBegin`/`glVertex`/`glColor`/`glTexCoord`/`glEnd` | works |
 | `GL_QUADS` | works, expanded to indexed triangles |
@@ -61,7 +61,12 @@ that run the emulation against recording and fake devices.
 | `GL15` buffer objects: gen/bind/delete, data, sub-data | works |
 | `glNormalPointer`, `glIndexPointer` | not emulated |
 | Lighting, fog, display lists, `glTexEnv` | not emulated |
-| Shader objects (`GL20`) | not started |
+| `GL20` shader and program objects, info logs, `glValidateProgram` | works |
+| `GL20` uniforms: scalar, vector and matrix forms | works |
+| `GL20` generic attributes: pointer, enable, bind and query location | works |
+| Desktop GLSL 1.10 and 1.20 shader source | works, translated |
+| GLSL 1.30 and above, fixed-function GLSL built-ins | refused, see below |
+| `glBegin`/`glEnd` while a program is bound | refused, see below |
 | `OpenAL` | not started |
 
 Every unimplemented entry point throws `UnsupportedOperationException` naming the call. Nothing
@@ -86,7 +91,7 @@ attribute layout is set. That is the path worth taking for geometry that does no
 
 A *disabled* array is not an absent one. GL feeds every vertex the current `glColor` or
 `glTexCoord` instead, which maps onto a constant generic attribute; leaving the attribute
-undefined would render black rather than the colour that was set.
+undefined would render black rather than the color that was set.
 
 Buffer bindings belong to the application. The pipeline binds buffers of its own to stage client
 arrays and to hold quad indices, then restores what the caller had bound, so a draw is not
@@ -95,6 +100,37 @@ visible in `GL_ARRAY_BUFFER` afterwards.
 `glDrawElements` refuses `GL_QUADS` rather than approximating it. Expanding quads means
 rewriting the index buffer, and that buffer belongs to the caller — `glDrawArrays` can expand
 quads because it generates the indices itself.
+
+### A bound program replaces the fixed-function pipeline
+`glUseProgram` decides which pipeline a draw goes through. With a program bound, draws read the
+generic attribute arrays set by `glVertexAttribPointer` and nothing of GL's own state reaches the
+shader; with none bound, they read the client arrays of `GL11` and the built-in shader that
+reproduces fixed-function output. `glUseProgram(0)` puts the second one back.
+
+`glBegin` is refused while a program is bound. Immediate mode exists to feed the fixed-function
+pipeline, and on the desktop a shader reads those vertices through `gl_Vertex` and its
+neighbours — which GLSL ES does not have. Drawing them through the program anyway would put
+geometry on screen with the wrong shader reading it.
+
+### Desktop GLSL is translated, and only so far
+WebGL2 compiles GLSL ES 1.00 and 3.00. Desktop GLSL 1.10 and 1.20 are close enough to the first
+that the version directive is dropped and the source passes through: `attribute`, `varying`,
+`texture2D` and `gl_FragColor` mean the same thing in both. A fragment shader is given
+`precision mediump float;` if it declares no precision of its own, which desktop GLSL has no way
+to express and ES requires.
+
+Two things are refused by name rather than handed to the browser as a syntax error. GLSL 1.30 and
+above diverge too far to rewrite. The fixed-function built-ins —
+`gl_ModelViewProjectionMatrix`, `gl_Vertex`, `gl_MultiTexCoord0`, `ftransform()` and the rest —
+are GL state that GL ES never had; a shader using them needs its matrices and attributes passed
+in as its own uniforms and attributes.
+
+### Vertex attributes must be aligned
+WebGL requires an attribute's offset and stride to be a multiple of its component size, where
+desktop GL does not. An interleaved format of two floats plus three colour bytes has an 11-byte
+stride: legal on the desktop, and rejected here. Flagon throws
+`UnsupportedCapabilityException` naming the offending value, because the browser's own answer is
+an `INVALID_OPERATION` that draws nothing and reports nothing.
 
 ### Input conventions are converted at the browser boundary
 Three differ, and each would be a subtle bug if left to callers:
@@ -116,7 +152,7 @@ them without limit.
 
 ### Mouse.setCursorPosition does nothing
 A page may not warp the pointer. A grabbed pointer has no position to set and a free one belongs
-to the user. Desktop code calls this to re-centre a pointer it has already grabbed, where it
+to the user. Desktop code calls this to re-center a pointer it has already grabbed, where it
 changes nothing — the one call implemented as a no-op rather than a refusal.
 
 ### Buffers have no address

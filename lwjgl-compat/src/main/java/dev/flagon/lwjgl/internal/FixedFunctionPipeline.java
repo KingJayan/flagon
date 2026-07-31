@@ -71,9 +71,7 @@ public final class FixedFunctionPipeline {
     private final int buffer;
     private final QuadIndices quadIndices;
 
-    // one staging buffer per slot, for arrays that live in client memory rather than a vbo
-    private final int[] stagingBuffers = new int[VertexArrays.SLOTS];
-    private final byte[][] stagingBytes = new byte[VertexArrays.SLOTS][];
+    private final StagingArrays staging;
 
     private final int modelViewUniform;
     private final int projectionUniform;
@@ -87,6 +85,7 @@ public final class FixedFunctionPipeline {
         this.program = device.createProgram(VERTEX_SHADER, FRAGMENT_SHADER);
         this.buffer = device.createBuffer();
         this.quadIndices = new QuadIndices(device);
+        this.staging = new StagingArrays(device, VertexArrays.SLOTS);
 
         modelViewUniform = device.uniformLocation(program, "u_modelView");
         projectionUniform = device.uniformLocation(program, "u_projection");
@@ -182,7 +181,7 @@ public final class FixedFunctionPipeline {
     }
 
     /**
-     * a disabled array means gl feeds every vertex the current constant — the colour set by
+     * a disabled array means gl feeds every vertex the current constant — the color set by
      * {@code glColor}, the coordinate set by {@code glTexCoord} — rather than nothing at all.
      */
     private void bindSlot(int slot, ClientArray array, float x, float y, float z, float w) {
@@ -192,43 +191,11 @@ public final class FixedFunctionPipeline {
             return;
         }
         device.enableAttribute(slot);
-        if (array.buffer() != GraphicsDevice.NO_BUFFER) {
-            device.bindBuffer(BufferTarget.ARRAY, array.buffer());
-        } else {
-            device.bindBuffer(BufferTarget.ARRAY, stagingBuffer(slot));
-            byte[] bytes = staging(slot, array);
-            device.bufferData(BufferTarget.ARRAY, bytes, bytes.length, BufferUsage.STREAM);
-        }
-        device.attributePointer(slot, array.components(), array.type(), array.isNormalized(),
-                array.stride(), array.offset());
-    }
-
-    private int stagingBuffer(int slot) {
-        if (stagingBuffers[slot] == GraphicsDevice.NO_BUFFER) {
-            stagingBuffers[slot] = device.createBuffer();
-        }
-        return stagingBuffers[slot];
-    }
-
-    private byte[] staging(int slot, ClientArray array) {
-        int needed = array.client().capacity() * Buffers.elementSize(array.client());
-        byte[] bytes = stagingBytes[slot];
-        if (bytes == null || bytes.length != needed) {
-            bytes = new byte[needed];
-            stagingBytes[slot] = bytes;
-        }
-        Buffers.readAll(array.client(), bytes);
-        return bytes;
+        staging.bind(slot, array);
     }
 
     public void dispose() {
-        for (int slot = 0; slot < VertexArrays.SLOTS; slot++) {
-            if (stagingBuffers[slot] != GraphicsDevice.NO_BUFFER) {
-                device.deleteBuffer(stagingBuffers[slot]);
-                stagingBuffers[slot] = GraphicsDevice.NO_BUFFER;
-            }
-            stagingBytes[slot] = null;
-        }
+        staging.dispose();
         quadIndices.dispose();
         device.deleteBuffer(buffer);
         device.deleteProgram(program);

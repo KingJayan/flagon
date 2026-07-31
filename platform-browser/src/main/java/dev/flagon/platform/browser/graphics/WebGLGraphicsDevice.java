@@ -9,8 +9,11 @@ import dev.flagon.platform.graphics.GraphicsDevice;
 import dev.flagon.platform.graphics.IndexType;
 import dev.flagon.platform.graphics.Primitive;
 import dev.flagon.platform.graphics.ShaderException;
+import dev.flagon.platform.graphics.ShaderStage;
+import dev.flagon.platform.UnsupportedCapabilityException;
 import org.teavm.jso.JSObject;
 import org.teavm.jso.typedarrays.Float32Array;
+import org.teavm.jso.typedarrays.Int32Array;
 import org.teavm.jso.typedarrays.Int8Array;
 import org.teavm.jso.typedarrays.Uint32Array;
 import org.teavm.jso.typedarrays.Uint8Array;
@@ -256,9 +259,110 @@ public final class WebGLGraphicsDevice implements GraphicsDevice {
     }
 
     @Override
+    public int createShader(ShaderStage stage) {
+        return store(gl.createShader(stage == ShaderStage.VERTEX
+                ? WebGL2.VERTEX_SHADER
+                : WebGL2.FRAGMENT_SHADER));
+    }
+
+    @Override
+    public void shaderSource(int shader, String source) {
+        gl.shaderSource(lookup(shader, "shader"), source);
+    }
+
+    @Override
+    public void compileShader(int shader) {
+        gl.compileShader(lookup(shader, "shader"));
+    }
+
+    @Override
+    public boolean isShaderCompiled(int shader) {
+        return gl.getShaderParameter(lookup(shader, "shader"), WebGL2.COMPILE_STATUS);
+    }
+
+    @Override
+    public String shaderInfoLog(int shader) {
+        String log = gl.getShaderInfoLog(lookup(shader, "shader"));
+        return log == null ? "" : log;
+    }
+
+    @Override
+    public void deleteShader(int shader) {
+        gl.deleteShader(lookup(shader, "shader"));
+        handles.set(shader, null);
+    }
+
+    @Override
+    public boolean isShader(int shader) {
+        return live(shader) && gl.isShader(handles.get(shader));
+    }
+
+    @Override
+    public int createProgram() {
+        return store(gl.createProgram());
+    }
+
+    @Override
+    public void attachShader(int program, int shader) {
+        gl.attachShader(lookup(program, "program"), lookup(shader, "shader"));
+    }
+
+    @Override
+    public void detachShader(int program, int shader) {
+        gl.detachShader(lookup(program, "program"), lookup(shader, "shader"));
+    }
+
+    @Override
+    public void bindAttributeLocation(int program, int location, String name) {
+        gl.bindAttribLocation(lookup(program, "program"), location, name);
+    }
+
+    @Override
+    public void linkProgram(int program) {
+        gl.linkProgram(lookup(program, "program"));
+        // locations are assigned by the linker, so anything resolved before it is stale
+        forgetUniforms(program);
+    }
+
+    @Override
+    public boolean isProgramLinked(int program) {
+        return gl.getProgramParameter(lookup(program, "program"), WebGL2.LINK_STATUS);
+    }
+
+    @Override
+    public void validateProgram(int program) {
+        gl.validateProgram(lookup(program, "program"));
+    }
+
+    @Override
+    public boolean isProgramValid(int program) {
+        return gl.getProgramParameter(lookup(program, "program"), WebGL2.VALIDATE_STATUS);
+    }
+
+    @Override
+    public String programInfoLog(int program) {
+        String log = gl.getProgramInfoLog(lookup(program, "program"));
+        return log == null ? "" : log;
+    }
+
+    @Override
+    public boolean isProgram(int program) {
+        return live(program) && gl.isProgram(handles.get(program));
+    }
+
+    private boolean live(int name) {
+        return name > 0 && name < handles.size() && handles.get(name) != null;
+    }
+
+    @Override
     public void deleteProgram(int program) {
         gl.deleteProgram(lookup(program, "program"));
         handles.set(program, null);
+        forgetUniforms(program);
+    }
+
+    private void forgetUniforms(int program) {
+        uniformNames.keySet().removeIf(key -> key.startsWith(program + "/"));
     }
 
     @Override
@@ -285,7 +389,15 @@ public final class WebGLGraphicsDevice implements GraphicsDevice {
         return assigned;
     }
 
+    /**
+     * @return the location object, or null for a uniform the shader does not use — writing to
+     *         one of those is a no-op in gl, which is what makes it safe to resolve a uniform
+     *         once and set it unconditionally
+     */
     private JSObject uniform(int location) {
+        if (location == NO_UNIFORM) {
+            return null;
+        }
         if (location <= 0 || location >= uniforms.size()) {
             throw new IllegalArgumentException("not a uniform location: " + location);
         }
@@ -297,27 +409,146 @@ public final class WebGLGraphicsDevice implements GraphicsDevice {
         if (matrix.length < 16) {
             throw new IllegalArgumentException("a 4x4 matrix needs 16 floats, got " + matrix.length);
         }
-        gl.uniformMatrix4fv(uniform(location), false, Float32Array.copyFromJavaArray(matrix));
+        uniformMatrices(location, 4, false, matrix, 1);
     }
 
     @Override
     public void uniform1i(int location, int value) {
+        if (location == NO_UNIFORM) {
+            return;
+        }
         gl.uniform1i(uniform(location), value);
     }
 
     @Override
     public void uniform1f(int location, float value) {
+        if (location == NO_UNIFORM) {
+            return;
+        }
         gl.uniform1f(uniform(location), value);
     }
 
     @Override
+    public void uniform2f(int location, float x, float y) {
+        if (location == NO_UNIFORM) {
+            return;
+        }
+        gl.uniform2f(uniform(location), x, y);
+    }
+
+    @Override
+    public void uniform3f(int location, float x, float y, float z) {
+        if (location == NO_UNIFORM) {
+            return;
+        }
+        gl.uniform3f(uniform(location), x, y, z);
+    }
+
+    @Override
     public void uniform4f(int location, float x, float y, float z, float w) {
+        if (location == NO_UNIFORM) {
+            return;
+        }
         gl.uniform4f(uniform(location), x, y, z, w);
+    }
+
+    @Override
+    public void uniform2i(int location, int x, int y) {
+        if (location == NO_UNIFORM) {
+            return;
+        }
+        gl.uniform2i(uniform(location), x, y);
+    }
+
+    @Override
+    public void uniform3i(int location, int x, int y, int z) {
+        if (location == NO_UNIFORM) {
+            return;
+        }
+        gl.uniform3i(uniform(location), x, y, z);
+    }
+
+    @Override
+    public void uniform4i(int location, int x, int y, int z, int w) {
+        if (location == NO_UNIFORM) {
+            return;
+        }
+        gl.uniform4i(uniform(location), x, y, z, w);
+    }
+
+    @Override
+    public void uniformFloats(int location, int components, float[] values, int count) {
+        if (location == NO_UNIFORM) {
+            return;
+        }
+        Float32Array data = floats(values, components * count);
+        JSObject at = uniform(location);
+        switch (components) {
+            case 1 -> gl.uniform1fv(at, data);
+            case 2 -> gl.uniform2fv(at, data);
+            case 3 -> gl.uniform3fv(at, data);
+            case 4 -> gl.uniform4fv(at, data);
+            default -> throw new IllegalArgumentException(
+                    "a uniform vector has 1 to 4 components, got " + components);
+        }
+    }
+
+    @Override
+    public void uniformInts(int location, int components, int[] values, int count) {
+        if (location == NO_UNIFORM) {
+            return;
+        }
+        Int32Array data = ints(values, components * count);
+        JSObject at = uniform(location);
+        switch (components) {
+            case 1 -> gl.uniform1iv(at, data);
+            case 2 -> gl.uniform2iv(at, data);
+            case 3 -> gl.uniform3iv(at, data);
+            case 4 -> gl.uniform4iv(at, data);
+            default -> throw new IllegalArgumentException(
+                    "a uniform vector has 1 to 4 components, got " + components);
+        }
+    }
+
+    @Override
+    public void uniformMatrices(int location, int size, boolean transpose, float[] values,
+                                int count) {
+        if (location == NO_UNIFORM) {
+            return;
+        }
+        Float32Array data = floats(values, size * size * count);
+        JSObject at = uniform(location);
+        switch (size) {
+            case 2 -> gl.uniformMatrix2fv(at, transpose, data);
+            case 3 -> gl.uniformMatrix3fv(at, transpose, data);
+            case 4 -> gl.uniformMatrix4fv(at, transpose, data);
+            default -> throw new IllegalArgumentException(
+                    "a uniform matrix is 2x2 to 4x4, got " + size + "x" + size);
+        }
+    }
+
+    // a view over the array's own storage, cut to the length webgl is allowed to read: these
+    // entry points take no length of their own and would otherwise read the slack too
+    private static Float32Array floats(float[] values, int length) {
+        require(length, values.length);
+        Float32Array whole = Float32Array.fromJavaArray(values);
+        return Float32Array.create(whole.getBuffer(), whole.getByteOffset(), length);
+    }
+
+    private static Int32Array ints(int[] values, int length) {
+        require(length, values.length);
+        Int32Array whole = Int32Array.fromJavaArray(values);
+        return Int32Array.create(whole.getBuffer(), whole.getByteOffset(), length);
     }
 
     @Override
     public int attributeLocation(int program, String name) {
         return gl.getAttribLocation(lookup(program, "program"), name);
+    }
+
+    @Override
+    public int maxAttributes() {
+        return gl.getParameter(WebGL2.MAX_VERTEX_ATTRIBS);
     }
 
     @Override
@@ -333,8 +564,25 @@ public final class WebGLGraphicsDevice implements GraphicsDevice {
     @Override
     public void attributePointer(int location, int components, AttributeType type,
                                  boolean normalized, int strideInBytes, int offsetInBytes) {
+        requireAligned(type, strideInBytes, "stride");
+        requireAligned(type, offsetInBytes, "offset");
         gl.vertexAttribPointer(location, components, attributeType(type), normalized,
                 strideInBytes, offsetInBytes);
+    }
+
+    /**
+     * webgl requires an attribute's offset and stride to be a multiple of its component size,
+     * where desktop gl does not. an interleaved format that pads to an odd width is legal on the
+     * desktop and draws nothing here, so it is named rather than left to a console warning.
+     */
+    private static void requireAligned(AttributeType type, int value, String what) {
+        int size = type.sizeInBytes();
+        if (value % size != 0) {
+            throw new UnsupportedCapabilityException(
+                    "vertex attribute " + what + " " + value + " is not a multiple of " + size
+                            + ", the size of a " + type + ". webgl requires that alignment; pad "
+                            + "the vertex format so every attribute starts on its own boundary");
+        }
     }
 
     @Override

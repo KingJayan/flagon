@@ -48,9 +48,9 @@ test.describe('an application jar in the browser', () => {
     const background = await readPixel(page, 5, 5);
     expect(Math.abs(background[0] - 18)).toBeLessThanOrEqual(2);
 
-    // the square is 140px across at the centre of a 640x360 canvas, whatever its rotation
-    const centre = await readPixel(page, 320, 180);
-    expect(centre.slice(0, 3).some((channel) => channel > 40)).toBe(true);
+    // the square is 140px across at the center of a 640x360 canvas, whatever its rotation
+    const center = await readPixel(page, 320, 180);
+    expect(center.slice(0, 3).some((channel) => channel > 40)).toBe(true);
   });
 
   test('drives the application with real key events', async ({ page }) => {
