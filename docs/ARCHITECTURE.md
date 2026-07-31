@@ -60,9 +60,12 @@ WASM GC it lives in the WebAssembly heap where JavaScript cannot see it and has 
 path its backend needs, and callers say how many elements they mean rather than passing a whole
 growable array.
 
-A WASM GC bundle is a `.wasm` module rather than an ES module, and is started through the loader
-TeaVM ships. The build unpacks that loader from the compiler's own jar next to the bundles, so it
-cannot drift from the toolchain that produced them.
+A WASM GC bundle is a `.wasm` module rather than an ES module: the shell instantiates it through
+the loader TeaVM ships and calls the same exported `main`, where a JavaScript bundle is entered by
+importing it. The build unpacks that loader from the compiler's own jar next to the bundles, so it
+cannot drift from the toolchain that produced them. Nothing above the shell knows the difference —
+`?backend=wasm` selects one, and a program is handed the same arguments and the same host bridge
+either way.
 
 `strict` mode is always enabled. It inserts Java null and bounds checks so desktop exception
 semantics (`NullPointerException`, etc.) continue to work correctly.
