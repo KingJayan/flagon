@@ -6,6 +6,8 @@ import dev.flagon.platform.Platform;
 import dev.flagon.platform.RuntimeHost;
 import dev.flagon.platform.UnsupportedCapabilityException;
 import dev.flagon.platform.display.DisplaySurface;
+import dev.flagon.platform.fs.FileStore;
+import dev.flagon.platform.fs.MemoryFileStore;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -17,6 +19,7 @@ final class FakePlatform implements Platform, Clock, ConsoleSink, RuntimeHost {
     final List<String> messages = new ArrayList<>();
     Throwable fatalError;
 
+    private final FileStore files = new MemoryFileStore();
     private final String[] arguments;
     private long nanos;
 
@@ -37,6 +40,11 @@ final class FakePlatform implements Platform, Clock, ConsoleSink, RuntimeHost {
     @Override
     public ConsoleSink console() {
         return this;
+    }
+
+    @Override
+    public FileStore files() {
+        return files;
     }
 
     @Override

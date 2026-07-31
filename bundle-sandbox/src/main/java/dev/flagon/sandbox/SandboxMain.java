@@ -23,7 +23,8 @@ public final class SandboxMain {
                 .register(new LwjglDemoProgram())
                 .register(new InputDemoProgram())
                 .register(new VertexArrayDemoProgram())
-                .register(new ShaderDemoProgram());
+                .register(new ShaderDemoProgram())
+                .register(new FileSystemDemoProgram());
         FlagonRuntime.boot(BrowserPlatform.create(arguments), registry);
     }
 }
