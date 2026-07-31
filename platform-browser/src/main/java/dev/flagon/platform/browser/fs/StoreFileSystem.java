@@ -36,6 +36,11 @@ public final class StoreFileSystem implements VirtualFileSystem {
     }
 
     @Override
+    public String[] getRoots() {
+        return new String[] { FilePaths.ROOT };
+    }
+
+    @Override
     public boolean isWindows() {
         return false;
     }
