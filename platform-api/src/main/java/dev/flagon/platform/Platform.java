@@ -3,6 +3,7 @@ package dev.flagon.platform;
 import dev.flagon.platform.audio.AudioDevice;
 import dev.flagon.platform.display.DisplaySurface;
 import dev.flagon.platform.fs.FileStore;
+import dev.flagon.platform.net.Network;
 
 /**
  * services a host must provide for desktop java programs to run
@@ -22,6 +23,9 @@ public interface Platform {
 
     /** @return the mixer openal plays through; silent rather than absent where a host has no output */
     AudioDevice audio();
+
+    /** @return where outbound connections are opened; refuses every address where there is no way out */
+    Network network();
 
     /** @return whether this host can open a window at all. */
     boolean hasDisplay();

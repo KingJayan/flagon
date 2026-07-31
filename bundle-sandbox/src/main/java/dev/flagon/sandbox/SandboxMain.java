@@ -25,7 +25,8 @@ public final class SandboxMain {
                 .register(new VertexArrayDemoProgram())
                 .register(new ShaderDemoProgram())
                 .register(new FileSystemDemoProgram())
-                .register(new AudioDemoProgram());
+                .register(new AudioDemoProgram())
+                .register(new NetDemoProgram());
         FlagonRuntime.boot(BrowserPlatform.create(arguments), registry);
     }
 }

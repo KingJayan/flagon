@@ -10,9 +10,12 @@ import dev.flagon.platform.browser.audio.WebAudioDevice;
 import dev.flagon.platform.browser.display.CanvasSurface;
 import dev.flagon.platform.browser.fs.OpfsFileStore;
 import dev.flagon.platform.browser.fs.StoreFileSystem;
+import dev.flagon.platform.browser.net.ProxyNetwork;
 import dev.flagon.platform.display.DisplaySurface;
 import dev.flagon.platform.fs.FileStore;
 import dev.flagon.platform.fs.MemoryFileStore;
+import dev.flagon.platform.net.Network;
+import dev.flagon.platform.net.UnavailableNetwork;
 
 public final class BrowserPlatform implements Platform {
 
@@ -21,15 +24,17 @@ public final class BrowserPlatform implements Platform {
     private final RuntimeHost host;
     private final FileStore files;
     private final AudioDevice audio;
+    private final Network network;
     private DisplaySurface surface;
 
     private BrowserPlatform(Clock clock, ConsoleSink console, RuntimeHost host, FileStore files,
-                            AudioDevice audio) {
+                            AudioDevice audio, Network network) {
         this.clock = clock;
         this.console = console;
         this.host = host;
         this.files = files;
         this.audio = audio;
+        this.network = network;
     }
 
     /** @param arguments the entry point's own arguments, as the page passed them to main */
@@ -44,7 +49,8 @@ public final class BrowserPlatform implements Platform {
         // installed before anything can open a file, because java.io resolves the filesystem once
         StoreFileSystem.install(files);
         Clock clock = new BrowserClock();
-        return new BrowserPlatform(clock, console, host, files, openAudio(console, clock));
+        return new BrowserPlatform(clock, console, host, files, openAudio(console, clock),
+                openNetwork(console));
     }
 
     /**
@@ -59,6 +65,19 @@ public final class BrowserPlatform implements Platform {
         }
         console.warn("no web audio here; sound is tracked but never heard");
         return new SilentAudioDevice(clock);
+    }
+
+    /**
+     * connections go through a proxy served with the page, or nowhere at all. a browser without
+     * websockets has no way out, and an address refused says so rather than hanging.
+     */
+    private static Network openNetwork(ConsoleSink console) {
+        ProxyNetwork network = ProxyNetwork.createIfAvailable();
+        if (network != null) {
+            return network;
+        }
+        console.warn("no websockets here; nothing can be reached over the network");
+        return new UnavailableNetwork("this browser has no websockets to reach a proxy through");
     }
 
     /**
@@ -115,6 +134,11 @@ public final class BrowserPlatform implements Platform {
     @Override
     public AudioDevice audio() {
         return audio;
+    }
+
+    @Override
+    public Network network() {
+        return network;
     }
 
     @Override

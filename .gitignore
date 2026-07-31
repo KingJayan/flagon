@@ -13,3 +13,5 @@ web/blob-report/
 
 # the game jar
 vendor/
+
+.todo.md

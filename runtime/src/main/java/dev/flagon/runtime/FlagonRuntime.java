@@ -4,6 +4,7 @@ import dev.flagon.platform.ConsoleSink;
 import dev.flagon.platform.Platform;
 import dev.flagon.platform.Platforms;
 import dev.flagon.platform.RuntimeHost;
+import dev.flagon.runtime.net.NetworkUrls;
 
 import java.util.Arrays;
 
@@ -41,6 +42,8 @@ public final class FlagonRuntime {
             ConsoleSink console = platform.console();
             ConsoleStreams.install(console);
             console.info("Flagon runtime starting on platform '" + platform.name() + "'");
+            // installed before a program can ask for a url, because java.net resolves handlers once
+            NetworkUrls.install(platform.network(), console);
 
             phase = PHASE_SELECT;
             String[] arguments = host.arguments();
