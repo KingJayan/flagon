@@ -28,10 +28,10 @@
     <teavm.version>0.15.0</teavm.version>
     <junit.version>5.11.4</junit.version>
     <lwjgl.version>2.9.3</lwjgl.version>
-    <!-- comp backend for browser bundles: JAVASCRIPT or WEBASSEMBLY_GC. build with -Pwasm for
-         the latter; see docs/ARCHITECTURE.md "Backend selection" for why JAVASCRIPT is the default -->
-    <flagon.target>JAVASCRIPT</flagon.target>
-    <flagon.bundle.extension>js</flagon.bundle.extension>
+    <!-- comp backend for browser bundles: WEBASSEMBLY_GC or JAVASCRIPT. build with -Pjs for
+         the latter; see docs/ARCHITECTURE.md "Backend selection" -->
+    <flagon.target>WEBASSEMBLY_GC</flagon.target>
+    <flagon.bundle.extension>wasm</flagon.bundle.extension>
     <flagon.optimization>SIMPLE</flagon.optimization>
     <flagon.minify>false</flagon.minify>
     <!-- strict adds null/bounds checks so java exceptions are thrown instead of js TypeErrors -->
@@ -157,71 +157,71 @@
         </plugin>
       </plugins>
     </pluginManagement>
+
+    <plugins>
+      <!-- the loader a wasm module needs is a resource of the compiler, so it is unpacked
+           beside the bundles rather than vendored and left to drift from the toolchain. the
+           shell serves it either way, so a -Pjs build emits it too -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-dependency-plugin</artifactId>
+        <version>3.8.1</version>
+        <executions>
+          <execution>
+            <id>unpack-wasm-runtime</id>
+            <phase>prepare-package</phase>
+            <goals>
+              <goal>unpack</goal>
+            </goals>
+            <configuration>
+              <artifactItems>
+                <artifactItem>
+                  <groupId>org.teavm</groupId>
+                  <artifactId>teavm-core</artifactId>
+                  <version>${teavm.version}</version>
+                  <includes>org/teavm/backend/wasm/wasm-gc-module-runtime.js</includes>
+                  <outputDirectory>${project.build.directory}/wasm-runtime</outputDirectory>
+                </artifactItem>
+              </artifactItems>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-resources-plugin</artifactId>
+        <version>3.3.1</version>
+        <executions>
+          <execution>
+            <id>copy-wasm-runtime</id>
+            <phase>prepare-package</phase>
+            <goals>
+              <goal>copy-resources</goal>
+            </goals>
+            <configuration>
+              <outputDirectory>${flagon.bundleOutput}</outputDirectory>
+              <resources>
+                <resource>
+                  <directory>${project.build.directory}/wasm-runtime/org/teavm/backend/wasm</directory>
+                  <includes>
+                    <include>wasm-gc-module-runtime.js</include>
+                  </includes>
+                </resource>
+              </resources>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+    </plugins>
   </build>
 
   <profiles>
     <profile>
-      <id>wasm</id>
+      <id>js</id>
       <properties>
-        <flagon.target>WEBASSEMBLY_GC</flagon.target>
-        <flagon.bundle.extension>wasm</flagon.bundle.extension>
+        <flagon.target>JAVASCRIPT</flagon.target>
+        <flagon.bundle.extension>js</flagon.bundle.extension>
       </properties>
-      <build>
-        <plugins>
-          <!-- the loader a wasm module needs is a resource of the compiler, so it is unpacked
-               beside the bundles rather than vendored and left to drift from the toolchain -->
-          <plugin>
-            <groupId>org.apache.maven.plugins</groupId>
-            <artifactId>maven-dependency-plugin</artifactId>
-            <version>3.8.1</version>
-            <executions>
-              <execution>
-                <id>unpack-wasm-runtime</id>
-                <phase>prepare-package</phase>
-                <goals>
-                  <goal>unpack</goal>
-                </goals>
-                <configuration>
-                  <artifactItems>
-                    <artifactItem>
-                      <groupId>org.teavm</groupId>
-                      <artifactId>teavm-core</artifactId>
-                      <version>${teavm.version}</version>
-                      <includes>org/teavm/backend/wasm/wasm-gc-module-runtime.js</includes>
-                      <outputDirectory>${project.build.directory}/wasm-runtime</outputDirectory>
-                    </artifactItem>
-                  </artifactItems>
-                </configuration>
-              </execution>
-            </executions>
-          </plugin>
-          <plugin>
-            <groupId>org.apache.maven.plugins</groupId>
-            <artifactId>maven-resources-plugin</artifactId>
-            <version>3.3.1</version>
-            <executions>
-              <execution>
-                <id>copy-wasm-runtime</id>
-                <phase>prepare-package</phase>
-                <goals>
-                  <goal>copy-resources</goal>
-                </goals>
-                <configuration>
-                  <outputDirectory>${flagon.bundleOutput}</outputDirectory>
-                  <resources>
-                    <resource>
-                      <directory>${project.build.directory}/wasm-runtime/org/teavm/backend/wasm</directory>
-                      <includes>
-                        <include>wasm-gc-module-runtime.js</include>
-                      </includes>
-                    </resource>
-                  </resources>
-                </configuration>
-              </execution>
-            </executions>
-          </plugin>
-        </plugins>
-      </build>
     </profile>
   </profiles>
 </project>

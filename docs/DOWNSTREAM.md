@@ -107,14 +107,13 @@ Leave `flagon.strict` enabled. Without it, Java null dereferences become JavaScr
 ./mvnw package
 ```
 
-TeaVM compiles the application, Flagon, and your bundle entry point into a single JavaScript
-bundle, `app.js`.
+TeaVM compiles the application, Flagon, and your bundle entry point into a single WebAssembly GC
+module, `app.wasm`, beside the loader it is started through.
 
 There is no runtime class loading. Every reachable class is included during compilation.
 
-Adding `-Pwasm` compiles the same sources to WebAssembly GC instead, emitting `app.wasm` beside
-the loader it is started through. See the roadmap in the [README](../README.md) for how far that
-backend has come.
+Adding `-Pjs` compiles the same sources to JavaScript instead, emitting `app.js`. Ship both if you
+serve browsers that predate WebAssembly GC; the shell picks between them by feature detection.
 
 ## Publishing
 

@@ -4,13 +4,14 @@ What the browser environment does and does not provide. Updated as each stage la
 
 ## Backends
 
-The same sources compile to either backend: a default build emits JavaScript, `-Pwasm` emits
-WebAssembly GC. Everything below describes both unless a row says otherwise.
+The same sources compile to either backend: a default build emits WebAssembly GC, `-Pjs` emits
+JavaScript. The shell runs WASM GC where the engine supports it and the JavaScript bundle where it
+does not. Everything below describes both unless a row says otherwise.
 
-| Area | JavaScript | WASM GC |
-|------|------------|---------|
+| Area | WASM GC | JavaScript |
+|------|---------|------------|
 | Boots, runs a program, exits | works | works |
-| Java language and library | works | works, one gap below |
+| Java language and library | works, one gap below | works |
 | Arguments, console, lifecycle reporting | works | works |
 | Graphics, input, files, audio, networking | works | works |
 

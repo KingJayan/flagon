@@ -85,3 +85,40 @@ test('reports a backend that does not exist', async ({ page }) => {
   await expect(page.getByTestId('state')).toHaveText('failed');
   await expect(page.getByTestId('log')).toContainText("no backend named 'asm'; try js, wasm");
 });
+
+test('runs on wasm gc when the browser has it', async ({ page }) => {
+  const { failures } = watchForFailures(page);
+  await page.goto('/?program=hello');
+
+  await expect(page.getByTestId('state')).toHaveText('exited', { timeout: 30_000 });
+  await expect(page.locator('#backend')).toHaveValue('wasm');
+  await expect(page.getByTestId('log')).toContainText('Hello, world!');
+  expect(failures).toEqual([]);
+});
+
+test.describe('a browser without wasm gc', () => {
+  test.beforeEach(async ({ page }) => {
+    // the only thing the shell asks the engine, so refusing it is the whole condition
+    await page.addInitScript(() => {
+      WebAssembly.validate = () => false;
+    });
+  });
+
+  test('falls back to the javascript bundle and says why', async ({ page }) => {
+    const { failures } = watchForFailures(page);
+    await page.goto('/?program=hello');
+
+    await expect(page.getByTestId('state')).toHaveText('exited', { timeout: 30_000 });
+    await expect(page.locator('#backend')).toHaveValue('js');
+    await expect(page.getByTestId('log')).toContainText('WebAssembly GC is unavailable here');
+    await expect(page.getByTestId('log')).toContainText('Hello, world!');
+    expect(failures).toEqual([]);
+  });
+
+  test('refuses a wasm bundle it was asked for outright', async ({ page }) => {
+    await page.goto('/?backend=wasm&program=hello');
+
+    await expect(page.getByTestId('state')).toHaveText('failed', { timeout: 30_000 });
+    await expect(page.getByTestId('log')).toContainText('no WebAssembly GC support');
+  });
+});

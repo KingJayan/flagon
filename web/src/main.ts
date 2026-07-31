@@ -1,4 +1,11 @@
-import { BACKENDS, isBackend, runBundle, type HostBridge } from './bundle';
+import {
+  BACKENDS,
+  defaultBackend,
+  isBackend,
+  runBundle,
+  supportsWasmGc,
+  type HostBridge,
+} from './bundle';
 
 /** only bundles this shell ships may be imported; the name comes from the url. */
 const BUNDLES = ['sandbox', 'example'];
@@ -50,13 +57,22 @@ function addPhase(phase: string, detail: string): void {
   phaseList.append(item);
 }
 
-function readRequest(): { bundle: string; backend: string; program: string; args: string[] } {
+interface Request {
+  bundle: string;
+  backend: string;
+  /** whether the url named the backend, rather than the shell choosing it */
+  asked: boolean;
+  program: string;
+  args: string[];
+}
+
+function readRequest(): Request {
   const params = new URLSearchParams(location.search);
   const bundle = params.get('bundle') ?? 'sandbox';
-  const backend = params.get('backend') ?? 'js';
+  const asked = params.get('backend');
   const program = params.get('program') ?? (bundle === 'sandbox' ? 'hello' : 'spinner');
   const args = params.getAll('arg');
-  return { bundle, backend, program, args };
+  return { bundle, backend: asked ?? defaultBackend(), asked: asked !== null, program, args };
 }
 
 const request = readRequest();
@@ -110,7 +126,14 @@ if (!bundleUrl) {
   setState('failed');
   append(whyNot(request.bundle, request.backend), 'error');
   runButton.disabled = false;
+} else if (request.backend === 'wasm' && !supportsWasmGc()) {
+  setState('failed');
+  append('this browser has no WebAssembly GC support; run this bundle with backend=js', 'error');
+  runButton.disabled = false;
 } else {
+  if (!request.asked && request.backend !== 'wasm') {
+    append('WebAssembly GC is unavailable here, so the javascript bundle is running', 'warn');
+  }
   runBundle(bundleUrl, host, [request.program, ...request.args])
     .catch((error: unknown) => {
       setState('failed');
