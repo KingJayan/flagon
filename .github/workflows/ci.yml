@@ -23,8 +23,8 @@ jobs:
       - name: Build and unit test
         run: ./mvnw -B package
 
-      - name: Build the WASM GC bundles
-        run: ./mvnw -B -Pwasm -DskipTests package
+      - name: Build the JavaScript bundles
+        run: ./mvnw -B -Pjs -DskipTests package
 
       - uses: oven-sh/setup-bun@v2
         with:

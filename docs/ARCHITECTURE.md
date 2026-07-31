@@ -49,9 +49,10 @@ loading, so two constraints shape the project:
 
 ## Backend selection
 
-TeaVM targets either JavaScript or WebAssembly GC; `flagon.target` chooses, and `-Pwasm` sets it
-along with the file extension bundles are emitted under. JavaScript is the default while the WASM
-GC backend is brought to parity with it.
+TeaVM targets either WebAssembly GC or JavaScript; `flagon.target` chooses, and `-Pjs` sets it
+along with the file extension bundles are emitted under. WASM GC is the default, and JavaScript is
+the fallback for engines without it: the shell validates a GC module before choosing, so a browser
+that predates the proposal runs the JavaScript bundle instead of failing to instantiate.
 
 The two backends differ in one place that reaches into this codebase: a Java array compiled to
 JavaScript *is* a typed array, so a browser API can be handed a view over its storage, while under
