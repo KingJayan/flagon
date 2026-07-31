@@ -55,7 +55,7 @@ Flagon itself is application-agnostic. Work on any particular application lives 
 | Shader objects (`GL20`) | `✔` |
 | Virtual filesystem on OPFS | `✔` |
 | Audio (`OpenAL` → WebAudio) | `✔` |
-| Networking through a proxy | `⧖` |
+| Networking through a proxy | `✔` |
 
 ## Quickstart
 

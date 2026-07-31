@@ -13,7 +13,7 @@ What the browser environment does and does not provide. Updated as each stage la
 | Lifecycle reporting | works | `window.__flagonHost` |
 | Filesystem | works | `java.io` on the origin private file system, see below |
 | Threading | partial | blocking frame loops work via TeaVM green threads |
-| Networking | not started | needs a proxy; browsers have no raw TCP |
+| Networking | works through a proxy | tcp over a websocket; no raw sockets in a browser, see below |
 | Input | works | DOM events and Pointer Lock, see below |
 | Audio | works | `OpenAL` on web audio, see below |
 | Graphics | partial | GL 1.1 fixed-function and GL 2.0 shaders over WebGL2, see below |
@@ -35,6 +35,8 @@ Verified in Chromium by the `selftest` program (80 checks), which runs in CI as 
 | Lambdas, method references, captured locals | works |
 | Reflection | untested — likely a problem for the game |
 | `File`, `FileInputStream`, `FileOutputStream`, `RandomAccessFile` | works, see below |
+| `java.net.URL`, `HttpURLConnection` over http | works through a proxy, see below |
+| `java.net.Socket`, `ServerSocket`, `DatagramSocket` | absent from the classlib |
 
 ### Files are real, and they persist
 `java.io` reaches its filesystem through TeaVM's `VirtualFileSystem`, whose default is a heap tree
@@ -199,6 +201,30 @@ Web audio removed velocity and doppler shift from its panner and listener outrig
 `AL_VELOCITY` is recorded so a caller reading it back sees what it set, and warns once that it
 produces no pitch shift. `AL_SOURCE_RELATIVE` has no counterpart either and is emulated by
 offsetting the source by the listener, which is what OpenAL means by it.
+
+### A socket the page cannot open
+A browser has no raw TCP, and no API added to it will change that. What a page can do is ask
+something that has one. `Network.connect` opens a websocket to a proxy served alongside the page,
+which opens the real socket and pipes the bytes back; `Connection` is then an ordinary blocking
+byte stream, and a read parks the green thread rather than handing the caller a callback.
+
+The proxy decides who may be reached. The one in the dev server is the reference implementation
+and is told about `localhost` only — every other address is refused by name, with the reason,
+rather than left to time out. A deployment that ships Flagon supplies its own and makes the same
+decision for itself; there is no default that is safe everywhere.
+
+`java.net.URL` goes the same way. Flagon installs a `URLStreamHandlerFactory` at boot, so an
+application that opens an http url reaches the proxy without knowing one exists — the seam
+`StoreFileSystem` is for `java.io`. It speaks HTTP/1.1 with `Connection: close`, and understands
+`Content-Length`, chunked bodies and bodies that end when the connection does.
+
+Three things are genuinely out of reach:
+
+- **https.** TLS down a raw socket would have to be implemented in javascript, and a page that
+  cannot verify a certificate has no business claiming it did. https urls are left to TeaVM's own
+  handler, which fetches them over XHR and is subject to CORS.
+- **Listening.** `ServerSocket` has no meaning in a page; nothing can connect to a tab.
+- **UDP.** The proxy carries one stream per socket. Datagrams would need a protocol of their own.
 
 ### Input conventions are converted at the browser boundary
 Three differ, and each would be a subtle bug if left to callers:

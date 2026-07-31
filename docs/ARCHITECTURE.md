@@ -9,7 +9,7 @@ LWJGL compatibility layer      org.lwjgl.* source-compatible classes
       ↓
 platform-api                   Platform, Clock, ConsoleSink, RuntimeHost,
                                GraphicsDevice, DisplaySurface, InputSource,
-                               FileStore, AudioDevice
+                               FileStore, AudioDevice, Network
       ↓
 platform-browser               the only module that may touch browser APIs
       ↓
@@ -122,6 +122,25 @@ error `alGetError` hands back one call later, and the distance model, which is g
 and per-node in web audio. That translation belongs in `lwjgl-compat` for the same reason
 `GlslTranslator` does — the layer below deals in what the browser actually offers, and it is
 `org.lwjgl` that promises OpenAL's semantics.
+
+## Network
+
+`Network` hands back a `Connection`: a blocking byte stream to a host and port, which is what a
+socket is once the operating system is out of view. A browser has no socket to give, so
+`ProxyNetwork` carries one over a websocket to a proxy served with the page, and a read parks the
+green thread until bytes arrive. `UnavailableNetwork` is the answer where there is no way out at
+all — every address refused by name, because code that cannot reach a server needs to hear so.
+
+`MemoryNetwork` serves connections from objects in the heap, which is what makes the http above
+it testable on a plain JVM.
+
+Who may be reached is the proxy's decision, not the page's. The dev server's proxy is a reference
+implementation with an allow list; a deployment supplies its own.
+
+`NetworkUrls` installs a `URLStreamHandlerFactory` at boot so unmodified `java.net.URL` code
+reaches the proxy, the same move `StoreFileSystem` makes for `java.io`. It sits in `runtime`
+rather than `platform-browser` because `java.net` is the JDK's own seam and needs nothing from a
+browser to implement.
 
 ## Input
 
