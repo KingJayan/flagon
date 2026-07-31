@@ -52,7 +52,7 @@ every bundle on it.
 | Bundles compile and boot in the browser | `✔` |
 | Graphics and input | `✔` |
 | Files, audio, and networking | `✔` |
-| Browser suite green on both backends | `⧖` |
+| Browser suite green on both backends | `✔` |
 | WASM GC as the default backend | `⧖` |
 
 ## Quickstart
