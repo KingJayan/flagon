@@ -5,7 +5,8 @@ export default defineConfig({
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,
-  reporter: process.env.CI ? 'github' : 'list',
+  workers: process.env.CI ? '50%' : undefined,
+  reporter: process.env.CI ? [['github'], ['blob']] : 'list',
   use: {
     baseURL: 'http://localhost:5273',
     trace: 'on-first-retry',
@@ -15,8 +16,6 @@ export default defineConfig({
       name: 'chromium',
       use: {
         ...devices['Desktop Chrome'],
-        // a page that has not been clicked gets a suspended AudioContext, and the audio demo
-        // runs from the url rather than from a button
         launchOptions: { args: ['--autoplay-policy=no-user-gesture-required', '--mute-audio'] },
       },
     },

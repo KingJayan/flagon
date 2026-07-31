@@ -26,6 +26,29 @@ jobs:
       - name: Build the JavaScript bundles
         run: ./mvnw -B -Pjs -DskipTests package
 
+      - name: Upload the bundles
+        uses: actions/upload-artifact@v4
+        with:
+          name: bundles
+          path: web/public/flagon/
+          retention-days: 1
+
+  browser:
+    needs: build
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download the bundles
+        uses: actions/download-artifact@v4
+        with:
+          name: bundles
+          path: web/public/flagon/
+
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
@@ -44,10 +67,42 @@ jobs:
 
       - name: Browser tests
         working-directory: web
-        run: bunx playwright test
+        run: bunx playwright test --shard=${{ matrix.shard }}/${{ strategy.job-total }}
 
       - uses: actions/upload-artifact@v4
         if: failure()
+        with:
+          name: blob-report-${{ matrix.shard }}
+          path: web/blob-report/
+          retention-days: 7
+
+  report:
+    needs: browser
+    if: failure()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install web dependencies
+        working-directory: web
+        run: bun install --frozen-lockfile
+
+      - name: Download the shard reports
+        uses: actions/download-artifact@v4
+        with:
+          path: web/blob-report/
+          pattern: blob-report-*
+          merge-multiple: true
+
+      - name: Merge the shard reports
+        working-directory: web
+        run: bunx playwright merge-reports --reporter html ./blob-report
+
+      - uses: actions/upload-artifact@v4
         with:
           name: playwright-report
           path: web/playwright-report/
