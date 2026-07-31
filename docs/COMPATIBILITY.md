@@ -15,7 +15,7 @@ What the browser environment does and does not provide. Updated as each stage la
 | Threading | partial | blocking frame loops work via TeaVM green threads |
 | Networking | not started | needs a proxy; browsers have no raw TCP |
 | Input | works | DOM events and Pointer Lock, see below |
-| Audio | not started | OpenAL → WebAudio |
+| Audio | works | `OpenAL` on web audio, see below |
 | Graphics | partial | GL 1.1 fixed-function and GL 2.0 shaders over WebGL2, see below |
 
 ## Java language and library
@@ -65,9 +65,10 @@ accessors write through on every write. Streams, which do close properly, keep t
 
 ## LWJGL
 
-Verified in Chromium by the `lwjgl`, `input`, `arrays` and `shaders` demos, which assert on
-pixels read back from the live WebGL2 framebuffer and drive real key, button and wheel events,
-plus 108 JVM tests that run the emulation against recording and fake devices.
+Verified in Chromium by the `lwjgl`, `input`, `arrays`, `shaders` and `audio` demos, which
+assert on pixels read back from the live WebGL2 framebuffer, drive real key, button and wheel
+events, and play a tone through to its end, plus 115 JVM tests that run the emulation against
+recording and fake devices.
 
 | Call group | State |
 |------------|-------|
@@ -95,7 +96,15 @@ plus 108 JVM tests that run the emulation against recording and fake devices.
 | Desktop GLSL 1.10 and 1.20 shader source | works, translated |
 | GLSL 1.30 and above, fixed-function GLSL built-ins | refused, see below |
 | `glBegin`/`glEnd` while a program is bound | refused, see below |
-| `OpenAL` | not started |
+| `AL` create/destroy, `AL10` buffers, sources and listener | works |
+| `alGetError` latching, `AL_INVALID_NAME` on a name that is gone | works |
+| Source gain, pitch, looping, position, relative positioning | works |
+| Distance attenuation: reference distance, rolloff, max distance | works |
+| `AL_NONE`, `AL_INVERSE_DISTANCE`, `AL_INVERSE_DISTANCE_CLAMPED` | works |
+| Other distance models, cone angles, min and max gain, `AL_DIRECTION` | refused, see below |
+| Doppler shift, `AL_VELOCITY` | recorded, no effect, see below |
+| Streaming: `alSourceQueueBuffers` and its queue counters | refused, see below |
+| `ALC10`, capture, `WaveData` | not emulated |
 
 Every unimplemented entry point throws `UnsupportedOperationException` naming the call. Nothing
 is silently ignored: a dropped state change produces a rendering bug that is far more expensive
@@ -159,6 +168,37 @@ desktop GL does not. An interleaved format of two floats plus three colour bytes
 stride: legal on the desktop, and rejected here. Flagon throws
 `UnsupportedCapabilityException` naming the offending value, because the browser's own answer is
 an `INVALID_OPERATION` that draws nothing and reports nothing.
+
+### Sound is silent until the page is touched
+A browser suspends an `AudioContext` created without a user gesture, and every source it plays is
+inaudible until the page is clicked or typed into. Flagon asks for the context back on the first
+of either and says on the console that it is waiting, because a run that made no sound and
+reported nothing looks like a broken mixer rather than a browser policy.
+
+`AudioDevice.isOutputLive()` is the honest answer to "can anything be heard right now", and the
+`audio` demo prints it. Playback itself is unaffected: a suspended context still advances a
+source to its end, so code waiting on `AL_STOPPED` is never stranded.
+
+### One buffer per source, played whole
+Web audio plays a buffer from beginning to end and reports only that it finished.
+`alSourceQueueBuffers` needs a mixer that says how much of a queue it has consumed, so streaming
+is refused by name rather than approximated — a music track that silently plays its first chunk
+forever is worse than a stack trace. Attach a single buffer with `alSourcei(AL_BUFFER)`.
+
+A source's node is rebuilt on every `alSourcePlay`, because a web audio source that has been
+started cannot be started again. Its gain and panner outlive it and hold what OpenAL keeps on the
+source, so gain, pitch and position survive a stop and a replay.
+
+### Distance attenuation maps onto the panner; doppler does not
+`AL_REFERENCE_DISTANCE`, `AL_ROLLOFF_FACTOR` and `AL_MAX_DISTANCE` are the same three numbers a
+`PannerNode` takes, and inverse attenuation is the model both default to. `AL_NONE` is expressed
+as a rolloff of zero, and `alGetSourcef` still reports the factor that was set rather than the
+zero the browser was given. Linear and exponential models are refused by name.
+
+Web audio removed velocity and doppler shift from its panner and listener outright.
+`AL_VELOCITY` is recorded so a caller reading it back sees what it set, and warns once that it
+produces no pitch shift. `AL_SOURCE_RELATIVE` has no counterpart either and is emulated by
+offsetting the source by the listener, which is what OpenAL means by it.
 
 ### Input conventions are converted at the browser boundary
 Three differ, and each would be a subtle bug if left to callers:
