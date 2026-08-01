@@ -13,7 +13,7 @@ import java.util.Deque;
 /**
  * {@link InputSource} over dom events
  */
-final class BrowserInput implements InputSource {
+class BrowserInput implements InputSource {
 
     private static final int MAX_QUEUED = 256;
 
@@ -66,7 +66,7 @@ final class BrowserInput implements InputSource {
     // dom callbacks
 
     /** @return whether the key was recognised, which is what decides if the default is suppressed */
-    private boolean onKey(String code, String key, boolean pressed, boolean repeat) {
+    boolean onKey(String code, String key, boolean pressed, boolean repeat) {
         int scancode = KeyCodes.scancode(code);
         if (scancode == Scancode.NONE) {
             return false;
@@ -81,7 +81,7 @@ final class BrowserInput implements InputSource {
         return true;
     }
 
-    private void onButton(int button, boolean pressed, int canvasX, int canvasY) {
+    void onButton(int button, boolean pressed, int canvasX, int canvasY) {
         int mapped = mapButton(button);
         if (mapped < 0 || mapped >= buttonsDown.length) {
             return;
@@ -94,7 +94,7 @@ final class BrowserInput implements InputSource {
         push(mouseEvents, new MouseEvent(mapped, pressed, x, y, 0, 0, 0, clock.nanoTime()));
     }
 
-    private void onMove(int canvasX, int canvasY, int movementX, int movementY, boolean locked) {
+    void onMove(int canvasX, int canvasY, int movementX, int movementY, boolean locked) {
         int movedX;
         int movedY;
         if (locked) {
@@ -118,7 +118,7 @@ final class BrowserInput implements InputSource {
                 movedX, movedY, 0, clock.nanoTime()));
     }
 
-    private void onWheel(double delta, int deltaMode) {
+    void onWheel(double delta, int deltaMode) {
         double pixels = switch (deltaMode) {
             case 1 -> delta * PIXELS_PER_LINE;
             case 2 -> delta * PIXELS_PER_PAGE;
@@ -138,12 +138,12 @@ final class BrowserInput implements InputSource {
                 clock.nanoTime()));
     }
 
-    private void onPresence(boolean pointerInside) {
+    void onPresence(boolean pointerInside) {
         inside = pointerInside;
     }
 
     /** a key released after the canvas lost focus is never seen, so nothing may stay held */
-    private void onFocus(boolean focused) {
+    void onFocus(boolean focused) {
         if (!focused) {
             java.util.Arrays.fill(keysDown, false);
         }
@@ -160,7 +160,16 @@ final class BrowserInput implements InputSource {
     }
 
     private int flipY(int canvasY) {
-        return Math.max(0, Canvas.height(canvas) - 1 - canvasY);
+        return Math.max(0, height() - 1 - canvasY);
+    }
+
+    // the two places this class asks the dom something rather than telling it something
+    int height() {
+        return Canvas.height(canvas);
+    }
+
+    boolean pointerLocked() {
+        return DomInput.isPointerLocked(canvas);
     }
 
     private static <T> void push(Deque<T> queue, T event) {
@@ -240,7 +249,7 @@ final class BrowserInput implements InputSource {
 
     @Override
     public boolean isGrabbed() {
-        return DomInput.isPointerLocked(canvas);
+        return pointerLocked();
     }
 
     @Override

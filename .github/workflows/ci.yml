@@ -53,6 +53,12 @@ jobs:
         with:
           bun-version: latest
 
+      - name: Cache the bun packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.bun/install/cache
+          key: bun-${{ runner.os }}-${{ hashFiles('web/bun.lock') }}
+
       - name: Install web dependencies
         working-directory: web
         run: bun install --frozen-lockfile
@@ -61,9 +67,18 @@ jobs:
         working-directory: web
         run: bun run build
 
+      # the download is what costs; the system packages are apt's and cannot be cached
+      - name: Cache Chromium
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('web/bun.lock') }}
+
       - name: Install Chromium
         working-directory: web
-        run: bunx playwright install --with-deps chromium
+        run: |
+          bunx playwright install-deps chromium
+          bunx playwright install chromium
 
       - name: Browser tests
         working-directory: web
@@ -86,6 +101,12 @@ jobs:
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
+
+      - name: Cache the bun packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.bun/install/cache
+          key: bun-${{ runner.os }}-${{ hashFiles('web/bun.lock') }}
 
       - name: Install web dependencies
         working-directory: web
