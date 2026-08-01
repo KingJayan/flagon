@@ -18,6 +18,7 @@ public final class DisplayDemoProgram implements Program {
     private static final int PACED_FRAMES = 30;
     private static final int SECOND_FRAMES = 5;
     private static final int RATE = 30;
+    private static final int WATCHED_FRAMES = 1800;
 
     @Override
     public String id() {
@@ -58,6 +59,29 @@ public final class DisplayDemoProgram implements Program {
         }
         console.info("display again " + Display.getWidth() + "x" + Display.getHeight()
                 + " closing=" + Display.isCloseRequested());
+
+        watchFocus(console);
+    }
+
+    /** draws while anyone is watching and idles while nobody is, the way a desktop game does */
+    private static void watchFocus(ConsoleSink console) throws InterruptedException {
+        boolean active = Display.isActive();
+        boolean visible = Display.isVisible();
+        console.info("focus: active=" + active + " visible=" + visible);
+
+        for (int tick = 0; tick < WATCHED_FRAMES && !Display.isCloseRequested(); tick++) {
+            if (active && visible) {
+                paint(0.8f, 0.1f, 0.1f);
+                Display.update();
+            } else {
+                Thread.sleep(50);
+            }
+            if (Display.isActive() != active || Display.isVisible() != visible) {
+                active = Display.isActive();
+                visible = Display.isVisible();
+                console.info("focus: active=" + active + " visible=" + visible);
+            }
+        }
     }
 
     private static void paint(float red, float green, float blue) {

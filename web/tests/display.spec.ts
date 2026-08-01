@@ -52,6 +52,38 @@ for (const backend of BACKENDS) {
       ).toBe(true);
     });
 
+    test('reports the canvas losing and regaining the keyboard', async ({ page }) => {
+      await start(page, backend);
+      const log = page.getByTestId('log');
+
+      await expect(log).toContainText('focus: active=true visible=true', { timeout: 30_000 });
+
+      await page.evaluate(() => document.getElementById('flagon-canvas')!.blur());
+      await expect(log).toContainText('focus: active=false visible=true', { timeout: 10_000 });
+
+      await page.evaluate(() => document.getElementById('flagon-canvas')!.focus());
+      await expect(log).toContainText(/active=false[\s\S]*active=true/, { timeout: 10_000 });
+    });
+
+    // headless chromium keeps a backgrounded tab visible, so the state itself is what moves here
+    test('reports a tab nobody is looking at as hidden', async ({ page }) => {
+      await start(page, backend);
+      const log = page.getByTestId('log');
+      await expect(log).toContainText('focus: active=true visible=true', { timeout: 30_000 });
+
+      await page.evaluate(() =>
+        Object.defineProperty(document, 'visibilityState', {
+          configurable: true,
+          get: () => 'hidden',
+        }),
+      );
+      await expect(log).toContainText('visible=false', { timeout: 15_000 });
+
+      await page.evaluate(() => delete (document as unknown as Record<string, unknown>)
+        .visibilityState);
+      await expect(log).toContainText(/visible=false[\s\S]*visible=true/, { timeout: 15_000 });
+    });
+
     test('runs the whole demo without a console error', async ({ page }) => {
       const { failures } = watchForFailures(page);
 

@@ -4,12 +4,7 @@ import dev.flagon.platform.graphics.GraphicsDevice;
 import dev.flagon.platform.input.InputSource;
 
 /**
- * a window with a rendering context.
- *
- * <p>{@link #present()} is the load-bearing method. desktop code drives itself with
- * {@code while (!closeRequested) { draw(); Display.update(); }} and expects update to block until
- * the frame is displayed. a host that cannot block must make present suspend the calling thread
- * and resume it on the next frame, so the loop above runs unmodified.
+ * a window with a rendering context
  */
 public interface DisplaySurface {
 
@@ -24,11 +19,12 @@ public interface DisplaySurface {
 
     boolean isFullscreen();
 
-    /**
-     * @return whether the request was granted. hosts may require a user gesture and refuse,
-     *         which callers must tolerate rather than assume success.
-     */
+
     boolean setFullscreen(boolean fullscreen);
+
+    boolean isFocused();
+
+    boolean isVisible();
 
     boolean isCloseRequested();
 

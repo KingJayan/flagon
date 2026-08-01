@@ -42,6 +42,14 @@ final class FakeDisplayPlatform implements Platform, Clock, ConsoleSink, Runtime
         return surface.opens;
     }
 
+    void focus(boolean focused) {
+        surface.focused = focused;
+    }
+
+    void show(boolean visible) {
+        surface.visible = visible;
+    }
+
     @Override
     public String name() {
         return "fake-display";
@@ -132,6 +140,8 @@ final class FakeDisplayPlatform implements Platform, Clock, ConsoleSink, Runtime
         int presents;
         int opens;
         boolean destroyed;
+        boolean focused = true;
+        boolean visible = true;
 
         @Override
         public int width() {
@@ -159,6 +169,16 @@ final class FakeDisplayPlatform implements Platform, Clock, ConsoleSink, Runtime
         @Override
         public boolean setFullscreen(boolean fullscreen) {
             return true;
+        }
+
+        @Override
+        public boolean isFocused() {
+            return focused;
+        }
+
+        @Override
+        public boolean isVisible() {
+            return visible;
         }
 
         @Override

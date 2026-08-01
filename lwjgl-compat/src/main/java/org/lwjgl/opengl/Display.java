@@ -94,11 +94,11 @@ public final class Display {
     }
 
     public static boolean isActive() {
-        return surface != null;
+        return surface != null && surface.isFocused();
     }
 
     public static boolean isVisible() {
-        return surface != null;
+        return surface != null && surface.isVisible();
     }
 
     public static void setTitle(String newTitle) {
