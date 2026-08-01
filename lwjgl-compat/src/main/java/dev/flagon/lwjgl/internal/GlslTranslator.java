@@ -38,11 +38,12 @@ public final class GlslTranslator {
         if (source == null) {
             throw new IllegalArgumentException("shader source must not be null");
         }
-        rejectFixedFunction(source);
+        String code = withoutComments(source);
+        rejectFixedFunction(code);
 
-        int directive = versionDirective(source);
+        int directive = versionDirective(code);
         if (directive < 0) {
-            return withPrecision(source, stage);
+            return withPrecision(source, code, stage);
         }
 
         int end = lineEnd(source, directive);
@@ -60,7 +61,60 @@ public final class GlslTranslator {
         }
         // 1.10 and 1.20 are read as es 1.00, which is what an absent directive already means
         String stripped = source.substring(0, directive) + source.substring(end);
-        return withPrecision(stripped, stage);
+        return withPrecision(stripped, code.substring(0, directive) + code.substring(end), stage);
+    }
+
+    /** blanks comments out, keeping every index and line break, so scans line up with the source */
+    private static String withoutComments(String source) {
+        char[] code = source.toCharArray();
+        int at = 0;
+        while (at + 1 < code.length) {
+            if (code[at] != '/') {
+                at++;
+            } else if (code[at + 1] == '/') {
+                at = blankLineComment(code, at);
+            } else if (code[at + 1] == '*') {
+                at = blankBlockComment(code, at);
+            } else {
+                at++;
+            }
+        }
+        return new String(code);
+    }
+
+    private static int blankLineComment(char[] code, int from) {
+        int at = from;
+        while (at < code.length && !(code[at] == '\n' && !continued(code, at))) {
+            at++;
+        }
+        blank(code, from, at);
+        return at;
+    }
+
+    private static boolean continued(char[] code, int newline) {
+        int at = newline - 1;
+        while (at >= 0 && code[at] == '\r') {
+            at--;
+        }
+        return at >= 0 && code[at] == '\\';
+    }
+
+    private static int blankBlockComment(char[] code, int from) {
+        int at = from + 2;
+        while (at + 1 < code.length && !(code[at] == '*' && code[at + 1] == '/')) {
+            at++;
+        }
+        int end = at + 1 < code.length ? at + 2 : code.length;
+        blank(code, from, end);
+        return end;
+    }
+
+    private static void blank(char[] code, int from, int to) {
+        for (int at = from; at < to; at++) {
+            if (code[at] != '\n') {
+                code[at] = ' ';
+            }
+        }
     }
 
     private static boolean isGlslEs(String version) {
@@ -79,10 +133,10 @@ public final class GlslTranslator {
     }
 
     /**
-     * es requires a fragment shader to state a float precision; desktop glsl doesnt
+     * es requires a fragment shader to state a float precision & desktop glsl doesnt
      */
-    private static String withPrecision(String source, ShaderStage stage) {
-        if (stage != ShaderStage.FRAGMENT || declaresFloatPrecision(source)) {
+    private static String withPrecision(String source, String code, ShaderStage stage) {
+        if (stage != ShaderStage.FRAGMENT || declaresFloatPrecision(code)) {
             return source;
         }
         return "precision mediump float;\n" + source;

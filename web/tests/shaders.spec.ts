@@ -21,6 +21,14 @@ for (const backend of BACKENDS) {
       expect(failures).toEqual([]);
     });
 
+    test('reads past what the comments say the shader used to do', async ({ page }) => {
+      const { failures } = watchForFailures(page);
+
+      await runDemo(page, backend);
+
+      expect(failures).toEqual([]);
+    });
+
     test('draws the triangle its own shader colors', async ({ page }) => {
       await runDemo(page, backend);
 
