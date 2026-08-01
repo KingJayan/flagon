@@ -23,10 +23,6 @@ export function isBackend(name: string): name is Backend {
   return (BACKENDS as readonly string[]).includes(name);
 }
 
-/**
- * a module whose only content is a gc struct type: engines without WebAssembly GC reject it,
- * and validating costs nothing next to instantiating a bundle.
- */
 const GC_PROBE = new Uint8Array([0, 97, 115, 109, 1, 0, 0, 0, 1, 5, 1, 80, 0, 95, 0]);
 
 export function supportsWasmGc(): boolean {

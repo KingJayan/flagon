@@ -53,3 +53,21 @@ for (const backend of BACKENDS) {
     });
   });
 }
+
+test('says what a page without a proxy is missing', async ({ page }) => {
+  await open(page, 'js', 'program=hello');
+  await expect(page.getByTestId('state')).toHaveText('exited', { timeout: 30_000 });
+
+  const failure = await page.evaluate(
+    () =>
+      new Promise<string>((resolve) => {
+        const net = (window as unknown as { __flagonNet: { open(url: string, done: Function): void } })
+          .__flagonNet;
+        net.open('ws://localhost:65533/__flagon/tcp', (error: string) =>
+          resolve(String(error)),
+        );
+      }),
+  );
+
+  expect(failure).toContain('flagon tcp proxy');
+});

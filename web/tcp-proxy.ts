@@ -6,35 +6,56 @@ import { WebSocketServer, type WebSocket } from 'ws';
 
 export const TCP_PROXY_PATH = '/__flagon/tcp';
 
+export const DEFAULT_ALLOW = ['localhost', '127.0.0.1', '[::1]'];
+
 export interface TcpProxyOptions {
   /** hosts connections may be made to, as `host` or `host:port` */
   allow?: string[];
+  /** origins besides this server's own that pages may ask from, as `scheme://host[:port]` */
+  origins?: string[];
+}
+
+/**
+ * serves the proxy on an http server of any origin. vite has one in development; a deployment
+ * runs `proxy-server.ts`, which has another.
+ */
+/** any server that raises an upgrade, whatever else it is: vite's, http2's, or plain node's */
+export interface Upgradable {
+  on(
+    event: 'upgrade',
+    listener: (request: IncomingMessage, socket: Duplex, head: Buffer) => void,
+  ): unknown;
+}
+
+export function attachTcpProxy(server: Upgradable, options: TcpProxyOptions = {}): void {
+  const allowed = (options.allow ?? DEFAULT_ALLOW).map((one) => one.toLowerCase());
+  const origins = (options.origins ?? []).map((one) => one.toLowerCase());
+  const sockets = new WebSocketServer({ noServer: true });
+
+  server.on('upgrade', (request: IncomingMessage, socket: Duplex, head: Buffer) => {
+    const asked = new URL(request.url ?? '/', 'http://proxy.invalid');
+    // vite's own hot-reload socket comes through here too, and is none of our business
+    if (asked.pathname !== TCP_PROXY_PATH) {
+      return;
+    }
+    // browsers do not apply the same-origin policy to websockets, so the proxy applies it here
+    if (!isAsked(request, origins)) {
+      socket.write('HTTP/1.1 403 Forbidden\r\nConnection: close\r\n\r\n');
+      socket.destroy();
+      return;
+    }
+    sockets.handleUpgrade(request, socket, head, (client) => open(client, asked, allowed));
+  });
 }
 
 /**
  * a socket the page cannot open, opened on its behalf
  */
 export function tcpProxy(options: TcpProxyOptions = {}): Plugin {
-  const allowed = (options.allow ?? ['localhost', '127.0.0.1', '[::1]']).map((one) =>
-    one.toLowerCase(),
-  );
-
   const attach = (server: ViteDevServer | PreviewServer): void => {
-    const sockets = new WebSocketServer({ noServer: true });
-    server.httpServer?.on('upgrade', (request: IncomingMessage, socket: Duplex, head: Buffer) => {
-      const asked = new URL(request.url ?? '/', 'http://proxy.invalid');
-      // vite's own hot-reload socket comes through here too, and is none of our business
-      if (asked.pathname !== TCP_PROXY_PATH) {
-        return;
-      }
-      // browsers do not apply the same-origin policy to websockets, so the proxy applies it here
-      if (!isSameOrigin(request)) {
-        socket.write('HTTP/1.1 403 Forbidden\r\nConnection: close\r\n\r\n');
-        socket.destroy();
-        return;
-      }
-      sockets.handleUpgrade(request, socket, head, (client) => open(client, asked, allowed));
-    });
+    if (server.httpServer) {
+      attachTcpProxy(server.httpServer, options);
+    }
   };
 
   return {
@@ -44,11 +65,14 @@ export function tcpProxy(options: TcpProxyOptions = {}): Plugin {
   };
 }
 
-function isSameOrigin(request: IncomingMessage): boolean {
+function isAsked(request: IncomingMessage, origins: string[]): boolean {
   const origin = request.headers.origin;
   const host = request.headers.host;
   if (origin === undefined || host === undefined) {
     return false;
+  }
+  if (origins.includes(origin.toLowerCase())) {
+    return true;
   }
   try {
     return new URL(origin).host.toLowerCase() === host.toLowerCase();
