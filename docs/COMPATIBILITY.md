@@ -211,8 +211,18 @@ A browser cannot open raw TCP sockets.
 both directions. To callers, a `Connection` remains a blocking byte stream; reads suspend the
 current green thread until data arrives.
 
-The proxy decides which hosts may be reached. The development proxy allowlists `localhost`; a
-deployment supplies its own policy.
+The proxy is a server, not part of the bundle, and a statically hosted build that runs none has no
+network at all — every `Network.connect()` fails, saying so. `vite dev` and `vite preview` serve
+one; anywhere else, `web/proxy-server.ts` serves the built site and the same endpoint together:
+
+```
+bun run proxy -- --root dist --port 8080 --allow game.example.com:25565
+```
+
+The proxy decides which hosts may be reached: `--allow` replaces the `localhost` default. It grants
+the socket only to pages from its own origin, because browsers do not apply the same-origin policy
+to websockets themselves; `--origin https://site.example.com` names another origin where the site
+is hosted apart from the proxy.
 
 `java.net.URL` follows the same path. Flagon installs a `URLStreamHandlerFactory` at boot so
 unmodified HTTP code transparently uses the active `Network` implementation.

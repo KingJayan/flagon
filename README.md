@@ -40,21 +40,6 @@ Flagon itself is application-agnostic. Work on any particular application lives 
 * **[Compatibility Matrix](docs/COMPATIBILITY.md):** Detailed breakdown of supported and unsupported features.
 * **[Running Existing Applications](docs/DOWNSTREAM.md):** Compiling an application jar to a bundle.
 
-## Roadmap for WASM-GC Support
-
-Flagon runs on WebAssembly GC, which keeps Java objects in the WebAssembly heap and hands garbage
-collection to the engine. JavaScript remains a fully supported backend and is what browsers without
-WASM GC are served. These were the stages to getting every bundle onto it.
-
-| Stage | Status |
-| :--- | :--- |
-| Toolchain able to emit WASM GC | `✔` |
-| Bundles compile and boot in the browser | `✔` |
-| Graphics and input | `✔` |
-| Files, audio, and networking | `✔` |
-| Browser suite green on both backends | `✔` |
-| WASM GC as the default backend | `✔` |
-
 ## Quickstart
 
 Requires **JDK 17+** and **[bun](https://bun.sh)**. Maven is provided via the wrapper.
@@ -76,6 +61,10 @@ The `sandbox` bundle contains diagnostics and regression programs.
 
 > [!NOTE]
 > Appending ?program=selftest to the URL runs the compilation-backend regression suite.
+
+Networking needs a proxy served alongside the page, because a browser cannot open a socket itself.
+The development server runs one; a hosted build runs `bun run proxy -- --root dist`, which serves
+the site and the socket endpoint together. See [COMPATIBILITY.md](docs/COMPATIBILITY.md#networking).
 
 ## Testing
 

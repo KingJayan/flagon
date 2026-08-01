@@ -101,6 +101,9 @@ final class Tunnel {
             };
             window.__flagonNet = {
                 open: function(url, done) {
+                    var missing = 'no flagon tcp proxy answered at ' + url + '; a page reaches'
+                            + ' the network only through one served with it, which a hosted'
+                            + ' build has to run for itself';
                     var socket = new WebSocket(url);
                     socket.binaryType = 'arraybuffer';
                     var state = { socket: socket, chunks: [], queued: 0, pending: null,
@@ -128,13 +131,14 @@ final class Tunnel {
                         if (state.opened !== null) {
                             var open = state.opened;
                             state.opened = null;
-                            open('no proxy answered at ' + url, null);
+                            open(missing, null);
                             return;
                         }
                         deliver(state);
                     };
                     socket.onerror = function() {
-                        report(state, 'the connection to the proxy failed');
+                        report(state, state.opened !== null ? missing
+                                : 'the connection to the proxy failed');
                     };
                 },
                 receive: function(state, done) {
