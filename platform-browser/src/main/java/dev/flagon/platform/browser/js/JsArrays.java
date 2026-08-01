@@ -14,10 +14,18 @@ import org.teavm.jso.typedarrays.Uint32Array;
  * over the array's own storage and nothing is copied. compiled to wasm gc it lives in the wasm heap
  * where javascript cannot see it, so exactly the elements being passed are copied out — the reason
  * callers say how many they mean rather than passing a whole growable array.
+ *
+ * <p>the same boundary runs the other way, where the only thing that matters is that it is crossed
+ * once for a whole array rather than once for each of its elements.
  */
 public final class JsArrays {
 
     private JsArrays() {
+    }
+
+    /** @return the whole of a typed array as a java array, in one crossing */
+    public static byte[] bytesOf(Int8Array values) {
+        return values.copyToJavaArray();
     }
 
     public static Int8Array bytes(byte[] values, int length) {

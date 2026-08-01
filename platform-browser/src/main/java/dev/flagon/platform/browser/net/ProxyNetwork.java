@@ -3,6 +3,7 @@ package dev.flagon.platform.browser.net;
 import dev.flagon.platform.net.Connection;
 import dev.flagon.platform.net.Network;
 import dev.flagon.platform.net.NetworkException;
+import dev.flagon.platform.browser.js.JsArrays;
 import org.teavm.jso.typedarrays.Int8Array;
 
 /**
@@ -47,7 +48,7 @@ public final class ProxyNetwork implements Network {
         private final String host;
         private final int port;
         private final Tunnel.Handle handle;
-        private Int8Array chunk;
+        private byte[] chunk;
         private int taken;
         private boolean ended;
         private boolean closed;
@@ -89,9 +90,7 @@ public final class ProxyNetwork implements Network {
                 return -1;
             }
             int count = Math.min(length, held());
-            for (int at = 0; at < count; at++) {
-                into[offset + at] = chunk.get(taken + at);
-            }
+            System.arraycopy(chunk, taken, into, offset, count);
             taken += count;
             return count;
         }
@@ -117,19 +116,26 @@ public final class ProxyNetwork implements Network {
             }
         }
 
-        /** @return false at the end of the stream */
+        /**
+         * a frame is copied out of javascript whole, so a read costs one crossing however many
+         * bytes it asks for
+         *
+         * @return false at the end of the stream
+         */
         private boolean refill() {
-            chunk = Tunnel.receive(handle);
+            Int8Array arrived = Tunnel.receive(handle);
             taken = 0;
-            if (chunk == null) {
+            if (arrived == null) {
+                chunk = null;
                 ended = true;
                 return false;
             }
+            chunk = JsArrays.bytesOf(arrived);
             return true;
         }
 
         private int held() {
-            return chunk == null ? 0 : chunk.getLength() - taken;
+            return chunk == null ? 0 : chunk.length - taken;
         }
 
         private void requireOpen() {
