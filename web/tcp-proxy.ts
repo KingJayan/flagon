@@ -27,6 +27,12 @@ export function tcpProxy(options: TcpProxyOptions = {}): Plugin {
       if (asked.pathname !== TCP_PROXY_PATH) {
         return;
       }
+      // browsers do not apply the same-origin policy to websockets, so the proxy applies it here
+      if (!isSameOrigin(request)) {
+        socket.write('HTTP/1.1 403 Forbidden\r\nConnection: close\r\n\r\n');
+        socket.destroy();
+        return;
+      }
       sockets.handleUpgrade(request, socket, head, (client) => open(client, asked, allowed));
     });
   };
@@ -36,6 +42,19 @@ export function tcpProxy(options: TcpProxyOptions = {}): Plugin {
     configureServer: attach,
     configurePreviewServer: attach,
   };
+}
+
+function isSameOrigin(request: IncomingMessage): boolean {
+  const origin = request.headers.origin;
+  const host = request.headers.host;
+  if (origin === undefined || host === undefined) {
+    return false;
+  }
+  try {
+    return new URL(origin).host.toLowerCase() === host.toLowerCase();
+  } catch {
+    return false;
+  }
 }
 
 function open(client: WebSocket, asked: URL, allowed: string[]): void {

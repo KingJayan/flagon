@@ -8,6 +8,8 @@ import java.io.InputStream;
 /** the line-at-a-time reading http's head is made of */
 final class HttpLines {
 
+    static final int MAX_LINE = 8192;
+
     private HttpLines() {
     }
 
@@ -19,6 +21,10 @@ final class HttpLines {
         int read = source.read();
         while (read >= 0 && read != '\n') {
             if (read != '\r') {
+                if (line.size() >= MAX_LINE) {
+                    throw new IOException("the server sent a line longer than " + MAX_LINE
+                            + " bytes");
+                }
                 line.write(read);
             }
             read = source.read();
