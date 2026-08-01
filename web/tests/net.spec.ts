@@ -29,6 +29,12 @@ for (const backend of BACKENDS) {
       await expect(page.getByTestId('log')).toContainText('closed: true');
     });
 
+    test('reassembles a body that arrives as many frames', async ({ page }) => {
+      await runDemo(page, backend);
+
+      await expect(page.getByTestId('log')).toContainText('bulk: 262144 bytes in order');
+    });
+
     test('answers an unmodified java.net.URL over the same proxy', async ({ page }) => {
       await runDemo(page, backend);
 

@@ -20,6 +20,7 @@ public final class NetDemoProgram implements Program {
 
     private static final String DEFAULT_ADDRESS = "localhost:5273";
     private static final String PROBE = "/flagon-net-probe.txt";
+    private static final String BULK_PROBE = "/flagon-net-bulk.bin";
 
     @Override
     public String id() {
@@ -43,6 +44,7 @@ public final class NetDemoProgram implements Program {
         int port = Integer.parseInt(address.substring(address.lastIndexOf(':') + 1));
 
         fetch(console, network, host, port);
+        bulk(console, network, host, port);
         fetchByUrl(console, "http://" + address + PROBE);
         refused(console, network, host);
         disallowed(console, network);
@@ -54,12 +56,8 @@ public final class NetDemoProgram implements Program {
         Connection connection = network.connect(host, port);
         console.info("connected to " + connection.host() + ":" + connection.port());
         try {
-            String request = "GET " + PROBE + " HTTP/1.1\r\n"
-                    + "Host: " + host + ":" + port + "\r\n"
-                    + "Connection: close\r\n\r\n";
-            byte[] sent = request.getBytes(StandardCharsets.US_ASCII);
-            connection.write(sent, 0, sent.length);
-            console.info("sent " + sent.length + " bytes");
+            int sent = get(connection, PROBE, host, port);
+            console.info("sent " + sent + " bytes");
 
             String response = new String(readAll(connection), StandardCharsets.UTF_8);
             int end = response.indexOf("\r\n");
@@ -74,6 +72,27 @@ public final class NetDemoProgram implements Program {
             connection.close();
         }
         console.info("closed: " + !connection.isOpen());
+    }
+
+    private void bulk(ConsoleSink console, Network network, String host, int port) {
+        Connection connection = network.connect(host, port);
+        try {
+            get(connection, BULK_PROBE, host, port);
+
+            byte[] response = readAll(connection);
+            int head = headEnd(response);
+            int length = response.length - head;
+            for (int at = 0; at < length; at++) {
+                byte expected = (byte) (at % 251);
+                if (response[head + at] != expected) {
+                    throw new IllegalStateException("byte " + at + " is " + response[head + at]
+                            + ", not " + expected);
+                }
+            }
+            console.info("bulk: " + length + " bytes in order");
+        } finally {
+            connection.close();
+        }
     }
 
     /** the same file again, this time through code that has never heard of a proxy */
@@ -113,14 +132,41 @@ public final class NetDemoProgram implements Program {
         }
     }
 
+    /** @return how many bytes the request took */
+    private int get(Connection connection, String path, String host, int port) {
+        String request = "GET " + path + " HTTP/1.1\r\n"
+                + "Host: " + host + ":" + port + "\r\n"
+                + "Connection: close\r\n\r\n";
+        byte[] sent = request.getBytes(StandardCharsets.US_ASCII);
+        connection.write(sent, 0, sent.length);
+        return sent.length;
+    }
+
     private byte[] readAll(Connection connection) {
         ByteArrayOutputStream collected = new ByteArrayOutputStream();
-        byte[] chunk = new byte[1024];
-        int count = connection.read(chunk, 0, chunk.length);
+        byte[] chunk = new byte[4096];
+        int filled = 0;
+        int count = connection.read(chunk, filled, chunk.length - filled);
         while (count >= 0) {
-            collected.write(chunk, 0, count);
-            count = connection.read(chunk, 0, chunk.length);
+            filled += count;
+            if (filled == chunk.length) {
+                collected.write(chunk, 0, filled);
+                filled = 0;
+            }
+            count = connection.read(chunk, filled, chunk.length - filled);
         }
+        collected.write(chunk, 0, filled);
         return collected.toByteArray();
+    }
+
+    /** @return the offset just past the blank line that ends the response head */
+    private static int headEnd(byte[] response) {
+        for (int at = 0; at + 3 < response.length; at++) {
+            if (response[at] == '\r' && response[at + 1] == '\n'
+                    && response[at + 2] == '\r' && response[at + 3] == '\n') {
+                return at + 4;
+            }
+        }
+        throw new IllegalStateException("no headers ended in " + response.length + " bytes");
     }
 }
