@@ -71,6 +71,15 @@ for (const backend of BACKENDS) {
       expect(heights.size, 'the client array quad never changed size').toBeGreaterThan(1);
     });
 
+    /** the handle table has to hand a deleted name back, or a long session grows it forever */
+    test('reuses the name of a deleted buffer', async ({ page }) => {
+      await runDemo(page, backend);
+
+      await expect(page.getByTestId('log')).toContainText(
+        'buffer names reused across 257 rebuilds: true',
+      );
+    });
+
     test('runs the whole demo without a browser error', async ({ page }) => {
       const { failures } = watchForFailures(page);
 
