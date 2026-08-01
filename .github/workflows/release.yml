@@ -32,7 +32,7 @@ jobs:
         run: ./mvnw -B versions:set -DnewVersion="${GITHUB_REF_NAME#v}" -DgenerateBackupPoms=false
 
       - name: Build and test
-        run: ./mvnw -B package
+        run: ./mvnw -B -Prelease package
 
       - name: Publish to GitHub Packages
         run: ./mvnw -B deploy -DskipTests

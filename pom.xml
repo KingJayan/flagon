@@ -33,6 +33,8 @@
     <flagon.target>WEBASSEMBLY_GC</flagon.target>
     <flagon.bundle.extension>wasm</flagon.bundle.extension>
     <flagon.optimization>SIMPLE</flagon.optimization>
+    <!-- what -Prelease optimizes at, per backend: see the release profile -->
+    <flagon.optimization.release>FULL</flagon.optimization.release>
     <flagon.minify>false</flagon.minify>
     <!-- strict adds null/bounds checks so java exceptions are thrown instead of js TypeErrors -->
     <flagon.strict>true</flagon.strict>
@@ -221,6 +223,20 @@
       <properties>
         <flagon.target>JAVASCRIPT</flagon.target>
         <flagon.bundle.extension>js</flagon.bundle.extension>
+        <!-- teavm 0.15 miscompiles this backend's async bridges at FULL, and a bundle minified out
+             of SIMPLE is the smaller of the two anyway -->
+        <flagon.optimization.release>SIMPLE</flagon.optimization.release>
+      </properties>
+    </profile>
+
+    <!-- what a hosted build ships: optimized and minified, with no maps or debug information
+         beside it. strict stays on, exception semantics being behaviour and not a debugging aid -->
+    <profile>
+      <id>release</id>
+      <properties>
+        <flagon.optimization>${flagon.optimization.release}</flagon.optimization>
+        <flagon.minify>true</flagon.minify>
+        <flagon.sourceMaps>false</flagon.sourceMaps>
       </properties>
     </profile>
   </profiles>

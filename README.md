@@ -55,6 +55,8 @@ cd web && bun install && bun run dev
 Once running, open <http://localhost:5273>. Select a bundle, a backend, and a program, and run it.
 Bundles compile to WebAssembly GC by default; `-Pjs` emits the same bundles compiled to JavaScript,
 which the shell falls back to on browsers without WebAssembly GC.
+Add `-Prelease` to either for the bundles a hosted build should ship: optimized and minified, with
+no source maps or debug information beside them.
 The `example` bundle contains [an unmodified LWJGL application](example-app/).
 The `sandbox` bundle contains diagnostics and regression programs.
 
