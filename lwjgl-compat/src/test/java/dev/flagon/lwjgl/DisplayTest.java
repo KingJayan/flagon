@@ -113,6 +113,40 @@ class DisplayTest {
         assertEquals(2, platform.opened());
     }
 
+    @Test
+    void followsTheSurfaceInAndOutOfFocus() throws LWJGLException {
+        Display.create();
+
+        assertTrue(Display.isActive());
+
+        platform.focus(false);
+
+        assertFalse(Display.isActive());
+        assertTrue(Display.isVisible(), "losing focus does not hide a window");
+    }
+
+    @Test
+    void followsTheSurfaceOutOfSight() throws LWJGLException {
+        Display.create();
+
+        platform.show(false);
+
+        assertFalse(Display.isVisible());
+    }
+
+    /** an app polls these before it has a display and after it has given one up */
+    @Test
+    void isNeitherActiveNorVisibleWithoutADisplay() throws LWJGLException {
+        assertFalse(Display.isActive());
+        assertFalse(Display.isVisible());
+
+        Display.create();
+        Display.destroy();
+
+        assertFalse(Display.isActive());
+        assertFalse(Display.isVisible());
+    }
+
     private long elapsed() {
         return Platforms.get().clock().nanoTime();
     }

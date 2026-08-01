@@ -69,6 +69,16 @@ public final class CanvasSurface implements DisplaySurface {
     }
 
     @Override
+    public boolean isFocused() {
+        return !destroyed && Canvas.isFocused(canvas);
+    }
+
+    @Override
+    public boolean isVisible() {
+        return !destroyed && Canvas.isVisible();
+    }
+
+    @Override
     public boolean isCloseRequested() {
         return destroyed || Canvas.isCloseRequested();
     }

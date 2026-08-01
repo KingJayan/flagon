@@ -56,11 +56,17 @@ final class Canvas {
     @JSBody(params = "title", script = "document.title = title;")
     static native void setTitle(String title);
 
+    @JSBody(params = "canvas", script = """
+            return document.hasFocus() && document.activeElement === canvas;
+            """)
+    static native boolean isFocused(JSObject canvas);
+
+    @JSBody(script = "return document.visibilityState !== 'hidden';")
+    static native boolean isVisible();
+
     @JSBody(script = "return document.fullscreenElement != null;")
     static native boolean isFullscreen();
 
-    // requestFullscreen resolves asynchronously and needs a user gesture, so the best we can
-    // report synchronously is whether the browser accepted the request at all
     @JSBody(params = "canvas", script = """
             try {
                 var result = canvas.requestFullscreen();
