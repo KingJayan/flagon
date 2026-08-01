@@ -21,6 +21,10 @@ public final class NetDemoProgram implements Program {
     private static final String DEFAULT_ADDRESS = "localhost:5273";
     private static final String PROBE = "/flagon-net-probe.txt";
     private static final String BULK_PROBE = "/flagon-net-bulk.bin";
+    /** a body far larger than what the tunnel will let sit unread */
+    private static final String BULK = "/flagon-net-flood.bin";
+    private static final int QUEUE_LIMIT = 4 * 1024 * 1024;
+    private static final int SENT = 8 * 1024 * 1024;
 
     @Override
     public String id() {
@@ -46,6 +50,8 @@ public final class NetDemoProgram implements Program {
         fetch(console, network, host, port);
         bulk(console, network, host, port);
         fetchByUrl(console, "http://" + address + PROBE);
+        paced(console, network, host, port);
+        pacedWrite(console, network, host, port);
         refused(console, network, host);
         disallowed(console, network);
         console.info("net: done");
@@ -109,6 +115,63 @@ public final class NetDemoProgram implements Program {
             }
             console.info("url body: "
                     + new String(collected.toByteArray(), StandardCharsets.UTF_8).trim());
+        }
+    }
+
+    private void paced(ConsoleSink console, Network network, String host, int port) {
+        Connection connection = network.connect(host, port);
+        try {
+            get(connection, BULK, host, port);
+
+            Thread.sleep(1000);
+            int held = connection.available();
+            console.info("paced: queue held at " + held + " bytes, capped: " + (held < QUEUE_LIMIT));
+
+            drain(connection, held);
+            Thread.sleep(200);
+            console.info("paced: sending resumed: " + (connection.available() > 0));
+        } catch (InterruptedException interrupted) {
+            Thread.currentThread().interrupt();
+        } finally {
+            connection.close();
+        }
+    }
+
+    /** a body larger than the browser will hold for a socket, which the write has to wait out */
+    private void pacedWrite(ConsoleSink console, Network network, String host, int port) {
+        Connection connection = network.connect(host, port);
+        try {
+            String request = "POST " + BULK + " HTTP/1.1\r\n"
+                    + "Host: " + host + ":" + port + "\r\n"
+                    + "Content-Length: " + SENT + "\r\n"
+                    + "Connection: close\r\n\r\n";
+            byte[] head = request.getBytes(StandardCharsets.US_ASCII);
+            connection.write(head, 0, head.length);
+
+            byte[] chunk = new byte[64 * 1024];
+            for (int at = 0; at < SENT; at += chunk.length) {
+                connection.write(chunk, 0, chunk.length);
+            }
+
+            String response = new String(readAll(connection), StandardCharsets.UTF_8);
+            int taken = Integer.parseInt(response.substring(
+                    response.lastIndexOf("taken ") + "taken ".length()).trim());
+            console.info("paced: whole write arrived: " + (taken == SENT));
+        } finally {
+            connection.close();
+        }
+    }
+
+    /** reads what is already here and nothing more, so the queue falls back under the low mark */
+    private void drain(Connection connection, int waiting) {
+        byte[] chunk = new byte[8192];
+        int left = waiting;
+        while (left > 0) {
+            int count = connection.read(chunk, 0, Math.min(chunk.length, left));
+            if (count < 0) {
+                return;
+            }
+            left -= count;
         }
     }
 

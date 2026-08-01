@@ -25,9 +25,55 @@ function bulkProbe(): Plugin {
   };
 }
 
+const FLOOD = '/flagon-net-flood.bin';
+const FLOOD_SIZE = 32 * 1024 * 1024;
+
+function flood(): Plugin {
+  return {
+    name: 'flagon-net-flood',
+    configureServer(server) {
+      server.middlewares.use(FLOOD, (asked, answer) => {
+        if (asked.method === 'POST') {
+          let taken = 0;
+          asked.on('data', (chunk: Buffer) => {
+            taken += chunk.length;
+          });
+          asked.on('end', () => {
+            // a length, not chunked framing, the page reading this response by hand
+            const body = 'taken ' + taken;
+            answer.writeHead(200, {
+              'content-type': 'text/plain',
+              'content-length': String(body.length),
+            });
+            answer.end(body);
+          });
+          return;
+        }
+        answer.writeHead(200, {
+          'content-type': 'application/octet-stream',
+          'content-length': String(FLOOD_SIZE),
+        });
+        const chunk = Buffer.alloc(64 * 1024);
+        let written = 0;
+        const pump = (): void => {
+          while (written < FLOOD_SIZE) {
+            written += chunk.length;
+            if (!answer.write(chunk)) {
+              answer.once('drain', pump);
+              return;
+            }
+          }
+          answer.end();
+        };
+        pump();
+      });
+    },
+  };
+}
+
 export default defineConfig({
   // the sandbox talks to the dev server itself, and to nothing else
-  plugins: [tcpProxy({ allow: ['localhost', '127.0.0.1'] }), bulkProbe()],
+  plugins: [tcpProxy({ allow: ['localhost', '127.0.0.1'] }), bulkProbe(), flood()],
   server: {
     port: 5273,
     strictPort: true,
