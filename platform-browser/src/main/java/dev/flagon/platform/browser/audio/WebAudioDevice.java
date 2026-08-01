@@ -104,6 +104,10 @@ public final class WebAudioDevice implements AudioDevice {
         applyListenerOrientation();
     }
 
+    static WebAudioDevice on(AudioContext context) {
+        return new WebAudioDevice(context);
+    }
+
     /**
      * @return the device, or null where the page has no web audio at all
      */
