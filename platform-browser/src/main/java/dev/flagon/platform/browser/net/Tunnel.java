@@ -9,23 +9,25 @@ import org.teavm.jso.JSObject;
 import org.teavm.jso.typedarrays.Int8Array;
 
 /**
- * a socket at the far side of a websocket
- *
- * <p>the proxy speaks one connection per socket: a text frame says whether it is up, and every
- * binary frame after that is the socket's own bytes, in whichever direction it travelled.
+ a socket at the far side of a websocket
  */
 final class Tunnel {
 
-    /** the endpoint a page's proxy is served from, alongside the page itself */
     static final String PATH = "/__flagon/tcp";
 
-    /** one open connection, held on the javascript side */
+    private static final int SEND_LIMIT = 1 << 20;
+
     interface Handle extends JSObject {
     }
 
     @JSFunctor
     interface Settled extends JSObject {
         void call(String error, JSObject result);
+    }
+
+    @JSFunctor
+    interface Tick extends JSObject {
+        void call();
     }
 
     private Tunnel() {
@@ -55,6 +57,20 @@ final class Tunnel {
         netReceive(handle, settle(callback));
     }
 
+    static void send(Handle handle, Int8Array data) {
+        while (buffered(handle) > SEND_LIMIT && isOpen(handle)) {
+            settleBuffer();
+        }
+        netSend(handle, data);
+    }
+
+    @Async
+    private static native void settleBuffer();
+
+    private static void settleBuffer(AsyncCallback<Void> callback) {
+        soon(() -> callback.complete(null));
+    }
+
     private static <T extends JSObject> Settled settle(AsyncCallback<T> callback) {
         return (error, result) -> {
             if (error != null) {
@@ -68,11 +84,22 @@ final class Tunnel {
     }
 
     /**
-     * written without {@code async}, {@code await} or arrow functions on purpose: teavm parses
-     * every {@code @JSBody} script, and its parser predates all three.
+     * written without {@code async}, {@code await} or arrow functions on purpose
      */
     @JSBody(script = """
             if (window.__flagonNet) { return; }
+            var HOLD_AT = 256 * 1024;
+            var RESUME_AT = 64 * 1024;
+            var flow = function(state) {
+                if (state.socket.readyState !== 1) { return; }
+                if (!state.held && state.queued >= HOLD_AT) {
+                    state.held = true;
+                    state.socket.send('pause');
+                } else if (state.held && state.queued <= RESUME_AT) {
+                    state.held = false;
+                    state.socket.send('resume');
+                }
+            };
             var deliver = function(state) {
                 if (state.pending === null) { return; }
                 var done = state.pending;
@@ -80,6 +107,7 @@ final class Tunnel {
                     state.pending = null;
                     var chunk = state.chunks.shift();
                     state.queued -= chunk.length;
+                    flow(state);
                     done(null, chunk);
                 } else if (state.failure !== null) {
                     state.pending = null;
@@ -107,7 +135,7 @@ final class Tunnel {
                     var socket = new WebSocket(url);
                     socket.binaryType = 'arraybuffer';
                     var state = { socket: socket, chunks: [], queued: 0, pending: null,
-                                  closed: false, failure: null, opened: done };
+                                  closed: false, failure: null, opened: done, held: false };
                     socket.onmessage = function(event) {
                         if (typeof event.data === 'string') {
                             if (state.opened !== null && event.data === 'open') {
@@ -123,6 +151,7 @@ final class Tunnel {
                         if (chunk.length > 0) {
                             state.chunks.push(chunk);
                             state.queued += chunk.length;
+                            flow(state);
                         }
                         deliver(state);
                     };
@@ -147,6 +176,7 @@ final class Tunnel {
                 },
                 available: function(state) { return state.queued; },
                 isOpen: function(state) { return !state.closed && state.failure === null; },
+                buffered: function(state) { return state.socket.bufferedAmount; },
                 send: function(state, data) { state.socket.send(data); },
                 close: function(state) {
                     state.closed = true;
@@ -170,7 +200,13 @@ final class Tunnel {
     static native boolean isOpen(Handle handle);
 
     @JSBody(params = {"handle", "data"}, script = "window.__flagonNet.send(handle, data);")
-    static native void send(Handle handle, Int8Array data);
+    private static native void netSend(Handle handle, Int8Array data);
+
+    @JSBody(params = {"handle"}, script = "return window.__flagonNet.buffered(handle);")
+    private static native int buffered(Handle handle);
+
+    @JSBody(params = {"done"}, script = "setTimeout(done, 4);")
+    private static native void soon(Tick done);
 
     @JSBody(params = {"handle"}, script = "window.__flagonNet.close(handle);")
     static native void close(Handle handle);

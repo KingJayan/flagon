@@ -44,6 +44,21 @@ for (const backend of BACKENDS) {
       );
     });
 
+    /** a body nobody is reading stops arriving, and starts again where it left off */
+    test('holds the proxy off while the reader is behind', async ({ page }) => {
+      await runDemo(page, backend);
+
+      await expect(page.getByTestId('log')).toContainText('capped: true');
+      await expect(page.getByTestId('log')).toContainText('paced: sending resumed: true');
+    });
+
+    /** the other direction: a write larger than the browser will hold loses nothing */
+    test('waits for a large write to go out', async ({ page }) => {
+      await runDemo(page, backend);
+
+      await expect(page.getByTestId('log')).toContainText('paced: whole write arrived: true');
+    });
+
     test('reports a port with nothing behind it rather than waiting', async ({ page }) => {
       await runDemo(page, backend);
 

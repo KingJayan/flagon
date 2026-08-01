@@ -9,15 +9,13 @@ export const TCP_PROXY_PATH = '/__flagon/tcp';
 export const DEFAULT_ALLOW = ['localhost', '127.0.0.1', '[::1]'];
 
 export interface TcpProxyOptions {
-  /** hosts connections may be made to, as `host` or `host:port` */
   allow?: string[];
-  /** origins besides this server's own that pages may ask from, as `scheme://host[:port]` */
   origins?: string[];
 }
 
 /**
  * serves the proxy on an http server of any origin. vite has one in development; a deployment
- * runs `proxy-server.ts`, which has another.
+ runs `proxy-server.ts`, which has another.
  */
 /** any server that raises an upgrade, whatever else it is: vite's, http2's, or plain node's */
 export interface Upgradable {
@@ -95,16 +93,44 @@ function open(client: WebSocket, asked: URL, allowed: string[]): void {
   }
 
   const socket = net.createConnection({ host, port });
+
+  let flushing = false;
+  let held = false;
+  const pace = (): void => {
+    if (flushing || held) {
+      socket.pause();
+    } else {
+      socket.resume();
+    }
+  };
+
   socket.on('connect', () => client.send('open'));
   socket.on('data', (data: Buffer) => {
-    if (client.readyState === client.OPEN) {
-      client.send(data);
+    if (client.readyState !== client.OPEN) {
+      return;
     }
+    flushing = true;
+    pace();
+    client.send(data, () => {
+      flushing = false;
+      pace();
+    });
   });
   socket.on('error', (error: Error) => refuse(client, `${host}:${port} ${error.message}`));
   socket.on('close', () => client.close());
 
-  client.on('message', (data: Buffer) => socket.write(data));
+  // text frames are the page pacing us; everything else is the socket's own bytes
+  client.on('message', (data: Buffer, isBinary: boolean) => {
+    if (!isBinary) {
+      held = data.toString() === 'pause';
+      pace();
+      return;
+    }
+    if (!socket.write(data)) {
+      client.pause();
+    }
+  });
+  socket.on('drain', () => client.resume());
   client.on('close', () => socket.destroy());
 }
 
