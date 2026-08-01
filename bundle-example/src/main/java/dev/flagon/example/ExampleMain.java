@@ -4,6 +4,7 @@ import dev.flagon.platform.browser.BrowserPlatform;
 import dev.flagon.runtime.FlagonRuntime;
 import dev.flagon.runtime.MainProgram;
 import dev.flagon.runtime.ProgramRegistry;
+import org.example.blocks.BlocksGame;
 import org.example.spinner.SpinnerApp;
 
 /**
@@ -20,7 +21,8 @@ public final class ExampleMain {
 
     public static void main(String[] arguments) {
         ProgramRegistry registry = new ProgramRegistry()
-                .register(new MainProgram("spinner", "the example application", SpinnerApp::main));
+                .register(new MainProgram("spinner", "the example application", SpinnerApp::main))
+                .register(new MainProgram("blocks", "the example game", BlocksGame::main));
         FlagonRuntime.boot(BrowserPlatform.create(arguments), registry);
     }
 }
