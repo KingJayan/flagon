@@ -15,7 +15,8 @@ public final class Display {
     private static DisplaySurface surface;
     private static DisplayMode mode = DEFAULT_MODE;
     private static String title = "Flagon";
-    private static long lastSync;
+    private static int syncRate;
+    private static long frameDue;
 
     private Display() {
     }
@@ -52,6 +53,7 @@ public final class Display {
             GLState.detach();
             surface.destroy();
             surface = null;
+            frameDue = 0;
         }
     }
 
@@ -64,16 +66,27 @@ public final class Display {
         update();
     }
 
-    /**
-     * desktop lwjgl sleeps here to hit a frame rate. the browser already paces frames through
-     * {@link #update()}, so this only records the request rather than sleeping and losing a frame.
-     */
     public static void sync(int fps) {
-        lastSync = fps;
+        syncRate = fps;
+        if (fps <= 0 || surface == null) {
+            frameDue = 0;
+            return;
+        }
+        long interval = 1_000_000_000L / fps;
+        long now = Platforms.get().clock().nanoTime();
+        if (frameDue == 0) {
+            frameDue = now + interval;
+            return;
+        }
+        while (Platforms.get().clock().nanoTime() < frameDue) {
+            surface.present();
+        }
+        // a loop that has fallen behind takes the rate it can manage rather than chasing frames
+        frameDue = Math.max(frameDue + interval, Platforms.get().clock().nanoTime());
     }
 
     public static int getSyncRate() {
-        return (int) lastSync;
+        return syncRate;
     }
 
     public static boolean isCloseRequested() {
