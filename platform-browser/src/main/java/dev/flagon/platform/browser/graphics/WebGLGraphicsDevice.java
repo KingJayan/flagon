@@ -18,9 +18,8 @@ import org.teavm.jso.typedarrays.Int32Array;
 import org.teavm.jso.typedarrays.Int8Array;
 import org.teavm.jso.typedarrays.Uint8Array;
 
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
+import java.util.Iterator;
 import java.util.Map;
 
 /** {@link GraphicsDevice} on a WebGL2 context. */
@@ -28,32 +27,28 @@ public final class WebGLGraphicsDevice implements GraphicsDevice {
 
     private final WebGL2 gl;
 
-    // gl names are ints; webgl hands back objects. index 0 stays empty so 0 means "none",
-    // matching gl's convention.
-    private final List<JSObject> handles = new ArrayList<>();
-    private final List<JSObject> uniforms = new ArrayList<>();
+    private final GlNames handles = new GlNames();
+    private final GlNames uniforms = new GlNames();
     private final Map<String, Integer> uniformNames = new HashMap<>();
 
     private String pendingError;
 
     public WebGLGraphicsDevice(WebGL2 gl) {
         this.gl = gl;
-        handles.add(null);
-        uniforms.add(null);
         // webgl2 core profile requires a bound vertex array object before any attribute is set
         gl.bindVertexArray(gl.createVertexArray());
     }
 
     private int store(JSObject object) {
-        handles.add(object);
-        return handles.size() - 1;
+        return handles.add(object);
     }
 
     private JSObject lookup(int name, String kind) {
-        if (name <= 0 || name >= handles.size() || handles.get(name) == null) {
+        JSObject object = handles.get(name);
+        if (object == null) {
             throw new IllegalArgumentException("not a live " + kind + ": " + name);
         }
-        return handles.get(name);
+        return object;
     }
 
     @Override
@@ -163,7 +158,7 @@ public final class WebGLGraphicsDevice implements GraphicsDevice {
     @Override
     public void deleteBuffer(int buffer) {
         gl.deleteBuffer(lookup(buffer, "buffer"));
-        handles.set(buffer, null);
+        handles.remove(buffer);
     }
 
     @Override
@@ -279,7 +274,7 @@ public final class WebGLGraphicsDevice implements GraphicsDevice {
     @Override
     public void deleteShader(int shader) {
         gl.deleteShader(lookup(shader, "shader"));
-        handles.set(shader, null);
+        handles.remove(shader);
     }
 
     @Override
@@ -341,18 +336,28 @@ public final class WebGLGraphicsDevice implements GraphicsDevice {
     }
 
     private boolean live(int name) {
-        return name > 0 && name < handles.size() && handles.get(name) != null;
+        return handles.get(name) != null;
     }
 
     @Override
     public void deleteProgram(int program) {
         gl.deleteProgram(lookup(program, "program"));
-        handles.set(program, null);
+        handles.remove(program);
         forgetUniforms(program);
     }
 
+    // the location objects go with the names, or a program's uniforms would be held for the life
+    // of the page by a table nothing can reach them through any more
     private void forgetUniforms(int program) {
-        uniformNames.keySet().removeIf(key -> key.startsWith(program + "/"));
+        String prefix = program + "/";
+        Iterator<Map.Entry<String, Integer>> known = uniformNames.entrySet().iterator();
+        while (known.hasNext()) {
+            Map.Entry<String, Integer> entry = known.next();
+            if (entry.getKey().startsWith(prefix)) {
+                uniforms.remove(entry.getValue());
+                known.remove();
+            }
+        }
     }
 
     @Override
@@ -373,8 +378,7 @@ public final class WebGLGraphicsDevice implements GraphicsDevice {
         if (location == null) {
             return -1;
         }
-        uniforms.add(location);
-        int assigned = uniforms.size() - 1;
+        int assigned = uniforms.add(location);
         uniformNames.put(key, assigned);
         return assigned;
     }
@@ -388,10 +392,11 @@ public final class WebGLGraphicsDevice implements GraphicsDevice {
         if (location == NO_UNIFORM) {
             return null;
         }
-        if (location <= 0 || location >= uniforms.size()) {
+        JSObject found = uniforms.get(location);
+        if (found == null) {
             throw new IllegalArgumentException("not a uniform location: " + location);
         }
-        return uniforms.get(location);
+        return found;
     }
 
     @Override
@@ -586,7 +591,7 @@ public final class WebGLGraphicsDevice implements GraphicsDevice {
     @Override
     public void deleteTexture(int texture) {
         gl.deleteTexture(lookup(texture, "texture"));
-        handles.set(texture, null);
+        handles.remove(texture);
     }
 
     @Override

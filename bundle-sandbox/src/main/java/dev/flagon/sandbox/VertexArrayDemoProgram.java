@@ -48,6 +48,7 @@ public final class VertexArrayDemoProgram implements Program {
         GL11.glViewport(0, 0, Display.getWidth(), Display.getHeight());
         GL11.glDisable(GL11.GL_DEPTH_TEST);
 
+        reportNameReuse();
         buildStaticQuad();
         clientVertices = BufferUtils.createFloatBuffer(4 * 3);
         Platforms.get().console().info("vertex buffer " + vertexBuffer
@@ -64,6 +65,21 @@ public final class VertexArrayDemoProgram implements Program {
         GL15.glDeleteBuffers(indexBuffer);
         Platforms.get().console().info("rendered " + frame + " frames");
         Display.destroy();
+    }
+
+    private void reportNameReuse() {
+        int first = GL15.glGenBuffers();
+        GL15.glDeleteBuffers(first);
+
+        int highest = first;
+        for (int round = 0; round < 256; round++) {
+            int name = GL15.glGenBuffers();
+            highest = Math.max(highest, name);
+            GL15.glDeleteBuffers(name);
+        }
+
+        Platforms.get().console().info("buffer names reused across 257 rebuilds: "
+                + (highest == first));
     }
 
     /** a green quad in a vbo, drawn as two indexed triangles out of an element buffer. */
