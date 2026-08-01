@@ -30,6 +30,8 @@ public final class ShaderDemoProgram implements Program {
 
     private static final String VERTEX_SHADER = """
             #version 120
+            /* the desktop original was #version 330 core and read
+               gl_ModelViewProjectionMatrix * gl_Vertex */
             attribute vec2 in_position;
             attribute vec3 in_tint;
 
@@ -45,6 +47,7 @@ public final class ShaderDemoProgram implements Program {
 
     private static final String FRAGMENT_SHADER = """
             #version 120
+            // precision highp float; was declared here before, and gl_Color before that
             varying vec3 v_tint;
 
             uniform float u_fade;
