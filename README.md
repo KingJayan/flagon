@@ -7,7 +7,7 @@
 
   <a href="https://teavm.org"><img src="https://img.shields.io/badge/Compiled_with-TeaVM-blue?style=flat-square" alt="TeaVM"></a>
   <a href="https://bun.sh"><img src="https://img.shields.io/badge/Powered_by-Bun-black?style=flat-square" alt="Bun"></a>
-  <a href="https://openjdk.org/"><img src="https://img.shields.io/badge/Java-17+-orange?style=flat-square" alt="Java 17+"></a>
+  <a href="https://openjdk.org/"><img src="https://img.shields.io/badge/Java-25+-orange?style=flat-square" alt="Java 25+"></a>
 </div>
 
 <br />
@@ -42,7 +42,7 @@ Flagon itself is application-agnostic. Work on any particular application lives 
 
 ## Quickstart
 
-Requires **JDK 17+** and **[bun](https://bun.sh)**. Maven is provided via the wrapper.
+Requires **JDK 25+** and **[bun](https://bun.sh)**. Maven is provided via the wrapper.
 
 ```sh
 # compiles java and emits the browser bundles
