@@ -7,6 +7,7 @@ import dev.flagon.platform.RuntimeHost;
 import dev.flagon.runtime.net.NetworkUrls;
 
 import java.util.Arrays;
+import java.util.List;
 
 /**
  * the boot sequence. each phase is announced before it starts so an embedder can tell
@@ -22,8 +23,7 @@ public final class FlagonRuntime {
     }
 
     /**
-     * installs the platform, selects a program by the first host argument, runs it.
-     * never throws — the caller is an entry point with nowhere to propagate to.
+     * installs the platform, selects a program by the first host argument, runs it
      */
     public static int boot(Platform platform, ProgramRegistry registry) {
         if (platform == null) {
@@ -46,6 +46,7 @@ public final class FlagonRuntime {
             NetworkUrls.install(platform.network(), console);
 
             phase = PHASE_SELECT;
+            announce(host, registry);
             String[] arguments = host.arguments();
             if (arguments == null) {
                 arguments = new String[0];
@@ -71,6 +72,18 @@ public final class FlagonRuntime {
         } finally {
             ConsoleStreams.restore();
         }
+    }
+
+    private static void announce(RuntimeHost host, ProgramRegistry registry) {
+        List<Program> programs = registry.all();
+        String[] ids = new String[programs.size()];
+        String[] descriptions = new String[programs.size()];
+        for (int index = 0; index < programs.size(); index++) {
+            Program program = programs.get(index);
+            ids[index] = program.id();
+            descriptions[index] = program.description();
+        }
+        host.catalog(ids, descriptions);
     }
 
     private static Program select(ProgramRegistry registry, String[] arguments) {

@@ -24,4 +24,7 @@ final class HostBridges {
             return host;
             """)
     static native HostBridge installed();
+
+    @JSBody(params = "host", script = "return typeof host.catalog === 'function';")
+    static native boolean offersCatalog(HostBridge host);
 }

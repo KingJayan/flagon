@@ -2,6 +2,7 @@
 
 export interface HostBridge {
   log(level: string, text: string): void;
+  catalog(ids: string[], descriptions: string[]): void;
   status(phase: string, detail: string): void;
   ready(): void;
   exited(code: number): void;

@@ -99,6 +99,13 @@ final class FakePlatform implements Platform, Clock, ConsoleSink, RuntimeHost {
     }
 
     @Override
+    public void catalog(String[] ids, String[] descriptions) {
+        for (int index = 0; index < ids.length; index++) {
+            events.add("catalog:" + ids[index] + ":" + descriptions[index]);
+        }
+    }
+
+    @Override
     public void status(String phase, String detail) {
         events.add("status:" + phase + ":" + detail);
     }

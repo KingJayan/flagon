@@ -117,6 +117,10 @@ final class FakeDisplayPlatform implements Platform, Clock, ConsoleSink, Runtime
     }
 
     @Override
+    public void catalog(String[] ids, String[] descriptions) {
+    }
+
+    @Override
     public void status(String phase, String detail) {
     }
 

@@ -60,7 +60,6 @@ function addPhase(phase: string, detail: string): void {
 interface Request {
   bundle: string;
   backend: string;
-  /** whether the url named the backend, rather than the shell choosing it */
   asked: boolean;
   program: string;
   args: string[];
@@ -68,28 +67,68 @@ interface Request {
 
 function readRequest(): Request {
   const params = new URLSearchParams(location.search);
-  const bundle = params.get('bundle') ?? 'sandbox';
   const asked = params.get('backend');
-  const program = params.get('program') ?? (bundle === 'sandbox' ? 'hello' : 'spinner');
-  const args = params.getAll('arg');
-  return { bundle, backend: asked ?? defaultBackend(), asked: asked !== null, program, args };
+  return {
+    bundle: params.get('bundle') ?? 'sandbox',
+    backend: asked ?? defaultBackend(),
+    asked: asked !== null,
+    program: params.get('program') ?? '',
+    args: params.getAll('arg'),
+  };
+}
+
+interface Entry {
+  id: string;
+  description: string;
+}
+
+function remembered(bundle: string): Entry[] {
+  try {
+    const stored: unknown = JSON.parse(sessionStorage.getItem(`flagon:programs:${bundle}`) ?? '[]');
+    return Array.isArray(stored) ? (stored as Entry[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+function remember(bundle: string, entries: Entry[]): void {
+  try {
+    sessionStorage.setItem(`flagon:programs:${bundle}`, JSON.stringify(entries));
+  } catch {
+  }
+}
+
+const ANY = "the bundle's first program";
+
+function showPrograms(entries: Entry[], selected: string): void {
+  programSelect.replaceChildren(new Option(ANY, ''));
+  for (const entry of entries) {
+    programSelect.add(new Option(`${entry.id} — ${entry.description}`, entry.id));
+  }
+  if (selected && !entries.some((entry) => entry.id === selected)) {
+
+    programSelect.add(new Option(`${selected} (not in this bundle)`, selected));
+  }
+  programSelect.value = selected;
 }
 
 const request = readRequest();
 bundleSelect.value = request.bundle;
 backendSelect.value = request.backend;
-programSelect.value = request.program;
-if (programSelect.value !== request.program) {
-  // an unknown program stays selectable so the failure path can be exercised from a url
-  const option = new Option(request.program, request.program, true, true);
-  programSelect.add(option);
-}
+showPrograms(remembered(request.bundle), request.program);
+
+bundleSelect.addEventListener('change', () => {
+
+  showPrograms(remembered(bundleSelect.value), '');
+});
 
 runButton.addEventListener('click', () => {
   const next = new URLSearchParams();
   next.set('bundle', bundleSelect.value);
   next.set('backend', backendSelect.value);
-  next.set('program', programSelect.value);
+  if (programSelect.value) {
+    next.set('program', programSelect.value);
+  }
   location.search = next.toString();
 });
 
@@ -97,6 +136,11 @@ const host: HostBridge = {
   log(level, text) {
     const kind = level === 'ERROR' ? 'error' : level === 'WARN' ? 'warn' : undefined;
     append(text, kind);
+  },
+  catalog(ids, descriptions) {
+    const entries = ids.map((id, index) => ({ id, description: descriptions[index] ?? id }));
+    remember(request.bundle, entries);
+    showPrograms(entries, request.program);
   },
   status(phase, detail) {
     addPhase(phase, detail);
@@ -134,7 +178,8 @@ if (!bundleUrl) {
   if (!request.asked && request.backend !== 'wasm') {
     append('WebAssembly GC is unavailable here, so the javascript bundle is running', 'warn');
   }
-  runBundle(bundleUrl, host, [request.program, ...request.args])
+  const argv = request.program ? [request.program, ...request.args] : [];
+  runBundle(bundleUrl, host, argv)
     .catch((error: unknown) => {
       setState('failed');
       append(`could not start the runtime: ${String(error)}`, 'error');

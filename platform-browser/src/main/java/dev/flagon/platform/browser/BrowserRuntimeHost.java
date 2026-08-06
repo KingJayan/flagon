@@ -2,6 +2,8 @@ package dev.flagon.platform.browser;
 
 import dev.flagon.platform.ConsoleSink;
 import dev.flagon.platform.RuntimeHost;
+import org.teavm.jso.core.JSArray;
+import org.teavm.jso.core.JSString;
 
 public final class BrowserRuntimeHost implements RuntimeHost {
 
@@ -18,6 +20,22 @@ public final class BrowserRuntimeHost implements RuntimeHost {
     @Override
     public String[] arguments() {
         return arguments.clone();
+    }
+
+    @Override
+    public void catalog(String[] ids, String[] descriptions) {
+        if (bridge == null || !HostBridges.offersCatalog(bridge)) {
+            return;
+        }
+        bridge.catalog(strings(ids), strings(descriptions));
+    }
+
+    private static JSArray<JSString> strings(String[] values) {
+        JSArray<JSString> array = JSArray.of();
+        for (String value : values) {
+            array.push(JSString.valueOf(value));
+        }
+        return array;
     }
 
     @Override
