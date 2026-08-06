@@ -13,6 +13,7 @@ import dev.flagon.platform.graphics.IndexType;
 
 import java.nio.ByteBuffer;
 import java.nio.FloatBuffer;
+import java.nio.IntBuffer;
 
 /**
  * gl 1.1 over webgl2.
@@ -350,11 +351,48 @@ public final class GL11 {
     public static void glTexImage2D(int target, int level, int internalFormat, int width,
                                     int height, int border, int format, int type, int[] pixels) {
         requireTexture2D(target, "glTexImage2D");
+        requireRgbaBytes(format, type);
+        device().textureImage(width, height, pixels);
+    }
+
+    /** the same upload from a buffer of bytes in r, g, b, a order, which is what real lwjgl takes */
+    public static void glTexImage2D(int target, int level, int internalFormat, int width,
+                                    int height, int border, int format, int type,
+                                    ByteBuffer pixels) {
+        requireTexture2D(target, "glTexImage2D");
+        requireRgbaBytes(format, type);
+        device().textureImage(width, height, packed(pixels, width * height));
+    }
+
+    public static void glTexImage2D(int target, int level, int internalFormat, int width,
+                                    int height, int border, int format, int type,
+                                    IntBuffer pixels) {
+        requireTexture2D(target, "glTexImage2D");
+        requireRgbaBytes(format, type);
+        int[] copied = new int[width * height];
+        pixels.duplicate().get(copied);
+        device().textureImage(width, height, copied);
+    }
+
+    /** @return one 0xAARRGGBB int per pixel, reading the buffer without consuming it */
+    private static int[] packed(ByteBuffer pixels, int count) {
+        ByteBuffer reading = pixels.duplicate();
+        int[] packed = new int[count];
+        for (int pixel = 0; pixel < count; pixel++) {
+            int red = reading.get() & 0xFF;
+            int green = reading.get() & 0xFF;
+            int blue = reading.get() & 0xFF;
+            int alpha = reading.get() & 0xFF;
+            packed[pixel] = alpha << 24 | red << 16 | green << 8 | blue;
+        }
+        return packed;
+    }
+
+    private static void requireRgbaBytes(int format, int type) {
         if (format != GL_RGBA || type != GL_UNSIGNED_BYTE) {
             throw new UnsupportedOperationException(
                     "glTexImage2D emulates GL_RGBA/GL_UNSIGNED_BYTE only");
         }
-        device().textureImage(width, height, pixels);
     }
 
     private static void requireTexture2D(int target, String call) {

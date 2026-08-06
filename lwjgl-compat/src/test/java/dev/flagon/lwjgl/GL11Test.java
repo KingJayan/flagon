@@ -221,4 +221,41 @@ class GL11Test {
                 assertThrows(IllegalStateException.class, () -> GL11.glClear(0));
         assertTrue(failure.getMessage().contains("Display.create()"), failure.getMessage());
     }
+    @Test
+    void uploadsATextureFromTheBufferRealLwjglTakes() {
+        java.nio.ByteBuffer pixels = org.lwjgl.BufferUtils.createByteBuffer(8);
+        pixels.put((byte) 0x10).put((byte) 0x20).put((byte) 0x30).put((byte) 0x40);
+        pixels.put((byte) 0xFF).put((byte) 0x00).put((byte) 0x00).put((byte) 0xFF);
+        pixels.flip();
+
+        GL11.glTexImage2D(GL11.GL_TEXTURE_2D, 0, GL11.GL_RGBA, 2, 1, 0,
+                GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, pixels);
+
+        assertEquals(java.util.List.of("textureImage 2x1"), device.calls("textureImage"));
+        assertEquals(0x40102030, device.lastPixels[0]);
+        assertEquals(0xFFFF0000, device.lastPixels[1]);
+        assertEquals(0, pixels.position(), "the caller's buffer was consumed");
+    }
+
+    @Test
+    void uploadsATextureFromAnIntBufferToo() {
+        java.nio.IntBuffer pixels = org.lwjgl.BufferUtils.createIntBuffer(2);
+        pixels.put(0xFF112233).put(0xFF445566);
+        pixels.flip();
+
+        GL11.glTexImage2D(GL11.GL_TEXTURE_2D, 0, GL11.GL_RGBA, 2, 1, 0,
+                GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, pixels);
+
+        assertEquals(0xFF112233, device.lastPixels[0]);
+        assertEquals(0xFF445566, device.lastPixels[1]);
+    }
+
+    @Test
+    void namesTheFormatItCannotUploadWhateverTheBufferIs() {
+        java.nio.ByteBuffer pixels = org.lwjgl.BufferUtils.createByteBuffer(4);
+
+        assertThrows(UnsupportedOperationException.class,
+                () -> GL11.glTexImage2D(GL11.GL_TEXTURE_2D, 0, GL11.GL_RGBA, 1, 1, 0,
+                        GL11.GL_RGBA, GL11.GL_FLOAT, pixels));
+    }
 }

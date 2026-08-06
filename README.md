@@ -57,7 +57,8 @@ Bundles compile to WebAssembly GC by default; `-Pjs` emits the same bundles comp
 which the shell falls back to on browsers without WebAssembly GC.
 Add `-Prelease` to either for the bundles a hosted build should ship: optimized and minified, with
 no source maps or debug information beside them.
-The `example` bundle contains [an unmodified LWJGL application](example-app/).
+The `example` bundle contains [unmodified LWJGL applications](example-app/): a spinning square, and
+`blocks`, a whole small game with input, textures, sound, a hud and a high score it saves.
 The `sandbox` bundle contains diagnostics and regression programs.
 
 
