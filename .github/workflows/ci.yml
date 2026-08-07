@@ -36,7 +36,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shard: [1, 2, 3]
+        shard: [1, 2]
     steps:
       - uses: actions/checkout@v5
 
@@ -63,14 +63,14 @@ jobs:
         run: make site
 
       # the download is what costs; the system packages are apt's and cannot be cached
-      - name: Cache Chromium
+      - name: Cache the browsers
         uses: actions/cache@v5
         with:
           path: ~/.cache/ms-playwright
           key: playwright-${{ runner.os }}-${{ hashFiles('web/bun.lock') }}
 
-      - name: Install Chromium
-        run: make chromium
+      - name: Install the browsers
+        run: make browsers
 
       - name: Browser tests
         run: make browser ARGS="--shard=${{ matrix.shard }}/${{ strategy.job-total }}"

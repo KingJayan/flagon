@@ -6,7 +6,7 @@ BUNDLES := $(WEB)/public/flagon
 ARGS ?=
 N ?= 3
 
-.PHONY: help setup deps chromium bundles bundles-js build bundles-release \
+.PHONY: help setup deps browsers bundles bundles-js build bundles-release \
         bundles-release-js build-release test browser flake typecheck site dev serve \
         check report merge-reports watch version release publish clean
 
@@ -14,14 +14,14 @@ help: ## list what this repo can do
 	@grep -hE '^[a-z-]+:.*## ' $(MAKEFILE_LIST) \
 		| awk 'BEGIN { FS = ":.*## " }; { printf "  %-20s %s\n", $$1, $$2 }'
 
-setup: deps chromium ## install everything a fresh checkout needs
+setup: deps browsers ## install everything a fresh checkout needs
 	@$(MVN) -v > /dev/null
 
 deps: ## install the shell's packages
 	cd $(WEB) && bun install --frozen-lockfile
 
-chromium: ## install the browser the tests drive
-	cd $(WEB) && bunx playwright install-deps chromium && bunx playwright install chromium
+browsers: ## install the engines the tests drive
+	cd $(WEB) && bunx playwright install-deps chromium firefox && bunx playwright install chromium firefox
 
 bundles: ## compile java to webassembly gc
 	$(MVN) package

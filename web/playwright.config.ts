@@ -19,6 +19,27 @@ export default defineConfig({
         launchOptions: { args: ['--autoplay-policy=no-user-gesture-required', '--mute-audio'] },
       },
     },
+    {
+      name: 'firefox',
+      // the fallback backend is why a second engine is here; wasm gc is chromium's to prove
+      grepInvert: /on wasm/,
+      // headless firefox has neither a gpu nor sound on a ci runner, so anything that opens a
+      // display stays chromium's. what firefox is here to prove is the engine under it.
+      testIgnore: [
+        '**/a11y.spec.ts',
+        '**/arrays.spec.ts',
+        '**/audio.spec.ts',
+        '**/design.spec.ts',
+        '**/display.spec.ts',
+        '**/example.spec.ts',
+        '**/input.spec.ts',
+        '**/render.spec.ts',
+        '**/shaders.spec.ts',
+        '**/shell.spec.ts',
+        '**/texture.spec.ts',
+      ],
+      use: { ...devices['Desktop Firefox'] },
+    },
   ],
   webServer: {
     command: 'bun run dev',

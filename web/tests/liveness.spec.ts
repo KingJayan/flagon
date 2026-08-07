@@ -9,7 +9,7 @@ test.describe('showing that the shell is working', () => {
       await route.continue();
     });
 
-    await open(page, 'js', 'program=hello');
+    await page.goto('/?backend=js&program=hello', { waitUntil: 'commit' });
     const progress = page.getByTestId('progress');
 
     await expect(progress).toBeVisible();
