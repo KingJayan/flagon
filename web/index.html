@@ -17,7 +17,7 @@
         </div>
       </header>
 
-      <section class="controls">
+      <section class="controls" aria-label="Run controls">
         <div class="row">
           <label for="bundle">Bundle</label>
           <select id="bundle">
@@ -35,20 +35,30 @@
           </select>
           <button id="run" type="button">Run</button>
           <button id="stop" type="button" disabled>Stop</button>
-          <span id="state" class="badge" data-testid="state">loading</span>
+          <span id="state" class="badge" data-testid="state" role="status" aria-label="run state: loading">loading</span>
           <span id="rate" class="badge" data-testid="rate" hidden></span>
         </div>
         <ol id="phases" class="phases" data-testid="phases"></ol>
       </section>
 
-      <section class="stage" id="display">
-        <h2>Display</h2>
-        <canvas id="flagon-canvas" width="640" height="360"></canvas>
+      <section class="stage" id="display" aria-labelledby="display-heading">
+        <h2 id="display-heading">Display</h2>
+        <canvas id="flagon-canvas" width="640" height="360" aria-label="the program's display">
+          The program is drawing here; this browser cannot show its display.
+        </canvas>
       </section>
 
-      <section class="console">
-        <h2>Console</h2>
-        <pre id="log" class="log" data-testid="log"></pre>
+      <section class="console" aria-labelledby="console-heading">
+        <h2 id="console-heading">Console</h2>
+        <pre
+          id="log"
+          class="log"
+          data-testid="log"
+          tabindex="0"
+          role="log"
+          aria-live="polite"
+          aria-atomic="false"
+        ></pre>
       </section>
     </main>
     <script type="module" src="/src/main.ts"></script>
