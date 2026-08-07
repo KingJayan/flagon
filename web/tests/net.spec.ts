@@ -75,6 +75,19 @@ for (const backend of BACKENDS) {
   });
 }
 
+test('carries a proxy token from the page url onto the socket', async ({ page }) => {
+  const opened: string[] = [];
+  page.on('websocket', (socket) => opened.push(socket.url()));
+
+  await open(page, 'js', 'program=net&arg=localhost:5273&proxytoken=hunter2');
+  await expect(page.getByTestId('state')).toHaveText('exited', { timeout: 30_000 });
+
+  await expect(page.getByTestId('log')).toContainText('connected to localhost:5273');
+  const sockets = opened.filter((url) => url.includes('/__flagon/tcp'));
+  expect(sockets.length).toBeGreaterThan(0);
+  expect(sockets.every((url) => url.includes('token=hunter2'))).toBe(true);
+});
+
 test('says what a page without a proxy is missing', async ({ page }) => {
   await open(page, 'js', 'program=hello');
   await expect(page.getByTestId('state')).toHaveText('exited', { timeout: 30_000 });

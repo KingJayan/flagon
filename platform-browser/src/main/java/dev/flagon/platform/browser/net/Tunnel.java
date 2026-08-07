@@ -38,8 +38,11 @@ final class Tunnel {
 
     @JSBody(params = {"host", "port", "path"}, script =
             "var scheme = location.protocol === 'https:' ? 'wss://' : 'ws://';"
+            + "var token = window.__flagonProxyToken;"
             + "return scheme + location.host + path"
-            + " + '?host=' + encodeURIComponent(host) + '&port=' + port;")
+            + " + '?host=' + encodeURIComponent(host) + '&port=' + port"
+            + " + (typeof token === 'string' && token"
+            + " ? '&token=' + encodeURIComponent(token) : '');")
     static native String endpoint(String host, int port, String path);
 
     @Async

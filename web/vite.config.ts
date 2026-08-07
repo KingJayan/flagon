@@ -73,7 +73,7 @@ function flood(): Plugin {
 
 export default defineConfig({
   // the sandbox talks to the dev server itself, and to nothing else
-  plugins: [tcpProxy({ allow: ['localhost', '127.0.0.1'] }), bulkProbe(), flood()],
+  plugins: [tcpProxy({ allow: ['localhost:*', '127.0.0.1:*'] }), bulkProbe(), flood()],
   server: {
     port: 5273,
     strictPort: true,
