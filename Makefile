@@ -1,0 +1,84 @@
+.DEFAULT_GOAL := help
+
+MVN := ./mvnw -B
+WEB := web
+BUNDLES := $(WEB)/public/flagon
+ARGS ?=
+
+.PHONY: help setup deps chromium bundles bundles-js build bundles-release \
+        bundles-release-js build-release test browser typecheck site dev serve \
+        check report merge-reports version publish clean
+
+help: ## list what this repo can do
+	@grep -hE '^[a-z-]+:.*## ' $(MAKEFILE_LIST) \
+		| awk 'BEGIN { FS = ":.*## " }; { printf "  %-20s %s\n", $$1, $$2 }'
+
+setup: deps chromium ## install everything a fresh checkout needs
+	@$(MVN) -v > /dev/null
+
+deps: ## install the shell's packages
+	cd $(WEB) && bun install --frozen-lockfile
+
+chromium: ## install the browser the tests drive
+	cd $(WEB) && bunx playwright install-deps chromium && bunx playwright install chromium
+
+bundles: ## compile java to webassembly gc
+	$(MVN) package
+
+bundles-js: ## compile java to javascript, the fallback backend
+	$(MVN) -Pjs -DskipTests package
+
+build: ## compile both backends
+	@$(MAKE) bundles
+	@$(MAKE) bundles-js
+
+bundles-release: ## compile to webassembly gc as a hosted build ships it
+	$(MVN) -Prelease package
+
+bundles-release-js: ## compile to javascript as a hosted build ships it
+	$(MVN) -Pjs -Prelease -DskipTests package
+
+build-release: ## compile both backends as a hosted build ships them
+	@$(MAKE) bundles-release
+	@$(MAKE) bundles-release-js
+
+test: ## run the jvm unit tests
+	$(MVN) test
+
+browser: ## drive the real bundles in a browser (ARGS='--shard=1/3')
+	@test -d $(BUNDLES) || { echo "no bundles yet; run 'make build'"; exit 1; }
+	cd $(WEB) && bunx playwright test $(ARGS)
+
+typecheck: ## check the shell's types
+	cd $(WEB) && bun run typecheck
+
+site: ## build the shell for hosting
+	cd $(WEB) && bun run build
+
+dev: ## serve the shell with reload, on :5273
+	cd $(WEB) && bun run dev
+
+serve: ## serve a built site and its socket proxy together
+	cd $(WEB) && bun run proxy -- --root dist
+
+check: ## everything ci runs
+	@$(MAKE) build
+	@$(MAKE) typecheck
+	@$(MAKE) browser
+
+report: ## open the last browser run's report
+	cd $(WEB) && bunx playwright show-report
+
+merge-reports: ## fold the sharded reports of a ci run into one
+	cd $(WEB) && bunx playwright merge-reports --reporter html ./blob-report
+
+version: ## set the release version (VERSION=1.2.3)
+	@test -n "$(VERSION)" || { echo "usage: make version VERSION=1.2.3"; exit 1; }
+	$(MVN) versions:set -DnewVersion=$(VERSION) -DgenerateBackupPoms=false
+
+publish: ## deploy the artifacts to the package registry
+	$(MVN) deploy -DskipTests
+
+clean: ## remove every build output
+	$(MVN) -q clean
+	rm -rf $(BUNDLES) $(WEB)/dist $(WEB)/test-results $(WEB)/playwright-report $(WEB)/blob-report

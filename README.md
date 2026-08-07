@@ -45,20 +45,17 @@ Flagon itself is application-agnostic. Work on any particular application lives 
 Requires **JDK 25+** and **[bun](https://bun.sh)**. Maven is provided via the wrapper.
 
 ```sh
-# compiles java and emits the browser bundles
-./mvnw package
-./mvnw -Pjs package
-
-# initialize and run the development server
-cd web && bun install && bun run dev
+make setup   # installs the shell's pckgs and the browser the tests drive
+make build   # compiles java and emits both browser bundles
+make dev     # runs the dev server
 ```
+`make` on its own lists every task in the repo.
+
 Once running, open <http://localhost:5273>. Select a bundle, a backend, and a program, and run it.
-Start with `blocks` in the `example` bundle — a whole small game, compiled from an unmodified LWJGL
-jar — then run `selftest` in the `sandbox` bundle, which checks the Java language and library in
-the browser and prints how many of its checks passed.
-Bundles compile to WebAssembly GC by default; `-Pjs` emits the same bundles compiled to JavaScript,
-which the shell falls back to on browsers without WebAssembly GC.
-Add `-Prelease` to either for the bundles a hosted build should ship: optimized and minified, with
+
+Bundles compile to WebAssembly GC by default; `make bundles-js` emits the same bundles compiled to
+JavaScript, which the shell falls back to on browsers without WebAssembly GC.
+`make build-release` emits both as a hosted build should ship them: optimized and minified, with
 no source maps or debug information beside them.
 The `example` bundle contains [unmodified LWJGL applications](example-app/): a spinning square, and
 `blocks`, a whole small game with input, textures, sound, a hud and a high score it saves.
@@ -69,7 +66,7 @@ The `sandbox` bundle contains diagnostics and regression programs.
 > Appending ?program=selftest to the URL runs the compilation-backend regression suite.
 
 Networking needs a proxy served alongside the page, because a browser cannot open a socket itself.
-The development server runs one; a hosted build runs `bun run proxy -- --root dist`, which serves
+The development server runs one; a hosted build runs `make serve`, which serves
 the site and the socket endpoint together. See [COMPATIBILITY.md](docs/COMPATIBILITY.md#networking).
 
 ## Testing
@@ -77,11 +74,9 @@ the site and the socket endpoint together. See [COMPATIBILITY.md](docs/COMPATIBI
 Flagon includes both JVM unit tests and browser-level integration tests.
 
 ```sh
-# jvm unit tests
-./mvnw test                     
-
-# browser tests against the real bundles, once per backend
-cd web && bunx playwright test
+make test      # jvm unit tests
+make browser   # browser tests against the real bundles, once per backend
+make check     # both of the above plus the typecheck, as ci runs them
 ```
 
 ## Reporting a problem
