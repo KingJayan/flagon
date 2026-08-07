@@ -13,8 +13,6 @@ async function runDemo(page: Page, backend: Backend): Promise<void> {
 
 for (const backend of BACKENDS) {
   test.describe(`vertex arrays and buffer objects on ${backend}`, () => {
-    test.skip(({ browserName }) => browserName === 'firefox', 'the demo fails on the ci runner: #104');
-
     /**
      all four corners are covered only if both indexed triangles were issued
      */

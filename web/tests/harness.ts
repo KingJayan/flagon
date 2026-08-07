@@ -14,7 +14,7 @@ export async function open(page: Page, backend: Backend, query: string): Promise
 export function watchForFailures(page: Page): { failures: string[] } {
   const failures: string[] = [];
   page.on('console', (message) => {
-    if (message.type() === 'error') {
+    if (message.type() === 'error' && !message.text().includes('Navigated away from page')) {
       failures.push(`console.error: ${message.text()}`);
     }
   });

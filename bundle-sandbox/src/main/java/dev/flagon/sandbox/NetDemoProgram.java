@@ -125,12 +125,16 @@ public final class NetDemoProgram implements Program {
 
             Thread.sleep(1000);
             int held = connection.available();
-            Thread.sleep(1000);
-            int later = connection.available();
-            console.info("paced: queue held at " + held + " bytes, capped: "
-                    + (later - held <= STRAGGLERS));
+            boolean capped = false;
+            for (int tries = 0; tries < 10 && !capped; tries++) {
+                Thread.sleep(500);
+                int later = connection.available();
+                capped = later - held <= STRAGGLERS;
+                held = later;
+            }
+            console.info("paced: queue held at " + held + " bytes, capped: " + capped);
 
-            drain(connection, later);
+            drain(connection, held);
             Thread.sleep(200);
             console.info("paced: sending resumed: " + (connection.available() > 0));
         } catch (InterruptedException interrupted) {

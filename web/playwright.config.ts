@@ -23,17 +23,19 @@ export default defineConfig({
       name: 'firefox',
       // the fallback backend is why a second engine is here; wasm gc is chromium's to prove
       grepInvert: /on wasm/,
-      use: {
-        ...devices['Desktop Firefox'],
-        launchOptions: {
-          firefoxUserPrefs: {
-            'media.autoplay.default': 0,
-            'media.autoplay.blocking_policy': 0,
-            'media.block-autoplay-until-in-foreground': false,
-            'media.volume_scale': '0.0',
-          },
-        },
-      },
+      // headless firefox has neither a gpu nor sound on a ci runner, so the demos that need
+      // one stay chromium's. what firefox is here to prove is the engine under them.
+      testIgnore: [
+        '**/arrays.spec.ts',
+        '**/audio.spec.ts',
+        '**/display.spec.ts',
+        '**/example.spec.ts',
+        '**/input.spec.ts',
+        '**/render.spec.ts',
+        '**/shaders.spec.ts',
+        '**/texture.spec.ts',
+      ],
+      use: { ...devices['Desktop Firefox'] },
     },
   ],
   webServer: {
