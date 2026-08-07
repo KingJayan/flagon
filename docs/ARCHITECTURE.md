@@ -132,9 +132,10 @@ suspended in `Frames.awaitNextFrame()`, so the queues are never modified while b
 
 ## Host contract
 
-A page drives a bundle through `window.__flagonHost`, a five-method interface:
+A page drives a bundle through `window.__flagonHost`, a six-method interface:
 
 - `log`
+- `catalog`
 - `status`
 - `ready`
 - `exited`
