@@ -34,6 +34,7 @@ const programSelect = document.querySelector<HTMLSelectElement>('#program')!;
 const runButton = document.querySelector<HTMLButtonElement>('#run')!;
 const stopButton = document.querySelector<HTMLButtonElement>('#stop')!;
 const rateBadge = document.querySelector<HTMLElement>('#rate')!;
+const progress = document.querySelector<HTMLElement>('#progress')!;
 
 type State = 'loading' | 'booting' | 'running' | 'exited' | 'failed';
 
@@ -42,6 +43,7 @@ function setState(state: State): void {
   stateBadge.textContent = state;
   stateBadge.setAttribute('aria-label', `run state: ${state}`);
   stopButton.disabled = state !== 'running';
+  progress.hidden = state !== 'loading' && state !== 'booting';
   if (state === 'running') {
     watchFrames();
   } else {
@@ -78,6 +80,19 @@ function stopWatchingFrames(): void {
   rateBadge.hidden = true;
 }
 
+function announceDownload(url: string): void {
+  const name = url.slice(url.lastIndexOf('/') + 1);
+  progress.textContent = `fetching ${name}`;
+  fetch(url, { method: 'HEAD' })
+    .then((response) => {
+      const bytes = Number(response.headers.get('content-length'));
+      if (bytes > 0) {
+        progress.textContent = `fetching ${name} — ${(bytes / 1e6).toFixed(1)} MB`;
+      }
+    })
+    .catch(() => {});
+}
+
 interface Line {
   text: string;
   kind?: 'warn' | 'error';
@@ -98,10 +113,6 @@ function render(line: Line, past = false): HTMLSpanElement {
   return span;
 }
 
-/**
- * running a program reloads the page, which would otherwise take the output being read with it,
- * so the run that is being replaced is carried over above the new one.
- */
 function restorePreviousRun(): void {
   let lines: Line[] = [];
   try {
@@ -262,6 +273,7 @@ if (!bundleUrl) {
   if (!request.asked && request.backend !== 'wasm') {
     append('WebAssembly GC is unavailable here, so the javascript bundle is running', 'warn');
   }
+  announceDownload(bundleUrl);
   const argv = request.program ? [request.program, ...request.args] : [];
   runBundle(bundleUrl, host, argv)
     .catch((error: unknown) => {
