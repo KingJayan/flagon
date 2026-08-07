@@ -1,5 +1,3 @@
-/** contract between the page and a teavm-compiled flagon bundle. */
-
 export interface HostBridge {
   log(level: string, text: string): void;
   catalog(ids: string[], descriptions: string[]): void;
@@ -12,10 +10,10 @@ export interface HostBridge {
 declare global {
   interface Window {
     __flagonHost?: HostBridge;
+    __flagonCloseRequested?: boolean;
   }
 }
 
-/** which backend a bundle was compiled by, and so how it is started. */
 export type Backend = 'js' | 'wasm';
 
 export const BACKENDS: readonly Backend[] = ['js', 'wasm'];
@@ -64,10 +62,6 @@ export async function runBundle(url: string, host: HostBridge, args: string[]): 
   module.main(args);
 }
 
-/**
- * a wasm bundle is a module to instantiate rather than a script to import, so it is loaded and
- * then entered. both backends end up in the same main() with the same arguments.
- */
 async function runWasmBundle(absolute: string, args: string[]): Promise<void> {
   const url = new URL(WASM_LOADER, location.origin).href;
   const loader = (await import(/* @vite-ignore */ url)) as WasmLoader;

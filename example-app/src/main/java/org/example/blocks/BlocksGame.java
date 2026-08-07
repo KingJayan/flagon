@@ -191,7 +191,7 @@ public final class BlocksGame {
         if (ball[3] > 0.0f && overlaps(paddleX, PADDLE_Y, PADDLE_WIDTH, PADDLE_HEIGHT)) {
             ball[3] = -ball[3];
             ball[1] = PADDLE_Y - BALL_SIZE;
-            // where it lands on the paddle is where it goes, which is the whole of the skill
+
             float offset = (ball[0] + BALL_SIZE / 2.0f - paddleX) / PADDLE_WIDTH - 0.5f;
             ball[2] = BALL_SPEED * 2.0f * offset;
             play(wallSound);

@@ -32,23 +32,64 @@ const bundleSelect = document.querySelector<HTMLSelectElement>('#bundle')!;
 const backendSelect = document.querySelector<HTMLSelectElement>('#backend')!;
 const programSelect = document.querySelector<HTMLSelectElement>('#program')!;
 const runButton = document.querySelector<HTMLButtonElement>('#run')!;
+const stopButton = document.querySelector<HTMLButtonElement>('#stop')!;
 
 type State = 'loading' | 'booting' | 'running' | 'exited' | 'failed';
 
 function setState(state: State): void {
   app.dataset.state = state;
   stateBadge.textContent = state;
+  stopButton.disabled = state !== 'running';
 }
 
+interface Line {
+  text: string;
+  kind?: 'warn' | 'error';
+}
+
+const written: Line[] = [];
+
 function append(text: string, kind?: 'warn' | 'error'): void {
-  const line = document.createElement('span');
-  if (kind) {
-    line.className = kind;
-  }
-  line.textContent = `${text}\n`;
-  logView.append(line);
+  written.push({ text, kind });
+  logView.append(render({ text, kind }));
   logView.scrollTop = logView.scrollHeight;
 }
+
+function render(line: Line, past = false): HTMLSpanElement {
+  const span = document.createElement('span');
+  span.className = [line.kind, past ? 'past' : ''].filter(Boolean).join(' ');
+  span.textContent = `${line.text}\n`;
+  return span;
+}
+
+/**
+ * running a program reloads the page, which would otherwise take the output being read with it,
+ * so the run that is being replaced is carried over above the new one.
+ */
+function restorePreviousRun(): void {
+  let lines: Line[] = [];
+  try {
+    const stored: unknown = JSON.parse(sessionStorage.getItem('flagon:log') ?? '[]');
+    lines = Array.isArray(stored) ? (stored as Line[]) : [];
+  } catch {
+    return;
+  }
+  if (lines.length === 0) {
+    return;
+  }
+  for (const line of lines) {
+    logView.append(render(line, true));
+  }
+  logView.append(render({ text: '— previous run above —' }, true));
+}
+
+addEventListener('pagehide', () => {
+  try {
+    sessionStorage.setItem('flagon:log', JSON.stringify(written.slice(-500)));
+  } catch {
+
+  }
+});
 
 function addPhase(phase: string, detail: string): void {
   const item = document.createElement('li');
@@ -132,6 +173,12 @@ runButton.addEventListener('click', () => {
   location.search = next.toString();
 });
 
+stopButton.addEventListener('click', () => {
+  stopButton.disabled = true;
+  window.__flagonCloseRequested = true;
+  append('close requested; the program stops at its next frame');
+});
+
 const host: HostBridge = {
   log(level, text) {
     const kind = level === 'ERROR' ? 'error' : level === 'WARN' ? 'warn' : undefined;
@@ -162,6 +209,7 @@ const host: HostBridge = {
   },
 };
 
+restorePreviousRun();
 runButton.disabled = true;
 setState('loading');
 
