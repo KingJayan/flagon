@@ -33,6 +33,7 @@ const backendSelect = document.querySelector<HTMLSelectElement>('#backend')!;
 const programSelect = document.querySelector<HTMLSelectElement>('#program')!;
 const runButton = document.querySelector<HTMLButtonElement>('#run')!;
 const stopButton = document.querySelector<HTMLButtonElement>('#stop')!;
+const rateBadge = document.querySelector<HTMLElement>('#rate')!;
 
 type State = 'loading' | 'booting' | 'running' | 'exited' | 'failed';
 
@@ -40,6 +41,40 @@ function setState(state: State): void {
   app.dataset.state = state;
   stateBadge.textContent = state;
   stopButton.disabled = state !== 'running';
+  if (state === 'running') {
+    watchFrames();
+  } else {
+    stopWatchingFrames();
+  }
+}
+
+let ticker: number | undefined;
+
+/**
+ * 'running' alone cannot tell a program that is drawing from one that is wedged, so while a
+ * program runs the shell reports the rate the runtime is actually presenting frames at.
+ */
+function watchFrames(): void {
+  if (ticker !== undefined) {
+    return;
+  }
+  let last = window.__flagonFrames ?? 0;
+  rateBadge.hidden = false;
+  rateBadge.textContent = 'no frames yet';
+  ticker = window.setInterval(() => {
+    const total = window.__flagonFrames ?? 0;
+    const drawn = total - last;
+    last = total;
+    rateBadge.textContent = drawn > 0 ? `${drawn} fps` : total > 0 ? 'not drawing' : 'no frames yet';
+  }, 1000);
+}
+
+function stopWatchingFrames(): void {
+  if (ticker !== undefined) {
+    clearInterval(ticker);
+    ticker = undefined;
+  }
+  rateBadge.hidden = true;
 }
 
 interface Line {

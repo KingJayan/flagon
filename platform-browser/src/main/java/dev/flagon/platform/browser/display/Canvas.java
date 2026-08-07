@@ -10,7 +10,7 @@ final class Canvas {
     private Canvas() {
     }
 
-    /** returns the page's canvas, creating and appending one if the page supplied none. */
+    /** returns the page's canvas, creating and appending one if the page supplied none */
     @JSBody(params = {"id", "width", "height"}, script = """
             var canvas = document.getElementById(id);
             if (!canvas) {
@@ -21,13 +21,13 @@ final class Canvas {
             }
             canvas.width = width;
             canvas.height = height;
+            canvas.dataset.flagonOpen = 'true';
             return canvas;
             """)
     static native JSObject findOrCreate(String id, int width, int height);
 
     /**
-     * webgl2 context, or null when the browser or gpu refuses one.
-     * alpha is off and depth on to match a desktop gl window's default framebuffer.
+     * webgl2 context, or null when the browser or gpu refuses one
      */
     @JSBody(params = "canvas", script = """
             return canvas.getContext('webgl2', {
@@ -91,7 +91,6 @@ final class Canvas {
             """)
     static native boolean exitFullscreen();
 
-    /** a canvas the page wrote belongs to the page, and outlives the display opened on it. */
     @JSBody(params = "canvas", script = """
             if (canvas.dataset.flagonCreated === 'true') {
                 canvas.remove();
@@ -99,7 +98,6 @@ final class Canvas {
             """)
     static native void remove(JSObject canvas);
 
-    /** the page asks for shutdown by setting this flag; nothing else may close the window. */
     @JSBody(script = "return window.__flagonCloseRequested === true;")
     static native boolean isCloseRequested();
 

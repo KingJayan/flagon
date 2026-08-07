@@ -11,6 +11,7 @@ declare global {
   interface Window {
     __flagonHost?: HostBridge;
     __flagonCloseRequested?: boolean;
+    __flagonFrames?: number;
   }
 }
 

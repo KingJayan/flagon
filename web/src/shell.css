@@ -104,6 +104,10 @@ button:disabled {
   opacity: 0.5;
 }
 
+#display:not(:has(canvas[data-flagon-open])) {
+  display: none;
+}
+
 .badge {
   margin-left: auto;
   font-family: var(--mono);

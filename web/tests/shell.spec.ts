@@ -61,6 +61,29 @@ for (const backend of BACKENDS) {
       await expect(page.getByTestId('state')).toHaveText('exited', { timeout: 30_000 });
     });
 
+    test('shows the display only once a program opens one', async ({ page }) => {
+      await open(page, backend, 'program=hello');
+      await expect(page.getByTestId('state')).toHaveText('exited', { timeout: 30_000 });
+      await expect(page.locator('#display')).toBeHidden();
+
+      await open(page, backend, 'program=lwjgl');
+      await expect(page.locator('#display')).toBeVisible({ timeout: 30_000 });
+      await expect(page.locator('#flagon-canvas')).toBeVisible();
+    });
+
+    test('reports the rate a running program is drawing at', async ({ page }) => {
+      await open(page, backend, 'program=lwjgl');
+      const rate = page.getByTestId('rate');
+
+      await expect(page.getByTestId('state')).toHaveText('running', { timeout: 30_000 });
+      await expect(rate).toBeVisible();
+      await expect(rate).toHaveText(/[1-9]\d* fps/, { timeout: 10_000 });
+
+      await page.locator('#stop').click();
+      await expect(page.getByTestId('state')).toHaveText('exited', { timeout: 30_000 });
+      await expect(rate).toBeHidden();
+    });
+
     test('remembers a bundle it has already booted', async ({ page }) => {
       await open(page, backend, 'bundle=example');
       await expect(page.getByTestId('phases').locator('li')).toHaveText(

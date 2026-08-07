@@ -7,13 +7,7 @@ import org.teavm.jso.JSFunctor;
 import org.teavm.jso.JSObject;
 
 /**
- * makes a blocking frame loop work in an environment that forbids blocking.
- *
- * <p>desktop code is written as {@code while (running) { draw(); Display.update(); }} and a
- * browser cannot run that — the event loop would never regain control. teavm compiles methods
- * reachable from an {@code @Async} method into continuation-passing style, so
- * {@link #awaitNextFrame()} suspends the calling green thread, yields to the browser, and resumes
- * on the next animation frame. the loop above then runs unmodified.
+ * makes a blocking frame loop work in an environment that forbids blocking
  */
 public final class Frames {
 
@@ -32,6 +26,11 @@ public final class Frames {
         requestAnimationFrame(timestamp -> callback.complete(null));
     }
 
-    @JSBody(params = "handler", script = "requestAnimationFrame(handler);")
+    @JSBody(params = "handler", script = """
+            requestAnimationFrame(function (timestamp) {
+                window.__flagonFrames = (window.__flagonFrames || 0) + 1;
+                handler(timestamp);
+            });
+            """)
     private static native void requestAnimationFrame(FrameHandler handler);
 }
