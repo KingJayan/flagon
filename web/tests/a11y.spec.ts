@@ -36,8 +36,12 @@ test.describe('reaching the shell without a mouse', () => {
 
     await log.focus();
     await log.evaluate((node) => node.append('filler\n'.repeat(400)));
+    await expect
+      .poll(() => log.evaluate((node) => node.scrollHeight > node.clientHeight))
+      .toBe(true);
+
     await page.keyboard.press('PageDown');
-    expect(await log.evaluate((node) => node.scrollTop)).toBeGreaterThan(0);
+    await expect.poll(() => log.evaluate((node) => node.scrollTop)).toBeGreaterThan(0);
   });
 });
 
