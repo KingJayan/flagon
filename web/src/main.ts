@@ -201,6 +201,12 @@ function showPrograms(entries: Entry[], selected: string): void {
 }
 
 const request = readRequest();
+
+// a proxy that guards its socket with a token is handed it by whoever opened the page
+const proxyToken = new URLSearchParams(location.search).get('proxytoken');
+if (proxyToken) {
+  (window as unknown as { __flagonProxyToken: string }).__flagonProxyToken = proxyToken;
+}
 bundleSelect.value = request.bundle;
 backendSelect.value = request.backend;
 showPrograms(remembered(request.bundle), request.program);

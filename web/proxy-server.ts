@@ -2,7 +2,7 @@ import http from 'node:http';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { attachTcpProxy, DEFAULT_ALLOW, TCP_PROXY_PATH } from './tcp-proxy';
+import { attachTcpProxy, DEFAULT_ALLOW, ruleOf, TCP_PROXY_PATH } from './tcp-proxy';
 
 /**
  * the proxy a built site needs, with nothing of vite in it.
@@ -32,6 +32,14 @@ export interface Settings {
   root: string;
   allow: string[];
   origins: string[];
+  token: string;
+}
+
+const LOOPBACK = ['localhost', '127.0.0.1', '::1', '[::1]'];
+
+export function isLoopback(host: string): boolean {
+  const bare = host.toLowerCase().replace(/^\[|\]$/g, '');
+  return LOOPBACK.includes(bare) || bare.startsWith('127.');
 }
 
 export function settingsFrom(argv: string[]): Settings {
@@ -41,6 +49,7 @@ export function settingsFrom(argv: string[]): Settings {
     root: 'dist',
     allow: [...DEFAULT_ALLOW],
     origins: [],
+    token: '',
   };
   const many: Record<string, string[]> = { '--allow': [], '--origin': [] };
 
@@ -56,6 +65,8 @@ export function settingsFrom(argv: string[]): Settings {
       settings.port = Number(value);
     } else if (name === '--root') {
       settings.root = value;
+    } else if (name === '--token') {
+      settings.token = value;
     } else if (name in many) {
       many[name].push(...value.split(',').map((one) => one.trim()));
     } else {
@@ -67,6 +78,13 @@ export function settingsFrom(argv: string[]): Settings {
     settings.allow = many['--allow'];
   }
   settings.origins = many['--origin'];
+  settings.allow.forEach(ruleOf);
+  if (!isLoopback(settings.host) && settings.token === '') {
+    throw new Error(
+      `--host ${settings.host} reaches this proxy from the network, where the origin check ` +
+        'means nothing. give it a --token, or bind it to loopback.',
+    );
+  }
   return settings;
 }
 
@@ -101,7 +119,11 @@ export async function startProxyServer(settings: Settings): Promise<http.Server>
   const server = http.createServer((request, response) => {
     void serve(root, request, response);
   });
-  attachTcpProxy(server, { allow: settings.allow, origins: settings.origins });
+  attachTcpProxy(server, {
+    allow: settings.allow,
+    origins: settings.origins,
+    token: settings.token,
+  });
   await new Promise<void>((listening) => server.listen(settings.port, settings.host, listening));
   return server;
 }
@@ -113,4 +135,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const port = typeof address === 'object' && address !== null ? address.port : settings.port;
   console.log(`flagon: serving ${path.resolve(settings.root)} on http://${settings.host}:${port}`);
   console.log(`flagon: sockets at ${TCP_PROXY_PATH} to ${settings.allow.join(', ')}`);
+  if (settings.token !== '') {
+    console.log('flagon: the socket wants ?proxytoken= on the page url');
+  }
 }

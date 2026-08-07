@@ -219,10 +219,22 @@ one; anywhere else, `web/proxy-server.ts` serves the built site and the same end
 bun run proxy -- --root dist --port 8080 --allow game.example.com:25565
 ```
 
-The proxy decides which hosts may be reached: `--allow` replaces the `localhost` default. It grants
+The proxy decides which addresses may be reached: `--allow` replaces the loopback default, and every
+entry names a port — `game.example.com:25565`, or `localhost:*` for any port of one host. It grants
 the socket only to pages from its own origin, because browsers do not apply the same-origin policy
 to websockets themselves; `--origin https://site.example.com` names another origin where the site
 is hosted apart from the proxy.
+
+That origin check binds browsers and nothing else: any client speaking raw HTTP sets both headers
+itself, so a proxy anyone can reach is a proxy anyone can open sockets through. It therefore binds
+to loopback unless given a `--token`, which the page must then carry as `?proxytoken=` on its url:
+
+```
+bun run proxy -- --root dist --host 0.0.0.0 --token "$FLAGON_PROXY_TOKEN" --allow game.example.com:25565
+```
+
+Keep `--allow` as narrow as the game actually needs. A public proxy left on the loopback default
+tunnels callers into whatever else listens on its own host.
 
 `java.net.URL` follows the same path. Flagon installs a `URLStreamHandlerFactory` at boot so
 unmodified HTTP code transparently uses the active `Network` implementation.

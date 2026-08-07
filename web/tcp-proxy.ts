@@ -1,4 +1,5 @@
 import net from 'node:net';
+import { timingSafeEqual } from 'node:crypto';
 import type { IncomingMessage } from 'node:http';
 import type { Duplex } from 'node:stream';
 import type { Plugin, PreviewServer, ViteDevServer } from 'vite';
@@ -6,18 +7,34 @@ import { WebSocketServer, type WebSocket } from 'ws';
 
 export const TCP_PROXY_PATH = '/__flagon/tcp';
 
-export const DEFAULT_ALLOW = ['localhost', '127.0.0.1', '[::1]'];
+export const DEFAULT_ALLOW = ['localhost:*', '127.0.0.1:*', '[::1]:*'];
 
 export interface TcpProxyOptions {
   allow?: string[];
   origins?: string[];
+  token?: string;
 }
 
-/**
- * serves the proxy on an http server of any origin. vite has one in development; a deployment
- runs `proxy-server.ts`, which has another.
- */
-/** any server that raises an upgrade, whatever else it is: vite's, http2's, or plain node's */
+interface Rule {
+  host: string;
+  port: number | undefined;
+}
+
+const RULE = /^(\[[^\]]+\]|[^:]+):(\*|\d{1,5})$/;
+
+export function ruleOf(entry: string): Rule {
+  const parts = RULE.exec(entry.toLowerCase());
+  if (!parts) {
+    throw new Error(`${entry} needs a port: host:port, or host:* for any`);
+  }
+  const port = parts[2] === '*' ? undefined : Number(parts[2]);
+  if (port !== undefined && (port <= 0 || port > 65535)) {
+    throw new Error(`${entry} is not a port`);
+  }
+  return { host: parts[1], port };
+}
+
+
 export interface Upgradable {
   on(
     event: 'upgrade',
@@ -26,18 +43,17 @@ export interface Upgradable {
 }
 
 export function attachTcpProxy(server: Upgradable, options: TcpProxyOptions = {}): void {
-  const allowed = (options.allow ?? DEFAULT_ALLOW).map((one) => one.toLowerCase());
+  const allowed = (options.allow ?? DEFAULT_ALLOW).map(ruleOf);
   const origins = (options.origins ?? []).map((one) => one.toLowerCase());
+  const token = options.token ?? '';
   const sockets = new WebSocketServer({ noServer: true });
 
   server.on('upgrade', (request: IncomingMessage, socket: Duplex, head: Buffer) => {
     const asked = new URL(request.url ?? '/', 'http://proxy.invalid');
-    // vite's own hot-reload socket comes through here too, and is none of our business
     if (asked.pathname !== TCP_PROXY_PATH) {
       return;
     }
-    // browsers do not apply the same-origin policy to websockets, so the proxy applies it here
-    if (!isAsked(request, origins)) {
+    if (!isAsked(request, origins) || !isTold(asked, token)) {
       socket.write('HTTP/1.1 403 Forbidden\r\nConnection: close\r\n\r\n');
       socket.destroy();
       return;
@@ -79,7 +95,17 @@ function isAsked(request: IncomingMessage, origins: string[]): boolean {
   }
 }
 
-function open(client: WebSocket, asked: URL, allowed: string[]): void {
+/** a deployment that set no token asks nothing; one that did wants the exact string */
+function isTold(asked: URL, token: string): boolean {
+  if (token === '') {
+    return true;
+  }
+  const given = Buffer.from(asked.searchParams.get('token') ?? '');
+  const wanted = Buffer.from(token);
+  return given.length === wanted.length && timingSafeEqual(given, wanted);
+}
+
+function open(client: WebSocket, asked: URL, allowed: Rule[]): void {
   const host = asked.searchParams.get('host') ?? '';
   const port = Number(asked.searchParams.get('port') ?? '0');
 
@@ -141,13 +167,7 @@ function refuse(client: WebSocket, reason: string): void {
   }
 }
 
-function isAllowed(host: string, port: number, allowed: string[]): boolean {
+function isAllowed(host: string, port: number, allowed: Rule[]): boolean {
   const asked = host.toLowerCase();
-  return allowed.some((one) => {
-    const at = one.lastIndexOf(':');
-    if (at < 0) {
-      return one === asked;
-    }
-    return one.slice(0, at) === asked && Number(one.slice(at + 1)) === port;
-  });
+  return allowed.some((one) => one.host === asked && (one.port === undefined || one.port === port));
 }
