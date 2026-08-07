@@ -40,6 +40,7 @@ type State = 'loading' | 'booting' | 'running' | 'exited' | 'failed';
 function setState(state: State): void {
   app.dataset.state = state;
   stateBadge.textContent = state;
+  stateBadge.setAttribute('aria-label', `run state: ${state}`);
   stopButton.disabled = state !== 'running';
   if (state === 'running') {
     watchFrames();
