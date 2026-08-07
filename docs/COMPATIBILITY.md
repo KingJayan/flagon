@@ -300,8 +300,12 @@ continues to allocate direct, native-endian buffers so typed views behave as des
 `requestAnimationFrame()`. This depends on TeaVM's async transformation and only works from a
 TeaVM-managed thread.
 
-`Display.sync(fps)` records the requested frame rate but does not sleep.
-`requestAnimationFrame()` already paces rendering, and delaying further would only skip frames.
+`Display.sync(fps)` holds the loop until the frame it asked for is due. A page has no way to
+block, so it waits the only way it can: by presenting again, each present costing one
+`requestAnimationFrame()`. Asking for a rate the host already runs at costs nothing, and asking
+for a slower one spends the frames between deadlines presenting the same image, which the frame
+counter behind the shell's fps badge counts. A loop that falls behind takes the rate it can
+manage rather than drawing the frames it missed.
 
 ## Known gaps and shims
 
