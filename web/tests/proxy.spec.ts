@@ -69,6 +69,9 @@ test.describe('the proxy a hosted build runs for itself', () => {
   test.beforeAll(async () => {
     root = await fs.mkdtemp(path.join(os.tmpdir(), 'flagon-site-'));
     await fs.writeFile(path.join(root, 'index.html'), '<title>a built site</title>');
+    await fs.mkdir(path.join(root, 'assets'));
+    await fs.writeFile(path.join(root, 'assets', 'main-0a1b2c3d4e.js'), 'export {};');
+    await fs.writeFile(path.join(root, 'pixel.png'), Buffer.alloc(64));
     server = await startProxyServer({
       host: 'localhost',
       port: 0,
@@ -102,6 +105,30 @@ test.describe('the proxy a hosted build runs for itself', () => {
     await page.goto(elsewhereUrl);
 
     expect(await ask(page, target)).toBe('refused');
+  });
+
+  test('compresses what it serves, and only what is worth compressing', async ({ request }) => {
+    const page = await request.get(site, { headers: { 'accept-encoding': 'br' } });
+    expect(page.headers()['content-encoding']).toBe('br');
+    expect(page.headers()['vary']).toBe('accept-encoding');
+    expect(await page.text()).toBe('<title>a built site</title>');
+
+    const plain = await request.get(site, { headers: { 'accept-encoding': 'identity' } });
+    expect(plain.headers()['content-encoding']).toBeUndefined();
+
+    const image = await request.get(`${site}pixel.png`, { headers: { 'accept-encoding': 'br' } });
+    expect(image.headers()['content-encoding']).toBeUndefined();
+  });
+
+  test('lets a cache keep what it has', async ({ request }) => {
+    const first = await request.get(`${site}assets/main-0a1b2c3d4e.js`);
+    expect(first.headers()['cache-control']).toBe('public, max-age=31536000, immutable');
+
+    const page = await request.get(site);
+    expect(page.headers()['cache-control']).toBe('no-cache');
+
+    const again = await request.get(site, { headers: { 'if-none-match': page.headers()['etag'] } });
+    expect(again.status()).toBe(304);
   });
 
   test('serves nothing from outside its root', async ({ request }) => {
