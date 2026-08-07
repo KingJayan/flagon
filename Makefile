@@ -4,10 +4,11 @@ MVN := ./mvnw -B
 WEB := web
 BUNDLES := $(WEB)/public/flagon
 ARGS ?=
+N ?= 3
 
 .PHONY: help setup deps chromium bundles bundles-js build bundles-release \
-        bundles-release-js build-release test browser typecheck site dev serve \
-        check report merge-reports version publish clean
+        bundles-release-js build-release test browser flake typecheck site dev serve \
+        check report merge-reports watch version release publish clean
 
 help: ## list what this repo can do
 	@grep -hE '^[a-z-]+:.*## ' $(MAKEFILE_LIST) \
@@ -49,6 +50,10 @@ browser: ## drive the real bundles in a browser (ARGS='--shard=1/3')
 	@test -d $(BUNDLES) || { echo "no bundles yet; run 'make build'"; exit 1; }
 	cd $(WEB) && bunx playwright test $(ARGS)
 
+flake: ## rerun the browser tests to shake out a flake (N=3, ARGS='tests/a11y.spec.ts')
+	@test -d $(BUNDLES) || { echo "no bundles yet; run 'make build'"; exit 1; }
+	cd $(WEB) && bunx playwright test --repeat-each=$(N) $(ARGS)
+
 typecheck: ## check the shell's types
 	cd $(WEB) && bun run typecheck
 
@@ -72,9 +77,23 @@ report: ## open the last browser run's report
 merge-reports: ## fold the sharded reports of a ci run into one
 	cd $(WEB) && bunx playwright merge-reports --reporter html ./blob-report
 
-version: ## set the release version (VERSION=1.2.3)
+watch: ## follow this branch's pr checks until they settle
+	gh pr checks --watch --interval 30
+
+version: ## set the version in the poms (VERSION=1.2.3)
 	@test -n "$(VERSION)" || { echo "usage: make version VERSION=1.2.3"; exit 1; }
 	$(MVN) versions:set -DnewVersion=$(VERSION) -DgenerateBackupPoms=false
+
+# the poms carry the next release as a snapshot; the tag is what the release workflow builds
+release: ## cut a release from main (VERSION=1.2.3)
+	@test -n "$(VERSION)" || { echo "usage: make release VERSION=1.2.3"; exit 1; }
+	@test "$$(git rev-parse --abbrev-ref HEAD)" = main || { echo "releases are cut from main"; exit 1; }
+	@test -z "$$(git status --porcelain)" || { echo "the working tree is dirty"; exit 1; }
+	git pull --ff-only
+	@$(MAKE) version VERSION=$(VERSION)-SNAPSHOT
+	git commit -am $(VERSION)-SNAPSHOT
+	git tag v$(VERSION)
+	git push origin main v$(VERSION)
 
 publish: ## deploy the artifacts to the package registry
 	$(MVN) deploy -DskipTests
