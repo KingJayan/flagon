@@ -35,6 +35,32 @@ for (const backend of BACKENDS) {
       expect(failures).toEqual([]);
     });
 
+    test('stops a running program without reloading the page', async ({ page }) => {
+      const { failures } = watchForFailures(page);
+      await open(page, backend, 'program=lwjgl');
+
+      const stop = page.locator('#stop');
+      await expect(page.getByTestId('state')).toHaveText('running', { timeout: 30_000 });
+      await expect(stop).toBeEnabled();
+
+      await stop.click();
+      await expect(page.getByTestId('state')).toHaveText('exited', { timeout: 30_000 });
+      await expect(page.getByTestId('log')).toContainText('exit code 0');
+      await expect(stop).toBeDisabled();
+      expect(failures).toEqual([]);
+    });
+
+    test('keeps the previous run in the console when a new one starts', async ({ page }) => {
+      await open(page, backend, 'program=hello');
+      await expect(page.getByTestId('state')).toHaveText('exited', { timeout: 30_000 });
+
+      await page.locator('#run').click();
+      const log = page.getByTestId('log');
+      await expect(log.locator('.past').last()).toHaveText('— previous run above —\n');
+      await expect(log.locator('.past', { hasText: 'Hello, world!' })).toHaveCount(1);
+      await expect(page.getByTestId('state')).toHaveText('exited', { timeout: 30_000 });
+    });
+
     test('remembers a bundle it has already booted', async ({ page }) => {
       await open(page, backend, 'bundle=example');
       await expect(page.getByTestId('phases').locator('li')).toHaveText(

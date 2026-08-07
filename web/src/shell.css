@@ -181,6 +181,10 @@ canvas:focus-visible {
   color: var(--muted);
 }
 
+.log .past {
+  opacity: 0.5;
+}
+
 .log .warn {
   color: var(--accent);
 }
