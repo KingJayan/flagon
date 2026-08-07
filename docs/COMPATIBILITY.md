@@ -262,6 +262,10 @@ request succeeded, and `isGrabbed()` is the authoritative state.
 
 Event queues are bounded to 256 entries and discard the oldest events when full.
 
+A touch is delivered as the left mouse button: it presses where it lands, moves while it drags and
+releases where it lifts. Only the first touch of a gesture is followed, since a desktop application
+has one pointer. There is no on-screen keyboard, so touch alone reaches only what a mouse can.
+
 ### Mouse.setCursorPosition
 
 Browsers do not allow pages to warp the cursor.

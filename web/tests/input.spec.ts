@@ -157,6 +157,49 @@ for (const backend of BACKENDS) {
       await expect(log).toContainText(/button 0 down at 3[12]\d,1[78]\d/);
     });
 
+    test.describe('on a touch screen', () => {
+      test.use({ hasTouch: true, viewport: { width: 420, height: 860 } });
+
+      test('reports a tap as the pointer it is', async ({ page }) => {
+        await start(page, backend);
+        const log = page.getByTestId('log');
+
+        const point = await canvasPoint(page, 0, 0);
+        const box = await page.locator(CANVAS).boundingBox();
+        await page.touchscreen.tap(point.x + box!.width / 2, point.y + box!.height / 2);
+
+        await expect(log).toContainText(/button 0 down at 3[12]\d,1[78]\d/);
+        await expect(log).toContainText(/button 0 up at 3[12]\d,1[78]\d/);
+      });
+
+      test('drags without the page panning under it', async ({ page }) => {
+        const { failures } = watchForFailures(page);
+        await start(page, backend);
+        const box = await page.locator(CANVAS).boundingBox();
+        if (!box) {
+          throw new Error('the canvas has no box');
+        }
+
+        await page.locator(CANVAS).dispatchEvent('touchstart', {
+          changedTouches: [{ identifier: 1, clientX: box.x + 10, clientY: box.y + 10 }],
+        });
+        await page.locator(CANVAS).dispatchEvent('touchmove', {
+          changedTouches: [
+            { identifier: 1, clientX: box.x + box.width / 2, clientY: box.y + box.height / 2 },
+          ],
+        });
+        await page.locator(CANVAS).dispatchEvent('touchend', {
+          changedTouches: [
+            { identifier: 1, clientX: box.x + box.width / 2, clientY: box.y + box.height / 2 },
+          ],
+        });
+
+        await expect(page.getByTestId('log')).toContainText(/button 0 up at 3[12]\d,1[78]\d/);
+        expect(await page.evaluate(() => window.scrollY)).toBe(0);
+        expect(failures).toEqual([]);
+      });
+    });
+
     test('runs the whole demo without a console error', async ({ page }) => {
       const { failures } = watchForFailures(page);
 
