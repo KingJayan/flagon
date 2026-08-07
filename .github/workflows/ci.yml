@@ -20,11 +20,8 @@ jobs:
       - name: Fetch maven
         run: for attempt in 1 2 3; do ./mvnw -B -v && exit 0; sleep 10; done; exit 1
 
-      - name: Build and unit test
-        run: ./mvnw -B package
-
-      - name: Build the JavaScript bundles
-        run: ./mvnw -B -Pjs -DskipTests package
+      - name: Build and unit test both backends
+        run: make build
 
       - name: Upload the bundles
         uses: actions/upload-artifact@v4
@@ -60,12 +57,10 @@ jobs:
           key: bun-${{ runner.os }}-${{ hashFiles('web/bun.lock') }}
 
       - name: Install web dependencies
-        working-directory: web
-        run: bun install --frozen-lockfile
+        run: make deps
 
       - name: Typecheck and build the shell
-        working-directory: web
-        run: bun run build
+        run: make site
 
       # the download is what costs; the system packages are apt's and cannot be cached
       - name: Cache Chromium
@@ -75,14 +70,10 @@ jobs:
           key: playwright-${{ runner.os }}-${{ hashFiles('web/bun.lock') }}
 
       - name: Install Chromium
-        working-directory: web
-        run: |
-          bunx playwright install-deps chromium
-          bunx playwright install chromium
+        run: make chromium
 
       - name: Browser tests
-        working-directory: web
-        run: bunx playwright test --shard=${{ matrix.shard }}/${{ strategy.job-total }}
+        run: make browser ARGS="--shard=${{ matrix.shard }}/${{ strategy.job-total }}"
 
       - uses: actions/upload-artifact@v4
         if: failure()
@@ -109,8 +100,7 @@ jobs:
           key: bun-${{ runner.os }}-${{ hashFiles('web/bun.lock') }}
 
       - name: Install web dependencies
-        working-directory: web
-        run: bun install --frozen-lockfile
+        run: make deps
 
       - name: Download the shard reports
         uses: actions/download-artifact@v4
@@ -120,8 +110,7 @@ jobs:
           merge-multiple: true
 
       - name: Merge the shard reports
-        working-directory: web
-        run: bunx playwright merge-reports --reporter html ./blob-report
+        run: make merge-reports
 
       - uses: actions/upload-artifact@v4
         with:

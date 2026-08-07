@@ -29,13 +29,13 @@ jobs:
       # the tag is the version. the poms carry the next release as a snapshot between tags,
       # so nothing has to be committed to cut one.
       - name: Set the version from the tag
-        run: ./mvnw -B versions:set -DnewVersion="${GITHUB_REF_NAME#v}" -DgenerateBackupPoms=false
+        run: make version VERSION="${GITHUB_REF_NAME#v}"
 
       - name: Build and test
-        run: ./mvnw -B -Prelease package
+        run: make bundles-release
 
       - name: Publish to GitHub Packages
-        run: ./mvnw -B deploy -DskipTests
+        run: make publish
         env:
           MAVEN_USERNAME: ${{ github.actor }}
           MAVEN_TOKEN: ${{ secrets.GITHUB_TOKEN }}
