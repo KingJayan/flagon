@@ -154,6 +154,7 @@ canvas {
   border-radius: 6px;
   background: #000;
   image-rendering: pixelated;
+  touch-action: none;
 }
 
 canvas:focus {

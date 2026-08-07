@@ -45,10 +45,6 @@ final class DomInput {
 
     /**
      * wires every listener at once and remembers them so {@link #detach} can undo it
-     *
-     * <p>keys are the canvas's own business: they arrive only while it holds focus, the way a
-     * desktop window only hears the keyboard while it is the focused window. tab still moves
-     * focus away unless the pointer is locked, so the page is never left without a way out.
      */
     @JSBody(params = {"canvas", "key", "button", "move", "wheel", "presence", "focus"}, script = """
             var locked = function () { return document.pointerLockElement === canvas; };
@@ -107,6 +103,53 @@ final class DomInput {
                     wheel(event.deltaY, event.deltaMode | 0);
                     event.preventDefault();
                 },
+                touched: null,
+                touchstart: function (event) {
+                    if (state.touched !== null) {
+                        return;
+                    }
+                    var touch = event.changedTouches[0];
+                    state.touched = touch.identifier;
+                    state.lastX = atX(touch);
+                    state.lastY = atY(touch);
+                    canvas.focus({preventScroll: true});
+                    presence(true);
+                    move(state.lastX, state.lastY, 0, 0, false);
+                    button(0, true, state.lastX, state.lastY);
+                    event.preventDefault();
+                },
+                touchmove: function (event) {
+                    var touch = state.tracked(event);
+                    if (!touch) {
+                        return;
+                    }
+                    var x = atX(touch);
+                    var y = atY(touch);
+                    move(x, y, x - state.lastX, y - state.lastY, false);
+                    state.lastX = x;
+                    state.lastY = y;
+                    event.preventDefault();
+                },
+                touchend: function (event) {
+                    var touch = state.tracked(event);
+                    if (!touch) {
+                        return;
+                    }
+                    state.touched = null;
+                    button(0, false, atX(touch), atY(touch));
+                    presence(false);
+                    event.preventDefault();
+                },
+                lastX: 0,
+                lastY: 0,
+                tracked: function (event) {
+                    for (var i = 0; i < event.changedTouches.length; i++) {
+                        if (event.changedTouches[i].identifier === state.touched) {
+                            return event.changedTouches[i];
+                        }
+                    }
+                    return null;
+                },
                 enter: function () { presence(true); },
                 leave: function () { presence(false); },
                 focused: function () { focus(true); },
@@ -123,6 +166,10 @@ final class DomInput {
             canvas.addEventListener('keyup', state.keyup);
             canvas.addEventListener('mousedown', state.mousedown);
             canvas.addEventListener('wheel', state.wheel, {passive: false});
+            canvas.addEventListener('touchstart', state.touchstart, {passive: false});
+            canvas.addEventListener('touchmove', state.touchmove, {passive: false});
+            canvas.addEventListener('touchend', state.touchend, {passive: false});
+            canvas.addEventListener('touchcancel', state.touchend, {passive: false});
             canvas.addEventListener('mouseenter', state.enter);
             canvas.addEventListener('mouseleave', state.leave);
             canvas.addEventListener('focus', state.focused);
@@ -145,6 +192,10 @@ final class DomInput {
             state.canvas.removeEventListener('keyup', state.keyup);
             state.canvas.removeEventListener('mousedown', state.mousedown);
             state.canvas.removeEventListener('wheel', state.wheel);
+            state.canvas.removeEventListener('touchstart', state.touchstart);
+            state.canvas.removeEventListener('touchmove', state.touchmove);
+            state.canvas.removeEventListener('touchend', state.touchend);
+            state.canvas.removeEventListener('touchcancel', state.touchend);
             state.canvas.removeEventListener('mouseenter', state.enter);
             state.canvas.removeEventListener('mouseleave', state.leave);
             state.canvas.removeEventListener('focus', state.focused);
