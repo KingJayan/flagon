@@ -53,6 +53,9 @@ Requires **JDK 25+** and **[bun](https://bun.sh)**. Maven is provided via the wr
 cd web && bun install && bun run dev
 ```
 Once running, open <http://localhost:5273>. Select a bundle, a backend, and a program, and run it.
+Start with `blocks` in the `example` bundle — a whole small game, compiled from an unmodified LWJGL
+jar — then run `selftest` in the `sandbox` bundle, which checks the Java language and library in
+the browser and prints how many of its checks passed.
 Bundles compile to WebAssembly GC by default; `-Pjs` emits the same bundles compiled to JavaScript,
 which the shell falls back to on browsers without WebAssembly GC.
 Add `-Prelease` to either for the bundles a hosted build should ship: optimized and minified, with
@@ -80,6 +83,12 @@ Flagon includes both JVM unit tests and browser-level integration tests.
 # browser tests against the real bundles, once per backend
 cd web && bunx playwright test
 ```
+
+## Reporting a problem
+
+Bugs, unsupported calls and questions belong in the
+[issue tracker](https://github.com/KingJayan/flagon/issues). A report is most useful with the
+backend it happened on, the program or jar that hit it, and whatever the shell's console printed.
 
 ## License
 

@@ -16,7 +16,7 @@ does not. Everything below describes both unless a row says otherwise.
 | Graphics, input, files, audio, networking | works | works |
 
 Every browser test runs once per backend, so the two columns are held level by the same
-assertions. What remains is the roadmap in the [README](../README.md).
+assertions. What remains is in the [issue tracker](https://github.com/KingJayan/flagon/issues).
 
 ## Platform services
 
