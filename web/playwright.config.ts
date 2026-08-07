@@ -21,6 +21,8 @@ export default defineConfig({
     },
     {
       name: 'firefox',
+      // the fallback backend is why a second engine is here; wasm gc is chromium's to prove
+      grepInvert: /on wasm/,
       use: {
         ...devices['Desktop Firefox'],
         launchOptions: {
