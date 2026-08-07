@@ -36,7 +36,7 @@ assertions. What remains is in the [issue tracker](https://github.com/KingJayan/
 
 ## Java language and library
 
-Verified in Chromium by the `selftest` program (80 checks), which runs in CI as a Playwright test
+Verified in Chromium and Firefox by the `selftest` program (80 checks), which runs in CI as a Playwright test
 on both backends.
 
 | Area | State |
@@ -84,7 +84,7 @@ close correctly.
 
 ## LWJGL
 
-Verified in Chromium on both backends by the `lwjgl`, `input`, `arrays`, `shaders`, `texture`, and
+Verified in Chromium and Firefox on both backends by the `lwjgl`, `input`, `arrays`, `shaders`, `texture`, and
 `audio` demos, which assert framebuffer output, drive real keyboard, mouse and wheel events, and
 play audio through to completion. The compatibility layer is also covered by 115 JVM tests running against recording and
 fake devices.

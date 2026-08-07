@@ -19,6 +19,20 @@ export default defineConfig({
         launchOptions: { args: ['--autoplay-policy=no-user-gesture-required', '--mute-audio'] },
       },
     },
+    {
+      name: 'firefox',
+      use: {
+        ...devices['Desktop Firefox'],
+        launchOptions: {
+          firefoxUserPrefs: {
+            'media.autoplay.default': 0,
+            'media.autoplay.blocking_policy': 0,
+            'media.block-autoplay-until-in-foreground': false,
+            'media.volume_scale': '0.0',
+          },
+        },
+      },
+    },
   ],
   webServer: {
     command: 'bun run dev',

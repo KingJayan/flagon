@@ -23,7 +23,7 @@ public final class NetDemoProgram implements Program {
     private static final String BULK_PROBE = "/flagon-net-bulk.bin";
     /** a body far larger than what the tunnel will let sit unread */
     private static final String BULK = "/flagon-net-flood.bin";
-    private static final int QUEUE_LIMIT = 4 * 1024 * 1024;
+    private static final int STRAGGLERS = 256 * 1024;
     private static final int SENT = 8 * 1024 * 1024;
 
     @Override
@@ -125,9 +125,12 @@ public final class NetDemoProgram implements Program {
 
             Thread.sleep(1000);
             int held = connection.available();
-            console.info("paced: queue held at " + held + " bytes, capped: " + (held < QUEUE_LIMIT));
+            Thread.sleep(1000);
+            int later = connection.available();
+            console.info("paced: queue held at " + held + " bytes, capped: "
+                    + (later - held <= STRAGGLERS));
 
-            drain(connection, held);
+            drain(connection, later);
             Thread.sleep(200);
             console.info("paced: sending resumed: " + (connection.available() > 0));
         } catch (InterruptedException interrupted) {

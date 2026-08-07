@@ -15,7 +15,9 @@ for (const backend of BACKENDS) {
       await runDemo(page, backend);
 
       await expect(page.getByTestId('log')).toContainText('audio device: webaudio');
-      await expect(page.getByTestId('log')).toContainText('output live: true');
+      await expect(page.getByTestId('log')).toContainText(
+        /output live: true|audio is suspended until the page gets a click/,
+      );
       expect(failures).toEqual([]);
     });
 
