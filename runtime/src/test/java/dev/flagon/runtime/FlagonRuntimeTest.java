@@ -52,6 +52,7 @@ class FlagonRuntimeTest {
         assertEquals(
                 List.of(
                         "status:platform:fake",
+                        "catalog:hello:test program hello",
                         "status:select:hello",
                         "status:program:hello",
                         "ready",
@@ -94,6 +95,19 @@ class FlagonRuntimeTest {
 
         assertEquals(0, FlagonRuntime.boot(platform, registry));
         assertEquals(List.of("first"), ran);
+    }
+
+    @Test
+    void announcesEveryProgramEvenWhenTheSelectionFails() {
+        FakePlatform platform = new FakePlatform("nope");
+        ProgramRegistry registry = new ProgramRegistry()
+                .register(program("first", new ArrayList<>()))
+                .register(program("second", new ArrayList<>()));
+
+        assertEquals(-1, FlagonRuntime.boot(platform, registry));
+        assertEquals(
+                List.of("catalog:first:test program first", "catalog:second:test program second"),
+                platform.events.stream().filter(event -> event.startsWith("catalog:")).toList());
     }
 
     @Test

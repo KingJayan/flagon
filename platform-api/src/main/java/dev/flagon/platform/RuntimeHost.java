@@ -5,6 +5,8 @@ public interface RuntimeHost {
 
     String[] arguments();
 
+    void catalog(String[] ids, String[] descriptions);
+
     void status(String phase, String detail);
 
     void ready();
