@@ -4,17 +4,20 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Flagon — runtime sandbox</title>
-    <link rel="icon" href="data:," />
+    <link rel="icon" href="/favicon.ico" type="image/x-icon" />
     <link rel="stylesheet" href="/src/shell.css" />
   </head>
   <body>
     <main id="app" data-state="loading">
-      <header>
-        <h1>Flagon</h1>
-        <p class="tagline">A desktop Java/LWJGL environment for the browser.</p>
+      <header class="masthead">
+        <img class="mark" src="/logo.png" alt="" width="44" height="44" />
+        <div>
+          <h1>Flagon</h1>
+          <p class="tagline">A desktop Java/LWJGL environment for the browser.</p>
+        </div>
       </header>
 
-      <section class="panel">
+      <section class="controls">
         <div class="row">
           <label for="bundle">Bundle</label>
           <select id="bundle">
@@ -38,12 +41,12 @@
         <ol id="phases" class="phases" data-testid="phases"></ol>
       </section>
 
-      <section class="panel" id="display">
+      <section class="stage" id="display">
         <h2>Display</h2>
         <canvas id="flagon-canvas" width="640" height="360"></canvas>
       </section>
 
-      <section class="panel">
+      <section class="console">
         <h2>Console</h2>
         <pre id="log" class="log" data-testid="log"></pre>
       </section>

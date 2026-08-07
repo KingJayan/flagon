@@ -47,7 +47,7 @@ for (const backend of BACKENDS) {
       expect(
         await page.evaluate(() => {
           const canvas = document.getElementById('flagon-canvas');
-          return canvas !== null && canvas.closest('.panel') !== null;
+          return canvas !== null && canvas.closest('#display') !== null;
         }),
       ).toBe(true);
     });
