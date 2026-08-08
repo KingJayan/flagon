@@ -34,6 +34,16 @@ Flagon itself is application-agnostic. Work on any particular application lives 
 - Browser-native implementations of input, filesystem, audio, networking, and platform APIs
 - Application-agnostic architecture for downstream projects
 
+## How does it compare?
+
+| Project | Input | Native GL calls | License |
+|---------|-------|-----------------|---------|
+| Flagon | jar | reimplemented on WebGL2 | MIT |
+| TeaVM | jar | not addressed; Flagon is built on it | Apache 2.0 |
+| CheerpJ | jar | cannot load natives, LWJGL never starts | proprietary |
+| Eaglercraft | forked source | reimplemented, Minecraft only | contested |
+
+
 ## Documentation
 
 * **[Architecture Guidelines (for contributing)](docs/ARCHITECTURE.md):** Layering rules and system design.
