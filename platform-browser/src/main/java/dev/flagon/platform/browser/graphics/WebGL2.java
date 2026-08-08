@@ -226,6 +226,9 @@ public interface WebGL2 extends JSObject {
     void texImage2D(int target, int level, int internalFormat, int width, int height,
                     int border, int format, int type, Uint8Array pixels);
 
+    void texSubImage2D(int target, int level, int x, int y, int width, int height,
+                       int format, int type, Uint8Array pixels);
+
     void texParameteri(int target, int name, int value);
 
     void drawArrays(int mode, int first, int count);

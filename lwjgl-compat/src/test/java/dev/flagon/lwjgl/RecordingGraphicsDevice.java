@@ -24,7 +24,7 @@ final class RecordingGraphicsDevice implements GraphicsDevice {
     float[] lastBufferData = new float[0];
     int[] lastElementData = new int[0];
     byte[] lastByteData = new byte[0];
-    int[] lastPixels = new int[0];
+    byte[] lastRgba = new byte[0];
     float[] lastUniformFloats = new float[0];
     int[] lastUniformInts = new int[0];
     float[] lastModelView = new float[16];
@@ -382,9 +382,15 @@ final class RecordingGraphicsDevice implements GraphicsDevice {
     }
 
     @Override
-    public void textureImage(int width, int height, int[] pixels) {
+    public void textureImage(int width, int height, byte[] rgba) {
         calls.add("textureImage " + width + "x" + height);
-        lastPixels = pixels;
+        lastRgba = rgba;
+    }
+
+    @Override
+    public void textureSubImage(int x, int y, int width, int height, byte[] rgba) {
+        calls.add("textureSubImage " + x + "," + y + " " + width + "x" + height);
+        lastRgba = rgba;
     }
 
     @Override

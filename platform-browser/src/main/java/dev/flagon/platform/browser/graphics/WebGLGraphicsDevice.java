@@ -601,26 +601,31 @@ public final class WebGLGraphicsDevice implements GraphicsDevice {
     }
 
     @Override
-    public void textureImage(int width, int height, int[] pixels) {
-        if (pixels.length < width * height) {
-            throw new IllegalArgumentException(
-                    "need " + (width * height) + " pixels, got " + pixels.length);
-        }
-        byte[] rgba = new byte[width * height * 4];
-        for (int i = 0, out = 0; i < width * height; i++) {
-            int argb = pixels[i];
-            rgba[out++] = (byte) (argb >> 16);
-            rgba[out++] = (byte) (argb >> 8);
-            rgba[out++] = (byte) argb;
-            rgba[out++] = (byte) (argb >>> 24);
-        }
-        Uint8Array data = Uint8Array.create(Int8Array.copyFromJavaArray(rgba).getBuffer());
+    public void textureImage(int width, int height, byte[] rgba) {
+        Uint8Array data = pixels(width, height, rgba);
         gl.pixelStorei(WebGL2.UNPACK_PREMULTIPLY_ALPHA_WEBGL, 0);
         gl.texImage2D(WebGL2.TEXTURE_2D, 0, WebGL2.RGBA, width, height, 0,
                 WebGL2.RGBA, WebGL2.UNSIGNED_BYTE, data);
         gl.texParameteri(WebGL2.TEXTURE_2D, WebGL2.TEXTURE_WRAP_S, WebGL2.CLAMP_TO_EDGE);
         gl.texParameteri(WebGL2.TEXTURE_2D, WebGL2.TEXTURE_WRAP_T, WebGL2.CLAMP_TO_EDGE);
         setTextureFilter(false);
+    }
+
+    @Override
+    public void textureSubImage(int x, int y, int width, int height, byte[] rgba) {
+        Uint8Array data = pixels(width, height, rgba);
+        gl.pixelStorei(WebGL2.UNPACK_PREMULTIPLY_ALPHA_WEBGL, 0);
+        gl.texSubImage2D(WebGL2.TEXTURE_2D, 0, x, y, width, height,
+                WebGL2.RGBA, WebGL2.UNSIGNED_BYTE, data);
+    }
+
+    private static Uint8Array pixels(int width, int height, byte[] rgba) {
+        int needed = width * height * 4;
+        if (rgba.length < needed) {
+            throw new IllegalArgumentException(
+                    "need " + needed + " bytes, got " + rgba.length);
+        }
+        return Uint8Array.create(Int8Array.copyFromJavaArray(rgba).getBuffer());
     }
 
     @Override

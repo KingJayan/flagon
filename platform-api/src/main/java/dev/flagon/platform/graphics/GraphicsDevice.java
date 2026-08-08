@@ -56,14 +56,8 @@ public interface GraphicsDevice {
     /** overwrites {@code length} bytes at {@code offsetInBytes}, leaving the rest in place. */
     void bufferSubData(BufferTarget target, int offsetInBytes, byte[] data, int length);
 
-    /**
-     compiles and links in one step, for callers that have both stages in hand
-     */
     int createProgram(String vertexSource, String fragmentSource);
 
-    /**
-     * the piecewise form of the above, matching gl's own object lifecycle
-     */
     int createShader(ShaderStage stage);
 
     /** the source must be glsl es; a host is free to reject anything else. */
@@ -137,14 +131,12 @@ public interface GraphicsDevice {
 
     int attributeLocation(int program, String name);
 
-    /** @return how many generic vertex attributes this host allows, at least 16 */
     int maxAttributes();
 
     void enableAttribute(int location);
 
     void disableAttribute(int location);
 
-    /** reads the attribute from the bound array buffer; offsets and strides are in bytes. */
     void attributePointer(int location, int components, AttributeType type, boolean normalized,
                           int strideInBytes, int offsetInBytes);
 
@@ -156,14 +148,14 @@ public interface GraphicsDevice {
 
     void bindTexture(int unit, int texture);
 
-    /** uploads rgba8 pixels */
-    void textureImage(int width, int height, int[] pixels);
+    void textureImage(int width, int height, byte[] rgba);
+
+    void textureSubImage(int x, int y, int width, int height, byte[] rgba);
 
     void setTextureFilter(boolean smooth);
 
     void drawArrays(Primitive primitive, int first, int count);
 
-    /** draws {@code count} indices read from the bound element buffer at {@code offsetInBytes}. */
     void drawElements(Primitive primitive, int count, IndexType type, int offsetInBytes);
 
     int width();

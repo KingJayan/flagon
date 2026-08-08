@@ -233,8 +233,8 @@ class GL11Test {
                 GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, pixels);
 
         assertEquals(java.util.List.of("textureImage 2x1"), device.calls("textureImage"));
-        assertEquals(0x40102030, device.lastPixels[0]);
-        assertEquals(0xFFFF0000, device.lastPixels[1]);
+        assertArrayEquals(new byte[] {0x10, 0x20, 0x30, 0x40, (byte) 0xFF, 0, 0, (byte) 0xFF},
+                device.lastRgba);
         assertEquals(0, pixels.position(), "the caller's buffer was consumed");
     }
 
@@ -247,8 +247,18 @@ class GL11Test {
         GL11.glTexImage2D(GL11.GL_TEXTURE_2D, 0, GL11.GL_RGBA, 2, 1, 0,
                 GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, pixels);
 
-        assertEquals(0xFF112233, device.lastPixels[0]);
-        assertEquals(0xFF445566, device.lastPixels[1]);
+        assertArrayEquals(
+                new byte[] {0x11, 0x22, 0x33, (byte) 0xFF, 0x44, 0x55, 0x66, (byte) 0xFF},
+                device.lastRgba);
+    }
+
+    @Test
+    void uploadsOnlyTheRectangleASubImageNames() {
+        GL11.glTexSubImage2D(GL11.GL_TEXTURE_2D, 0, 1, 1, 1, 1,
+                GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, new int[] {0xFF112233});
+
+        assertEquals(java.util.List.of("textureSubImage 1,1 1x1"), device.calls("textureSubImage"));
+        assertArrayEquals(new byte[] {0x11, 0x22, 0x33, (byte) 0xFF}, device.lastRgba);
     }
 
     @Test

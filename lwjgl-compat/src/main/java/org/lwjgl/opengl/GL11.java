@@ -348,7 +348,7 @@ public final class GL11 {
                                     int height, int border, int format, int type, int[] pixels) {
         requireTexture2D(target, "glTexImage2D");
         requireRgbaBytes(format, type);
-        device().textureImage(width, height, pixels);
+        device().textureImage(width, height, spread(pixels, width * height));
     }
 
     /** the same upload from a buffer of bytes in r, g, b, a order, which is what real lwjgl takes */
@@ -357,7 +357,7 @@ public final class GL11 {
                                     ByteBuffer pixels) {
         requireTexture2D(target, "glTexImage2D");
         requireRgbaBytes(format, type);
-        device().textureImage(width, height, packed(pixels, width * height));
+        device().textureImage(width, height, bytes(pixels, width * height * 4));
     }
 
     public static void glTexImage2D(int target, int level, int internalFormat, int width,
@@ -367,21 +367,46 @@ public final class GL11 {
         requireRgbaBytes(format, type);
         int[] copied = new int[width * height];
         pixels.duplicate().get(copied);
-        device().textureImage(width, height, copied);
+        device().textureImage(width, height, spread(copied, width * height));
     }
 
-    /** @return one 0xAARRGGBB int per pixel, reading the buffer without consuming it */
-    private static int[] packed(ByteBuffer pixels, int count) {
-        ByteBuffer reading = pixels.duplicate();
-        int[] packed = new int[count];
-        for (int pixel = 0; pixel < count; pixel++) {
-            int red = reading.get() & 0xFF;
-            int green = reading.get() & 0xFF;
-            int blue = reading.get() & 0xFF;
-            int alpha = reading.get() & 0xFF;
-            packed[pixel] = alpha << 24 | red << 16 | green << 8 | blue;
+    /** replaces a rectangle of the bound texture, which is what an atlas edit costs. */
+    public static void glTexSubImage2D(int target, int level, int x, int y, int width, int height,
+                                       int format, int type, ByteBuffer pixels) {
+        requireTexture2D(target, "glTexSubImage2D");
+        requireRgbaBytes(format, type);
+        device().textureSubImage(x, y, width, height, bytes(pixels, width * height * 4));
+    }
+
+    public static void glTexSubImage2D(int target, int level, int x, int y, int width, int height,
+                                       int format, int type, int[] pixels) {
+        requireTexture2D(target, "glTexSubImage2D");
+        requireRgbaBytes(format, type);
+        device().textureSubImage(x, y, width, height, spread(pixels, width * height));
+    }
+
+    /** @return the bytes as they lie, read in bulk and without consuming the caller's buffer */
+    private static byte[] bytes(ByteBuffer pixels, int count) {
+        byte[] rgba = new byte[count];
+        pixels.duplicate().get(rgba);
+        return rgba;
+    }
+
+    /** @return 0xAARRGGBB ints laid back out as the r, g, b, a bytes a texture takes */
+    private static byte[] spread(int[] pixels, int count) {
+        if (pixels.length < count) {
+            throw new IllegalArgumentException(
+                    "need " + count + " pixels, got " + pixels.length);
         }
-        return packed;
+        byte[] rgba = new byte[count * 4];
+        for (int pixel = 0, out = 0; pixel < count; pixel++) {
+            int argb = pixels[pixel];
+            rgba[out++] = (byte) (argb >> 16);
+            rgba[out++] = (byte) (argb >> 8);
+            rgba[out++] = (byte) argb;
+            rgba[out++] = (byte) (argb >>> 24);
+        }
+        return rgba;
     }
 
     private static void requireRgbaBytes(int format, int type) {

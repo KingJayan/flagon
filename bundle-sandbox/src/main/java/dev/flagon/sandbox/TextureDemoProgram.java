@@ -18,8 +18,11 @@ public final class TextureDemoProgram implements Program {
     /** 0xAARRGGBB, the order glTexImage2D takes. row 0 is the top of the quad. */
     private static final int[] TEXELS = {
             0xFFFF0000, 0xFF00FF00,
-            0xFF0000FF, 0xFFFFFF00,
+            0xFF0000FF, 0xFF000000,
     };
+
+    /** the bottom right texel, patched in afterwards rather than uploaded with the rest */
+    private static final int[] CORNER = {0xFFFFFF00};
 
     /** half-opaque white, so the alpha byte has to land in the right place to blend. */
     private static final int[] FADED = {0x80FFFFFF};
@@ -48,6 +51,8 @@ public final class TextureDemoProgram implements Program {
         GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
 
         texture = upload(2, 2, TEXELS);
+        GL11.glTexSubImage2D(GL11.GL_TEXTURE_2D, 0, 1, 1, 1, 1,
+                GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, CORNER);
         faded = upload(1, 1, FADED);
         Platforms.get().console().info("uploaded texture " + texture + " (2x2) and " + faded
                 + " (1x1)");
