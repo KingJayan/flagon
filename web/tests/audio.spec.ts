@@ -19,6 +19,14 @@ for (const backend of BACKENDS) {
       expect(failures).toEqual([]);
     });
 
+    test('keeps a source its rolloff when the model stops using it', async ({ page }) => {
+      await runDemo(page, backend);
+
+      await expect(page.getByTestId('log')).toContainText(
+        'distance model: true, rolloff kept: true',
+      );
+    });
+
     test('takes raw pcm and reports it back', async ({ page }) => {
       await runDemo(page, backend);
 

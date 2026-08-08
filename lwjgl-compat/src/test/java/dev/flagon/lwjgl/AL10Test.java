@@ -3,6 +3,7 @@ package dev.flagon.lwjgl;
 import dev.flagon.lwjgl.internal.ALState;
 import dev.flagon.platform.Clock;
 import dev.flagon.platform.audio.AudioDevice;
+import dev.flagon.platform.audio.DistanceModel;
 import dev.flagon.platform.audio.SilentAudioDevice;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -259,21 +260,22 @@ class AL10Test {
         assertEquals(AL10.AL_INVALID_VALUE, AL10.alGetError());
     }
 
-    /** AL_NONE means no attenuation at all, which the panner expresses as a rolloff of zero. */
+    /** the device is told the model; what a source was told about distance never changes. */
     @Test
-    void theDistanceModelDecidesWhetherRolloffReachesTheDevice() {
+    void theDistanceModelReachesTheDeviceAndTheSourceKeepsItsNumbers() {
         int source = AL10.alGenSources();
         AL10.alSourcef(source, AL10.AL_ROLLOFF_FACTOR, 2.0f);
         AL10.alSourcef(source, AL10.AL_REFERENCE_DISTANCE, 4.0f);
-        assertEquals(2.0f, device.rolloffFactor(source));
 
         AL10.alDistanceModel(AL10.AL_NONE);
-        assertEquals(0.0f, device.rolloffFactor(source));
+        assertEquals(DistanceModel.NONE, device.distanceModel());
+        assertEquals(2.0f, device.rolloffFactor(source));
         assertEquals(4.0f, device.referenceDistance(source));
         assertEquals(2.0f, AL10.alGetSourcef(source, AL10.AL_ROLLOFF_FACTOR));
+        assertEquals(AL10.AL_NONE, AL10.alGetInteger(AL10.AL_DISTANCE_MODEL));
 
         AL10.alDistanceModel(AL10.AL_INVERSE_DISTANCE_CLAMPED);
-        assertEquals(2.0f, device.rolloffFactor(source));
+        assertEquals(DistanceModel.INVERSE_CLAMPED, device.distanceModel());
     }
 
     @Test

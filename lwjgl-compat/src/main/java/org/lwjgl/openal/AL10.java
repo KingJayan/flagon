@@ -206,7 +206,6 @@ public final class AL10 {
             return;
         }
         device().deleteSource(source);
-        state().forgetSource(source);
     }
 
     public static void alDeleteSources(IntBuffer sources) {

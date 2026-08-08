@@ -49,6 +49,14 @@ public final class AudioDemoProgram implements Program {
             AL10.alListener3f(AL10.AL_POSITION, 0.0f, 0.0f, 0.0f);
             check(console, "setup");
 
+            AL10.alSourcef(source, AL10.AL_ROLLOFF_FACTOR, 2.0f);
+            AL10.alDistanceModel(AL10.AL_NONE);
+            console.info("distance model: "
+                    + (AL10.alGetInteger(AL10.AL_DISTANCE_MODEL) == AL10.AL_NONE)
+                    + ", rolloff kept: "
+                    + (AL10.alGetSourcef(source, AL10.AL_ROLLOFF_FACTOR) == 2.0f));
+            AL10.alDistanceModel(AL10.AL_INVERSE_DISTANCE_CLAMPED);
+
             play(console, source);
             latch(console);
 
