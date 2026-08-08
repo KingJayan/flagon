@@ -1,6 +1,8 @@
 import http from 'node:http';
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import zlib from 'node:zlib';
+import { promisify } from 'node:util';
 import { fileURLToPath } from 'node:url';
 import { attachTcpProxy, DEFAULT_ALLOW, ruleOf, TCP_PROXY_PATH } from './tcp-proxy';
 
@@ -88,16 +90,70 @@ export function settingsFrom(argv: string[]): Settings {
   return settings;
 }
 
-async function send(response: http.ServerResponse, file: string): Promise<void> {
-  const body = await fs.readFile(file);
-  response.writeHead(200, {
+const brotli = promisify(zlib.brotliCompress);
+const gzip = promisify(zlib.gzip);
+
+const COMPRESSIBLE = new Set(['.html', '.js', '.css', '.json', '.map', '.wasm', '.svg', '.txt']);
+const HASHED = /-[A-Za-z0-9_-]{8,}\.[A-Za-z0-9]+$/;
+
+const packed = new Map<string, { tag: string; body: Buffer }>();
+
+async function compressed(file: string, tag: string, how: 'br' | 'gzip', raw: Buffer) {
+  const key = `${how} ${file}`;
+  const already = packed.get(key);
+  if (already?.tag === tag) {
+    return already.body;
+  }
+  const body =
+    how === 'br'
+      ? await brotli(raw, { params: { [zlib.constants.BROTLI_PARAM_QUALITY]: 5 } })
+      : await gzip(raw, { level: 6 });
+  packed.set(key, { tag, body });
+  return body;
+}
+
+function encodingFor(request: http.IncomingMessage, file: string): 'br' | 'gzip' | null {
+  if (!COMPRESSIBLE.has(path.extname(file))) {
+    return null;
+  }
+  const accepted = String(request.headers['accept-encoding'] ?? '');
+  if (/\bbr\b/.test(accepted)) {
+    return 'br';
+  }
+  return /\bgzip\b/.test(accepted) ? 'gzip' : null;
+}
+
+async function send(
+  request: http.IncomingMessage,
+  response: http.ServerResponse,
+  file: string,
+): Promise<void> {
+  const stat = await fs.stat(file);
+  const tag = `"${stat.size.toString(16)}-${Math.floor(stat.mtimeMs).toString(16)}"`;
+  const headers: http.OutgoingHttpHeaders = {
     'content-type': TYPES[path.extname(file)] ?? 'application/octet-stream',
-    'content-length': body.length,
-  });
+    'cache-control': HASHED.test(path.basename(file))
+      ? 'public, max-age=31536000, immutable'
+      : 'no-cache',
+    etag: tag,
+    vary: 'accept-encoding',
+  };
+
+  if (request.headers['if-none-match'] === tag) {
+    response.writeHead(304, headers).end();
+    return;
+  }
+
+  const raw = await fs.readFile(file);
+  const how = encodingFor(request, file);
+  const body = how === null ? raw : await compressed(file, tag, how, raw);
+  if (how !== null) {
+    headers['content-encoding'] = how;
+  }
+  response.writeHead(200, { ...headers, 'content-length': body.length });
   response.end(body);
 }
 
-/** files under the root and nothing else, whatever the url says */
 async function serve(root: string, request: http.IncomingMessage, response: http.ServerResponse) {
   const asked = new URL(request.url ?? '/', 'http://site.invalid');
   const wanted = path.join(root, path.normalize(asked.pathname));
@@ -107,7 +163,7 @@ async function serve(root: string, request: http.IncomingMessage, response: http
   }
   try {
     const found = (await fs.stat(wanted)).isDirectory() ? path.join(wanted, 'index.html') : wanted;
-    await send(response, found);
+    await send(request, response, found);
   } catch {
     response.writeHead(404, { 'content-type': 'text/plain; charset=utf-8' });
     response.end(`nothing here: ${asked.pathname}`);
