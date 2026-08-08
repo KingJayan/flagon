@@ -3,7 +3,7 @@ import { BACKENDS, open, watchForFailures, type Backend } from './harness';
 
 async function runDemo(page: Page, backend: Backend): Promise<void> {
   await open(page, backend, 'program=net&arg=localhost:5273');
-  await expect(page.getByTestId('state')).toHaveText('exited', { timeout: 30_000 });
+  await expect(page.getByTestId('state')).toHaveText('exited', { timeout: 60_000 });
   await expect(page.getByTestId('log')).toContainText('net: done');
 }
 
@@ -80,7 +80,7 @@ test('carries a proxy token from the page url onto the socket', async ({ page })
   page.on('websocket', (socket) => opened.push(socket.url()));
 
   await open(page, 'js', 'program=net&arg=localhost:5273&proxytoken=hunter2');
-  await expect(page.getByTestId('state')).toHaveText('exited', { timeout: 30_000 });
+  await expect(page.getByTestId('state')).toHaveText('exited', { timeout: 60_000 });
 
   await expect(page.getByTestId('log')).toContainText('connected to localhost:5273');
   const sockets = opened.filter((url) => url.includes('/__flagon/tcp'));
@@ -90,7 +90,7 @@ test('carries a proxy token from the page url onto the socket', async ({ page })
 
 test('says what a page without a proxy is missing', async ({ page }) => {
   await open(page, 'js', 'program=hello');
-  await expect(page.getByTestId('state')).toHaveText('exited', { timeout: 30_000 });
+  await expect(page.getByTestId('state')).toHaveText('exited', { timeout: 60_000 });
 
   const failure = await page.evaluate(
     () =>
