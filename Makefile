@@ -8,7 +8,7 @@ N ?= 3
 
 .PHONY: help setup deps browsers bundles bundles-js build bundles-release \
         bundles-release-js build-release test browser flake typecheck site dev serve \
-        check report merge-reports watch version release publish clean
+        check report merge-reports watch version release publish clean verify-bundles
 
 help: ## list what this repo can do
 	@grep -hE '^[a-z-]+:.*## ' $(MAKEFILE_LIST) \
@@ -25,9 +25,22 @@ browsers: ## install the engines the tests drive
 
 bundles: ## compile java to webassembly gc
 	$(MVN) package
+	@$(MAKE) verify-bundles
 
 bundles-js: ## compile java to javascript, the fallback backend
 	$(MVN) -Pjs -DskipTests package
+	@$(MAKE) verify-bundles
+
+# a bundle compiled from class files that never compiled is small and throws at boot, and the
+# build that emitted it reports success. see issue #106
+verify-bundles: ## check the emitted bundles are whole
+	@for bundle in $(BUNDLES)/*.js $(BUNDLES)/*.wasm; do \
+		case $$bundle in *wasm-gc-module-runtime.js) continue;; esac; \
+		size=$$(wc -c < $$bundle | tr -d " "); \
+		test $$size -ge 250000 || { echo "$$bundle is only $$size bytes; run 'make clean'"; exit 1; }; \
+		grep -q "Unresolved compilation problem" $$bundle \
+			&& { echo "$$bundle carries uncompiled classes; run 'make clean'"; exit 1; }; \
+	done; echo "bundles look whole"
 
 build: ## compile both backends
 	@$(MAKE) bundles
@@ -35,9 +48,11 @@ build: ## compile both backends
 
 bundles-release: ## compile to webassembly gc as a hosted build ships it
 	$(MVN) -Prelease package
+	@$(MAKE) verify-bundles
 
 bundles-release-js: ## compile to javascript as a hosted build ships it
 	$(MVN) -Pjs -Prelease -DskipTests package
+	@$(MAKE) verify-bundles
 
 build-release: ## compile both backends as a hosted build ships them
 	@$(MAKE) bundles-release
