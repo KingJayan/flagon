@@ -47,6 +47,26 @@ public interface AudioDevice {
 
     int attachedBuffer(int source);
 
+    /**
+     * appends buffers to a source's queue, which it plays through in order
+    
+     * @throws AudioException if any name is not a buffer, or the source holds a single buffer
+     */
+    void queueBuffers(int source, int[] buffers);
+
+    /**
+     * takes the oldest {@code count} buffers a source has finished with off its queue
+     * @return their names, oldest first
+     * @throws AudioException if the source has not finished with that many
+     */
+    int[] unqueueBuffers(int source, int count);
+
+    /** how many buffers are on the queue, played or not. */
+    int buffersQueued(int source);
+
+    /** how many of them have played through and are waiting to be taken back. */
+    int buffersProcessed(int source);
+
     void play(int source);
 
     void pause(int source);

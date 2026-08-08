@@ -117,11 +117,13 @@ fake devices.
 | `alGetError` latching | works |
 | Source gain, pitch, looping, positioning | works |
 | Distance attenuation | works |
-| `AL_NONE`, `AL_INVERSE_DISTANCE`, `AL_INVERSE_DISTANCE_CLAMPED` | works |
-| Other distance models, cone angles, min/max gain | refused |
+| Distance models (`AL_NONE` through `AL_EXPONENT_DISTANCE_CLAMPED`) | works, always clamped |
+| Cone angles, min/max gain | refused |
 | Doppler (`AL_VELOCITY`) | recorded, no effect |
-| Streaming (`alSourceQueueBuffers`) | refused |
-| `ALC10`, capture, `WaveData` | not emulated |
+| Streaming (`alSourceQueueBuffers`) | works |
+| `ALC10` device and context | works |
+| `WaveData` | works, uncompressed pcm |
+| Capture (`ALC11`) | not emulated |
 
 Every unsupported entry point throws `UnsupportedOperationException` naming the call. Nothing is
 silently ignored: a stack trace is cheaper than debugging incorrect rendering.
@@ -185,19 +187,24 @@ them is not stranded.
 
 ### Audio playback
 
-Web Audio plays complete buffers and exposes no queue progress.
+A queued source schedules every buffer on the graph back to back, so the times between them are
+the graph's and not a callback's. `AL_BUFFERS_PROCESSED` counts the ones the graph has reported
+done, and `alSourceUnqueueBuffers` hands those back to be refilled.
 
-`alSourceQueueBuffers` is therefore refused rather than approximated. Attach a single buffer with
-`alSourcei(AL_BUFFER)`.
+A source holds a queue or a single buffer, never both, as OpenAL has it: mixing the two leaves
+`AL_INVALID_OPERATION`.
 
 Each call to `alSourcePlay` creates a new Web Audio source node. Gain, pitch and position are
 stored separately so they survive stop and replay.
 
 ### Distance attenuation
 
-Reference distance, rolloff factor and maximum distance map directly onto a `PannerNode`.
+Reference distance, rolloff factor and maximum distance map directly onto a `PannerNode`, and the
+inverse, linear and exponential models onto its three curves. `AL_NONE` has no curve, so it is a
+rolloff of zero; the source keeps the rolloff it was given.
 
-Linear and exponential distance models are refused.
+The panner always clamps distance between the reference and maximum distances, so the unclamped
+models behave as their clamped counterparts.
 
 Velocity is recorded for compatibility but produces no Doppler effect because Web Audio removed
 that functionality. `AL_SOURCE_RELATIVE` is emulated by offsetting the source relative to the

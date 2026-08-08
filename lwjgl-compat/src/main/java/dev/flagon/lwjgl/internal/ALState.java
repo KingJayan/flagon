@@ -21,6 +21,10 @@ public final class ALState {
     public static final int DISTANCE_NONE = 0;
     public static final int INVERSE_DISTANCE = 0xD001;
     public static final int INVERSE_DISTANCE_CLAMPED = 0xD002;
+    public static final int LINEAR_DISTANCE = 0xD003;
+    public static final int LINEAR_DISTANCE_CLAMPED = 0xD004;
+    public static final int EXPONENT_DISTANCE = 0xD005;
+    public static final int EXPONENT_DISTANCE_CLAMPED = 0xD006;
 
     private static ALState current;
 
@@ -86,23 +90,30 @@ public final class ALState {
             case NONE -> DISTANCE_NONE;
             case INVERSE -> INVERSE_DISTANCE;
             case INVERSE_CLAMPED -> INVERSE_DISTANCE_CLAMPED;
+            case LINEAR -> LINEAR_DISTANCE;
+            case LINEAR_CLAMPED -> LINEAR_DISTANCE_CLAMPED;
+            case EXPONENT -> EXPONENT_DISTANCE;
+            case EXPONENT_CLAMPED -> EXPONENT_DISTANCE_CLAMPED;
         };
     }
 
-    /** @throws UnsupportedOperationException for the models web audio's panner cannot express */
-    public void setDistanceModel(int model) {
-        if (model != DISTANCE_NONE && model != INVERSE_DISTANCE
-                && model != INVERSE_DISTANCE_CLAMPED) {
-            throw new UnsupportedOperationException(
-                    "alDistanceModel(" + Integer.toHexString(model) + ") is not emulated; web "
-                    + "audio's panner attenuates inversely, so AL_NONE, AL_INVERSE_DISTANCE and "
-                    + "AL_INVERSE_DISTANCE_CLAMPED are the models available");
-        }
-        device.setDistanceModel(switch (model) {
+    /** @return false for a number that names no model, which the caller latches as an error */
+    public boolean setDistanceModel(int model) {
+        DistanceModel wanted = switch (model) {
             case DISTANCE_NONE -> DistanceModel.NONE;
             case INVERSE_DISTANCE -> DistanceModel.INVERSE;
-            default -> DistanceModel.INVERSE_CLAMPED;
-        });
+            case INVERSE_DISTANCE_CLAMPED -> DistanceModel.INVERSE_CLAMPED;
+            case LINEAR_DISTANCE -> DistanceModel.LINEAR;
+            case LINEAR_DISTANCE_CLAMPED -> DistanceModel.LINEAR_CLAMPED;
+            case EXPONENT_DISTANCE -> DistanceModel.EXPONENT;
+            case EXPONENT_DISTANCE_CLAMPED -> DistanceModel.EXPONENT_CLAMPED;
+            default -> null;
+        };
+        if (wanted == null) {
+            return false;
+        }
+        device.setDistanceModel(wanted);
+        return true;
     }
 
     public void setReferenceDistance(int source, float value) {

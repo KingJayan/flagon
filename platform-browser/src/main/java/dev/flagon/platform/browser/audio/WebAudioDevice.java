@@ -15,7 +15,9 @@ import org.teavm.jso.webaudio.AudioContext;
 import org.teavm.jso.webaudio.GainNode;
 import org.teavm.jso.webaudio.PannerNode;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -34,6 +36,10 @@ public final class WebAudioDevice implements AudioDevice {
         final GainNode gain = context.createGain();
         final PannerNode panner = context.createPanner();
         AudioBufferSourceNode node;
+        final List<Integer> queue = new ArrayList<>();
+        final List<AudioBufferSourceNode> playing = new ArrayList<>();
+        int processed;
+        double tail;
         int buffer = NO_BUFFER;
         SourceState state = SourceState.INITIAL;
         boolean looping;
@@ -75,12 +81,17 @@ public final class WebAudioDevice implements AudioDevice {
         }
 
         void release() {
+            generation++;
             if (node != null) {
-                generation++;
                 node.stop();
                 node.disconnect();
                 node = null;
             }
+            for (AudioBufferSourceNode scheduled : playing) {
+                scheduled.stop();
+                scheduled.disconnect();
+            }
+            playing.clear();
         }
 
         void dispose() {
@@ -220,6 +231,9 @@ public final class WebAudioDevice implements AudioDevice {
             throw new AudioException("not a buffer: " + buffer);
         }
         Source held = source(source);
+        if (!held.queue.isEmpty()) {
+            throw new AudioException("source " + source + " is streaming a queue");
+        }
         held.release();
         held.buffer = buffer;
         held.offset = 0.0;
@@ -232,8 +246,93 @@ public final class WebAudioDevice implements AudioDevice {
     }
 
     @Override
+    public void queueBuffers(int source, int[] buffers) {
+        Source held = source(source);
+        if (held.buffer != NO_BUFFER) {
+            throw new AudioException("source " + source + " holds a single buffer");
+        }
+        for (int buffer : buffers) {
+            audioOf(buffer);
+        }
+        for (int buffer : buffers) {
+            held.queue.add(buffer);
+            if (held.state == SourceState.PLAYING) {
+                schedule(held, buffer);
+            }
+        }
+    }
+
+    @Override
+    public int[] unqueueBuffers(int source, int count) {
+        Source held = source(source);
+        if (count < 0 || count > held.processed) {
+            throw new AudioException("source " + source + " has processed " + held.processed
+                    + " buffers, not " + count);
+        }
+        int[] taken = new int[count];
+        for (int at = 0; at < count; at++) {
+            taken[at] = held.queue.remove(0);
+            if (!held.playing.isEmpty()) {
+                held.playing.remove(0);
+            }
+        }
+        held.processed -= count;
+        return taken;
+    }
+
+    @Override
+    public int buffersQueued(int source) {
+        return source(source).queue.size();
+    }
+
+    @Override
+    public int buffersProcessed(int source) {
+        return source(source).processed;
+    }
+
+    // every queued buffer is scheduled back to back up front, the graph keeping the time rather
+    // than a callback arriving late and leaving a gap
+    private void schedule(Source held, int buffer) {
+        AudioBuffer audio = audioOf(buffer);
+        AudioBufferSourceNode node = context.createBufferSource();
+        node.setBuffer(audio);
+        node.getPlaybackRate().setValue(held.pitch);
+        node.connect(held.gain);
+
+        int generation = held.generation;
+        node.setOnEnded(event -> {
+            if (held.generation != generation) {
+                return;
+            }
+            held.processed++;
+            if (held.processed >= held.queue.size()) {
+                held.state = SourceState.STOPPED;
+            }
+        });
+
+        node.start(held.tail);
+        held.playing.add(node);
+        held.tail += audio.getDuration() / held.pitch;
+    }
+
+    private void playQueue(Source held) {
+        int from = held.state == SourceState.PAUSED ? held.processed : 0;
+        held.release();
+        held.processed = from;
+        held.tail = context.getCurrentTime();
+        held.state = SourceState.PLAYING;
+        for (int at = from; at < held.queue.size(); at++) {
+            schedule(held, held.queue.get(at));
+        }
+    }
+
+    @Override
     public void play(int source) {
         Source held = source(source);
+        if (!held.queue.isEmpty()) {
+            playQueue(held);
+            return;
+        }
         Buffer buffer = buffers.get(held.buffer);
         if (buffer == null || buffer.audio == null) {
             throw new AudioException("source " + source + " has no buffer to play");
@@ -283,6 +382,7 @@ public final class WebAudioDevice implements AudioDevice {
         Source held = source(source);
         held.release();
         held.offset = 0.0;
+        held.processed = held.queue.size();
         held.state = SourceState.STOPPED;
     }
 
@@ -291,6 +391,7 @@ public final class WebAudioDevice implements AudioDevice {
         Source held = source(source);
         held.release();
         held.offset = 0.0;
+        held.processed = 0;
         held.state = SourceState.INITIAL;
     }
 
@@ -402,11 +503,20 @@ public final class WebAudioDevice implements AudioDevice {
         applyAttenuation(source);
     }
 
-    // the panner attenuates inversely or not at all, and not at all is a rolloff of zero
+    // the panner has the three curves but no way to switch off; not at all is a rolloff of zero
     private void applyAttenuation(int source) {
         Source held = source(source);
+        held.panner.setDistanceModel(curveOf(distanceModel));
         held.panner.setRolloffFactor(
                 distanceModel == DistanceModel.NONE ? 0.0f : held.rolloff);
+    }
+
+    private static String curveOf(DistanceModel model) {
+        return switch (model) {
+            case LINEAR, LINEAR_CLAMPED -> PannerNode.DISTANCE_MODEL_LINEAR;
+            case EXPONENT, EXPONENT_CLAMPED -> PannerNode.DISTANCE_MODEL_EXPONENTIAL;
+            default -> PannerNode.DISTANCE_MODEL_INVERSE;
+        };
     }
 
     @Override
@@ -491,6 +601,14 @@ public final class WebAudioDevice implements AudioDevice {
     private void applyListenerOrientation() {
         float[] at = listenerOrientation;
         context.getListener().setOrientation(at[0], at[1], at[2], at[3], at[4], at[5]);
+    }
+
+    private AudioBuffer audioOf(int name) {
+        Buffer held = buffer(name);
+        if (held.audio == null) {
+            throw new AudioException("buffer " + name + " holds no pcm");
+        }
+        return held.audio;
     }
 
     private Buffer buffer(int name) {

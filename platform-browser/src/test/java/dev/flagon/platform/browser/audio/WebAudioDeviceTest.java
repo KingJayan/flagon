@@ -293,6 +293,75 @@ class WebAudioDeviceTest {
                 .count();
     }
 
+    /** a stream is buffers queued up, played through in order, and taken back to be refilled */
+    @Test
+    void schedulesEveryQueuedBufferAndTakesBackWhatHasPlayed() {
+        int source = device.createSource();
+        int first = device.createBuffer();
+        int second = device.createBuffer();
+        soundIn(first);
+        soundIn(second);
+
+        device.queueBuffers(source, new int[]{first, second});
+        assertEquals(2, device.buffersQueued(source));
+        assertEquals(0, device.buffersProcessed(source));
+
+        device.play(source);
+        assertEquals(2, audio.count("createBufferSource"));
+        assertEquals("start(2.0)", audio.lastCall("start"), audio.calls().toString());
+
+        end(0);
+        assertEquals(1, device.buffersProcessed(source));
+        assertArrayEquals(new int[]{first}, device.unqueueBuffers(source, 1));
+        assertEquals(1, device.buffersQueued(source));
+        assertEquals(SourceState.PLAYING, device.sourceState(source));
+
+        end(1);
+        assertEquals(SourceState.STOPPED, device.sourceState(source));
+    }
+
+    @Test
+    void refusesToTakeBackMoreThanHasPlayed() {
+        int source = device.createSource();
+        int buffer = device.createBuffer();
+        soundIn(buffer);
+        device.queueBuffers(source, new int[]{buffer});
+
+        assertThrows(AudioException.class, () -> device.unqueueBuffers(source, 1));
+    }
+
+    @Test
+    void keepsAQueueAndASingleBufferApart() {
+        int streaming = device.createSource();
+        int buffer = device.createBuffer();
+        soundIn(buffer);
+        device.queueBuffers(streaming, new int[]{buffer});
+
+        assertThrows(AudioException.class, () -> device.attachBuffer(streaming, buffer));
+        assertThrows(AudioException.class,
+                () -> device.queueBuffers(sourceWithSound(), new int[]{buffer}));
+    }
+
+    @Test
+    void putsEachDistanceModelsOwnCurveOnThePanner() {
+        int source = device.createSource();
+        device.setSourceAttenuation(source, 1.0f, 1.0f, 100.0f);
+
+        device.setDistanceModel(DistanceModel.LINEAR);
+        assertEquals("setDistanceModel(linear)", audio.lastCall("setDistanceModel"));
+
+        device.setDistanceModel(DistanceModel.EXPONENT_CLAMPED);
+        assertEquals("setDistanceModel(exponential)", audio.lastCall("setDistanceModel"));
+
+        device.setDistanceModel(DistanceModel.INVERSE);
+        assertEquals("setDistanceModel(inverse)", audio.lastCall("setDistanceModel"));
+    }
+
+    /** the graph reporting a scheduled buffer done, which is what advances a queue */
+    private void end(int node) {
+        context.played().get(node).getOnEnded().handleEvent(null);
+    }
+
     /** a source with a buffer behind it, which is what play() insists on */
     private int sourceWithSound() {
         int buffer = device.createBuffer();

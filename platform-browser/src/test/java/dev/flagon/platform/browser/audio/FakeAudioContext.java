@@ -18,6 +18,7 @@ final class FakeAudioContext extends AudioContext {
     private final AudioListener listener;
     private final AudioDestinationNode destination;
 
+    private final java.util.List<AudioBufferSourceNode> played = new java.util.ArrayList<>();
     private String state = AudioContext.STATE_RUNNING;
     private double now;
 
@@ -81,7 +82,14 @@ final class FakeAudioContext extends AudioContext {
     @Override
     public AudioBufferSourceNode createBufferSource() {
         js.record("createBufferSource()");
-        return js.of(AudioBufferSourceNode.class);
+        AudioBufferSourceNode node = js.of(AudioBufferSourceNode.class);
+        played.add(node);
+        return node;
+    }
+
+    /** the nodes handed out, so a test can end one the way the graph would */
+    java.util.List<AudioBufferSourceNode> played() {
+        return played;
     }
 
     @Override
