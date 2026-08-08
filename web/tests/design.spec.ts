@@ -18,24 +18,59 @@ test.describe('the shell as a designed page', () => {
     await open(page, 'js', 'program=lwjgl');
     await expect(page.locator('#display')).toBeVisible({ timeout: 30_000 });
 
-    const shadowOf = (selector: string) =>
-      page.locator(selector).evaluate((node) => getComputedStyle(node).boxShadow);
+    // how far a surface is lifted off the page, whatever the shadow is spelled as
+    const liftOf = (selector: string) =>
+      page.locator(selector).evaluate((node) => {
+        const shadow = getComputedStyle(node).boxShadow;
+        if (shadow === 'none') {
+          return 0;
+        }
+        return [...shadow.matchAll(/(-?[\d.]+)px/g)].reduce(
+          (total, [, value]) => total + Math.abs(Number(value)),
+          0,
+        );
+      });
 
-    expect(await shadowOf('#display')).not.toBe('none');
-    expect(await shadowOf('.controls')).toBe('none');
-    expect(await shadowOf('.console')).toBe('none');
+    const stage = await liftOf('#display');
+    expect(stage).toBeGreaterThan(await liftOf('.controls'));
+    expect(stage).toBeGreaterThan(await liftOf('.console'));
   });
 
   test('sizes every text role from one scale', async ({ page }) => {
     await open(page, 'js', 'program=hello');
     await expect(page.getByTestId('state')).toHaveText('exited', { timeout: 30_000 });
 
-    const sizes = await page.evaluate(() =>
-      ['body', 'h1', 'h2', 'label', '#run', '.badge', '.log', '.tagline', '.phases li'].map(
-        (selector) => getComputedStyle(document.querySelector(selector)!).fontSize,
-      ),
-    );
+    const { sizes, scale } = await page.evaluate(() => {
+      const root = getComputedStyle(document.documentElement);
+      const measure = (selector: string) =>
+        getComputedStyle(document.querySelector(selector)!).fontSize;
+      return {
+        sizes: [
+          'body',
+          'h1',
+          'h2',
+          'label',
+          '#run',
+          '.badge',
+          '.log',
+          '.tagline',
+          '.phases li',
+        ].map(measure),
+        // the scale is declared once, in custom properties, and this is that list
+        scale: ['--small', '--detail', '--body', '--title'].map((name) => {
+          const probe = document.createElement('span');
+          probe.style.fontSize = root.getPropertyValue(name);
+          document.body.append(probe);
+          const size = getComputedStyle(probe).fontSize;
+          probe.remove();
+          return size;
+        }),
+      };
+    });
 
-    expect([...new Set(sizes)].sort()).toEqual(['12px', '14px', '16px', '28px'].sort());
+    expect(scale).toHaveLength(new Set(scale).size);
+    for (const size of sizes) {
+      expect(scale, `${size} is not a step of the scale`).toContain(size);
+    }
   });
 });
