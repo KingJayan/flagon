@@ -47,6 +47,31 @@ for (const backend of BACKENDS) {
       expect(millis).toBeLessThan(2_000);
     });
 
+    /** music is buffers queued ahead, taken back as they play, and filled again */
+    test('streams a queue of buffers and takes back what it has played', async ({ page }) => {
+      await runDemo(page, backend);
+
+      await expect(page.getByTestId('log')).toContainText('streamed: queued 2');
+      await expect(page.getByTestId('log')).toContainText('streamed: took back true, queued 1');
+      await expect(page.getByTestId('log')).toContainText('streamed: refilled to 2');
+      await expect(page.getByTestId('log')).toContainText('streaming: no error');
+    });
+
+    test('opens its mixer through the context layer a game expects', async ({ page }) => {
+      await runDemo(page, backend);
+
+      await expect(page.getByTestId('log')).toContainText(
+        'alc: webaudio, current: true, no error: true',
+      );
+    });
+
+    test('reads a wave file into a buffer', async ({ page }) => {
+      await runDemo(page, backend);
+
+      await expect(page.getByTestId('log')).toContainText('wave: mono16 true at 22050 Hz, 11024 bytes');
+      await expect(page.getByTestId('log')).toContainText('wave: buffered 11024 bytes');
+    });
+
     test('reports a bad name through alGetError rather than throwing', async ({ page }) => {
       await runDemo(page, backend);
 

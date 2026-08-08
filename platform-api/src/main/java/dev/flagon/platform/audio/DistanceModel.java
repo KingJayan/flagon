@@ -11,5 +11,13 @@ public enum DistanceModel {
     INVERSE,
 
     /** inverse, with distance held between the reference and maximum distances */
-    INVERSE_CLAMPED
+    INVERSE_CLAMPED,
+
+    LINEAR,
+
+    LINEAR_CLAMPED,
+
+    EXPONENT,
+
+    EXPONENT_CLAMPED
 }

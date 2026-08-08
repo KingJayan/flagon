@@ -2,7 +2,9 @@ package dev.flagon.platform.audio;
 
 import dev.flagon.platform.Clock;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -21,6 +23,8 @@ public final class SilentAudioDevice implements AudioDevice {
 
     private static final class Source {
         int buffer = NO_BUFFER;
+        final List<Integer> queue = new ArrayList<>();
+        int processed;
         SourceState state = SourceState.INITIAL;
         boolean looping;
         boolean relative;
@@ -127,6 +131,9 @@ public final class SilentAudioDevice implements AudioDevice {
             throw new AudioException("not a buffer: " + buffer);
         }
         Source held = source(source);
+        if (!held.queue.isEmpty()) {
+            throw new AudioException("source " + source + " is streaming a queue");
+        }
         held.buffer = buffer;
         held.offset = 0.0;
         held.state = SourceState.INITIAL;
@@ -138,9 +145,57 @@ public final class SilentAudioDevice implements AudioDevice {
     }
 
     @Override
+    public void queueBuffers(int source, int[] buffers) {
+        Source held = source(source);
+        if (held.buffer != NO_BUFFER) {
+            throw new AudioException("source " + source + " holds a single buffer");
+        }
+        for (int buffer : buffers) {
+            if (!isBuffer(buffer)) {
+                throw new AudioException("not a buffer: " + buffer);
+            }
+        }
+        for (int buffer : buffers) {
+            held.queue.add(buffer);
+        }
+    }
+
+    @Override
+    public int[] unqueueBuffers(int source, int count) {
+        Source held = source(source);
+        settle(held);
+        if (count < 0 || count > held.processed) {
+            throw new AudioException("source " + source + " has processed " + held.processed
+                    + " buffers, not " + count);
+        }
+        int[] taken = new int[count];
+        double played = 0.0;
+        for (int at = 0; at < count; at++) {
+            taken[at] = held.queue.remove(0);
+            played += durationOf(taken[at]);
+        }
+        held.offset = Math.max(0.0, elapsed(held) - played);
+        held.startedAt = clock.currentTimeMillis();
+        held.processed -= count;
+        return taken;
+    }
+
+    @Override
+    public int buffersQueued(int source) {
+        return source(source).queue.size();
+    }
+
+    @Override
+    public int buffersProcessed(int source) {
+        Source held = source(source);
+        settle(held);
+        return held.processed;
+    }
+
+    @Override
     public void play(int source) {
         Source held = source(source);
-        if (held.buffer == NO_BUFFER) {
+        if (held.buffer == NO_BUFFER && held.queue.isEmpty()) {
             throw new AudioException("source " + source + " has no buffer to play");
         }
         if (held.state != SourceState.PAUSED) {
@@ -164,6 +219,7 @@ public final class SilentAudioDevice implements AudioDevice {
     public void stop(int source) {
         Source held = source(source);
         held.offset = 0.0;
+        held.processed = held.queue.size();
         held.state = SourceState.STOPPED;
     }
 
@@ -171,6 +227,7 @@ public final class SilentAudioDevice implements AudioDevice {
     public void rewind(int source) {
         Source held = source(source);
         held.offset = 0.0;
+        held.processed = 0;
         held.state = SourceState.INITIAL;
     }
 
@@ -336,10 +393,30 @@ public final class SilentAudioDevice implements AudioDevice {
 
     /** @return the state after however much of the buffer has played by now */
     private SourceState settle(Source source) {
-        if (source.state == SourceState.PLAYING && !source.looping
-                && elapsed(source) >= duration(source)) {
+        if (source.state != SourceState.PLAYING) {
+            return source.state;
+        }
+        double played = elapsed(source);
+        if (source.queue.isEmpty()) {
+            if (!source.looping && played >= duration(source)) {
+                source.state = SourceState.STOPPED;
+                source.offset = 0.0;
+            }
+            return source.state;
+        }
+        int done = 0;
+        double taken = 0.0;
+        for (int name : source.queue) {
+            double length = durationOf(name);
+            if (played < taken + length) {
+                break;
+            }
+            taken += length;
+            done++;
+        }
+        source.processed = done;
+        if (done == source.queue.size() && !source.looping) {
             source.state = SourceState.STOPPED;
-            source.offset = 0.0;
         }
         return source.state;
     }
@@ -350,7 +427,11 @@ public final class SilentAudioDevice implements AudioDevice {
     }
 
     private double duration(Source source) {
-        Buffer buffer = buffers.get(source.buffer);
+        return durationOf(source.buffer);
+    }
+
+    private double durationOf(int name) {
+        Buffer buffer = buffers.get(name);
         if (buffer == null) {
             return 0.0;
         }

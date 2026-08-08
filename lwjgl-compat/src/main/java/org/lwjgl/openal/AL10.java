@@ -84,6 +84,10 @@ public final class AL10 {
     public static final int AL_DISTANCE_MODEL = 0xD000;
     public static final int AL_INVERSE_DISTANCE = ALState.INVERSE_DISTANCE;
     public static final int AL_INVERSE_DISTANCE_CLAMPED = ALState.INVERSE_DISTANCE_CLAMPED;
+    public static final int AL_LINEAR_DISTANCE = ALState.LINEAR_DISTANCE;
+    public static final int AL_LINEAR_DISTANCE_CLAMPED = ALState.LINEAR_DISTANCE_CLAMPED;
+    public static final int AL_EXPONENT_DISTANCE = ALState.EXPONENT_DISTANCE;
+    public static final int AL_EXPONENT_DISTANCE_CLAMPED = ALState.EXPONENT_DISTANCE_CLAMPED;
 
     private AL10() {
     }
@@ -230,7 +234,11 @@ public final class AL10 {
                     state().fail(AL_INVALID_NAME);
                     return;
                 }
-                device.attachBuffer(source, value);
+                try {
+                    device.attachBuffer(source, value);
+                } catch (AudioException streaming) {
+                    state().fail(AL_INVALID_OPERATION);
+                }
                 return;
             case AL_LOOPING:
                 device.setLooping(source, value != AL_FALSE);
@@ -313,8 +321,9 @@ public final class AL10 {
             case AL_SOURCE_RELATIVE:
                 return device.isSourceRelative(source) ? AL_TRUE : AL_FALSE;
             case AL_BUFFERS_QUEUED:
+                return device.buffersQueued(source);
             case AL_BUFFERS_PROCESSED:
-                throw streamingUnsupported("alGetSourcei");
+                return device.buffersProcessed(source);
             default:
                 unsupportedSourceParameter("alGetSourcei", parameter);
                 return 0;
@@ -418,19 +427,53 @@ public final class AL10 {
     }
 
     public static void alSourceQueueBuffers(int source, IntBuffer buffers) {
-        throw streamingUnsupported("alSourceQueueBuffers");
+        int[] names = new int[buffers.remaining()];
+        for (int at = 0; at < names.length; at++) {
+            names[at] = buffers.get(buffers.position() + at);
+        }
+        queue(source, names);
     }
 
     public static void alSourceQueueBuffers(int source, int buffer) {
-        throw streamingUnsupported("alSourceQueueBuffers");
+        queue(source, new int[]{buffer});
     }
 
+    /** fills the buffer with the names taken back, as many as it has room for */
     public static void alSourceUnqueueBuffers(int source, IntBuffer buffers) {
-        throw streamingUnsupported("alSourceUnqueueBuffers");
+        int[] taken = unqueue(source, buffers.remaining());
+        for (int at = 0; at < taken.length; at++) {
+            buffers.put(buffers.position() + at, taken[at]);
+        }
     }
 
     public static int alSourceUnqueueBuffers(int source) {
-        throw streamingUnsupported("alSourceUnqueueBuffers");
+        int[] taken = unqueue(source, 1);
+        return taken.length == 0 ? AudioDevice.NO_BUFFER : taken[0];
+    }
+
+    private static void queue(int source, int[] buffers) {
+        if (!device().isSource(source)) {
+            state().fail(AL_INVALID_NAME);
+            return;
+        }
+        try {
+            device().queueBuffers(source, buffers);
+        } catch (AudioException refused) {
+            state().fail(AL_INVALID_OPERATION);
+        }
+    }
+
+    private static int[] unqueue(int source, int count) {
+        if (!device().isSource(source)) {
+            state().fail(AL_INVALID_NAME);
+            return new int[0];
+        }
+        try {
+            return device().unqueueBuffers(source, count);
+        } catch (AudioException tooMany) {
+            state().fail(AL_INVALID_VALUE);
+            return new int[0];
+        }
     }
 
     // listener
@@ -525,7 +568,9 @@ public final class AL10 {
     // global state
 
     public static void alDistanceModel(int model) {
-        state().setDistanceModel(model);
+        if (!state().setDistanceModel(model)) {
+            state().fail(AL_INVALID_ENUM);
+        }
     }
 
     public static int alGetInteger(int parameter) {
@@ -626,11 +671,5 @@ public final class AL10 {
             default:
                 state().fail(AL_INVALID_ENUM);
         }
-    }
-
-    private static UnsupportedOperationException streamingUnsupported(String call) {
-        return new UnsupportedOperationException(call + " is not emulated; streaming a queue of "
-                + "buffers needs a mixer that reports what it has consumed, and web audio plays a "
-                + "buffer whole. attach one buffer per source with alSourcei(AL_BUFFER)");
     }
 }

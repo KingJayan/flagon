@@ -246,4 +246,61 @@ class SilentAudioDeviceTest {
         assertFalse(device.isSource(source));
         assertFalse(device.isBuffer(buffer));
     }
+
+    /** a queue is played through in order, and its clock keeps running as buffers are taken back */
+    @Test
+    void playsAQueueThroughAndCountsWhatItFinished() {
+        int source = device.createSource();
+        int first = oneSecondBuffer();
+        int second = oneSecondBuffer();
+        device.queueBuffers(source, new int[]{first, second});
+
+        assertEquals(2, device.buffersQueued(source));
+        device.play(source);
+
+        clock.millis += 1_100;
+        assertEquals(1, device.buffersProcessed(source));
+        assertEquals(SourceState.PLAYING, device.sourceState(source));
+
+        assertArrayEquals(new int[]{first}, device.unqueueBuffers(source, 1));
+        assertEquals(1, device.buffersQueued(source));
+        assertEquals(0, device.buffersProcessed(source));
+
+        clock.millis += 1_000;
+        assertEquals(1, device.buffersProcessed(source));
+        assertEquals(SourceState.STOPPED, device.sourceState(source));
+    }
+
+    @Test
+    void refusesToHandBackABufferThatIsStillPlaying() {
+        int source = device.createSource();
+        device.queueBuffers(source, new int[]{oneSecondBuffer()});
+        device.play(source);
+
+        assertThrows(AudioException.class, () -> device.unqueueBuffers(source, 1));
+    }
+
+    @Test
+    void willNotHoldAQueueAndASingleBufferAtOnce() {
+        int streaming = device.createSource();
+        int buffer = oneSecondBuffer();
+        device.queueBuffers(streaming, new int[]{buffer});
+        assertThrows(AudioException.class, () -> device.attachBuffer(streaming, buffer));
+
+        int single = device.createSource();
+        device.attachBuffer(single, buffer);
+        assertThrows(AudioException.class, () -> device.queueBuffers(single, new int[]{buffer}));
+    }
+
+    @Test
+    void stoppingAQueueMarksEverythingOnItPlayed() {
+        int source = device.createSource();
+        device.queueBuffers(source, new int[]{oneSecondBuffer(), oneSecondBuffer()});
+        device.play(source);
+
+        device.stop(source);
+
+        assertEquals(2, device.buffersProcessed(source));
+        assertEquals(2, device.unqueueBuffers(source, 2).length);
+    }
 }

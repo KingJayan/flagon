@@ -225,14 +225,50 @@ class AL10Test {
         assertTrue(thrown.getMessage().contains("alSourcef"), thrown.getMessage());
     }
 
+    /** a stream is buffers handed over, played through, and handed back to be refilled. */
     @Test
-    void streamingIsRefusedByName() {
+    void aQueueIsPlayedThroughAndHandedBack() {
         int source = AL10.alGenSources();
+        int first = buffer(16_000);
+        int second = buffer(16_000);
+        AL10.alSourceQueueBuffers(source, first);
+        AL10.alSourceQueueBuffers(source, second);
 
-        UnsupportedOperationException thrown = assertThrows(UnsupportedOperationException.class,
-                () -> AL10.alSourceQueueBuffers(source, buffer(16_000)));
+        assertEquals(2, AL10.alGetSourcei(source, AL10.AL_BUFFERS_QUEUED));
+        assertEquals(0, AL10.alGetSourcei(source, AL10.AL_BUFFERS_PROCESSED));
 
-        assertTrue(thrown.getMessage().contains("alSourceQueueBuffers"), thrown.getMessage());
+        AL10.alSourcePlay(source);
+        clock.millis += 1_100;
+
+        assertEquals(1, AL10.alGetSourcei(source, AL10.AL_BUFFERS_PROCESSED));
+        assertEquals(first, AL10.alSourceUnqueueBuffers(source));
+        assertEquals(1, AL10.alGetSourcei(source, AL10.AL_BUFFERS_QUEUED));
+        assertEquals(AL10.AL_PLAYING, AL10.alGetSourcei(source, AL10.AL_SOURCE_STATE));
+
+        clock.millis += 1_100;
+        assertEquals(AL10.AL_STOPPED, AL10.alGetSourcei(source, AL10.AL_SOURCE_STATE));
+        assertEquals(AL10.AL_NO_ERROR, AL10.alGetError());
+    }
+
+    @Test
+    void takingBackMoreThanHasPlayedIsAnInvalidValue() {
+        int source = AL10.alGenSources();
+        AL10.alSourceQueueBuffers(source, buffer(16_000));
+
+        IntBuffer taken = BufferUtils.createIntBuffer(1);
+        AL10.alSourceUnqueueBuffers(source, taken);
+
+        assertEquals(AL10.AL_INVALID_VALUE, AL10.alGetError());
+    }
+
+    @Test
+    void aQueueAndASingleBufferAreNotBothHeld() {
+        int source = AL10.alGenSources();
+        AL10.alSourceQueueBuffers(source, buffer(16_000));
+
+        AL10.alSourcei(source, AL10.AL_BUFFER, buffer(16_000));
+
+        assertEquals(AL10.AL_INVALID_OPERATION, AL10.alGetError());
     }
 
     @Test
@@ -279,8 +315,21 @@ class AL10Test {
     }
 
     @Test
-    void aDistanceModelThePannerCannotExpressIsRefusedByName() {
-        assertThrows(UnsupportedOperationException.class, () -> AL10.alDistanceModel(0xD003));
+    void everyDistanceModelOpenalNamesReachesTheDevice() {
+        AL10.alDistanceModel(AL10.AL_LINEAR_DISTANCE);
+        assertEquals(DistanceModel.LINEAR, device.distanceModel());
+        assertEquals(AL10.AL_LINEAR_DISTANCE, AL10.alGetInteger(AL10.AL_DISTANCE_MODEL));
+
+        AL10.alDistanceModel(AL10.AL_EXPONENT_DISTANCE_CLAMPED);
+        assertEquals(DistanceModel.EXPONENT_CLAMPED, device.distanceModel());
+        assertEquals(AL10.AL_NO_ERROR, AL10.alGetError());
+    }
+
+    @Test
+    void aNumberThatNamesNoDistanceModelIsAnInvalidEnum() {
+        AL10.alDistanceModel(0xD00F);
+
+        assertEquals(AL10.AL_INVALID_ENUM, AL10.alGetError());
     }
 
     @Test
