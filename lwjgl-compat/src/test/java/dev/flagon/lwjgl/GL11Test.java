@@ -134,8 +134,9 @@ class GL11Test {
 
     @Test
     void unsupportedCapabilitiesAreReportedRatherThanIgnored() {
+        // gl_lighting, which this layer does not declare and will not honour
         UnsupportedOperationException failure = assertThrows(UnsupportedOperationException.class,
-                () -> GL11.glEnable(GL11.GL_LIGHTING));
+                () -> GL11.glEnable(0x0B50));
         assertTrue(failure.getMessage().contains("glEnable"), failure.getMessage());
     }
 

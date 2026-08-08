@@ -65,8 +65,6 @@ public final class GL11 {
     public static final int GL_ALPHA_TEST = 0x0BC0;
     public static final int GL_BLEND = 0x0BE2;
     public static final int GL_TEXTURE_2D = 0x0DE1;
-    public static final int GL_LIGHTING = 0x0B50;
-    public static final int GL_FOG = 0x0B60;
 
     public static final int GL_MODELVIEW = 0x1700;
     public static final int GL_PROJECTION = 0x1701;
@@ -87,9 +85,7 @@ public final class GL11 {
     public static final int GL_FLOAT = 0x1406;
 
     public static final int GL_VERTEX_ARRAY = 0x8074;
-    public static final int GL_NORMAL_ARRAY = 0x8075;
     public static final int GL_COLOR_ARRAY = 0x8076;
-    public static final int GL_INDEX_ARRAY = 0x8077;
     public static final int GL_TEXTURE_COORD_ARRAY = 0x8078;
 
     private GL11() {

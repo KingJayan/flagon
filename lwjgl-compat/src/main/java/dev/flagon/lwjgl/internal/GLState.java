@@ -159,10 +159,6 @@ public final class GLState implements RenderState {
         Matrix4.frustum(active(), left, right, bottom, top, near, far);
     }
 
-    public void multMatrix(float[] matrix) {
-        Matrix4.multiply(active(), matrix);
-    }
-
     @Override
     public float[] modelView() {
         return modelView;
