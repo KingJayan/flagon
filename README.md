@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="docs/images/flagon-banner.png" alt="Flagon Banner" width="100%" />
+  <img src="docs/images/flagon-banner-nobg.png" alt="Flagon Banner" width="75%" height="auto" />
 
   <h1>Flagon</h1>
 

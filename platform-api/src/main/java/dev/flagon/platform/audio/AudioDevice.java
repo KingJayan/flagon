@@ -84,6 +84,11 @@ public interface AudioDevice {
 
     void sourceVelocity(int source, float[] into);
 
+    /** the model every source's attenuation is read through; sources keep what they were told. */
+    void setDistanceModel(DistanceModel model);
+
+    DistanceModel distanceModel();
+
     /** how gain falls off with distance; the same three numbers openal names. */
     void setSourceAttenuation(int source, float referenceDistance, float rolloffFactor,
                               float maxDistance);

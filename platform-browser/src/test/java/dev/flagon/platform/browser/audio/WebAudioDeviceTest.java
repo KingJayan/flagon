@@ -2,6 +2,7 @@ package dev.flagon.platform.browser.audio;
 
 import dev.flagon.platform.audio.AudioDevice;
 import dev.flagon.platform.audio.AudioException;
+import dev.flagon.platform.audio.DistanceModel;
 import dev.flagon.platform.audio.SourceState;
 import dev.flagon.platform.browser.JsFake;
 import org.junit.jupiter.api.BeforeEach;
@@ -33,6 +34,20 @@ class WebAudioDeviceTest {
     void buildsAMasterGainAndConnectsIt() {
         assertEquals(1, audio.count("createGain"));
         assertEquals(1, audio.count("getDestination"));
+    }
+
+    @Test
+    void aDistanceModelOfNoneFlattensThePannerWithoutForgettingTheRolloff() {
+        int source = device.createSource();
+        device.setSourceAttenuation(source, 4.0f, 2.0f, 100.0f);
+        assertEquals("setRolloffFactor(2.0)", audio.lastCall("setRolloffFactor"));
+
+        device.setDistanceModel(DistanceModel.NONE);
+        assertEquals("setRolloffFactor(0.0)", audio.lastCall("setRolloffFactor"));
+        assertEquals(2.0f, device.rolloffFactor(source));
+
+        device.setDistanceModel(DistanceModel.INVERSE_CLAMPED);
+        assertEquals("setRolloffFactor(2.0)", audio.lastCall("setRolloffFactor"));
     }
 
     @Test

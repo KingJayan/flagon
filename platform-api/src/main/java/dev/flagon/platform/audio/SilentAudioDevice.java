@@ -42,6 +42,7 @@ public final class SilentAudioDevice implements AudioDevice {
     private final float[] listenerPosition = new float[3];
     private final float[] listenerVelocity = new float[3];
     private final float[] listenerOrientation = {0.0f, 0.0f, -1.0f, 0.0f, 1.0f, 0.0f};
+    private DistanceModel distanceModel = DistanceModel.INVERSE_CLAMPED;
     private float listenerGain = 1.0f;
     private int nextName = 1;
 
@@ -245,6 +246,16 @@ public final class SilentAudioDevice implements AudioDevice {
     @Override
     public void sourceVelocity(int source, float[] into) {
         copy(source(source).velocity, into);
+    }
+
+    @Override
+    public void setDistanceModel(DistanceModel model) {
+        distanceModel = model;
+    }
+
+    @Override
+    public DistanceModel distanceModel() {
+        return distanceModel;
     }
 
     @Override

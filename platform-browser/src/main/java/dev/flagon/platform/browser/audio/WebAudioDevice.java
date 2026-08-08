@@ -3,6 +3,7 @@ package dev.flagon.platform.browser.audio;
 import dev.flagon.platform.ConsoleSink;
 import dev.flagon.platform.audio.Audio;
 import dev.flagon.platform.audio.AudioDevice;
+import dev.flagon.platform.audio.DistanceModel;
 import dev.flagon.platform.audio.AudioException;
 import dev.flagon.platform.audio.AudioFormat;
 import dev.flagon.platform.audio.SourceState;
@@ -38,6 +39,7 @@ public final class WebAudioDevice implements AudioDevice {
         boolean looping;
         boolean relative;
         float pitch = 1.0f;
+        float rolloff = 1.0f;
         final float[] position = new float[3];
         final float[] velocity = new float[3];
 
@@ -92,6 +94,7 @@ public final class WebAudioDevice implements AudioDevice {
     private final GainNode master;
     private final Map<Integer, Buffer> buffers = new HashMap<>();
     private final Map<Integer, Source> sources = new HashMap<>();
+    private DistanceModel distanceModel = DistanceModel.INVERSE_CLAMPED;
     private final float[] listenerPosition = new float[3];
     private final float[] listenerVelocity = new float[3];
     private final float[] listenerOrientation = {0.0f, 0.0f, -1.0f, 0.0f, 1.0f, 0.0f};
@@ -377,12 +380,33 @@ public final class WebAudioDevice implements AudioDevice {
     }
 
     @Override
+    public void setDistanceModel(DistanceModel model) {
+        distanceModel = model;
+        for (int name : sources.keySet()) {
+            applyAttenuation(name);
+        }
+    }
+
+    @Override
+    public DistanceModel distanceModel() {
+        return distanceModel;
+    }
+
+    @Override
     public void setSourceAttenuation(int source, float referenceDistance, float rolloffFactor,
                                      float maxDistance) {
-        PannerNode panner = source(source).panner;
-        panner.setRefDistance(referenceDistance);
-        panner.setRolloffFactor(rolloffFactor);
-        panner.setMaxDistance(maxDistance);
+        Source held = source(source);
+        held.rolloff = rolloffFactor;
+        held.panner.setRefDistance(referenceDistance);
+        held.panner.setMaxDistance(maxDistance);
+        applyAttenuation(source);
+    }
+
+    // the panner attenuates inversely or not at all, and not at all is a rolloff of zero
+    private void applyAttenuation(int source) {
+        Source held = source(source);
+        held.panner.setRolloffFactor(
+                distanceModel == DistanceModel.NONE ? 0.0f : held.rolloff);
     }
 
     @Override
@@ -392,7 +416,7 @@ public final class WebAudioDevice implements AudioDevice {
 
     @Override
     public float rolloffFactor(int source) {
-        return source(source).panner.getRolloffFactor();
+        return source(source).rolloff;
     }
 
     @Override
