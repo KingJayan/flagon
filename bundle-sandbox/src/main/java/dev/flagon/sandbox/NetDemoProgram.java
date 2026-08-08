@@ -21,9 +21,9 @@ public final class NetDemoProgram implements Program {
     private static final String DEFAULT_ADDRESS = "localhost:5273";
     private static final String PROBE = "/flagon-net-probe.txt";
     private static final String BULK_PROBE = "/flagon-net-bulk.bin";
-    /** a body far larger than what the tunnel will let sit unread */
     private static final String BULK = "/flagon-net-flood.bin";
-    private static final int STRAGGLERS = 256 * 1024;
+    private static final int FLOOD_SIZE = 32 * 1024 * 1024;
+    private static final int CREEP = 64 * 1024;
     private static final int SENT = 8 * 1024 * 1024;
 
     @Override
@@ -126,17 +126,21 @@ public final class NetDemoProgram implements Program {
             Thread.sleep(1000);
             int held = connection.available();
             boolean capped = false;
-            for (int tries = 0; tries < 10 && !capped; tries++) {
-                Thread.sleep(500);
+            for (int tries = 0; tries < 80 && !capped; tries++) {
+                Thread.sleep(250);
                 int later = connection.available();
-                capped = later - held <= STRAGGLERS;
+                capped = later - held <= CREEP && later > 0 && later < FLOOD_SIZE;
                 held = later;
             }
             console.info("paced: queue held at " + held + " bytes, capped: " + capped);
 
             drain(connection, held);
-            Thread.sleep(200);
-            console.info("paced: sending resumed: " + (connection.available() > 0));
+            boolean resumed = false;
+            for (int tries = 0; tries < 20 && !resumed; tries++) {
+                Thread.sleep(200);
+                resumed = connection.available() > 0;
+            }
+            console.info("paced: sending resumed: " + resumed);
         } catch (InterruptedException interrupted) {
             Thread.currentThread().interrupt();
         } finally {
