@@ -11,7 +11,7 @@ import org.lwjgl.opengl.GL11;
  */
 public final class TextureDemoProgram implements Program {
 
-    private static final int WIDTH = 640;
+    private static final int WIDTH = 720;
     private static final int HEIGHT = 360;
     private static final int MAX_FRAMES = 900;
 
@@ -29,6 +29,7 @@ public final class TextureDemoProgram implements Program {
 
     private int texture;
     private int faded;
+    private int tiled;
 
     @Override
     public String id() {
@@ -54,6 +55,9 @@ public final class TextureDemoProgram implements Program {
         GL11.glTexSubImage2D(GL11.GL_TEXTURE_2D, 0, 1, 1, 1, 1,
                 GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, CORNER);
         faded = upload(1, 1, FADED);
+        tiled = upload(2, 2, TEXELS);
+        GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_S, GL11.GL_REPEAT);
+        GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_T, GL11.GL_REPEAT);
         Platforms.get().console().info("uploaded texture " + texture + " (2x2) and " + faded
                 + " (1x1)");
 
@@ -66,6 +70,7 @@ public final class TextureDemoProgram implements Program {
 
         GL11.glDeleteTextures(texture);
         GL11.glDeleteTextures(faded);
+        GL11.glDeleteTextures(tiled);
         Platforms.get().console().info("rendered " + frame + " frames");
         Display.destroy();
     }
@@ -107,7 +112,24 @@ public final class TextureDemoProgram implements Program {
         texturedQuad(520.0f, 40.0f, 600.0f, 320.0f);
         GL11.glDisable(GL11.GL_BLEND);
 
+        // texture coordinates past 1, so the wrap mode decides what is sampled
+        GL11.glBindTexture(GL11.GL_TEXTURE_2D, tiled);
+        tiledQuad(620.0f, 40.0f, 700.0f, 320.0f, 2.0f);
+
         GL11.glDisable(GL11.GL_TEXTURE_2D);
+    }
+
+    private static void tiledQuad(float left, float top, float right, float bottom, float times) {
+        GL11.glBegin(GL11.GL_QUADS);
+        GL11.glTexCoord2f(0.0f, 0.0f);
+        GL11.glVertex2f(left, top);
+        GL11.glTexCoord2f(0.0f, times);
+        GL11.glVertex2f(left, bottom);
+        GL11.glTexCoord2f(times, times);
+        GL11.glVertex2f(right, bottom);
+        GL11.glTexCoord2f(times, 0.0f);
+        GL11.glVertex2f(right, top);
+        GL11.glEnd();
     }
 
     private static void texturedQuad(float left, float top, float right, float bottom) {

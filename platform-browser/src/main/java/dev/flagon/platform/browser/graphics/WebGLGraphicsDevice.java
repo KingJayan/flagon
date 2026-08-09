@@ -10,6 +10,8 @@ import dev.flagon.platform.graphics.IndexType;
 import dev.flagon.platform.graphics.Primitive;
 import dev.flagon.platform.graphics.ShaderException;
 import dev.flagon.platform.graphics.ShaderStage;
+import dev.flagon.platform.graphics.TextureFilter;
+import dev.flagon.platform.graphics.TextureWrap;
 import dev.flagon.platform.UnsupportedCapabilityException;
 import dev.flagon.platform.browser.js.JsArrays;
 import org.teavm.jso.JSObject;
@@ -19,8 +21,10 @@ import org.teavm.jso.typedarrays.Int8Array;
 import org.teavm.jso.typedarrays.Uint8Array;
 
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.Set;
 
 /** {@link GraphicsDevice} on a WebGL2 context. */
 public final class WebGLGraphicsDevice implements GraphicsDevice {
@@ -30,6 +34,9 @@ public final class WebGLGraphicsDevice implements GraphicsDevice {
     private final GlNames handles = new GlNames();
     private final GlNames uniforms = new GlNames();
     private final Map<String, Integer> uniformNames = new HashMap<>();
+
+    // gl gives a texture its parameters when the name is first bound, not on every upload
+    private final Set<Integer> defaulted = new HashSet<>();
 
     private String pendingError;
 
@@ -592,12 +599,19 @@ public final class WebGLGraphicsDevice implements GraphicsDevice {
     public void deleteTexture(int texture) {
         gl.deleteTexture(lookup(texture, "texture"));
         handles.remove(texture);
+        defaulted.remove(texture);
     }
 
     @Override
     public void bindTexture(int unit, int texture) {
         gl.activeTexture(WebGL2.TEXTURE0 + unit);
         gl.bindTexture(WebGL2.TEXTURE_2D, texture == NO_TEXTURE ? null : lookup(texture, "texture"));
+        if (texture != NO_TEXTURE && defaulted.add(texture)) {
+            setTextureWrapS(TextureWrap.CLAMP_TO_EDGE);
+            setTextureWrapT(TextureWrap.CLAMP_TO_EDGE);
+            setTextureMinFilter(TextureFilter.NEAREST);
+            setTextureMagFilter(TextureFilter.NEAREST);
+        }
     }
 
     @Override
@@ -606,9 +620,6 @@ public final class WebGLGraphicsDevice implements GraphicsDevice {
         gl.pixelStorei(WebGL2.UNPACK_PREMULTIPLY_ALPHA_WEBGL, 0);
         gl.texImage2D(WebGL2.TEXTURE_2D, 0, WebGL2.RGBA, width, height, 0,
                 WebGL2.RGBA, WebGL2.UNSIGNED_BYTE, data);
-        gl.texParameteri(WebGL2.TEXTURE_2D, WebGL2.TEXTURE_WRAP_S, WebGL2.CLAMP_TO_EDGE);
-        gl.texParameteri(WebGL2.TEXTURE_2D, WebGL2.TEXTURE_WRAP_T, WebGL2.CLAMP_TO_EDGE);
-        setTextureFilter(false);
     }
 
     @Override
@@ -629,10 +640,38 @@ public final class WebGLGraphicsDevice implements GraphicsDevice {
     }
 
     @Override
-    public void setTextureFilter(boolean smooth) {
-        int filter = smooth ? WebGL2.LINEAR : WebGL2.NEAREST;
-        gl.texParameteri(WebGL2.TEXTURE_2D, WebGL2.TEXTURE_MIN_FILTER, filter);
-        gl.texParameteri(WebGL2.TEXTURE_2D, WebGL2.TEXTURE_MAG_FILTER, filter);
+    public void setTextureMinFilter(TextureFilter filter) {
+        gl.texParameteri(WebGL2.TEXTURE_2D, WebGL2.TEXTURE_MIN_FILTER, filter(filter));
+    }
+
+    @Override
+    public void setTextureMagFilter(TextureFilter filter) {
+        gl.texParameteri(WebGL2.TEXTURE_2D, WebGL2.TEXTURE_MAG_FILTER, filter(filter));
+    }
+
+    @Override
+    public void setTextureWrapS(TextureWrap wrap) {
+        gl.texParameteri(WebGL2.TEXTURE_2D, WebGL2.TEXTURE_WRAP_S, wrap(wrap));
+    }
+
+    @Override
+    public void setTextureWrapT(TextureWrap wrap) {
+        gl.texParameteri(WebGL2.TEXTURE_2D, WebGL2.TEXTURE_WRAP_T, wrap(wrap));
+    }
+
+    private static int filter(TextureFilter filter) {
+        return switch (filter) {
+            case NEAREST -> WebGL2.NEAREST;
+            case LINEAR -> WebGL2.LINEAR;
+        };
+    }
+
+    private static int wrap(TextureWrap wrap) {
+        return switch (wrap) {
+            case REPEAT -> WebGL2.REPEAT;
+            case CLAMP_TO_EDGE -> WebGL2.CLAMP_TO_EDGE;
+            case MIRRORED_REPEAT -> WebGL2.MIRRORED_REPEAT;
+        };
     }
 
     @Override

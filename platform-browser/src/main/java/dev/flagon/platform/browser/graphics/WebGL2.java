@@ -69,7 +69,9 @@ public interface WebGL2 extends JSObject {
     int TEXTURE_MIN_FILTER = 0x2801;
     int TEXTURE_WRAP_S = 0x2802;
     int TEXTURE_WRAP_T = 0x2803;
+    int REPEAT = 0x2901;
     int CLAMP_TO_EDGE = 0x812F;
+    int MIRRORED_REPEAT = 0x8370;
     int TEXTURE0 = 0x84C0;
 
     int ARRAY_BUFFER = 0x8892;

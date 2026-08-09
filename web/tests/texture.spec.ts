@@ -38,5 +38,15 @@ for (const backend of BACKENDS) {
 
       expectColor(await readPixel(page, 420, 260), [128, 0, 0], 'tinted quad');
     });
+
+    /** GL_REPEAT: coordinates past 1 wrap round instead of smearing the edge texel. */
+    test('tiles a texture whose coordinates run past its edge', async ({ page }) => {
+      await runDemo(page, backend);
+
+      expectColor(await readPixel(page, 630, 285), [255, 0, 0], 'first tile, top left texel');
+      expectColor(await readPixel(page, 650, 285), [0, 255, 0], 'first tile, top right texel');
+      expectColor(await readPixel(page, 630, 215), [0, 0, 255], 'first tile, bottom left texel');
+      expectColor(await readPixel(page, 630, 145), [255, 0, 0], 'second tile, top left texel');
+    });
   });
 }

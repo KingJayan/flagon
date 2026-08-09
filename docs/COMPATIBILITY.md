@@ -98,6 +98,8 @@ fake devices.
 | Immediate mode: `glBegin`/`glVertex`/`glColor`/`glTexCoord`/`glEnd` | works |
 | `GL_QUADS` | works, expanded to indexed triangles |
 | Textures: gen/bind/delete, RGBA upload, nearest and linear filtering | works |
+| `glTexParameteri` wrapping (`GL_REPEAT`, `GL_CLAMP`, `GL_MIRRORED_REPEAT`), min and mag filters separately | works |
+| Mipmaps: levels above 0 and the mipmapped filters | refused, see below |
 | Alpha test | `GL_GREATER` only |
 | `Keyboard` events, held state, key names, repeat toggle | works |
 | `Mouse` events, buttons, position, movement, wheel, grabbing | works |
@@ -127,6 +129,17 @@ fake devices.
 
 Every unsupported entry point throws `UnsupportedOperationException` naming the call. Nothing is
 silently ignored: a stack trace is cheaper than debugging incorrect rendering.
+
+### Mipmaps
+
+A texture here carries level 0 only.
+
+`glTexImage2D` and `glTexSubImage2D` refuse a level above the base rather than overwriting the base
+with it, and `GL_TEXTURE_MIN_FILTER` refuses the four mipmapped filters. `GL_CLAMP` is accepted as
+`GL_CLAMP_TO_EDGE`, which is the only clamp WebGL2 has.
+
+A texture takes its parameters when its name is first bound, as desktop GL does, so re-uploading an
+image no longer resets the filtering the application chose.
 
 ### GL_QUADS
 

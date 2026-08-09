@@ -10,6 +10,8 @@ import dev.flagon.platform.graphics.BufferTarget;
 import dev.flagon.platform.graphics.CompareFunc;
 import dev.flagon.platform.graphics.GraphicsDevice;
 import dev.flagon.platform.graphics.IndexType;
+import dev.flagon.platform.graphics.TextureFilter;
+import dev.flagon.platform.graphics.TextureWrap;
 
 import java.nio.ByteBuffer;
 import java.nio.FloatBuffer;
@@ -71,8 +73,18 @@ public final class GL11 {
 
     public static final int GL_NEAREST = 0x2600;
     public static final int GL_LINEAR = 0x2601;
+    public static final int GL_NEAREST_MIPMAP_NEAREST = 0x2700;
+    public static final int GL_LINEAR_MIPMAP_NEAREST = 0x2701;
+    public static final int GL_NEAREST_MIPMAP_LINEAR = 0x2702;
+    public static final int GL_LINEAR_MIPMAP_LINEAR = 0x2703;
     public static final int GL_TEXTURE_MAG_FILTER = 0x2800;
     public static final int GL_TEXTURE_MIN_FILTER = 0x2801;
+    public static final int GL_TEXTURE_WRAP_S = 0x2802;
+    public static final int GL_TEXTURE_WRAP_T = 0x2803;
+    public static final int GL_REPEAT = 0x2901;
+    public static final int GL_CLAMP = 0x2900;
+    public static final int GL_CLAMP_TO_EDGE = 0x812F;
+    public static final int GL_MIRRORED_REPEAT = 0x8370;
 
     public static final int GL_RGBA = 0x1908;
 
@@ -336,17 +348,47 @@ public final class GL11 {
     public static void glTexParameteri(int target, int name, int value) {
         requireTexture2D(target, "glTexParameteri");
         switch (name) {
-            case GL_TEXTURE_MIN_FILTER, GL_TEXTURE_MAG_FILTER ->
-                    device().setTextureFilter(value == GL_LINEAR);
+            case GL_TEXTURE_MIN_FILTER ->
+                    device().setTextureMinFilter(filter(value, "GL_TEXTURE_MIN_FILTER"));
+            case GL_TEXTURE_MAG_FILTER ->
+                    device().setTextureMagFilter(filter(value, "GL_TEXTURE_MAG_FILTER"));
+            case GL_TEXTURE_WRAP_S -> device().setTextureWrapS(wrap(value));
+            case GL_TEXTURE_WRAP_T -> device().setTextureWrapT(wrap(value));
             default -> throw new UnsupportedOperationException(
                     "glTexParameteri does not yet emulate parameter 0x" + Integer.toHexString(name));
         }
+    }
+
+    private static TextureFilter filter(int value, String parameter) {
+        return switch (value) {
+            case GL_NEAREST -> TextureFilter.NEAREST;
+            case GL_LINEAR -> TextureFilter.LINEAR;
+            case GL_NEAREST_MIPMAP_NEAREST, GL_LINEAR_MIPMAP_NEAREST,
+                 GL_NEAREST_MIPMAP_LINEAR, GL_LINEAR_MIPMAP_LINEAR ->
+                    throw new UnsupportedOperationException(
+                            parameter + " asked for a mipmapped filter, and textures here carry "
+                                    + "only level 0; use GL_NEAREST or GL_LINEAR");
+            default -> throw new UnsupportedOperationException(
+                    parameter + " does not emulate filter 0x" + Integer.toHexString(value));
+        };
+    }
+
+    /** GL_CLAMP is desktop-only; webgl clamps to the edge, which is what it is asked for here. */
+    private static TextureWrap wrap(int value) {
+        return switch (value) {
+            case GL_REPEAT -> TextureWrap.REPEAT;
+            case GL_CLAMP, GL_CLAMP_TO_EDGE -> TextureWrap.CLAMP_TO_EDGE;
+            case GL_MIRRORED_REPEAT -> TextureWrap.MIRRORED_REPEAT;
+            default -> throw new UnsupportedOperationException(
+                    "glTexParameteri does not emulate wrap mode 0x" + Integer.toHexString(value));
+        };
     }
 
     /** uploads rgba pixels, one int per pixel in 0xAARRGGBB order. */
     public static void glTexImage2D(int target, int level, int internalFormat, int width,
                                     int height, int border, int format, int type, int[] pixels) {
         requireTexture2D(target, "glTexImage2D");
+        requireBaseLevel(level, "glTexImage2D");
         requireRgbaBytes(format, type);
         device().textureImage(width, height, spread(pixels, width * height));
     }
@@ -356,6 +398,7 @@ public final class GL11 {
                                     int height, int border, int format, int type,
                                     ByteBuffer pixels) {
         requireTexture2D(target, "glTexImage2D");
+        requireBaseLevel(level, "glTexImage2D");
         requireRgbaBytes(format, type);
         device().textureImage(width, height, bytes(pixels, width * height * 4));
     }
@@ -364,6 +407,7 @@ public final class GL11 {
                                     int height, int border, int format, int type,
                                     IntBuffer pixels) {
         requireTexture2D(target, "glTexImage2D");
+        requireBaseLevel(level, "glTexImage2D");
         requireRgbaBytes(format, type);
         int[] copied = new int[width * height];
         pixels.duplicate().get(copied);
@@ -374,6 +418,7 @@ public final class GL11 {
     public static void glTexSubImage2D(int target, int level, int x, int y, int width, int height,
                                        int format, int type, ByteBuffer pixels) {
         requireTexture2D(target, "glTexSubImage2D");
+        requireBaseLevel(level, "glTexSubImage2D");
         requireRgbaBytes(format, type);
         device().textureSubImage(x, y, width, height, bytes(pixels, width * height * 4));
     }
@@ -381,6 +426,7 @@ public final class GL11 {
     public static void glTexSubImage2D(int target, int level, int x, int y, int width, int height,
                                        int format, int type, int[] pixels) {
         requireTexture2D(target, "glTexSubImage2D");
+        requireBaseLevel(level, "glTexSubImage2D");
         requireRgbaBytes(format, type);
         device().textureSubImage(x, y, width, height, spread(pixels, width * height));
     }
@@ -407,6 +453,15 @@ public final class GL11 {
             rgba[out++] = (byte) (argb >>> 24);
         }
         return rgba;
+    }
+
+    /** there are no mipmaps, so a level above the base would otherwise overwrite the base. */
+    private static void requireBaseLevel(int level, String call) {
+        if (level != 0) {
+            throw new UnsupportedOperationException(
+                    call + " was given level " + level + "; textures here carry only level 0, so "
+                            + "mipmaps are not emulated");
+        }
     }
 
     private static void requireRgbaBytes(int format, int type) {
