@@ -50,6 +50,26 @@ for (const backend of BACKENDS) {
       expect(failures).toEqual([]);
     });
 
+    test('offers a reload when the program never takes the close request', async ({ page }) => {
+      await open(page, backend, 'program=lwjgl');
+      await expect(page.getByTestId('state')).toHaveText('running', { timeout: 30_000 });
+
+      // a program that never polls, forged from outside so no bundle has to ship one
+      await page.evaluate(() => {
+        Object.defineProperty(window, '__flagonCloseRequested', { get: () => false, set: () => {} });
+      });
+
+      const stop = page.locator('#stop');
+      await stop.click();
+      await expect(stop).toHaveText('Reload', { timeout: 15_000 });
+      await expect(stop).toBeEnabled();
+      await expect(page.getByTestId('log')).toContainText('only reloading the page ends it');
+
+      await stop.click();
+      await expect(page.getByTestId('state')).toHaveText('running', { timeout: 30_000 });
+      await expect(stop).toHaveText('Stop');
+    });
+
     test('keeps the previous run in the console when a new one starts', async ({ page }) => {
       await open(page, backend, 'program=hello');
       await expect(page.getByTestId('state')).toHaveText('exited', { timeout: 30_000 });
