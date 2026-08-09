@@ -70,6 +70,22 @@ for (const backend of BACKENDS) {
       await expect(log).toContainText('no gl errors', { timeout: 60_000 });
     });
 
+    test('paints only inside the scissor box', async ({ page }) => {
+      await runDemo(page, backend);
+
+      expectColor(await readPixel(page, 550, 320), [230, 230, 26], 'inside the box');
+      expectColor(await readPixel(page, 550, 280), [26, 38, 77], 'below the box');
+      expectColor(await readPixel(page, 320, 180), [0, 204, 51], 'the panel the box spared');
+    });
+
+    /** the same quad, front-facing under one winding rule and not the other */
+    test('culls the face the winding rule makes back-facing', async ({ page }) => {
+      await runDemo(page, backend);
+
+      expectColor(await readPixel(page, 50, 320), [26, 38, 77], 'the culled quad');
+      expectColor(await readPixel(page, 130, 320), [230, 0, 230], 'the quad left facing forward');
+    });
+
     test('reports the frame loop finishing', async ({ page }) => {
       await open(page, backend, 'program=lwjgl');
       await expect(page.getByTestId('log')).toContainText('frame 60', { timeout: 30_000 });

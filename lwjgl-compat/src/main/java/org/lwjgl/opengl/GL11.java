@@ -8,11 +8,13 @@ import dev.flagon.platform.graphics.AttributeType;
 import dev.flagon.platform.graphics.BlendFactor;
 import dev.flagon.platform.graphics.BufferTarget;
 import dev.flagon.platform.graphics.CompareFunc;
+import dev.flagon.platform.graphics.CullFace;
 import dev.flagon.platform.graphics.GraphicsDevice;
 import dev.flagon.platform.graphics.GraphicsError;
 import dev.flagon.platform.graphics.GraphicsInfo;
 import dev.flagon.platform.graphics.GraphicsLimit;
 import dev.flagon.platform.graphics.IndexType;
+import dev.flagon.platform.graphics.Winding;
 import dev.flagon.platform.graphics.TextureFilter;
 import dev.flagon.platform.graphics.TextureWrap;
 
@@ -65,7 +67,14 @@ public final class GL11 {
     public static final int GL_STENCIL_BUFFER_BIT = 0x0400;
     public static final int GL_COLOR_BUFFER_BIT = 0x4000;
 
+    public static final int GL_FRONT = 0x0404;
+    public static final int GL_BACK = 0x0405;
+    public static final int GL_FRONT_AND_BACK = 0x0408;
+    public static final int GL_CW = 0x0900;
+    public static final int GL_CCW = 0x0901;
+
     public static final int GL_CULL_FACE = 0x0B44;
+    public static final int GL_SCISSOR_TEST = 0x0C11;
     public static final int GL_DEPTH_TEST = 0x0B71;
     public static final int GL_ALPHA_TEST = 0x0BC0;
     public static final int GL_BLEND = 0x0BE2;
@@ -155,6 +164,33 @@ public final class GL11 {
         device().viewport(x, y, width, height);
     }
 
+    /** gl measures the scissor box from the bottom left, as it measures the viewport. */
+    public static void glScissor(int x, int y, int width, int height) {
+        if (width < 0 || height < 0) {
+            throw new IllegalArgumentException("glScissor: negative size " + width + "x" + height);
+        }
+        device().setScissor(x, y, width, height);
+    }
+
+    public static void glCullFace(int face) {
+        device().setCulledFaces(switch (face) {
+            case GL_FRONT -> CullFace.FRONT;
+            case GL_BACK -> CullFace.BACK;
+            case GL_FRONT_AND_BACK -> CullFace.FRONT_AND_BACK;
+            default -> throw new UnsupportedOperationException(
+                    "glCullFace: unknown face 0x" + Integer.toHexString(face));
+        });
+    }
+
+    public static void glFrontFace(int winding) {
+        device().setFrontFace(switch (winding) {
+            case GL_CW -> Winding.CLOCKWISE;
+            case GL_CCW -> Winding.COUNTER_CLOCKWISE;
+            default -> throw new UnsupportedOperationException(
+                    "glFrontFace: unknown winding 0x" + Integer.toHexString(winding));
+        });
+    }
+
     public static void glColorMask(boolean red, boolean green, boolean blue, boolean alpha) {
         device().setColorMask(red, green, blue, alpha);
     }
@@ -191,6 +227,7 @@ public final class GL11 {
             case GL_DEPTH_TEST -> device().setDepthTest(enabled);
             case GL_BLEND -> device().setBlend(enabled);
             case GL_CULL_FACE -> device().setCullFace(enabled);
+            case GL_SCISSOR_TEST -> device().setScissorTest(enabled);
             case GL_TEXTURE_2D -> state().setTextureEnabled(enabled);
             case GL_ALPHA_TEST -> state().setAlphaTestEnabled(enabled);
             default -> throw new UnsupportedOperationException(

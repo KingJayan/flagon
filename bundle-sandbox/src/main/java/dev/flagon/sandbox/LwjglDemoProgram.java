@@ -77,6 +77,21 @@ public final class LwjglDemoProgram implements Program {
         GL11.glTranslatef(x, HEIGHT - 30.0f, 0.0f);
         triangleStrip(0.0f, 0.0f, 20.0f, 20.0f, 0.9f, 0.2f, 0.1f);
         GL11.glPopMatrix();
+
+        // a quad over the whole frame, of which only the scissor box may survive
+        GL11.glEnable(GL11.GL_SCISSOR_TEST);
+        GL11.glScissor(500, 300, 100, 40);
+        quads(0.0f, 0.0f, WIDTH, HEIGHT, 0.9f, 0.9f, 0.1f);
+        GL11.glDisable(GL11.GL_SCISSOR_TEST);
+
+        // the same quad twice, front-facing under one winding rule and not the other
+        GL11.glEnable(GL11.GL_CULL_FACE);
+        GL11.glCullFace(GL11.GL_BACK);
+        GL11.glFrontFace(GL11.GL_CW);
+        quads(20.0f, 20.0f, 80.0f, 60.0f, 0.9f, 0.0f, 0.9f);
+        GL11.glFrontFace(GL11.GL_CCW);
+        quads(100.0f, 20.0f, 160.0f, 60.0f, 0.9f, 0.0f, 0.9f);
+        GL11.glDisable(GL11.GL_CULL_FACE);
     }
 
     private void quads(float left, float top, float right, float bottom,

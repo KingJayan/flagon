@@ -5,6 +5,7 @@ import dev.flagon.platform.graphics.BlendFactor;
 import dev.flagon.platform.graphics.BufferTarget;
 import dev.flagon.platform.graphics.BufferUsage;
 import dev.flagon.platform.graphics.CompareFunc;
+import dev.flagon.platform.graphics.CullFace;
 import dev.flagon.platform.graphics.GraphicsDevice;
 import dev.flagon.platform.graphics.GraphicsError;
 import dev.flagon.platform.graphics.GraphicsInfo;
@@ -12,6 +13,7 @@ import dev.flagon.platform.graphics.GraphicsLimit;
 import dev.flagon.platform.graphics.IndexType;
 import dev.flagon.platform.graphics.Primitive;
 import dev.flagon.platform.graphics.ShaderStage;
+import dev.flagon.platform.graphics.Winding;
 import dev.flagon.platform.graphics.TextureFilter;
 import dev.flagon.platform.graphics.TextureWrap;
 
@@ -90,6 +92,26 @@ final class RecordingGraphicsDevice implements GraphicsDevice {
     @Override
     public void setCullFace(boolean enabled) {
         calls.add("cullFace " + enabled);
+    }
+
+    @Override
+    public void setCulledFaces(CullFace faces) {
+        calls.add("culledFaces " + faces);
+    }
+
+    @Override
+    public void setFrontFace(Winding winding) {
+        calls.add("frontFace " + winding);
+    }
+
+    @Override
+    public void setScissorTest(boolean enabled) {
+        calls.add("scissorTest " + enabled);
+    }
+
+    @Override
+    public void setScissor(int x, int y, int width, int height) {
+        calls.add("scissor " + x + "," + y + " " + width + "x" + height);
     }
 
     @Override

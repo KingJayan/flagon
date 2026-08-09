@@ -5,6 +5,7 @@ import dev.flagon.platform.browser.JsFake;
 import dev.flagon.platform.graphics.AttributeType;
 import dev.flagon.platform.graphics.BlendFactor;
 import dev.flagon.platform.graphics.CompareFunc;
+import dev.flagon.platform.graphics.CullFace;
 import dev.flagon.platform.graphics.GraphicsDevice;
 import dev.flagon.platform.graphics.GraphicsError;
 import dev.flagon.platform.graphics.GraphicsInfo;
@@ -12,6 +13,7 @@ import dev.flagon.platform.graphics.GraphicsLimit;
 import dev.flagon.platform.graphics.Primitive;
 import dev.flagon.platform.graphics.ShaderException;
 import dev.flagon.platform.graphics.ShaderStage;
+import dev.flagon.platform.graphics.Winding;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -38,6 +40,19 @@ class WebGLGraphicsDeviceTest {
     void bindsAVertexArrayBeforeAnythingElse() {
         assertEquals(1, context.count("createVertexArray"));
         assertEquals(1, context.count("bindVertexArray"));
+    }
+
+    @Test
+    void scissorsAndCullsThroughTheCallsWebglNamesThemBy() {
+        device.setScissorTest(true);
+        device.setScissor(1, 2, 3, 4);
+        device.setCulledFaces(CullFace.FRONT_AND_BACK);
+        device.setFrontFace(Winding.CLOCKWISE);
+
+        assertTrue(context.called("enable(3089)"));
+        assertEquals("scissor(1, 2, 3, 4)", context.lastCall("scissor"));
+        assertEquals("cullFace(1032)", context.lastCall("cullFace"));
+        assertEquals("frontFace(2304)", context.lastCall("frontFace"));
     }
 
     @Test

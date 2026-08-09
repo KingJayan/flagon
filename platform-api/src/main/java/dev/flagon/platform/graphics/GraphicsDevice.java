@@ -33,6 +33,15 @@ public interface GraphicsDevice {
 
     void setCullFace(boolean enabled);
 
+    void setCulledFaces(CullFace faces);
+
+    void setFrontFace(Winding winding);
+
+    void setScissorTest(boolean enabled);
+
+    /** the scissor rectangle, in pixels from the framebuffer's bottom left as gl measures it. */
+    void setScissor(int x, int y, int width, int height);
+
     void setColorMask(boolean red, boolean green, boolean blue, boolean alpha);
 
     int createBuffer();
