@@ -33,7 +33,10 @@ public final class GLState implements RenderState {
     private float[] projection = Matrix4.identity();
     private int matrixMode = MODELVIEW;
 
-    private boolean textureEnabled;
+    private final boolean[] textureEnabled = new boolean[VertexArrays.UNITS];
+    private final int[] textureEnv = new int[VertexArrays.UNITS];
+    private int activeTexture;
+    private int clientActiveTexture;
     private boolean alphaTestEnabled;
     private float alphaTestThreshold;
     private CompareFunc alphaTestFunc = CompareFunc.ALWAYS;
@@ -65,7 +68,7 @@ public final class GLState implements RenderState {
     private int scissorY;
     private int scissorWidth;
     private int scissorHeight;
-    private int boundTexture = GraphicsDevice.NO_TEXTURE;
+    private final int[] boundTexture = new int[VertexArrays.UNITS];
     private final java.util.Set<Integer> automaticMipmaps = new java.util.HashSet<>();
 
     private final Deque<Attributes> attributeStack = new ArrayDeque<>();
@@ -89,8 +92,8 @@ public final class GLState implements RenderState {
     private float green = 1.0f;
     private float blue = 1.0f;
     private float alpha = 1.0f;
-    private float s;
-    private float t;
+    private final float[] s = new float[VertexArrays.UNITS];
+    private final float[] t = new float[VertexArrays.UNITS];
     private float pointSize = 1.0f;
 
     private GLState(GraphicsDevice device) {
@@ -231,9 +234,9 @@ public final class GLState implements RenderState {
         alpha = a;
     }
 
-    public void texCoord(float newS, float newT) {
-        s = newS;
-        t = newT;
+    public void texCoord(int unit, float newS, float newT) {
+        s[VertexArrays.requireUnit(unit)] = newS;
+        t[unit] = newT;
     }
 
     public void vertex(float x, float y, float z) {
@@ -252,8 +255,10 @@ public final class GLState implements RenderState {
         vertices[floatCount++] = green;
         vertices[floatCount++] = blue;
         vertices[floatCount++] = alpha;
-        vertices[floatCount++] = s;
-        vertices[floatCount++] = t;
+        for (int unit = 0; unit < VertexArrays.UNITS; unit++) {
+            vertices[floatCount++] = s[unit];
+            vertices[floatCount++] = t[unit];
+        }
         vertexCount++;
     }
 
@@ -395,12 +400,38 @@ public final class GLState implements RenderState {
     // capability state
 
     public void setTextureEnabled(boolean enabled) {
-        textureEnabled = enabled;
+        textureEnabled[activeTexture] = enabled;
     }
 
     @Override
-    public boolean isTextureEnabled() {
-        return textureEnabled;
+    public boolean isTextureEnabled(int unit) {
+        return textureEnabled[unit];
+    }
+
+    public void setTextureEnv(int mode) {
+        textureEnv[activeTexture] = mode;
+    }
+
+    @Override
+    public int textureEnv(int unit) {
+        return textureEnv[unit];
+    }
+
+    public void activeTexture(int unit) {
+        activeTexture = VertexArrays.requireUnit(unit);
+        device.activeTexture(unit);
+    }
+
+    public int activeTexture() {
+        return activeTexture;
+    }
+
+    public void clientActiveTexture(int unit) {
+        clientActiveTexture = VertexArrays.requireUnit(unit);
+    }
+
+    public int clientActiveTexture() {
+        return clientActiveTexture;
     }
 
     public void setAlphaTestEnabled(boolean enabled) {
@@ -438,13 +469,13 @@ public final class GLState implements RenderState {
     }
 
     @Override
-    public float s() {
-        return s;
+    public float s(int unit) {
+        return s[unit];
     }
 
     @Override
-    public float t() {
-        return t;
+    public float t(int unit) {
+        return t[unit];
     }
 
     public void pointSize(float size) {
@@ -559,29 +590,31 @@ public final class GLState implements RenderState {
     }
 
     public void bindTexture(int texture) {
-        boundTexture = texture;
-        device.bindTexture(0, texture);
+        boundTexture[activeTexture] = texture;
+        device.bindTexture(activeTexture, texture);
     }
 
     public int boundTexture() {
-        return boundTexture;
+        return boundTexture[activeTexture];
     }
 
     public void setAutomaticMipmaps(boolean enabled) {
         if (enabled) {
-            automaticMipmaps.add(boundTexture);
+            automaticMipmaps.add(boundTexture());
         } else {
-            automaticMipmaps.remove(boundTexture);
+            automaticMipmaps.remove(boundTexture());
         }
     }
 
     public boolean automaticMipmaps() {
-        return automaticMipmaps.contains(boundTexture);
+        return automaticMipmaps.contains(boundTexture());
     }
 
     public void deleteTexture(int texture) {
-        if (boundTexture == texture) {
-            boundTexture = GraphicsDevice.NO_TEXTURE;
+        for (int unit = 0; unit < VertexArrays.UNITS; unit++) {
+            if (boundTexture[unit] == texture) {
+                boundTexture[unit] = GraphicsDevice.NO_TEXTURE;
+            }
         }
         automaticMipmaps.remove(texture);
         device.deleteTexture(texture);
@@ -597,14 +630,15 @@ public final class GLState implements RenderState {
 
     public void pushAttrib(int mask) {
         attributeStack.push(new Attributes(mask,
-                depthTest, blend, cullFaceEnabled, scissorTest, textureEnabled, alphaTestEnabled,
+                depthTest, blend, cullFaceEnabled, scissorTest, textureEnabled[activeTexture],
+                alphaTestEnabled,
                 clearRed, clearGreen, clearBlue, clearAlpha, clearDepthValue,
                 maskRed, maskGreen, maskBlue, maskAlpha, depthWrite,
                 depthFunc, blendSource, blendDestination, alphaTestFunc, alphaTestThreshold,
                 culledFaces, frontFace,
                 viewportX, viewportY, viewportWidth, viewportHeight,
                 scissorX, scissorY, scissorWidth, scissorHeight,
-                red, green, blue, alpha, s, t, matrixMode, boundTexture));
+                red, green, blue, alpha, s[0], t[0], matrixMode, boundTexture[activeTexture]));
     }
 
     public void popAttrib() {
@@ -647,7 +681,7 @@ public final class GLState implements RenderState {
             case 0x0BE2 -> blend;
             case 0x0B44 -> cullFaceEnabled;
             case 0x0C11 -> scissorTest;
-            case 0x0DE1 -> textureEnabled;
+            case 0x0DE1 -> textureEnabled[activeTexture];
             case 0x0BC0 -> alphaTestEnabled;
             default -> throw new UnsupportedOperationException(
                     "glIsEnabled does not emulate capability 0x" + Integer.toHexString(capability));

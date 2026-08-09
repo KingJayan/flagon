@@ -58,7 +58,7 @@ public record Attributes(
         }
         if (saved(CURRENT_BIT)) {
             state.color(red, green, blue, alpha);
-            state.texCoord(s, t);
+            state.texCoord(0, s, t);
         }
         if (saved(COLOR_BUFFER_BIT)) {
             state.setBlend(blend);

@@ -14,6 +14,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class GL11Test {
 
+    private static final int VERTEX_FLOATS =
+            dev.flagon.lwjgl.internal.FixedFunctionPipeline.VERTEX_FLOATS;
+
     private RecordingGraphicsDevice device;
 
     @BeforeEach
@@ -43,7 +46,8 @@ class GL11Test {
         GL11.glEnd();
 
         assertArrayEquals(
-                new float[] {1.0f, 2.0f, 3.0f, 1.0f, 0.5f, 0.25f, 1.0f, 0.5f, 0.75f},
+                new float[] {1.0f, 2.0f, 3.0f, 1.0f, 0.5f, 0.25f, 1.0f,
+                        0.5f, 0.75f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f},
                 device.lastBufferData, 1.0e-6f);
         assertEquals(java.util.List.of("drawArrays TRIANGLES 0 1"), device.calls("drawArrays"));
     }
@@ -59,8 +63,8 @@ class GL11Test {
 
         assertEquals(1.0f, device.lastBufferData[3], 1.0e-6f);
         assertEquals(0.0f, device.lastBufferData[4], 1.0e-6f);
-        assertEquals(0.0f, device.lastBufferData[12], 1.0e-6f);
-        assertEquals(1.0f, device.lastBufferData[13], 1.0e-6f);
+        assertEquals(0.0f, device.lastBufferData[VERTEX_FLOATS + 3], 1.0e-6f);
+        assertEquals(1.0f, device.lastBufferData[VERTEX_FLOATS + 4], 1.0e-6f);
     }
 
     @Test
@@ -72,8 +76,8 @@ class GL11Test {
         GL11.glEnd();
 
         assertEquals(java.util.List.of("drawArrays POINTS 0 5000"), device.calls("drawArrays"));
-        assertEquals(5000 * 9, device.lastBufferData.length);
-        assertEquals(4999.0f, device.lastBufferData[4999 * 9], 1.0e-6f);
+        assertEquals(5000 * VERTEX_FLOATS, device.lastBufferData.length);
+        assertEquals(4999.0f, device.lastBufferData[4999 * VERTEX_FLOATS], 1.0e-6f);
     }
 
     @Test
@@ -149,7 +153,7 @@ class GL11Test {
         assertEquals(java.util.List.of("drawElements TRIANGLES 6 UNSIGNED_INT 0"), device.calls("drawElements"));
         assertTrue(device.calls("drawArrays").isEmpty());
         // the vertices go up untouched; only the index order changes
-        assertEquals(4 * 9, device.lastBufferData.length);
+        assertEquals(4 * VERTEX_FLOATS, device.lastBufferData.length);
     }
 
     @Test
@@ -653,5 +657,76 @@ class GL11Test {
         GL11.glFlush();
         assertTrue(device.calls.contains("finish"));
         assertTrue(device.calls.contains("flush"));
+    }
+
+    @Test
+    void aTextureIsBoundToTheUnitThatIsActive() {
+        org.lwjgl.opengl.GL13.glActiveTexture(org.lwjgl.opengl.GL13.GL_TEXTURE1);
+        GL11.glBindTexture(GL11.GL_TEXTURE_2D, 7);
+
+        assertEquals(java.util.List.of("activeTexture 1"), device.calls("activeTexture"));
+        assertEquals(java.util.List.of("bindTexture 1 7"), device.calls("bindTexture"));
+        assertEquals(7, GL11.glGetInteger(GL11.GL_TEXTURE_BINDING_2D));
+    }
+
+    @Test
+    void eachUnitIsEnabledSeparately() {
+        GL11.glEnable(GL11.GL_TEXTURE_2D);
+        org.lwjgl.opengl.GL13.glActiveTexture(org.lwjgl.opengl.GL13.GL_TEXTURE1);
+        assertFalse(GL11.glIsEnabled(GL11.GL_TEXTURE_2D));
+
+        GL11.glEnable(GL11.GL_TEXTURE_2D);
+        assertTrue(GL11.glIsEnabled(GL11.GL_TEXTURE_2D));
+        org.lwjgl.opengl.GL13.glActiveTexture(org.lwjgl.opengl.GL13.GL_TEXTURE0);
+        assertTrue(GL11.glIsEnabled(GL11.GL_TEXTURE_2D));
+    }
+
+    @Test
+    void everyUnitGetsItsOwnCoordinateInTheVertex() {
+        GL11.glTexCoord2f(0.1f, 0.2f);
+        org.lwjgl.opengl.GL13.glMultiTexCoord2f(org.lwjgl.opengl.GL13.GL_TEXTURE1, 0.3f, 0.4f);
+        GL11.glBegin(GL11.GL_TRIANGLES);
+        GL11.glVertex2f(0.0f, 0.0f);
+        GL11.glEnd();
+
+        assertEquals(0.1f, device.lastBufferData[7], 1.0e-6f);
+        assertEquals(0.2f, device.lastBufferData[8], 1.0e-6f);
+        assertEquals(0.3f, device.lastBufferData[9], 1.0e-6f);
+        assertEquals(0.4f, device.lastBufferData[10], 1.0e-6f);
+    }
+
+    @Test
+    void theCoordinateArrayBelongsToTheClientActiveUnit() {
+        org.lwjgl.opengl.GL13.glClientActiveTexture(org.lwjgl.opengl.GL13.GL_TEXTURE1);
+        GL11.glEnableClientState(GL11.GL_TEXTURE_COORD_ARRAY);
+        GL11.glTexCoordPointer(2, 0, java.nio.FloatBuffer.wrap(new float[] {0.0f, 0.0f}));
+
+        org.lwjgl.opengl.GL13.glClientActiveTexture(org.lwjgl.opengl.GL13.GL_TEXTURE0);
+        GL11.glDisableClientState(GL11.GL_TEXTURE_COORD_ARRAY);
+
+        assertTrue(GLState.get().arrays().texCoord(1).isEnabled());
+        assertFalse(GLState.get().arrays().texCoord(0).isEnabled());
+    }
+
+    @Test
+    void refusesAUnitTheFixedFunctionPipelineDoesNotHave() {
+        assertThrows(UnsupportedOperationException.class,
+                () -> org.lwjgl.opengl.GL13.glActiveTexture(org.lwjgl.opengl.GL13.GL_TEXTURE5));
+        assertThrows(IllegalArgumentException.class,
+                () -> org.lwjgl.opengl.GL13.glActiveTexture(0));
+    }
+
+    @Test
+    void theTextureEnvironmentChoosesHowAUnitIsCombined() {
+        GL11.glTexEnvi(GL11.GL_TEXTURE_ENV, GL11.GL_TEXTURE_ENV_MODE, GL11.GL_REPLACE);
+        GL11.glBegin(GL11.GL_TRIANGLES);
+        GL11.glVertex2f(0.0f, 0.0f);
+        GL11.glEnd();
+
+        assertTrue(device.calls("uniform1i").stream().anyMatch(call -> call.endsWith(" 1")),
+                "the environment mode was not sent: " + device.calls("uniform1i"));
+        assertThrows(UnsupportedOperationException.class,
+                () -> GL11.glTexEnvi(GL11.GL_TEXTURE_ENV, GL11.GL_TEXTURE_ENV_MODE,
+                        GL11.GL_COMBINE));
     }
 }

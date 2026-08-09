@@ -5,13 +5,14 @@ import dev.flagon.runtime.Program;
 import org.lwjgl.opengl.Display;
 import org.lwjgl.opengl.DisplayMode;
 import org.lwjgl.opengl.GL11;
+import org.lwjgl.opengl.GL13;
 
 /**
  uploads a texture whose texels are known, then draws it back at known places
  */
 public final class TextureDemoProgram implements Program {
 
-    private static final int WIDTH = 820;
+    private static final int WIDTH = 940;
     private static final int HEIGHT = 360;
     private static final int MAX_FRAMES = 900;
 
@@ -31,6 +32,8 @@ public final class TextureDemoProgram implements Program {
     private int faded;
     private int tiled;
     private int mipmapped;
+    private int red;
+    private int grey;
 
     @Override
     public String id() {
@@ -60,6 +63,8 @@ public final class TextureDemoProgram implements Program {
         GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_S, GL11.GL_REPEAT);
         GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_T, GL11.GL_REPEAT);
         mipmapped = uploadMipmapped();
+        red = upload(1, 1, new int[] {0xFFFF0000});
+        grey = upload(1, 1, new int[] {0xFF808080});
         Platforms.get().console().info("uploaded texture " + texture + " (2x2) and " + faded
                 + " (1x1)");
 
@@ -74,6 +79,8 @@ public final class TextureDemoProgram implements Program {
         GL11.glDeleteTextures(faded);
         GL11.glDeleteTextures(tiled);
         GL11.glDeleteTextures(mipmapped);
+        GL11.glDeleteTextures(red);
+        GL11.glDeleteTextures(grey);
         Platforms.get().console().info("rendered " + frame + " frames");
         Display.destroy();
     }
@@ -144,7 +151,49 @@ public final class TextureDemoProgram implements Program {
         texturedQuad(720.0f, 40.0f, 784.0f, 104.0f);
         texturedQuad(720.0f, 150.0f, 728.0f, 158.0f);
 
+        multiTextured();
+
         GL11.glDisable(GL11.GL_TEXTURE_2D);
+    }
+
+    /**
+     two units at once: the second modulates the first, then replaces it, so which mode was in
+     force is visible in the colour
+     */
+    private void multiTextured() {
+        GL13.glActiveTexture(GL13.GL_TEXTURE1);
+        GL11.glEnable(GL11.GL_TEXTURE_2D);
+        GL11.glBindTexture(GL11.GL_TEXTURE_2D, grey);
+        GL13.glActiveTexture(GL13.GL_TEXTURE0);
+        GL11.glBindTexture(GL11.GL_TEXTURE_2D, red);
+
+        multiTexturedQuad(800.0f, 40.0f, 860.0f, 104.0f);
+
+        GL13.glActiveTexture(GL13.GL_TEXTURE1);
+        GL11.glTexEnvi(GL11.GL_TEXTURE_ENV, GL11.GL_TEXTURE_ENV_MODE, GL11.GL_REPLACE);
+        GL13.glActiveTexture(GL13.GL_TEXTURE0);
+
+        multiTexturedQuad(870.0f, 40.0f, 930.0f, 104.0f);
+
+        GL13.glActiveTexture(GL13.GL_TEXTURE1);
+        GL11.glTexEnvi(GL11.GL_TEXTURE_ENV, GL11.GL_TEXTURE_ENV_MODE, GL11.GL_MODULATE);
+        GL11.glDisable(GL11.GL_TEXTURE_2D);
+        GL13.glActiveTexture(GL13.GL_TEXTURE0);
+    }
+
+    private static void multiTexturedQuad(float left, float top, float right, float bottom) {
+        GL11.glBegin(GL11.GL_QUADS);
+        corner(left, top, 0.0f, 0.0f);
+        corner(left, bottom, 0.0f, 1.0f);
+        corner(right, bottom, 1.0f, 1.0f);
+        corner(right, top, 1.0f, 0.0f);
+        GL11.glEnd();
+    }
+
+    private static void corner(float x, float y, float s, float t) {
+        GL11.glTexCoord2f(s, t);
+        GL13.glMultiTexCoord2f(GL13.GL_TEXTURE1, s, t);
+        GL11.glVertex2f(x, y);
     }
 
     private static void tiledQuad(float left, float top, float right, float bottom, float times) {
