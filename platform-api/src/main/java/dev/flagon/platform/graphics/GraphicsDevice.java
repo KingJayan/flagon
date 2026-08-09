@@ -152,7 +152,13 @@ public interface GraphicsDevice {
 
     void textureSubImage(int x, int y, int width, int height, byte[] rgba);
 
-    void setTextureFilter(boolean smooth);
+    void setTextureMinFilter(TextureFilter filter);
+
+    void setTextureMagFilter(TextureFilter filter);
+
+    void setTextureWrapS(TextureWrap wrap);
+
+    void setTextureWrapT(TextureWrap wrap);
 
     void drawArrays(Primitive primitive, int first, int count);
 

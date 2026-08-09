@@ -262,6 +262,45 @@ class GL11Test {
     }
 
     @Test
+    void setsWrappingAndFilteringIndependentlyOnEachAxis() {
+        GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_S, GL11.GL_REPEAT);
+        GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_T, GL11.GL_MIRRORED_REPEAT);
+        GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_NEAREST);
+        GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_LINEAR);
+
+        assertEquals(java.util.List.of("textureWrapS REPEAT"), device.calls("textureWrapS"));
+        assertEquals(java.util.List.of("textureWrapT MIRRORED_REPEAT"), device.calls("textureWrapT"));
+        assertEquals(java.util.List.of("textureMinFilter NEAREST"), device.calls("textureMinFilter"));
+        assertEquals(java.util.List.of("textureMagFilter LINEAR"), device.calls("textureMagFilter"));
+    }
+
+    @Test
+    void desktopClampBecomesTheEdgeClampWebglHas() {
+        GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_S, GL11.GL_CLAMP);
+
+        assertEquals(java.util.List.of("textureWrapS CLAMP_TO_EDGE"), device.calls("textureWrapS"));
+    }
+
+    @Test
+    void saysThereAreNoMipmapsRatherThanFilteringFromOne() {
+        UnsupportedOperationException thrown = assertThrows(UnsupportedOperationException.class,
+                () -> GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER,
+                        GL11.GL_LINEAR_MIPMAP_LINEAR));
+
+        assertTrue(thrown.getMessage().contains("level 0"), thrown.getMessage());
+    }
+
+    @Test
+    void refusesAnUploadAboveTheBaseLevelInsteadOfOverwritingIt() {
+        assertThrows(UnsupportedOperationException.class,
+                () -> GL11.glTexImage2D(GL11.GL_TEXTURE_2D, 1, GL11.GL_RGBA, 1, 1, 0,
+                        GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, new int[] {0xFFFFFFFF}));
+        assertThrows(UnsupportedOperationException.class,
+                () -> GL11.glTexSubImage2D(GL11.GL_TEXTURE_2D, 2, 0, 0, 1, 1,
+                        GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, new int[] {0xFFFFFFFF}));
+    }
+
+    @Test
     void namesTheFormatItCannotUploadWhateverTheBufferIs() {
         java.nio.ByteBuffer pixels = org.lwjgl.BufferUtils.createByteBuffer(4);
 

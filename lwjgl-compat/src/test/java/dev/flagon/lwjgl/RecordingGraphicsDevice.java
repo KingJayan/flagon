@@ -9,6 +9,8 @@ import dev.flagon.platform.graphics.GraphicsDevice;
 import dev.flagon.platform.graphics.IndexType;
 import dev.flagon.platform.graphics.Primitive;
 import dev.flagon.platform.graphics.ShaderStage;
+import dev.flagon.platform.graphics.TextureFilter;
+import dev.flagon.platform.graphics.TextureWrap;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -394,8 +396,23 @@ final class RecordingGraphicsDevice implements GraphicsDevice {
     }
 
     @Override
-    public void setTextureFilter(boolean smooth) {
-        calls.add("textureFilter " + smooth);
+    public void setTextureMinFilter(TextureFilter filter) {
+        calls.add("textureMinFilter " + filter);
+    }
+
+    @Override
+    public void setTextureMagFilter(TextureFilter filter) {
+        calls.add("textureMagFilter " + filter);
+    }
+
+    @Override
+    public void setTextureWrapS(TextureWrap wrap) {
+        calls.add("textureWrapS " + wrap);
+    }
+
+    @Override
+    public void setTextureWrapT(TextureWrap wrap) {
+        calls.add("textureWrapT " + wrap);
     }
 
     @Override
