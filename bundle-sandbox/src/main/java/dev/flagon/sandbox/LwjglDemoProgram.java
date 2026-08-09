@@ -6,6 +6,7 @@ import org.lwjgl.opengl.Display;
 import org.lwjgl.opengl.DisplayMode;
 import org.lwjgl.opengl.GL11;
 
+import java.nio.ByteBuffer;
 import java.nio.FloatBuffer;
 
 /**
@@ -56,6 +57,8 @@ public final class LwjglDemoProgram implements Program {
                 Platforms.get().console().debug("frame " + frame);
             }
         }
+
+        Platforms.get().console().info("center pixel " + centerPixel());
 
         Platforms.get().console().info("rendered " + frame + " frames, "
                 + (GL11.glGetError() == GL11.GL_NO_ERROR ? "no gl errors" : "gl errors were raised"));
@@ -117,6 +120,20 @@ public final class LwjglDemoProgram implements Program {
         GL11.glPopAttrib();
         quads(300.0f, 300.0f, 340.0f, 320.0f, 0.2f, 0.4f, 1.0f);
 
+        // a stencil mask written by one quad, and a second quad that may only paint where it is
+        GL11.glEnable(GL11.GL_STENCIL_TEST);
+        GL11.glClearStencil(0);
+        GL11.glClear(GL11.GL_STENCIL_BUFFER_BIT);
+        GL11.glStencilFunc(GL11.GL_ALWAYS, 1, 0xFF);
+        GL11.glStencilOp(GL11.GL_KEEP, GL11.GL_KEEP, GL11.GL_REPLACE);
+        GL11.glColorMask(false, false, false, false);
+        quads(400.0f, 200.0f, 440.0f, 240.0f, 1.0f, 1.0f, 1.0f);
+        GL11.glColorMask(true, true, true, true);
+        GL11.glStencilFunc(GL11.GL_EQUAL, 1, 0xFF);
+        GL11.glStencilOp(GL11.GL_KEEP, GL11.GL_KEEP, GL11.GL_KEEP);
+        quads(380.0f, 180.0f, 460.0f, 260.0f, 1.0f, 0.4f, 0.0f);
+        GL11.glDisable(GL11.GL_STENCIL_TEST);
+
         // the same translation glTranslatef would make, supplied as a matrix
         GL11.glPushMatrix();
         GL11.glLoadMatrix(translation(560.0f, 100.0f));
@@ -133,6 +150,13 @@ public final class LwjglDemoProgram implements Program {
         matrix[12] = x;
         matrix[13] = y;
         return FloatBuffer.wrap(matrix);
+    }
+
+    /** gl reads the framebuffer from the bottom left, so this is the middle of the green panel. */
+    private static String centerPixel() {
+        ByteBuffer pixel = ByteBuffer.allocate(4);
+        GL11.glReadPixels(320, 180, 1, 1, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, pixel);
+        return (pixel.get(0) & 0xFF) + "," + (pixel.get(1) & 0xFF) + "," + (pixel.get(2) & 0xFF);
     }
 
     private void quads(float left, float top, float right, float bottom,

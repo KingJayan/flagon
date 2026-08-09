@@ -13,6 +13,7 @@ import dev.flagon.platform.graphics.GraphicsLimit;
 import dev.flagon.platform.graphics.IndexType;
 import dev.flagon.platform.graphics.Primitive;
 import dev.flagon.platform.graphics.ShaderStage;
+import dev.flagon.platform.graphics.StencilOp;
 import dev.flagon.platform.graphics.Winding;
 import dev.flagon.platform.graphics.TextureFilter;
 import dev.flagon.platform.graphics.TextureWrap;
@@ -486,5 +487,75 @@ final class RecordingGraphicsDevice implements GraphicsDevice {
     /** @return the recorded calls whose first word matches {@code name}. */
     List<String> calls(String name) {
         return calls.stream().filter(call -> call.startsWith(name + " ")).toList();
+    }
+
+    @Override
+    public void setStencilTest(boolean enabled) {
+        calls.add("stencilTest " + enabled);
+    }
+
+    @Override
+    public void setStencilFunc(CompareFunc func, int reference, int mask) {
+        calls.add("stencilFunc " + func + " " + reference + " " + mask);
+    }
+
+    @Override
+    public void setStencilOp(StencilOp stencilFail, StencilOp depthFail, StencilOp pass) {
+        calls.add("stencilOp " + stencilFail + " " + depthFail + " " + pass);
+    }
+
+    @Override
+    public void setStencilMask(int mask) {
+        calls.add("stencilMask " + mask);
+    }
+
+    @Override
+    public void clearStencil(int value) {
+        calls.add("clearStencil " + value);
+    }
+
+    @Override
+    public void setPolygonOffsetFill(boolean enabled) {
+        calls.add("polygonOffsetFill " + enabled);
+    }
+
+    @Override
+    public void setPolygonOffset(float factor, float units) {
+        calls.add("polygonOffset " + factor + " " + units);
+    }
+
+    @Override
+    public void setLineWidth(float width) {
+        calls.add("lineWidth " + width);
+    }
+
+    @Override
+    public void copyTextureSubImage(int x, int y, int framebufferX, int framebufferY,
+                                    int width, int height) {
+        calls.add("copyTextureSubImage " + x + " " + y + " " + framebufferX + " " + framebufferY
+                + " " + width + " " + height);
+    }
+
+    /** a framebuffer of one repeated colour, so a read has something predictable in it. */
+    public byte[] framebuffer = new byte[] {(byte) 0x10, (byte) 0x20, (byte) 0x30, (byte) 0x40};
+
+    @Override
+    public byte[] readPixels(int x, int y, int width, int height) {
+        calls.add("readPixels " + x + " " + y + " " + width + " " + height);
+        byte[] read = new byte[width * height * 4];
+        for (int index = 0; index < read.length; index++) {
+            read[index] = framebuffer[index % framebuffer.length];
+        }
+        return read;
+    }
+
+    @Override
+    public void finish() {
+        calls.add("finish");
+    }
+
+    @Override
+    public void flush() {
+        calls.add("flush");
     }
 }

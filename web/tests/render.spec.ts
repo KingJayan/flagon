@@ -67,6 +67,7 @@ for (const backend of BACKENDS) {
 
       const log = page.getByTestId('log');
       await expect(log).toContainText(/gl WebGL .+ textures up to \d+/, { timeout: 30_000 });
+      await expect(log).toContainText('center pixel 0,204,51', { timeout: 60_000 });
       await expect(log).toContainText('no gl errors', { timeout: 60_000 });
     });
 
@@ -105,6 +106,13 @@ for (const backend of BACKENDS) {
 
       expectColor(await readPixel(page, 575, 245), [230, 128, 0], 'the translated quad');
       expectColor(await readPixel(page, 545, 245), [26, 38, 77], 'left of it');
+    });
+
+    test('paints only where the stencil mask allows', async ({ page }) => {
+      await runDemo(page, backend);
+
+      expectColor(await readPixel(page, 420, 140), [255, 102, 0], 'inside the mask');
+      expectColor(await readPixel(page, 390, 140), [0, 204, 51], 'outside it, the panel');
     });
 
     test('reports the frame loop finishing', async ({ page }) => {

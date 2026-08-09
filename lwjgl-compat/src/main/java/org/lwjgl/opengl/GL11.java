@@ -14,6 +14,7 @@ import dev.flagon.platform.graphics.GraphicsError;
 import dev.flagon.platform.graphics.GraphicsInfo;
 import dev.flagon.platform.graphics.GraphicsLimit;
 import dev.flagon.platform.graphics.IndexType;
+import dev.flagon.platform.graphics.StencilOp;
 import dev.flagon.platform.graphics.Winding;
 import dev.flagon.platform.graphics.TextureFilter;
 import dev.flagon.platform.graphics.TextureWrap;
@@ -127,6 +128,27 @@ public final class GL11 {
     public static final int GL_MAX_TEXTURE_UNITS = 0x84E2;
     public static final int GL_MAX_TEXTURE_IMAGE_UNITS = 0x8872;
     public static final int GL_MAX_VERTEX_ATTRIBS = 0x8869;
+
+    public static final int GL_STENCIL_TEST = 0x0B90;
+    public static final int GL_KEEP = 0x1E00;
+    public static final int GL_REPLACE = 0x1E01;
+    public static final int GL_INCR = 0x1E02;
+    public static final int GL_DECR = 0x1E03;
+    public static final int GL_INVERT = 0x150A;
+    public static final int GL_POLYGON_OFFSET_FILL = 0x8037;
+
+    public static final int GL_POINT = 0x1B00;
+    public static final int GL_LINE = 0x1B01;
+    public static final int GL_FILL = 0x1B02;
+
+    public static final int GL_DONT_CARE = 0x1100;
+    public static final int GL_FASTEST = 0x1101;
+    public static final int GL_NICEST = 0x1102;
+    public static final int GL_PERSPECTIVE_CORRECTION_HINT = 0x0C50;
+    public static final int GL_POINT_SMOOTH_HINT = 0x0C51;
+    public static final int GL_LINE_SMOOTH_HINT = 0x0C52;
+    public static final int GL_POLYGON_SMOOTH_HINT = 0x0C53;
+    public static final int GL_FOG_HINT = 0x0C54;
 
     public static final int GL_VERTEX_ARRAY = 0x8074;
     public static final int GL_COLOR_ARRAY = 0x8076;
@@ -319,6 +341,8 @@ public final class GL11 {
             case GL_BLEND -> state().setBlend(enabled);
             case GL_CULL_FACE -> state().setCullFace(enabled);
             case GL_SCISSOR_TEST -> state().setScissorTest(enabled);
+            case GL_STENCIL_TEST -> device().setStencilTest(enabled);
+            case GL_POLYGON_OFFSET_FILL -> device().setPolygonOffsetFill(enabled);
             case GL_TEXTURE_2D -> state().setTextureEnabled(enabled);
             case GL_ALPHA_TEST -> state().setAlphaTestEnabled(enabled);
             default -> throw new UnsupportedOperationException(
@@ -354,6 +378,175 @@ public final class GL11 {
 
     public static boolean glIsList(int list) {
         return state().lists().exists(list);
+    }
+
+    // stencil
+
+    public static void glStencilFunc(int func, int reference, int mask) {
+        CompareFunc compare = compareFunc(func, "glStencilFunc");
+        if (recording()
+                && state().record(() -> device().setStencilFunc(compare, reference, mask))) {
+            return;
+        }
+        device().setStencilFunc(compare, reference, mask);
+    }
+
+    public static void glStencilOp(int stencilFail, int depthFail, int pass) {
+        StencilOp onStencilFail = stencilOp(stencilFail);
+        StencilOp onDepthFail = stencilOp(depthFail);
+        StencilOp onPass = stencilOp(pass);
+        if (recording()
+                && state().record(() -> device().setStencilOp(onStencilFail, onDepthFail, onPass))) {
+            return;
+        }
+        device().setStencilOp(onStencilFail, onDepthFail, onPass);
+    }
+
+    public static void glStencilMask(int mask) {
+        if (recording() && state().record(() -> device().setStencilMask(mask))) {
+            return;
+        }
+        device().setStencilMask(mask);
+    }
+
+    public static void glClearStencil(int value) {
+        if (recording() && state().record(() -> device().clearStencil(value))) {
+            return;
+        }
+        device().clearStencil(value);
+    }
+
+    private static StencilOp stencilOp(int op) {
+        return switch (op) {
+            case GL_KEEP -> StencilOp.KEEP;
+            case GL_ZERO -> StencilOp.ZERO;
+            case GL_REPLACE -> StencilOp.REPLACE;
+            case GL_INCR -> StencilOp.INCREMENT;
+            case GL_DECR -> StencilOp.DECREMENT;
+            case GL_INVERT -> StencilOp.INVERT;
+            default -> throw new UnsupportedOperationException(
+                    "glStencilOp does not emulate operation 0x" + Integer.toHexString(op));
+        };
+    }
+
+    // rasterisation
+
+    public static void glPolygonOffset(float factor, float units) {
+        if (recording() && state().record(() -> device().setPolygonOffset(factor, units))) {
+            return;
+        }
+        device().setPolygonOffset(factor, units);
+    }
+
+    public static void glLineWidth(float width) {
+        if (width <= 0.0f) {
+            throw new IllegalArgumentException("glLineWidth: width must be positive, got " + width);
+        }
+        if (recording() && state().record(() -> device().setLineWidth(width))) {
+            return;
+        }
+        device().setLineWidth(width);
+    }
+
+    /** the size is a shader uniform here, which is where gl es puts it. */
+    public static void glPointSize(float size) {
+        if (size <= 0.0f) {
+            throw new IllegalArgumentException("glPointSize: size must be positive, got " + size);
+        }
+        if (recording() && state().record(() -> state().pointSize(size))) {
+            return;
+        }
+        state().pointSize(size);
+    }
+
+    /**
+     * a hint is advisory in gl and webgl exposes none of these, so it is accepted and has no
+     * effect. an unknown target is still refused, because that is a mistake rather than a
+     * preference.
+     */
+    public static void glHint(int target, int mode) {
+        switch (target) {
+            case GL_PERSPECTIVE_CORRECTION_HINT, GL_POINT_SMOOTH_HINT, GL_LINE_SMOOTH_HINT,
+                 GL_POLYGON_SMOOTH_HINT, GL_FOG_HINT -> {
+            }
+            default -> throw new UnsupportedOperationException(
+                    "glHint does not know target 0x" + Integer.toHexString(target));
+        }
+        switch (mode) {
+            case GL_DONT_CARE, GL_FASTEST, GL_NICEST -> {
+            }
+            default -> throw new IllegalArgumentException(
+                    "glHint: unknown mode 0x" + Integer.toHexString(mode));
+        }
+    }
+
+    /** webgl rasterises filled polygons only; there is no wireframe mode to switch to. */
+    public static void glPolygonMode(int face, int mode) {
+        if (mode != GL_FILL) {
+            throw new UnsupportedOperationException(
+                    "glPolygonMode emulates GL_FILL only; webgl has no GL_LINE or GL_POINT polygon "
+                            + "mode. draw the outline with GL_LINES instead");
+        }
+    }
+
+    public static void glFinish() {
+        device().finish();
+    }
+
+    public static void glFlush() {
+        device().flush();
+    }
+
+    // reading back
+
+    /** gl reads the framebuffer from the bottom left up, so the first row returned is the lowest. */
+    public static void glReadPixels(int x, int y, int width, int height, int format, int type,
+                                    ByteBuffer pixels) {
+        requireRgbaBytes(format, type);
+        byte[] read = readPixels(x, y, width, height);
+        if (pixels.remaining() < read.length) {
+            throw new IllegalArgumentException("glReadPixels needs room for " + read.length
+                    + " bytes, got " + pixels.remaining());
+        }
+        pixels.duplicate().put(read);
+    }
+
+    public static void glReadPixels(int x, int y, int width, int height, int format, int type,
+                                    IntBuffer pixels) {
+        requireRgbaBytes(format, type);
+        byte[] read = readPixels(x, y, width, height);
+        int count = width * height;
+        if (pixels.remaining() < count) {
+            throw new IllegalArgumentException("glReadPixels needs room for " + count
+                    + " pixels, got " + pixels.remaining());
+        }
+        IntBuffer target = pixels.duplicate();
+        for (int pixel = 0; pixel < count; pixel++) {
+            int offset = pixel * 4;
+            target.put((read[offset + 3] & 0xFF) << 24
+                    | (read[offset] & 0xFF) << 16
+                    | (read[offset + 1] & 0xFF) << 8
+                    | (read[offset + 2] & 0xFF));
+        }
+    }
+
+    private static byte[] readPixels(int x, int y, int width, int height) {
+        state().refuseWhileRecording("glReadPixels");
+        if (width < 0 || height < 0) {
+            throw new IllegalArgumentException(
+                    "glReadPixels: negative size " + width + "x" + height);
+        }
+        return device().readPixels(x, y, width, height);
+    }
+
+    /** copies from the framebuffer into the bound texture, without a round trip through the cpu. */
+    public static void glCopyTexSubImage2D(int target, int level, int x, int y,
+                                           int framebufferX, int framebufferY,
+                                           int width, int height) {
+        requireTexture2D(target, "glCopyTexSubImage2D");
+        state().refuseWhileRecording("glCopyTexSubImage2D");
+        requireBaseLevel(level, "glCopyTexSubImage2D");
+        device().copyTextureSubImage(x, y, framebufferX, framebufferY, width, height);
     }
 
     // queries
