@@ -173,9 +173,17 @@ public interface GraphicsDevice {
 
     void bindTexture(int unit, int texture);
 
-    void textureImage(int width, int height, byte[] rgba);
+    /** uploads one mipmap level; level 0 is the base image. */
+    void textureImage(int level, int width, int height, byte[] rgba);
 
-    void textureSubImage(int x, int y, int width, int height, byte[] rgba);
+    void textureSubImage(int level, int x, int y, int width, int height, byte[] rgba);
+
+    /** derives every level below the base from it, as {@code glGenerateMipmap} does. */
+    void generateMipmap();
+
+    void setTextureBaseLevel(int level);
+
+    void setTextureMaxLevel(int level);
 
     /** copies a rectangle of the framebuffer into the bound texture, as gl reads it: bottom left up. */
     void copyTextureSubImage(int x, int y, int framebufferX, int framebufferY,

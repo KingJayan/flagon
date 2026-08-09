@@ -48,5 +48,12 @@ for (const backend of BACKENDS) {
       expectColor(await readPixel(page, 630, 215), [0, 0, 255], 'first tile, bottom left texel');
       expectColor(await readPixel(page, 630, 145), [255, 0, 0], 'second tile, top left texel');
     });
+
+    test('samples the mipmap level the minification asks for', async ({ page }) => {
+      await runDemo(page, backend);
+
+      expectColor(await readPixel(page, 750, 290), [255, 0, 0], 'the base level, drawn one to one');
+      expectColor(await readPixel(page, 724, 206), [0, 0, 255], 'a lower level, minified');
+    });
   });
 }

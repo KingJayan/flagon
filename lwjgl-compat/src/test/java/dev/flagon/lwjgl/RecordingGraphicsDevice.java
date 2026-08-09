@@ -410,14 +410,14 @@ final class RecordingGraphicsDevice implements GraphicsDevice {
     }
 
     @Override
-    public void textureImage(int width, int height, byte[] rgba) {
-        calls.add("textureImage " + width + "x" + height);
+    public void textureImage(int level, int width, int height, byte[] rgba) {
+        calls.add("textureImage " + level + " " + width + "x" + height);
         lastRgba = rgba;
     }
 
     @Override
-    public void textureSubImage(int x, int y, int width, int height, byte[] rgba) {
-        calls.add("textureSubImage " + x + "," + y + " " + width + "x" + height);
+    public void textureSubImage(int level, int x, int y, int width, int height, byte[] rgba) {
+        calls.add("textureSubImage " + level + " " + x + "," + y + " " + width + "x" + height);
         lastRgba = rgba;
     }
 
@@ -557,5 +557,20 @@ final class RecordingGraphicsDevice implements GraphicsDevice {
     @Override
     public void flush() {
         calls.add("flush");
+    }
+
+    @Override
+    public void generateMipmap() {
+        calls.add("generateMipmap");
+    }
+
+    @Override
+    public void setTextureBaseLevel(int level) {
+        calls.add("textureBaseLevel " + level);
+    }
+
+    @Override
+    public void setTextureMaxLevel(int level) {
+        calls.add("textureMaxLevel " + level);
     }
 }

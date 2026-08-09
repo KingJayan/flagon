@@ -98,6 +98,9 @@ public final class GL11 {
     public static final int GL_CLAMP = 0x2900;
     public static final int GL_CLAMP_TO_EDGE = 0x812F;
     public static final int GL_MIRRORED_REPEAT = 0x8370;
+    public static final int GL_TEXTURE_BASE_LEVEL = 0x813C;
+    public static final int GL_TEXTURE_MAX_LEVEL = 0x813D;
+    public static final int GL_GENERATE_MIPMAP = 0x8191;
 
     public static final int GL_RGBA = 0x1908;
 
@@ -545,7 +548,7 @@ public final class GL11 {
                                            int width, int height) {
         requireTexture2D(target, "glCopyTexSubImage2D");
         state().refuseWhileRecording("glCopyTexSubImage2D");
-        requireBaseLevel(level, "glCopyTexSubImage2D");
+        requireLevel(level);
         device().copyTextureSubImage(x, y, framebufferX, framebufferY, width, height);
     }
 
@@ -982,9 +985,12 @@ public final class GL11 {
             case GL_TEXTURE_MIN_FILTER ->
                     device().setTextureMinFilter(filter(value, "GL_TEXTURE_MIN_FILTER"));
             case GL_TEXTURE_MAG_FILTER ->
-                    device().setTextureMagFilter(filter(value, "GL_TEXTURE_MAG_FILTER"));
+                    device().setTextureMagFilter(magFilter(value));
             case GL_TEXTURE_WRAP_S -> device().setTextureWrapS(wrap(value));
             case GL_TEXTURE_WRAP_T -> device().setTextureWrapT(wrap(value));
+            case GL_TEXTURE_BASE_LEVEL -> device().setTextureBaseLevel(requireLevel(value));
+            case GL_TEXTURE_MAX_LEVEL -> device().setTextureMaxLevel(requireLevel(value));
+            case GL_GENERATE_MIPMAP -> generateMipmap(value != GL_FALSE);
             default -> throw new UnsupportedOperationException(
                     "glTexParameteri does not yet emulate parameter 0x" + Integer.toHexString(name));
         }
@@ -994,14 +1000,51 @@ public final class GL11 {
         return switch (value) {
             case GL_NEAREST -> TextureFilter.NEAREST;
             case GL_LINEAR -> TextureFilter.LINEAR;
-            case GL_NEAREST_MIPMAP_NEAREST, GL_LINEAR_MIPMAP_NEAREST,
-                 GL_NEAREST_MIPMAP_LINEAR, GL_LINEAR_MIPMAP_LINEAR ->
-                    throw new UnsupportedOperationException(
-                            parameter + " asked for a mipmapped filter, and textures here carry "
-                                    + "only level 0; use GL_NEAREST or GL_LINEAR");
+            case GL_NEAREST_MIPMAP_NEAREST -> TextureFilter.NEAREST_MIPMAP_NEAREST;
+            case GL_LINEAR_MIPMAP_NEAREST -> TextureFilter.LINEAR_MIPMAP_NEAREST;
+            case GL_NEAREST_MIPMAP_LINEAR -> TextureFilter.NEAREST_MIPMAP_LINEAR;
+            case GL_LINEAR_MIPMAP_LINEAR -> TextureFilter.LINEAR_MIPMAP_LINEAR;
             default -> throw new UnsupportedOperationException(
                     parameter + " does not emulate filter 0x" + Integer.toHexString(value));
         };
+    }
+
+    /**
+     * gl's magnification filter samples one level, so a mipmapped mode is not a legal value for it.
+     */
+    private static TextureFilter magFilter(int value) {
+        TextureFilter filter = filter(value, "GL_TEXTURE_MAG_FILTER");
+        if (filter != TextureFilter.NEAREST && filter != TextureFilter.LINEAR) {
+            throw new IllegalArgumentException(
+                    "GL_TEXTURE_MAG_FILTER takes GL_NEAREST or GL_LINEAR; there is nothing to "
+                            + "magnify from a smaller level");
+        }
+        return filter;
+    }
+
+    private static int requireLevel(int level) {
+        if (level < 0) {
+            throw new IllegalArgumentException("a mipmap level cannot be negative: " + level);
+        }
+        return level;
+    }
+
+    /**
+     * GL_GENERATE_MIPMAP asks gl to rebuild the levels whenever the base changes. webgl has only
+     * the explicit glGenerateMipmap, so the levels are built now and after each later upload.
+     */
+    private static void generateMipmap(boolean enabled) {
+        state().setAutomaticMipmaps(enabled);
+        if (enabled) {
+            device().generateMipmap();
+        }
+    }
+
+    /** builds every level below the base from it. */
+    public static void glGenerateMipmap(int target) {
+        requireTexture2D(target, "glGenerateMipmap");
+        state().refuseWhileRecording("glGenerateMipmap");
+        device().generateMipmap();
     }
 
     private static TextureWrap wrap(int value) {
@@ -1019,9 +1062,10 @@ public final class GL11 {
                                     int height, int border, int format, int type, int[] pixels) {
         requireTexture2D(target, "glTexImage2D");
         state().refuseWhileRecording("glTexImage2D");
-        requireBaseLevel(level, "glTexImage2D");
+        requireLevel(level);
         requireRgbaBytes(format, type);
-        device().textureImage(width, height, spread(pixels, width * height));
+        device().textureImage(level, width, height, spread(pixels, width * height));
+        rebuildMipmaps();
     }
 
     /** the same upload from a buffer of bytes in r, g, b, a order, which is what real lwjgl takes */
@@ -1030,9 +1074,10 @@ public final class GL11 {
                                     ByteBuffer pixels) {
         requireTexture2D(target, "glTexImage2D");
         state().refuseWhileRecording("glTexImage2D");
-        requireBaseLevel(level, "glTexImage2D");
+        requireLevel(level);
         requireRgbaBytes(format, type);
-        device().textureImage(width, height, bytes(pixels, width * height * 4));
+        device().textureImage(level, width, height, bytes(pixels, width * height * 4));
+        rebuildMipmaps();
     }
 
     public static void glTexImage2D(int target, int level, int internalFormat, int width,
@@ -1040,11 +1085,12 @@ public final class GL11 {
                                     IntBuffer pixels) {
         requireTexture2D(target, "glTexImage2D");
         state().refuseWhileRecording("glTexImage2D");
-        requireBaseLevel(level, "glTexImage2D");
+        requireLevel(level);
         requireRgbaBytes(format, type);
         int[] copied = new int[width * height];
         pixels.duplicate().get(copied);
-        device().textureImage(width, height, spread(copied, width * height));
+        device().textureImage(level, width, height, spread(copied, width * height));
+        rebuildMipmaps();
     }
 
     /** replaces a rectangle of the bound texture, which is what an atlas edit costs. */
@@ -1052,18 +1098,27 @@ public final class GL11 {
                                        int format, int type, ByteBuffer pixels) {
         requireTexture2D(target, "glTexSubImage2D");
         state().refuseWhileRecording("glTexSubImage2D");
-        requireBaseLevel(level, "glTexSubImage2D");
+        requireLevel(level);
         requireRgbaBytes(format, type);
-        device().textureSubImage(x, y, width, height, bytes(pixels, width * height * 4));
+        device().textureSubImage(level, x, y, width, height, bytes(pixels, width * height * 4));
+        rebuildMipmaps();
     }
 
     public static void glTexSubImage2D(int target, int level, int x, int y, int width, int height,
                                        int format, int type, int[] pixels) {
         requireTexture2D(target, "glTexSubImage2D");
         state().refuseWhileRecording("glTexSubImage2D");
-        requireBaseLevel(level, "glTexSubImage2D");
+        requireLevel(level);
         requireRgbaBytes(format, type);
-        device().textureSubImage(x, y, width, height, spread(pixels, width * height));
+        device().textureSubImage(level, x, y, width, height, spread(pixels, width * height));
+        rebuildMipmaps();
+    }
+
+    /** GL_GENERATE_MIPMAP means the levels are rebuilt whenever the base image changes. */
+    private static void rebuildMipmaps() {
+        if (state().automaticMipmaps()) {
+            device().generateMipmap();
+        }
     }
 
     /** @return the bytes as they lie, read in bulk and without consuming the caller's buffer */
@@ -1088,15 +1143,6 @@ public final class GL11 {
             rgba[out++] = (byte) (argb >>> 24);
         }
         return rgba;
-    }
-
-    /** there are no mipmaps, so a level above the base would otherwise overwrite the base. */
-    private static void requireBaseLevel(int level, String call) {
-        if (level != 0) {
-            throw new UnsupportedOperationException(
-                    call + " was given level " + level + "; textures here carry only level 0, so "
-                            + "mipmaps are not emulated");
-        }
     }
 
     private static void requireRgbaBytes(int format, int type) {

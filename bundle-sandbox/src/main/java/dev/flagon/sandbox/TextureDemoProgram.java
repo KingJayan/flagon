@@ -11,7 +11,7 @@ import org.lwjgl.opengl.GL11;
  */
 public final class TextureDemoProgram implements Program {
 
-    private static final int WIDTH = 720;
+    private static final int WIDTH = 820;
     private static final int HEIGHT = 360;
     private static final int MAX_FRAMES = 900;
 
@@ -30,6 +30,7 @@ public final class TextureDemoProgram implements Program {
     private int texture;
     private int faded;
     private int tiled;
+    private int mipmapped;
 
     @Override
     public String id() {
@@ -58,6 +59,7 @@ public final class TextureDemoProgram implements Program {
         tiled = upload(2, 2, TEXELS);
         GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_S, GL11.GL_REPEAT);
         GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_T, GL11.GL_REPEAT);
+        mipmapped = uploadMipmapped();
         Platforms.get().console().info("uploaded texture " + texture + " (2x2) and " + faded
                 + " (1x1)");
 
@@ -71,6 +73,7 @@ public final class TextureDemoProgram implements Program {
         GL11.glDeleteTextures(texture);
         GL11.glDeleteTextures(faded);
         GL11.glDeleteTextures(tiled);
+        GL11.glDeleteTextures(mipmapped);
         Platforms.get().console().info("rendered " + frame + " frames");
         Display.destroy();
     }
@@ -83,6 +86,26 @@ public final class TextureDemoProgram implements Program {
         // nearest, so every screen pixel of the quad is exactly one texel
         GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_NEAREST);
         GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_NEAREST);
+        return name;
+    }
+
+    /**
+     the base level is red and every level below it is blue, so which level was sampled is
+     visible in the colour rather than in the sharpness
+     */
+    private static int uploadMipmapped() {
+        int name = GL11.glGenTextures();
+        GL11.glBindTexture(GL11.GL_TEXTURE_2D, name);
+        for (int level = 0, size = 64; size >= 1; level++, size /= 2) {
+            int[] pixels = new int[size * size];
+            java.util.Arrays.fill(pixels, level == 0 ? 0xFFFF0000 : 0xFF0000FF);
+            GL11.glTexImage2D(GL11.GL_TEXTURE_2D, level, GL11.GL_RGBA, size, size, 0,
+                    GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, pixels);
+        }
+        GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER,
+                GL11.GL_NEAREST_MIPMAP_NEAREST);
+        GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_NEAREST);
+        GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAX_LEVEL, 6);
         return name;
     }
 
@@ -115,6 +138,11 @@ public final class TextureDemoProgram implements Program {
         // texture coordinates past 1, so the wrap mode decides what is sampled
         GL11.glBindTexture(GL11.GL_TEXTURE_2D, tiled);
         tiledQuad(620.0f, 40.0f, 700.0f, 320.0f, 2.0f);
+
+        // one to one, so the base level is sampled; then minified, so a lower level is
+        GL11.glBindTexture(GL11.GL_TEXTURE_2D, mipmapped);
+        texturedQuad(720.0f, 40.0f, 784.0f, 104.0f);
+        texturedQuad(720.0f, 150.0f, 728.0f, 158.0f);
 
         GL11.glDisable(GL11.GL_TEXTURE_2D);
     }
