@@ -22,6 +22,15 @@ public interface WebGL2 extends JSObject {
 
     int DEPTH_BUFFER_BIT = 0x0100;
     int STENCIL_BUFFER_BIT = 0x0400;
+    int STENCIL_TEST = 0x0B90;
+    int POLYGON_OFFSET_FILL = 0x8037;
+    int KEEP = 0x1E00;
+    int REPLACE = 0x1E01;
+    int INCR = 0x1E02;
+    int DECR = 0x1E03;
+    int INVERT = 0x150A;
+    int INCR_WRAP = 0x8507;
+    int DECR_WRAP = 0x8508;
     int COLOR_BUFFER_BIT = 0x4000;
 
     int POINTS = 0x0000;
@@ -252,6 +261,27 @@ public interface WebGL2 extends JSObject {
                        int format, int type, Uint8Array pixels);
 
     void texParameteri(int target, int name, int value);
+
+    void stencilFunc(int func, int reference, int mask);
+
+    void stencilOp(int stencilFail, int depthFail, int pass);
+
+    void stencilMask(int mask);
+
+    void clearStencil(int value);
+
+    void polygonOffset(float factor, float units);
+
+    void lineWidth(float width);
+
+    void copyTexSubImage2D(int target, int level, int x, int y,
+                           int framebufferX, int framebufferY, int width, int height);
+
+    void readPixels(int x, int y, int width, int height, int format, int type, Uint8Array pixels);
+
+    void finish();
+
+    void flush();
 
     void cullFace(int face);
 

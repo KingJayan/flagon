@@ -90,6 +90,7 @@ public final class GLState implements RenderState {
     private float alpha = 1.0f;
     private float s;
     private float t;
+    private float pointSize = 1.0f;
 
     private GLState(GraphicsDevice device) {
         this.device = device;
@@ -445,6 +446,19 @@ public final class GLState implements RenderState {
         return t;
     }
 
+    public void pointSize(float size) {
+        pointSize = size;
+    }
+
+    @Override
+    public float pointSize() {
+        return pointSize;
+    }
+
+    /**
+     * the shader implements GL_GREATER, which is what desktop code uses the alpha test for.
+     * any other comparison would silently render the wrong thing, so it is rejected instead.
+     */
     public void alphaFunc(CompareFunc func, float reference) {
         if (func != CompareFunc.GREATER) {
             throw new UnsupportedOperationException(

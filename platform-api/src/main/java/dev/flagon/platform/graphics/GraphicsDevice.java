@@ -44,6 +44,22 @@ public interface GraphicsDevice {
 
     void setColorMask(boolean red, boolean green, boolean blue, boolean alpha);
 
+    void setStencilTest(boolean enabled);
+
+    void setStencilFunc(CompareFunc func, int reference, int mask);
+
+    void setStencilOp(StencilOp stencilFail, StencilOp depthFail, StencilOp pass);
+
+    void setStencilMask(int mask);
+
+    void clearStencil(int value);
+
+    void setPolygonOffsetFill(boolean enabled);
+
+    void setPolygonOffset(float factor, float units);
+
+    void setLineWidth(float width);
+
     int createBuffer();
 
     void deleteBuffer(int buffer);
@@ -161,6 +177,10 @@ public interface GraphicsDevice {
 
     void textureSubImage(int x, int y, int width, int height, byte[] rgba);
 
+    /** copies a rectangle of the framebuffer into the bound texture, as gl reads it: bottom left up. */
+    void copyTextureSubImage(int x, int y, int framebufferX, int framebufferY,
+                             int width, int height);
+
     void setTextureMinFilter(TextureFilter filter);
 
     void setTextureMagFilter(TextureFilter filter);
@@ -172,6 +192,13 @@ public interface GraphicsDevice {
     void drawArrays(Primitive primitive, int first, int count);
 
     void drawElements(Primitive primitive, int count, IndexType type, int offsetInBytes);
+
+    /** reads a rectangle of the framebuffer as rgba bytes, the first row being the bottom one. */
+    byte[] readPixels(int x, int y, int width, int height);
+
+    void finish();
+
+    void flush();
 
     int width();
 

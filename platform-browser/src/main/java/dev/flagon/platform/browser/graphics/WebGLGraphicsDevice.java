@@ -14,6 +14,7 @@ import dev.flagon.platform.graphics.IndexType;
 import dev.flagon.platform.graphics.Primitive;
 import dev.flagon.platform.graphics.ShaderException;
 import dev.flagon.platform.graphics.ShaderStage;
+import dev.flagon.platform.graphics.StencilOp;
 import dev.flagon.platform.graphics.TextureFilter;
 import dev.flagon.platform.graphics.TextureWrap;
 import dev.flagon.platform.graphics.Winding;
@@ -107,7 +108,11 @@ public final class WebGLGraphicsDevice implements GraphicsDevice {
 
     @Override
     public void setDepthFunc(CompareFunc func) {
-        gl.depthFunc(switch (func) {
+        gl.depthFunc(compare(func));
+    }
+
+    private static int compare(CompareFunc func) {
+        return switch (func) {
             case NEVER -> WebGL2.NEVER;
             case LESS -> WebGL2.LESS;
             case EQUAL -> WebGL2.EQUAL;
@@ -116,7 +121,7 @@ public final class WebGLGraphicsDevice implements GraphicsDevice {
             case NOT_EQUAL -> WebGL2.NOTEQUAL;
             case GREATER_OR_EQUAL -> WebGL2.GEQUAL;
             case ALWAYS -> WebGL2.ALWAYS;
-        });
+        };
     }
 
     @Override
@@ -161,6 +166,59 @@ public final class WebGLGraphicsDevice implements GraphicsDevice {
     @Override
     public void setColorMask(boolean red, boolean green, boolean blue, boolean alpha) {
         gl.colorMask(red, green, blue, alpha);
+    }
+
+    @Override
+    public void setStencilTest(boolean enabled) {
+        capability(WebGL2.STENCIL_TEST, enabled);
+    }
+
+    @Override
+    public void setStencilFunc(CompareFunc func, int reference, int mask) {
+        gl.stencilFunc(compare(func), reference, mask);
+    }
+
+    @Override
+    public void setStencilOp(StencilOp stencilFail, StencilOp depthFail, StencilOp pass) {
+        gl.stencilOp(stencilOp(stencilFail), stencilOp(depthFail), stencilOp(pass));
+    }
+
+    @Override
+    public void setStencilMask(int mask) {
+        gl.stencilMask(mask);
+    }
+
+    @Override
+    public void clearStencil(int value) {
+        gl.clearStencil(value);
+    }
+
+    @Override
+    public void setPolygonOffsetFill(boolean enabled) {
+        capability(WebGL2.POLYGON_OFFSET_FILL, enabled);
+    }
+
+    @Override
+    public void setPolygonOffset(float factor, float units) {
+        gl.polygonOffset(factor, units);
+    }
+
+    @Override
+    public void setLineWidth(float width) {
+        gl.lineWidth(width);
+    }
+
+    private static int stencilOp(StencilOp op) {
+        return switch (op) {
+            case KEEP -> WebGL2.KEEP;
+            case ZERO -> 0;
+            case REPLACE -> WebGL2.REPLACE;
+            case INCREMENT -> WebGL2.INCR;
+            case INCREMENT_WRAP -> WebGL2.INCR_WRAP;
+            case DECREMENT -> WebGL2.DECR;
+            case DECREMENT_WRAP -> WebGL2.DECR_WRAP;
+            case INVERT -> WebGL2.INVERT;
+        };
     }
 
     private void capability(int capability, boolean enabled) {
@@ -657,6 +715,33 @@ public final class WebGLGraphicsDevice implements GraphicsDevice {
         gl.pixelStorei(WebGL2.UNPACK_PREMULTIPLY_ALPHA_WEBGL, 0);
         gl.texSubImage2D(WebGL2.TEXTURE_2D, 0, x, y, width, height,
                 WebGL2.RGBA, WebGL2.UNSIGNED_BYTE, data);
+    }
+
+    @Override
+    public void copyTextureSubImage(int x, int y, int framebufferX, int framebufferY,
+                                    int width, int height) {
+        gl.copyTexSubImage2D(WebGL2.TEXTURE_2D, 0, x, y, framebufferX, framebufferY, width, height);
+    }
+
+    @Override
+    public byte[] readPixels(int x, int y, int width, int height) {
+        Uint8Array data = Uint8Array.create(width * height * 4);
+        gl.readPixels(x, y, width, height, WebGL2.RGBA, WebGL2.UNSIGNED_BYTE, data);
+        byte[] rgba = new byte[width * height * 4];
+        for (int index = 0; index < rgba.length; index++) {
+            rgba[index] = (byte) data.get(index);
+        }
+        return rgba;
+    }
+
+    @Override
+    public void finish() {
+        gl.finish();
+    }
+
+    @Override
+    public void flush() {
+        gl.flush();
     }
 
     private static Uint8Array pixels(int width, int height, byte[] rgba) {

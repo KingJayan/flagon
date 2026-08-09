@@ -28,6 +28,7 @@ public final class FixedFunctionPipeline {
 
             uniform mat4 u_modelView;
             uniform mat4 u_projection;
+            uniform float u_pointSize;
 
             out vec4 v_color;
             out vec2 v_texCoord;
@@ -35,6 +36,7 @@ public final class FixedFunctionPipeline {
             void main() {
                 v_color = in_color;
                 v_texCoord = in_texCoord;
+                gl_PointSize = u_pointSize;
                 gl_Position = u_projection * u_modelView * vec4(in_position, 1.0);
             }
             """;
@@ -75,6 +77,7 @@ public final class FixedFunctionPipeline {
 
     private final int modelViewUniform;
     private final int projectionUniform;
+    private final int pointSizeUniform;
     private final int textureUniform;
     private final int textureEnabledUniform;
     private final int alphaTestEnabledUniform;
@@ -89,6 +92,7 @@ public final class FixedFunctionPipeline {
 
         modelViewUniform = device.uniformLocation(program, "u_modelView");
         projectionUniform = device.uniformLocation(program, "u_projection");
+        pointSizeUniform = device.uniformLocation(program, "u_pointSize");
         textureUniform = device.uniformLocation(program, "u_texture");
         textureEnabledUniform = device.uniformLocation(program, "u_textureEnabled");
         alphaTestEnabledUniform = device.uniformLocation(program, "u_alphaTestEnabled");
@@ -168,6 +172,7 @@ public final class FixedFunctionPipeline {
         device.useProgram(program);
         device.uniformMatrix4(modelViewUniform, render.modelView());
         device.uniformMatrix4(projectionUniform, render.projection());
+        device.uniform1f(pointSizeUniform, render.pointSize());
         device.uniform1i(textureEnabledUniform, render.isTextureEnabled() ? 1 : 0);
         device.uniform1i(alphaTestEnabledUniform, render.isAlphaTestEnabled() ? 1 : 0);
         device.uniform1f(alphaTestThresholdUniform, render.alphaTestThreshold());

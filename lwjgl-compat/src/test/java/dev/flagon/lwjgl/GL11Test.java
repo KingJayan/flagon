@@ -520,4 +520,102 @@ class GL11Test {
         assertTrue(GL11.glIsEnabled(GL11.GL_BLEND));
         assertThrows(UnsupportedOperationException.class, () -> GL11.glIsEnabled(0x4242));
     }
+
+    @Test
+    void stencilStateReachesTheDeviceAsTheEnumsItNames() {
+        GL11.glEnable(GL11.GL_STENCIL_TEST);
+        GL11.glStencilFunc(GL11.GL_EQUAL, 1, 0xFF);
+        GL11.glStencilOp(GL11.GL_KEEP, GL11.GL_KEEP, GL11.GL_REPLACE);
+        GL11.glStencilMask(0x0F);
+        GL11.glClearStencil(3);
+
+        assertEquals(java.util.List.of("stencilTest true"), device.calls("stencilTest"));
+        assertEquals(java.util.List.of("stencilFunc EQUAL 1 255"), device.calls("stencilFunc"));
+        assertEquals(java.util.List.of("stencilOp KEEP KEEP REPLACE"), device.calls("stencilOp"));
+        assertEquals(java.util.List.of("stencilMask 15"), device.calls("stencilMask"));
+        assertEquals(java.util.List.of("clearStencil 3"), device.calls("clearStencil"));
+    }
+
+    @Test
+    void refusesAStencilOperationItCannotName() {
+        assertThrows(UnsupportedOperationException.class,
+                () -> GL11.glStencilOp(GL11.GL_KEEP, GL11.GL_KEEP, 0x4242));
+    }
+
+    @Test
+    void offsetsPolygonsAndWidensLines() {
+        GL11.glEnable(GL11.GL_POLYGON_OFFSET_FILL);
+        GL11.glPolygonOffset(1.0f, 2.0f);
+        GL11.glLineWidth(3.0f);
+
+        assertEquals(java.util.List.of("polygonOffsetFill true"), device.calls("polygonOffsetFill"));
+        assertEquals(java.util.List.of("polygonOffset 1.0 2.0"), device.calls("polygonOffset"));
+        assertEquals(java.util.List.of("lineWidth 3.0"), device.calls("lineWidth"));
+        assertThrows(IllegalArgumentException.class, () -> GL11.glLineWidth(0.0f));
+    }
+
+    @Test
+    void aPointSizeReachesTheShaderThatDrawsThePoints() {
+        GL11.glPointSize(8.0f);
+        GL11.glBegin(GL11.GL_POINTS);
+        GL11.glVertex2f(1.0f, 1.0f);
+        GL11.glEnd();
+
+        assertTrue(device.calls("uniform1f").stream().anyMatch(call -> call.endsWith(" 8.0")),
+                "the point size was not sent: " + device.calls("uniform1f"));
+        assertThrows(IllegalArgumentException.class, () -> GL11.glPointSize(-1.0f));
+    }
+
+    @Test
+    void takesAHintAndIgnoresIt() {
+        GL11.glHint(GL11.GL_PERSPECTIVE_CORRECTION_HINT, GL11.GL_NICEST);
+        assertThrows(UnsupportedOperationException.class,
+                () -> GL11.glHint(0x4242, GL11.GL_NICEST));
+        assertThrows(IllegalArgumentException.class,
+                () -> GL11.glHint(GL11.GL_FOG_HINT, 0x4242));
+    }
+
+    @Test
+    void fillIsTheOnlyPolygonModeThereIs() {
+        GL11.glPolygonMode(GL11.GL_FRONT_AND_BACK, GL11.GL_FILL);
+        assertThrows(UnsupportedOperationException.class,
+                () -> GL11.glPolygonMode(GL11.GL_FRONT_AND_BACK, GL11.GL_LINE));
+    }
+
+    @Test
+    void readsThePixelsBackAsBytesAndAsPackedInts() {
+        java.nio.ByteBuffer bytes = java.nio.ByteBuffer.allocate(8);
+        GL11.glReadPixels(2, 3, 2, 1, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, bytes);
+        assertEquals(java.util.List.of("readPixels 2 3 2 1"), device.calls("readPixels"));
+        assertEquals(0x10, bytes.get(0) & 0xFF);
+        assertEquals(0x40, bytes.get(3) & 0xFF);
+
+        java.nio.IntBuffer packed = java.nio.IntBuffer.allocate(2);
+        GL11.glReadPixels(0, 0, 2, 1, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, packed);
+        assertEquals(0x40102030, packed.get(0));
+    }
+
+    @Test
+    void refusesToReadIntoABufferThatIsTooSmall() {
+        java.nio.ByteBuffer bytes = java.nio.ByteBuffer.allocate(4);
+        assertThrows(IllegalArgumentException.class,
+                () -> GL11.glReadPixels(0, 0, 2, 2, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, bytes));
+    }
+
+    @Test
+    void copiesTheFramebufferIntoTheBoundTexture() {
+        GL11.glCopyTexSubImage2D(GL11.GL_TEXTURE_2D, 0, 1, 2, 3, 4, 5, 6);
+        assertEquals(java.util.List.of("copyTextureSubImage 1 2 3 4 5 6"),
+                device.calls("copyTextureSubImage"));
+        assertThrows(UnsupportedOperationException.class,
+                () -> GL11.glCopyTexSubImage2D(GL11.GL_TEXTURE_2D, 1, 0, 0, 0, 0, 1, 1));
+    }
+
+    @Test
+    void finishAndFlushReachTheDevice() {
+        GL11.glFinish();
+        GL11.glFlush();
+        assertTrue(device.calls.contains("finish"));
+        assertTrue(device.calls.contains("flush"));
+    }
 }
