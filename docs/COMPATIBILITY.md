@@ -86,7 +86,7 @@ close correctly.
 
 Verified in Chromium and Firefox on both backends by the `lwjgl`, `input`, `arrays`, `shaders`, `texture`, and
 `audio` demos, which assert framebuffer output, drive real keyboard, mouse and wheel events, and
-play audio through to completion. The compatibility layer is also covered by 183 JVM tests running against recording and
+play audio through to completion. The compatibility layer is also covered by 189 JVM tests running against recording and
 fake devices.
 
 | Call group | State |
@@ -127,7 +127,9 @@ fake devices.
 | `glGetInteger`, `glGetFloat`, `glGetBoolean`, `glIsEnabled` of state the layer sets | works, answered from the mirror |
 | Any other `glGetInteger`/`glGetString` name | refused |
 | `glNormalPointer`, `glIndexPointer` | not emulated |
-| Lighting, fog, display lists, `glTexEnv` | not emulated |
+| Lighting and fog | not emulated |
+| `GL13` `glActiveTexture`, `glClientActiveTexture`, `glMultiTexCoord` | works, four units |
+| `glTexEnvi` `GL_TEXTURE_ENV_MODE` | `GL_MODULATE`, `GL_REPLACE`, `GL_ADD` |
 | `GL20` shader/program objects, uniforms and generic attributes | works |
 | Desktop GLSL 1.10 / 1.20 | works, translated |
 | GLSL 1.30+, fixed-function GLSL built-ins | refused |
@@ -154,13 +156,12 @@ for and not find.
 
 ### What is not here
 
-`GL12`, `GL13`, `GL14`, `GLContext`, `ContextCapabilities` and `org.lwjgl.util.glu.GLU` do not
+`GL12`, `GL14`, `GLContext`, `ContextCapabilities` and `org.lwjgl.util.glu.GLU` do not
 exist. Neither do these `GL11` entry points:
 
 | Missing | Why |
 |---------|-----|
 | `glLight*`, `glMaterial*`, `glColorMaterial`, `glFog*`, `glShadeModel`, `glNormal3f`, `glNormalPointer` | fixed-function lighting and fog, which the translated pipeline does not implement |
-| `glActiveTexture`, `glClientActiveTexture` | one texture unit is bound at a time |
 
 If your application needs one of these, open an issue: the layer grows by what applications
 actually call.

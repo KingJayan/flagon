@@ -573,4 +573,9 @@ final class RecordingGraphicsDevice implements GraphicsDevice {
     public void setTextureMaxLevel(int level) {
         calls.add("textureMaxLevel " + level);
     }
+
+    @Override
+    public void activeTexture(int unit) {
+        calls.add("activeTexture " + unit);
+    }
 }
