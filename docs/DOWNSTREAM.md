@@ -98,6 +98,11 @@ If your project inherits `flagon-parent`, only three properties are required:
 If you use your own parent POM, copy the TeaVM plugin configuration from this repository's root
 `pom.xml`.
 
+A shell can only offer a bundle's programs before it has booted if the build writes them down.
+Expose the registry from a static method, point `flagon.bundle.catalogClass` at a class whose
+`main` hands it to `ProgramCatalog.writeTo(registry, args[0])`, and the build emits
+`app.catalog.json` beside `app.wasm`. Without it the picker fills in on the first run instead.
+
 Leave `flagon.strict` enabled. Without it, Java null dereferences become JavaScript
 `TypeError`s instead of catchable `NullPointerException`s.
 

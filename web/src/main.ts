@@ -186,6 +186,34 @@ function remember(bundle: string, entries: Entry[]): void {
   }
 }
 
+async function catalogOf(bundle: string): Promise<Entry[]> {
+  if (!BUNDLES.includes(bundle)) {
+    return [];
+  }
+  try {
+    const response = await fetch(`/flagon/${bundle}.catalog.json`);
+    if (!response.ok) {
+      return [];
+    }
+    const read: unknown = await response.json();
+    return Array.isArray(read) ? (read as Entry[]).filter((entry) => Boolean(entry?.id)) : [];
+  } catch {
+    return [];
+  }
+}
+
+function offer(bundle: string, selected: string): void {
+  const known = remembered(bundle);
+  showPrograms(known, selected);
+  void catalogOf(bundle).then((entries) => {
+    if (entries.length === 0 || bundleSelect.value !== bundle) {
+      return;
+    }
+    remember(bundle, entries);
+    showPrograms(entries, programSelect.value || selected);
+  });
+}
+
 const ANY = "the bundle's first program";
 
 function showPrograms(entries: Entry[], selected: string): void {
@@ -202,18 +230,16 @@ function showPrograms(entries: Entry[], selected: string): void {
 
 const request = readRequest();
 
-// a proxy that guards its socket with a token is handed it by whoever opened the page
 const proxyToken = new URLSearchParams(location.search).get('proxytoken');
 if (proxyToken) {
   (window as unknown as { __flagonProxyToken: string }).__flagonProxyToken = proxyToken;
 }
 bundleSelect.value = request.bundle;
 backendSelect.value = request.backend;
-showPrograms(remembered(request.bundle), request.program);
+offer(request.bundle, request.program);
 
 bundleSelect.addEventListener('change', () => {
-
-  showPrograms(remembered(bundleSelect.value), '');
+  offer(bundleSelect.value, '');
 });
 
 runButton.addEventListener('click', () => {

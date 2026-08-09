@@ -17,6 +17,7 @@
     <!-- a bundle is an artifact of this repository, not something downstream consumes -->
     <maven.deploy.skip>true</maven.deploy.skip>
     <flagon.bundle.mainClass>dev.flagon.example.ExampleMain</flagon.bundle.mainClass>
+    <flagon.bundle.catalogClass>dev.flagon.example.ExampleCatalog</flagon.bundle.catalogClass>
     <flagon.bundle.name>example</flagon.bundle.name>
   </properties>
 
@@ -52,6 +53,10 @@
 
   <build>
     <plugins>
+      <plugin>
+        <groupId>org.codehaus.mojo</groupId>
+        <artifactId>exec-maven-plugin</artifactId>
+      </plugin>
       <plugin>
         <groupId>org.teavm</groupId>
         <artifactId>teavm-maven-plugin</artifactId>

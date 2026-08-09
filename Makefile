@@ -40,6 +40,9 @@ verify-bundles: ## check the emitted bundles are whole
 		test $$size -ge 250000 || { echo "$$bundle is only $$size bytes; run 'make clean'"; exit 1; }; \
 		grep -q "Unresolved compilation problem" $$bundle \
 			&& { echo "$$bundle carries uncompiled classes; run 'make clean'"; exit 1; }; \
+	done; \
+	for catalog in $(BUNDLES)/*.catalog.json; do \
+		grep -q '"id"' $$catalog || { echo "$$catalog lists no programs"; exit 1; }; \
 	done; echo "bundles look whole"
 
 build: ## compile both backends

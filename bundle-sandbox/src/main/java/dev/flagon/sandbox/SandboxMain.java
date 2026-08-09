@@ -17,7 +17,12 @@ public final class SandboxMain {
     }
 
     public static void main(String[] arguments) {
-        ProgramRegistry registry = new ProgramRegistry()
+        FlagonRuntime.boot(BrowserPlatform.create(arguments), registry());
+    }
+
+    /** the bundle's programs, read by the build to write the catalog beside the bundle */
+    public static ProgramRegistry registry() {
+        return new ProgramRegistry()
                 .register(new HelloProgram())
                 .register(new RuntimeSelfTestProgram())
                 .register(new LwjglDemoProgram())
@@ -29,6 +34,5 @@ public final class SandboxMain {
                 .register(new FileSystemDemoProgram())
                 .register(new AudioDemoProgram())
                 .register(new NetDemoProgram());
-        FlagonRuntime.boot(BrowserPlatform.create(arguments), registry);
     }
 }
