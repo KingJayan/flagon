@@ -66,6 +66,7 @@ public final class GLState implements RenderState {
     private int scissorWidth;
     private int scissorHeight;
     private int boundTexture = GraphicsDevice.NO_TEXTURE;
+    private final java.util.Set<Integer> automaticMipmaps = new java.util.HashSet<>();
 
     private final Deque<Attributes> attributeStack = new ArrayDeque<>();
     private final DisplayLists displayLists = new DisplayLists();
@@ -566,10 +567,23 @@ public final class GLState implements RenderState {
         return boundTexture;
     }
 
+    public void setAutomaticMipmaps(boolean enabled) {
+        if (enabled) {
+            automaticMipmaps.add(boundTexture);
+        } else {
+            automaticMipmaps.remove(boundTexture);
+        }
+    }
+
+    public boolean automaticMipmaps() {
+        return automaticMipmaps.contains(boundTexture);
+    }
+
     public void deleteTexture(int texture) {
         if (boundTexture == texture) {
             boundTexture = GraphicsDevice.NO_TEXTURE;
         }
+        automaticMipmaps.remove(texture);
         device.deleteTexture(texture);
     }
 

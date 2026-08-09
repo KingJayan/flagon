@@ -702,18 +702,18 @@ public final class WebGLGraphicsDevice implements GraphicsDevice {
     }
 
     @Override
-    public void textureImage(int width, int height, byte[] rgba) {
+    public void textureImage(int level, int width, int height, byte[] rgba) {
         Uint8Array data = pixels(width, height, rgba);
         gl.pixelStorei(WebGL2.UNPACK_PREMULTIPLY_ALPHA_WEBGL, 0);
-        gl.texImage2D(WebGL2.TEXTURE_2D, 0, WebGL2.RGBA, width, height, 0,
+        gl.texImage2D(WebGL2.TEXTURE_2D, level, WebGL2.RGBA, width, height, 0,
                 WebGL2.RGBA, WebGL2.UNSIGNED_BYTE, data);
     }
 
     @Override
-    public void textureSubImage(int x, int y, int width, int height, byte[] rgba) {
+    public void textureSubImage(int level, int x, int y, int width, int height, byte[] rgba) {
         Uint8Array data = pixels(width, height, rgba);
         gl.pixelStorei(WebGL2.UNPACK_PREMULTIPLY_ALPHA_WEBGL, 0);
-        gl.texSubImage2D(WebGL2.TEXTURE_2D, 0, x, y, width, height,
+        gl.texSubImage2D(WebGL2.TEXTURE_2D, level, x, y, width, height,
                 WebGL2.RGBA, WebGL2.UNSIGNED_BYTE, data);
     }
 
@@ -754,6 +754,21 @@ public final class WebGLGraphicsDevice implements GraphicsDevice {
     }
 
     @Override
+    public void generateMipmap() {
+        gl.generateMipmap(WebGL2.TEXTURE_2D);
+    }
+
+    @Override
+    public void setTextureBaseLevel(int level) {
+        gl.texParameteri(WebGL2.TEXTURE_2D, WebGL2.TEXTURE_BASE_LEVEL, level);
+    }
+
+    @Override
+    public void setTextureMaxLevel(int level) {
+        gl.texParameteri(WebGL2.TEXTURE_2D, WebGL2.TEXTURE_MAX_LEVEL, level);
+    }
+
+    @Override
     public void setTextureMinFilter(TextureFilter filter) {
         gl.texParameteri(WebGL2.TEXTURE_2D, WebGL2.TEXTURE_MIN_FILTER, filter(filter));
     }
@@ -777,6 +792,10 @@ public final class WebGLGraphicsDevice implements GraphicsDevice {
         return switch (filter) {
             case NEAREST -> WebGL2.NEAREST;
             case LINEAR -> WebGL2.LINEAR;
+            case NEAREST_MIPMAP_NEAREST -> WebGL2.NEAREST_MIPMAP_NEAREST;
+            case LINEAR_MIPMAP_NEAREST -> WebGL2.LINEAR_MIPMAP_NEAREST;
+            case NEAREST_MIPMAP_LINEAR -> WebGL2.NEAREST_MIPMAP_LINEAR;
+            case LINEAR_MIPMAP_LINEAR -> WebGL2.LINEAR_MIPMAP_LINEAR;
         };
     }
 

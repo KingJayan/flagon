@@ -233,7 +233,7 @@ class GL11Test {
         GL11.glTexImage2D(GL11.GL_TEXTURE_2D, 0, GL11.GL_RGBA, 2, 1, 0,
                 GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, pixels);
 
-        assertEquals(java.util.List.of("textureImage 2x1"), device.calls("textureImage"));
+        assertEquals(java.util.List.of("textureImage 0 2x1"), device.calls("textureImage"));
         assertArrayEquals(new byte[] {0x10, 0x20, 0x30, 0x40, (byte) 0xFF, 0, 0, (byte) 0xFF},
                 device.lastRgba);
         assertEquals(0, pixels.position(), "the caller's buffer was consumed");
@@ -258,7 +258,7 @@ class GL11Test {
         GL11.glTexSubImage2D(GL11.GL_TEXTURE_2D, 0, 1, 1, 1, 1,
                 GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, new int[] {0xFF112233});
 
-        assertEquals(java.util.List.of("textureSubImage 1,1 1x1"), device.calls("textureSubImage"));
+        assertEquals(java.util.List.of("textureSubImage 0 1,1 1x1"), device.calls("textureSubImage"));
         assertArrayEquals(new byte[] {0x11, 0x22, 0x33, (byte) 0xFF}, device.lastRgba);
     }
 
@@ -283,22 +283,58 @@ class GL11Test {
     }
 
     @Test
-    void saysThereAreNoMipmapsRatherThanFilteringFromOne() {
-        UnsupportedOperationException thrown = assertThrows(UnsupportedOperationException.class,
-                () -> GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER,
-                        GL11.GL_LINEAR_MIPMAP_LINEAR));
+    void takesAMipmappedFilterForMinificationAndRefusesOneForMagnification() {
+        GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER,
+                GL11.GL_LINEAR_MIPMAP_LINEAR);
+        assertEquals(java.util.List.of("textureMinFilter LINEAR_MIPMAP_LINEAR"),
+                device.calls("textureMinFilter"));
 
-        assertTrue(thrown.getMessage().contains("level 0"), thrown.getMessage());
+        assertThrows(IllegalArgumentException.class,
+                () -> GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER,
+                        GL11.GL_LINEAR_MIPMAP_LINEAR));
     }
 
     @Test
-    void refusesAnUploadAboveTheBaseLevelInsteadOfOverwritingIt() {
-        assertThrows(UnsupportedOperationException.class,
-                () -> GL11.glTexImage2D(GL11.GL_TEXTURE_2D, 1, GL11.GL_RGBA, 1, 1, 0,
+    void uploadsIntoTheLevelItWasGiven() {
+        GL11.glTexImage2D(GL11.GL_TEXTURE_2D, 2, GL11.GL_RGBA, 1, 1, 0,
+                GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, new int[] {0xFFFFFFFF});
+        assertEquals(java.util.List.of("textureImage 2 1x1"), device.calls("textureImage"));
+
+        assertThrows(IllegalArgumentException.class,
+                () -> GL11.glTexImage2D(GL11.GL_TEXTURE_2D, -1, GL11.GL_RGBA, 1, 1, 0,
                         GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, new int[] {0xFFFFFFFF}));
-        assertThrows(UnsupportedOperationException.class,
-                () -> GL11.glTexSubImage2D(GL11.GL_TEXTURE_2D, 2, 0, 0, 1, 1,
-                        GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, new int[] {0xFFFFFFFF}));
+    }
+
+    @Test
+    void buildsTheLevelsBelowTheBaseOnRequest() {
+        GL11.glGenerateMipmap(GL11.GL_TEXTURE_2D);
+        assertTrue(device.calls.contains("generateMipmap"));
+    }
+
+    @Test
+    void generateMipmapRebuildsTheLevelsAfterEveryUpload() {
+        int texture = GL11.glGenTextures();
+        GL11.glBindTexture(GL11.GL_TEXTURE_2D, texture);
+        GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_GENERATE_MIPMAP, GL11.GL_TRUE);
+        int built = java.util.Collections.frequency(device.calls, "generateMipmap");
+
+        GL11.glTexImage2D(GL11.GL_TEXTURE_2D, 0, GL11.GL_RGBA, 1, 1, 0,
+                GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, new int[] {0xFFFFFFFF});
+        assertEquals(built + 1, java.util.Collections.frequency(device.calls, "generateMipmap"));
+
+        GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_GENERATE_MIPMAP, GL11.GL_FALSE);
+        GL11.glTexImage2D(GL11.GL_TEXTURE_2D, 0, GL11.GL_RGBA, 1, 1, 0,
+                GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, new int[] {0xFFFFFFFF});
+        assertEquals(built + 1, java.util.Collections.frequency(device.calls, "generateMipmap"));
+    }
+
+    @Test
+    void boundsTheLevelsThatMayBeSampled() {
+        GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_BASE_LEVEL, 1);
+        GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAX_LEVEL, 4);
+
+        assertEquals(java.util.List.of("textureBaseLevel 1"), device.calls("textureBaseLevel"));
+        assertEquals(java.util.List.of("textureMaxLevel 4"), device.calls("textureMaxLevel"));
     }
 
     @Test
@@ -607,8 +643,8 @@ class GL11Test {
         GL11.glCopyTexSubImage2D(GL11.GL_TEXTURE_2D, 0, 1, 2, 3, 4, 5, 6);
         assertEquals(java.util.List.of("copyTextureSubImage 1 2 3 4 5 6"),
                 device.calls("copyTextureSubImage"));
-        assertThrows(UnsupportedOperationException.class,
-                () -> GL11.glCopyTexSubImage2D(GL11.GL_TEXTURE_2D, 1, 0, 0, 0, 0, 1, 1));
+        assertThrows(IllegalArgumentException.class,
+                () -> GL11.glCopyTexSubImage2D(GL11.GL_TEXTURE_2D, -1, 0, 0, 0, 0, 1, 1));
     }
 
     @Test
