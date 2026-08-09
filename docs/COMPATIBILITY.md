@@ -86,7 +86,7 @@ close correctly.
 
 Verified in Chromium and Firefox on both backends by the `lwjgl`, `input`, `arrays`, `shaders`, `texture`, and
 `audio` demos, which assert framebuffer output, drive real keyboard, mouse and wheel events, and
-play audio through to completion. The compatibility layer is also covered by 115 JVM tests running against recording and
+play audio through to completion. The compatibility layer is also covered by 157 JVM tests running against recording and
 fake devices.
 
 | Call group | State |
@@ -133,8 +133,31 @@ fake devices.
 | `WaveData` | works, uncompressed pcm |
 | Capture (`ALC11`) | not emulated |
 
-Every unsupported entry point throws `UnsupportedOperationException` naming the call. Nothing is
-silently ignored: a stack trace is cheaper than debugging incorrect rendering.
+An entry point that is present but asked for something it does not emulate throws
+`UnsupportedOperationException` naming the call. Nothing is silently ignored: a stack trace is
+cheaper than debugging incorrect rendering.
+
+An entry point that is **absent** cannot throw at all: the bundle simply does not compile, and the
+compiler names the missing method. The list below is what an application is most likely to reach
+for and not find.
+
+### What is not here
+
+`GL12`, `GL13`, `GL14`, `GLContext`, `ContextCapabilities` and `org.lwjgl.util.glu.GLU` do not
+exist. Neither do these `GL11` entry points:
+
+| Missing | Why |
+|---------|-----|
+| `glReadPixels`, `glCopyTexSubImage2D` | not written yet |
+| `glNewList`, `glCallList`, `glDeleteLists` | display lists; the immediate-mode path rebuilds each frame instead |
+| `glLight*`, `glMaterial*`, `glColorMaterial`, `glFog*`, `glShadeModel`, `glNormal3f`, `glNormalPointer` | fixed-function lighting and fog, which the translated pipeline does not implement |
+| `glPushAttrib`, `glPopAttrib` | the attribute stack is not tracked |
+| `glActiveTexture`, `glClientActiveTexture` | one texture unit is bound at a time |
+| `glLoadMatrix*`, `glMultMatrix*` | the matrix stack is driven by the transform calls only |
+| `glHint`, `glPolygonOffset`, `glLineWidth`, `glPointSize` | not written yet |
+
+If your application needs one of these, open an issue: the layer grows by what applications
+actually call.
 
 ### Mipmaps
 
