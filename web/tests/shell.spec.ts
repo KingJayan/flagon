@@ -84,6 +84,27 @@ for (const backend of BACKENDS) {
       await expect(rate).toBeHidden();
     });
 
+    test('hands the argument field to the program it runs', async ({ page }) => {
+      const { failures } = watchForFailures(page);
+      await open(page, backend, 'program=hello');
+      await expect(page.getByTestId('state')).toHaveText('exited', { timeout: 30_000 });
+
+      await page.locator('#args').fill('"a quoted name"');
+      await page.locator('#run').click();
+
+      await expect(page.getByTestId('log')).toContainText('Hello, a quoted name!', {
+        timeout: 30_000,
+      });
+      await expect(page.locator('#args')).toHaveValue('a quoted name');
+      expect(failures).toEqual([]);
+    });
+
+    test('says so when arguments were given with no program to take them', async ({ page }) => {
+      await open(page, backend, 'arg=lonely');
+
+      await expect(page.getByTestId('log')).toContainText('they were dropped', { timeout: 30_000 });
+    });
+
     test('offers a bundle its programs without having run it', async ({ page }) => {
       await open(page, backend, 'bundle=example');
       await expect(page.locator('#program option')).toHaveCount(3);
