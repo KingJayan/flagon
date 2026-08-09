@@ -29,7 +29,7 @@ assertions. What remains is in the [issue tracker](https://github.com/KingJayan/
 | Lifecycle reporting | works | `window.__flagonHost` |
 | Filesystem | works | `java.io` on the Origin Private File System, see below |
 | Threading | partial | blocking frame loops via TeaVM green threads |
-| Networking | works through a proxy | TCP over a websocket; no raw sockets, see below |
+| Networking | works through a proxy, not through `java.net.Socket` | `Network.connect()` over a websocket, see below |
 | Input | works | DOM events and Pointer Lock, see below |
 | Audio | works | `OpenAL` over Web Audio, see below |
 | Graphics | partial | GL 1.1 fixed-function and GL 2.0 shaders over WebGL2, see below |
@@ -53,7 +53,7 @@ on both backends.
 | Reflection | untested — likely a problem for the game |
 | `File`, `FileInputStream`, `FileOutputStream`, `RandomAccessFile` | works, see below |
 | `java.net.URL`, `HttpURLConnection` over HTTP | works through a proxy, see below |
-| `java.net.Socket`, `ServerSocket`, `DatagramSocket` | absent from the classlib |
+| `java.net.Socket`, `ServerSocket`, `DatagramSocket` | absent from the classlib; use `Network.connect()` |
 
 ### Files are real, and they persist
 
@@ -212,7 +212,9 @@ listener.
 
 ### Networking
 
-A browser cannot open raw TCP sockets.
+A browser cannot open raw TCP sockets, so `java.net.Socket` is not in the classlib and an
+application that uses it will not compile into a bundle. Networking here means
+`dev.flagon.platform.net`, and it needs a proxy served alongside the page.
 
 `Network.connect()` opens a websocket to a proxy, which owns the real socket and forwards bytes in
 both directions. To callers, a `Connection` remains a blocking byte stream; reads suspend the
