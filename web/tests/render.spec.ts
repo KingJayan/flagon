@@ -61,6 +61,15 @@ for (const backend of BACKENDS) {
       expect(samples.size, 'the animated marker never moved').toBeGreaterThan(1);
     });
 
+    /** what the program can find out about the gl it got, and whether it complained. */
+    test('answers the queries a program checks its context with', async ({ page }) => {
+      await runDemo(page, backend);
+
+      const log = page.getByTestId('log');
+      await expect(log).toContainText(/gl WebGL .+ textures up to \d+/, { timeout: 30_000 });
+      await expect(log).toContainText('no gl errors', { timeout: 60_000 });
+    });
+
     test('reports the frame loop finishing', async ({ page }) => {
       await open(page, backend, 'program=lwjgl');
       await expect(page.getByTestId('log')).toContainText('frame 60', { timeout: 30_000 });

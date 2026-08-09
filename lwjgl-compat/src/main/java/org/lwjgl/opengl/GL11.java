@@ -9,6 +9,9 @@ import dev.flagon.platform.graphics.BlendFactor;
 import dev.flagon.platform.graphics.BufferTarget;
 import dev.flagon.platform.graphics.CompareFunc;
 import dev.flagon.platform.graphics.GraphicsDevice;
+import dev.flagon.platform.graphics.GraphicsError;
+import dev.flagon.platform.graphics.GraphicsInfo;
+import dev.flagon.platform.graphics.GraphicsLimit;
 import dev.flagon.platform.graphics.IndexType;
 import dev.flagon.platform.graphics.TextureFilter;
 import dev.flagon.platform.graphics.TextureWrap;
@@ -96,6 +99,26 @@ public final class GL11 {
     public static final int GL_UNSIGNED_INT = 0x1405;
     public static final int GL_FLOAT = 0x1406;
 
+    public static final int GL_NO_ERROR = 0;
+    public static final int GL_INVALID_ENUM = 0x0500;
+    public static final int GL_INVALID_VALUE = 0x0501;
+    public static final int GL_INVALID_OPERATION = 0x0502;
+    public static final int GL_STACK_OVERFLOW = 0x0503;
+    public static final int GL_STACK_UNDERFLOW = 0x0504;
+    public static final int GL_OUT_OF_MEMORY = 0x0505;
+    public static final int GL_INVALID_FRAMEBUFFER_OPERATION = 0x0506;
+
+    public static final int GL_VENDOR = 0x1F00;
+    public static final int GL_RENDERER = 0x1F01;
+    public static final int GL_VERSION = 0x1F02;
+    public static final int GL_EXTENSIONS = 0x1F03;
+    public static final int GL_SHADING_LANGUAGE_VERSION = 0x8B8C;
+
+    public static final int GL_MAX_TEXTURE_SIZE = 0x0D33;
+    public static final int GL_MAX_TEXTURE_UNITS = 0x84E2;
+    public static final int GL_MAX_TEXTURE_IMAGE_UNITS = 0x8872;
+    public static final int GL_MAX_VERTEX_ATTRIBS = 0x8869;
+
     public static final int GL_VERTEX_ARRAY = 0x8074;
     public static final int GL_COLOR_ARRAY = 0x8076;
     public static final int GL_TEXTURE_COORD_ARRAY = 0x8078;
@@ -174,6 +197,47 @@ public final class GL11 {
                     (enabled ? "glEnable" : "glDisable") + " does not yet emulate capability 0x"
                             + Integer.toHexString(capability));
         }
+    }
+
+    // queries
+
+    /**
+     * a context that has been lost reports GL_INVALID_OPERATION: there is no desktop error for it,
+     * and every call after it fails anyway.
+     */
+    public static int glGetError() {
+        GraphicsError error = device().takeError();
+        return switch (error) {
+            case NONE -> GL_NO_ERROR;
+            case INVALID_ENUM -> GL_INVALID_ENUM;
+            case INVALID_VALUE -> GL_INVALID_VALUE;
+            case INVALID_OPERATION, CONTEXT_LOST -> GL_INVALID_OPERATION;
+            case INVALID_FRAMEBUFFER_OPERATION -> GL_INVALID_FRAMEBUFFER_OPERATION;
+            case OUT_OF_MEMORY -> GL_OUT_OF_MEMORY;
+        };
+    }
+
+    /** @return what the host says about itself; these strings describe WebGL2, not a desktop gl */
+    public static String glGetString(int name) {
+        return device().information(switch (name) {
+            case GL_VENDOR -> GraphicsInfo.VENDOR;
+            case GL_RENDERER -> GraphicsInfo.RENDERER;
+            case GL_VERSION -> GraphicsInfo.VERSION;
+            case GL_SHADING_LANGUAGE_VERSION -> GraphicsInfo.SHADING_LANGUAGE_VERSION;
+            case GL_EXTENSIONS -> GraphicsInfo.EXTENSIONS;
+            default -> throw new UnsupportedOperationException(
+                    "glGetString does not emulate 0x" + Integer.toHexString(name));
+        });
+    }
+
+    public static int glGetInteger(int name) {
+        return device().limit(switch (name) {
+            case GL_MAX_TEXTURE_SIZE -> GraphicsLimit.MAX_TEXTURE_SIZE;
+            case GL_MAX_TEXTURE_UNITS, GL_MAX_TEXTURE_IMAGE_UNITS -> GraphicsLimit.MAX_TEXTURE_UNITS;
+            case GL_MAX_VERTEX_ATTRIBS -> GraphicsLimit.MAX_VERTEX_ATTRIBUTES;
+            default -> throw new UnsupportedOperationException(
+                    "glGetInteger does not emulate 0x" + Integer.toHexString(name));
+        });
     }
 
     // matrices

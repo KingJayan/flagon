@@ -37,6 +37,10 @@ public final class LwjglDemoProgram implements Program {
         GL11.glViewport(0, 0, Display.getWidth(), Display.getHeight());
         GL11.glDisable(GL11.GL_DEPTH_TEST);
 
+        Platforms.get().console().info("gl " + GL11.glGetString(GL11.GL_VERSION)
+                + " on " + GL11.glGetString(GL11.GL_RENDERER)
+                + ", textures up to " + GL11.glGetInteger(GL11.GL_MAX_TEXTURE_SIZE));
+
         int frame = 0;
         while (!Display.isCloseRequested() && frame < MAX_FRAMES) {
             drawFrame(frame);
@@ -47,7 +51,8 @@ public final class LwjglDemoProgram implements Program {
             }
         }
 
-        Platforms.get().console().info("rendered " + frame + " frames");
+        Platforms.get().console().info("rendered " + frame + " frames, "
+                + (GL11.glGetError() == GL11.GL_NO_ERROR ? "no gl errors" : "gl errors were raised"));
         Display.destroy();
     }
 

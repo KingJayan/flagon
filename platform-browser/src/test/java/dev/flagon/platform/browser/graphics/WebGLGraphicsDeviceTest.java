@@ -6,6 +6,9 @@ import dev.flagon.platform.graphics.AttributeType;
 import dev.flagon.platform.graphics.BlendFactor;
 import dev.flagon.platform.graphics.CompareFunc;
 import dev.flagon.platform.graphics.GraphicsDevice;
+import dev.flagon.platform.graphics.GraphicsError;
+import dev.flagon.platform.graphics.GraphicsInfo;
+import dev.flagon.platform.graphics.GraphicsLimit;
 import dev.flagon.platform.graphics.Primitive;
 import dev.flagon.platform.graphics.ShaderException;
 import dev.flagon.platform.graphics.ShaderStage;
@@ -272,14 +275,52 @@ class WebGLGraphicsDeviceTest {
     void reportsNoErrorWhereGlHasNone() {
         context.answer("getError", 0);
 
-        assertNull(device.takeError());
+        assertEquals(GraphicsError.NONE, device.takeError());
     }
 
     @Test
-    void reportsAGlErrorOnceAndThenForgetsIt() {
+    void namesTheErrorGlRaised() {
         context.answer("getError", 0x0501);
 
-        assertEquals("gl error 0x501", device.takeError());
+        assertEquals(GraphicsError.INVALID_VALUE, device.takeError());
+    }
+
+    /** a code webgl does not document is a lost context; every call after it fails anyway. */
+    @Test
+    void treatsAnUnknownCodeAsALostContext() {
+        context.answer("getError", 0x9999);
+
+        assertEquals(GraphicsError.CONTEXT_LOST, device.takeError());
+    }
+
+    @Test
+    void passesOnWhatTheHostSaysAboutItself() {
+        context.answer("getParameterString", "WebGL 2.0");
+
+        assertEquals("WebGL 2.0", device.information(GraphicsInfo.VERSION));
+    }
+
+    @Test
+    void aHostThatSaysNothingDescribesItselfAsNothing() {
+        context.answer("getParameterString", null);
+        context.answer("getSupportedExtensions", null);
+
+        assertEquals("", device.information(GraphicsInfo.RENDERER));
+        assertEquals("", device.information(GraphicsInfo.EXTENSIONS));
+    }
+
+    @Test
+    void readsEachLimitFromTheParameterThatCarriesIt() {
+        context.answer("getParameter", 8192);
+
+        assertEquals(8192, device.limit(GraphicsLimit.MAX_TEXTURE_SIZE));
+        assertEquals("getParameter(3379)", context.lastCall("getParameter"));
+
+        device.limit(GraphicsLimit.MAX_TEXTURE_UNITS);
+        assertEquals("getParameter(34930)", context.lastCall("getParameter"));
+
+        device.limit(GraphicsLimit.MAX_VERTEX_ATTRIBUTES);
+        assertEquals("getParameter(34921)", context.lastCall("getParameter"));
     }
 
     @Test

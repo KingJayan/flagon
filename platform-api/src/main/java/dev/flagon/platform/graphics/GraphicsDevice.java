@@ -168,6 +168,11 @@ public interface GraphicsDevice {
 
     int height();
 
-    /** @return the first error since the last call, or null */
-    String takeError();
+    /** @return the first error since the last call, {@link GraphicsError#NONE} when there was none */
+    GraphicsError takeError();
+
+    /** @return how the device describes itself, empty when the host will not say */
+    String information(GraphicsInfo information);
+
+    int limit(GraphicsLimit limit);
 }
