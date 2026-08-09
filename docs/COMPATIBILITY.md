@@ -86,7 +86,7 @@ close correctly.
 
 Verified in Chromium and Firefox on both backends by the `lwjgl`, `input`, `arrays`, `shaders`, `texture`, and
 `audio` demos, which assert framebuffer output, drive real keyboard, mouse and wheel events, and
-play audio through to completion. The compatibility layer is also covered by 186 JVM tests running against recording and
+play audio through to completion. The compatibility layer is also covered by 183 JVM tests running against recording and
 fake devices.
 
 | Call group | State |
