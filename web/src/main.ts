@@ -31,6 +31,7 @@ const logView = document.querySelector<HTMLPreElement>('#log')!;
 const bundleSelect = document.querySelector<HTMLSelectElement>('#bundle')!;
 const backendSelect = document.querySelector<HTMLSelectElement>('#backend')!;
 const programSelect = document.querySelector<HTMLSelectElement>('#program')!;
+const argsInput = document.querySelector<HTMLInputElement>('#args')!;
 const runButton = document.querySelector<HTMLButtonElement>('#run')!;
 const stopButton = document.querySelector<HTMLButtonElement>('#stop')!;
 const rateBadge = document.querySelector<HTMLElement>('#rate')!;
@@ -228,6 +229,19 @@ function showPrograms(entries: Entry[], selected: string): void {
   programSelect.value = selected;
 }
 
+/**
+ * what the shell's argument field means: words, with a quoted run counting as one word, the way
+ * a shell would hand them to a jvm.
+ */
+function splitArgs(line: string): string[] {
+  const found = line.match(/"[^"]*"|'[^']*'|\S+/g) ?? [];
+  return found.map((word) =>
+    (word.startsWith('"') && word.endsWith('"')) || (word.startsWith("'") && word.endsWith("'"))
+      ? word.slice(1, -1)
+      : word,
+  );
+}
+
 const request = readRequest();
 
 const proxyToken = new URLSearchParams(location.search).get('proxytoken');
@@ -236,6 +250,7 @@ if (proxyToken) {
 }
 bundleSelect.value = request.bundle;
 backendSelect.value = request.backend;
+argsInput.value = request.args.join(' ');
 offer(request.bundle, request.program);
 
 bundleSelect.addEventListener('change', () => {
@@ -248,6 +263,9 @@ runButton.addEventListener('click', () => {
   next.set('backend', backendSelect.value);
   if (programSelect.value) {
     next.set('program', programSelect.value);
+  }
+  for (const argument of splitArgs(argsInput.value)) {
+    next.append('arg', argument);
   }
   location.search = next.toString();
 });
@@ -306,6 +324,9 @@ if (!bundleUrl) {
     append('WebAssembly GC is unavailable here, so the javascript bundle is running', 'warn');
   }
   announceDownload(bundleUrl);
+  if (request.args.length > 0 && !request.program) {
+    append('arguments are handed to a named program; none was named, so they were dropped', 'warn');
+  }
   const argv = request.program ? [request.program, ...request.args] : [];
   runBundle(bundleUrl, host, argv)
     .catch((error: unknown) => {
