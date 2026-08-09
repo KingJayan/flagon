@@ -94,6 +94,8 @@ fake devices.
 | `Display` create/destroy/update/title/size/fullscreen | works |
 | Blocking `while (!isCloseRequested()) { ...; Display.update(); }` | works |
 | `GL11` clear, viewport, color/depth mask, depth func, blend func | works |
+| `glScissor` and `GL_SCISSOR_TEST` | works |
+| `glCullFace`, `glFrontFace` | works |
 | `GL11` matrix stacks: push/pop/load/translate/rotate/scale/ortho/frustum | works |
 | Immediate mode: `glBegin`/`glVertex`/`glColor`/`glTexCoord`/`glEnd` | works |
 | `GL_QUADS` | works, expanded to indexed triangles |

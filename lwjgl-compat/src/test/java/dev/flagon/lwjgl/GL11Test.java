@@ -326,6 +326,33 @@ class GL11Test {
     }
 
     @Test
+    void turnsTheScissorTestOnAndSetsItsBox() {
+        GL11.glEnable(GL11.GL_SCISSOR_TEST);
+        GL11.glScissor(10, 20, 30, 40);
+        GL11.glDisable(GL11.GL_SCISSOR_TEST);
+
+        assertEquals(java.util.List.of("scissorTest true", "scissorTest false"),
+                device.calls("scissorTest"));
+        assertEquals(java.util.List.of("scissor 10,20 30x40"), device.calls("scissor"));
+    }
+
+    @Test
+    void refusesAScissorBoxThatIsNotARectangle() {
+        assertThrows(IllegalArgumentException.class, () -> GL11.glScissor(0, 0, -1, 10));
+    }
+
+    @Test
+    void choosesWhichFaceIsCulledAndWhichWindingIsFront() {
+        GL11.glCullFace(GL11.GL_FRONT);
+        GL11.glFrontFace(GL11.GL_CW);
+
+        assertEquals(java.util.List.of("culledFaces FRONT"), device.calls("culledFaces"));
+        assertEquals(java.util.List.of("frontFace CLOCKWISE"), device.calls("frontFace"));
+        assertThrows(UnsupportedOperationException.class, () -> GL11.glCullFace(GL11.GL_BLEND));
+        assertThrows(UnsupportedOperationException.class, () -> GL11.glFrontFace(GL11.GL_BLEND));
+    }
+
+    @Test
     void namesTheFormatItCannotUploadWhateverTheBufferIs() {
         java.nio.ByteBuffer pixels = org.lwjgl.BufferUtils.createByteBuffer(4);
 

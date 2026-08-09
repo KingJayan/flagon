@@ -100,6 +100,12 @@ public interface WebGL2 extends JSObject {
     int RENDERER = 0x1F01;
     int VERSION = 0x1F02;
     int SHADING_LANGUAGE_VERSION = 0x8B8C;
+    int FRONT = 0x0404;
+    int BACK = 0x0405;
+    int FRONT_AND_BACK = 0x0408;
+    int CW = 0x0900;
+    int CCW = 0x0901;
+    int SCISSOR_TEST = 0x0C11;
 
     int UNPACK_PREMULTIPLY_ALPHA_WEBGL = 0x9241;
 
@@ -246,6 +252,12 @@ public interface WebGL2 extends JSObject {
                        int format, int type, Uint8Array pixels);
 
     void texParameteri(int target, int name, int value);
+
+    void cullFace(int face);
+
+    void frontFace(int winding);
+
+    void scissor(int x, int y, int width, int height);
 
     void drawArrays(int mode, int first, int count);
 

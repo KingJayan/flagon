@@ -5,6 +5,7 @@ import dev.flagon.platform.graphics.BlendFactor;
 import dev.flagon.platform.graphics.BufferTarget;
 import dev.flagon.platform.graphics.BufferUsage;
 import dev.flagon.platform.graphics.CompareFunc;
+import dev.flagon.platform.graphics.CullFace;
 import dev.flagon.platform.graphics.GraphicsDevice;
 import dev.flagon.platform.graphics.GraphicsError;
 import dev.flagon.platform.graphics.GraphicsInfo;
@@ -15,6 +16,7 @@ import dev.flagon.platform.graphics.ShaderException;
 import dev.flagon.platform.graphics.ShaderStage;
 import dev.flagon.platform.graphics.TextureFilter;
 import dev.flagon.platform.graphics.TextureWrap;
+import dev.flagon.platform.graphics.Winding;
 import dev.flagon.platform.UnsupportedCapabilityException;
 import dev.flagon.platform.browser.js.JsArrays;
 import org.teavm.jso.JSObject;
@@ -130,6 +132,30 @@ public final class WebGLGraphicsDevice implements GraphicsDevice {
     @Override
     public void setCullFace(boolean enabled) {
         capability(WebGL2.CULL_FACE, enabled);
+    }
+
+    @Override
+    public void setCulledFaces(CullFace faces) {
+        gl.cullFace(switch (faces) {
+            case FRONT -> WebGL2.FRONT;
+            case BACK -> WebGL2.BACK;
+            case FRONT_AND_BACK -> WebGL2.FRONT_AND_BACK;
+        });
+    }
+
+    @Override
+    public void setFrontFace(Winding winding) {
+        gl.frontFace(winding == Winding.CLOCKWISE ? WebGL2.CW : WebGL2.CCW);
+    }
+
+    @Override
+    public void setScissorTest(boolean enabled) {
+        capability(WebGL2.SCISSOR_TEST, enabled);
+    }
+
+    @Override
+    public void setScissor(int x, int y, int width, int height) {
+        gl.scissor(x, y, width, height);
     }
 
     @Override
