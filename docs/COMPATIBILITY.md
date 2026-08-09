@@ -86,7 +86,7 @@ close correctly.
 
 Verified in Chromium and Firefox on both backends by the `lwjgl`, `input`, `arrays`, `shaders`, `texture`, and
 `audio` demos, which assert framebuffer output, drive real keyboard, mouse and wheel events, and
-play audio through to completion. The compatibility layer is also covered by 170 JVM tests running against recording and
+play audio through to completion. The compatibility layer is also covered by 180 JVM tests running against recording and
 fake devices.
 
 | Call group | State |
@@ -114,6 +114,12 @@ fake devices.
 | Display lists: `glGenLists`, `glNewList`, `glCallList`, `glDeleteLists`, `glIsList` | works, see below |
 | `glPushAttrib` / `glPopAttrib` | works |
 | `glLoadMatrix`, `glMultMatrix` | works |
+| `glReadPixels`, `glCopyTexSubImage2D` | works, RGBA bytes |
+| Stencil test, func, op, mask, clear | works |
+| `glPolygonOffset`, `glLineWidth`, `glPointSize` | works |
+| `glHint` | accepted, advisory, no effect |
+| `glPolygonMode` | `GL_FILL` only |
+| `glFinish`, `glFlush` | works |
 | `glGetError` | works |
 | `glGetString` vendor/renderer/version/GLSL version/extensions | works, describes WebGL2 |
 | `glGetInteger` max texture size, texture units, vertex attributes | works |
@@ -152,10 +158,8 @@ exist. Neither do these `GL11` entry points:
 
 | Missing | Why |
 |---------|-----|
-| `glReadPixels`, `glCopyTexSubImage2D` | not written yet |
 | `glLight*`, `glMaterial*`, `glColorMaterial`, `glFog*`, `glShadeModel`, `glNormal3f`, `glNormalPointer` | fixed-function lighting and fog, which the translated pipeline does not implement |
 | `glActiveTexture`, `glClientActiveTexture` | one texture unit is bound at a time |
-| `glHint`, `glPolygonOffset`, `glLineWidth`, `glPointSize` | not written yet |
 
 If your application needs one of these, open an issue: the layer grows by what applications
 actually call.
@@ -182,6 +186,22 @@ An immediate-mode block is recorded as the vertices it built rather than as one 
 Calls whose data would have moved on by the time the list replays — `glDrawArrays`,
 `glDrawElements`, texture uploads and `glTexParameteri` — are refused inside a list rather than
 recorded, because a list that replayed them would read whatever the application had bound by then.
+
+### Reading the framebuffer back
+
+`glReadPixels` returns RGBA bytes with the bottom row first, as desktop GL does, into a
+`ByteBuffer` or packed one pixel per int into an `IntBuffer`. `glCopyTexSubImage2D` copies straight
+from the framebuffer into the bound texture without the round trip.
+
+A hint is advisory in GL and WebGL exposes none of the ones GL 1.1 names, so `glHint` accepts a
+known target and has no effect; an unknown target is still refused, because that is a mistake
+rather than a preference. `glPolygonMode` accepts `GL_FILL` only: WebGL has no wireframe raster
+mode to switch to, and quietly filling a polygon an application asked to outline would be a
+rendering bug.
+
+`glPointSize` is a uniform of the compatibility shader, which is where GL ES puts point size.
+
+The stencil state is not saved by `glPushAttrib`.
 
 ### The attribute stack
 

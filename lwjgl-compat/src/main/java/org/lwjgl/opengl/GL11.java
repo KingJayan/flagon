@@ -383,18 +383,36 @@ public final class GL11 {
     // stencil
 
     public static void glStencilFunc(int func, int reference, int mask) {
-        device().setStencilFunc(compareFunc(func, "glStencilFunc"), reference, mask);
+        CompareFunc compare = compareFunc(func, "glStencilFunc");
+        if (recording()
+                && state().record(() -> device().setStencilFunc(compare, reference, mask))) {
+            return;
+        }
+        device().setStencilFunc(compare, reference, mask);
     }
 
     public static void glStencilOp(int stencilFail, int depthFail, int pass) {
-        device().setStencilOp(stencilOp(stencilFail), stencilOp(depthFail), stencilOp(pass));
+        StencilOp onStencilFail = stencilOp(stencilFail);
+        StencilOp onDepthFail = stencilOp(depthFail);
+        StencilOp onPass = stencilOp(pass);
+        if (recording()
+                && state().record(() -> device().setStencilOp(onStencilFail, onDepthFail, onPass))) {
+            return;
+        }
+        device().setStencilOp(onStencilFail, onDepthFail, onPass);
     }
 
     public static void glStencilMask(int mask) {
+        if (recording() && state().record(() -> device().setStencilMask(mask))) {
+            return;
+        }
         device().setStencilMask(mask);
     }
 
     public static void glClearStencil(int value) {
+        if (recording() && state().record(() -> device().clearStencil(value))) {
+            return;
+        }
         device().clearStencil(value);
     }
 
@@ -414,12 +432,18 @@ public final class GL11 {
     // rasterisation
 
     public static void glPolygonOffset(float factor, float units) {
+        if (recording() && state().record(() -> device().setPolygonOffset(factor, units))) {
+            return;
+        }
         device().setPolygonOffset(factor, units);
     }
 
     public static void glLineWidth(float width) {
         if (width <= 0.0f) {
             throw new IllegalArgumentException("glLineWidth: width must be positive, got " + width);
+        }
+        if (recording() && state().record(() -> device().setLineWidth(width))) {
+            return;
         }
         device().setLineWidth(width);
     }
@@ -428,6 +452,9 @@ public final class GL11 {
     public static void glPointSize(float size) {
         if (size <= 0.0f) {
             throw new IllegalArgumentException("glPointSize: size must be positive, got " + size);
+        }
+        if (recording() && state().record(() -> state().pointSize(size))) {
+            return;
         }
         state().pointSize(size);
     }
@@ -504,6 +531,7 @@ public final class GL11 {
     }
 
     private static byte[] readPixels(int x, int y, int width, int height) {
+        state().refuseWhileRecording("glReadPixels");
         if (width < 0 || height < 0) {
             throw new IllegalArgumentException(
                     "glReadPixels: negative size " + width + "x" + height);
@@ -516,6 +544,7 @@ public final class GL11 {
                                            int framebufferX, int framebufferY,
                                            int width, int height) {
         requireTexture2D(target, "glCopyTexSubImage2D");
+        state().refuseWhileRecording("glCopyTexSubImage2D");
         requireBaseLevel(level, "glCopyTexSubImage2D");
         device().copyTextureSubImage(x, y, framebufferX, framebufferY, width, height);
     }
