@@ -86,7 +86,7 @@ close correctly.
 
 Verified in Chromium and Firefox on both backends by the `lwjgl`, `input`, `arrays`, `shaders`, `texture`, and
 `audio` demos, which assert framebuffer output, drive real keyboard, mouse and wheel events, and
-play audio through to completion. The compatibility layer is also covered by 180 JVM tests running against recording and
+play audio through to completion. The compatibility layer is also covered by 183 JVM tests running against recording and
 fake devices.
 
 | Call group | State |
@@ -101,7 +101,8 @@ fake devices.
 | `GL_QUADS` | works, expanded to indexed triangles |
 | Textures: gen/bind/delete, RGBA upload, nearest and linear filtering | works |
 | `glTexParameteri` wrapping (`GL_REPEAT`, `GL_CLAMP`, `GL_MIRRORED_REPEAT`), min and mag filters separately | works |
-| Mipmaps: levels above 0 and the mipmapped filters | refused, see below |
+| Mipmaps: uploads per level, `glGenerateMipmap`, `GL_GENERATE_MIPMAP`, base/max level | works |
+| The four mipmapped minification filters | works |
 | Alpha test | `GL_GREATER` only |
 | `Keyboard` events, held state, key names, repeat toggle | works |
 | `Mouse` events, buttons, position, movement, wheel, grabbing | works |
@@ -166,53 +167,20 @@ actually call.
 
 ### Mipmaps
 
-A texture here carries level 0 only.
+A texture carries as many levels as the application uploads. `glTexImage2D` and `glTexSubImage2D`
+write the level they are given, `glGenerateMipmap` derives every level below the base, and
+`GL_GENERATE_MIPMAP` rebuilds them after each later upload — WebGL has only the explicit call, so
+the parameter is emulated by making it.
 
-`glTexImage2D` and `glTexSubImage2D` refuse a level above the base rather than overwriting the base
-with it, and `GL_TEXTURE_MIN_FILTER` refuses the four mipmapped filters. `GL_CLAMP` is accepted as
-`GL_CLAMP_TO_EDGE`, which is the only clamp WebGL2 has.
+`GL_TEXTURE_MIN_FILTER` takes the four mipmapped filters. `GL_TEXTURE_MAG_FILTER` does not, because
+magnification samples one level and there is nothing smaller to magnify from; asking for one is a
+mistake rather than an unsupported feature, so it raises `IllegalArgumentException`.
+
+`GL_CLAMP` is accepted as `GL_CLAMP_TO_EDGE`, which is the only clamp WebGL2 has.
 
 A texture takes its parameters when its name is first bound, as desktop GL does, so re-uploading an
-image no longer resets the filtering the application chose.
-
-### Display lists
-
-A list holds the calls made between `glNewList` and `glEndList`, not a compiled form of them:
-WebGL has nothing to compile them into, and replaying the calls costs only the loop.
-
-An immediate-mode block is recorded as the vertices it built rather than as one command per
-`glVertex`, so a list costs one array copy at `glEnd` and no allocation per vertex.
-
-Calls whose data would have moved on by the time the list replays — `glDrawArrays`,
-`glDrawElements`, texture uploads and `glTexParameteri` — are refused inside a list rather than
-recorded, because a list that replayed them would read whatever the application had bound by then.
-
-### Reading the framebuffer back
-
-`glReadPixels` returns RGBA bytes with the bottom row first, as desktop GL does, into a
-`ByteBuffer` or packed one pixel per int into an `IntBuffer`. `glCopyTexSubImage2D` copies straight
-from the framebuffer into the bound texture without the round trip.
-
-A hint is advisory in GL and WebGL exposes none of the ones GL 1.1 names, so `glHint` accepts a
-known target and has no effect; an unknown target is still refused, because that is a mistake
-rather than a preference. `glPolygonMode` accepts `GL_FILL` only: WebGL has no wireframe raster
-mode to switch to, and quietly filling a polygon an application asked to outline would be a
-rendering bug.
-
-`glPointSize` is a uniform of the compatibility shader, which is where GL ES puts point size.
-
-The stencil state is not saved by `glPushAttrib`.
-
-### The attribute stack
-
-`glPushAttrib` saves the whole of the state the layer mirrors and `glPopAttrib` restores only the
-groups the mask named, as desktop GL does. `GL_ENABLE_BIT`, `GL_COLOR_BUFFER_BIT`,
-`GL_DEPTH_BUFFER_BIT`, `GL_CURRENT_BIT`, `GL_VIEWPORT_BIT`, `GL_SCISSOR_BIT`, `GL_TRANSFORM_BIT`,
-`GL_TEXTURE_BIT` and `GL_POLYGON_BIT` are honoured.
-
-The state `glGet` reports comes from that same mirror, not from the host: WebGL does not report
-everything desktop GL does, and a mirror the setters keep current answers uniformly on both
-backends.
+image no longer resets the filtering the application chose. Those defaults are `GL_NEAREST`
+filtering on both axes, so a texture with only a base level samples correctly without being told to.
 
 ### GL_QUADS
 

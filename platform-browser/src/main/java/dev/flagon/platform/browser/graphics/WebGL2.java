@@ -84,6 +84,12 @@ public interface WebGL2 extends JSObject {
     int REPEAT = 0x2901;
     int CLAMP_TO_EDGE = 0x812F;
     int MIRRORED_REPEAT = 0x8370;
+    int NEAREST_MIPMAP_NEAREST = 0x2700;
+    int LINEAR_MIPMAP_NEAREST = 0x2701;
+    int NEAREST_MIPMAP_LINEAR = 0x2702;
+    int LINEAR_MIPMAP_LINEAR = 0x2703;
+    int TEXTURE_BASE_LEVEL = 0x813C;
+    int TEXTURE_MAX_LEVEL = 0x813D;
     int TEXTURE0 = 0x84C0;
 
     int ARRAY_BUFFER = 0x8892;
@@ -282,6 +288,8 @@ public interface WebGL2 extends JSObject {
     void finish();
 
     void flush();
+
+    void generateMipmap(int target);
 
     void cullFace(int face);
 
