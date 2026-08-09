@@ -9,7 +9,10 @@ public interface RenderState {
 
     float[] projection();
 
-    boolean isTextureEnabled();
+    boolean isTextureEnabled(int unit);
+
+    /** the texture environment mode: 0 modulate, 1 replace, 2 add. */
+    int textureEnv(int unit);
 
     boolean isAlphaTestEnabled();
 
@@ -23,9 +26,9 @@ public interface RenderState {
 
     float alpha();
 
-    float s();
+    float s(int unit);
 
-    float t();
+    float t(int unit);
 
     float pointSize();
 }

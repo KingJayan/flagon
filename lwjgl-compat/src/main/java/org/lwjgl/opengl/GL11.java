@@ -869,11 +869,16 @@ public final class GL11 {
     }
 
     public static void glTexCoord2f(float s, float t) {
+        texCoord(0, s, t);
+    }
+
+    /** the coordinate belongs to a unit; {@link GL13#glMultiTexCoord2f} names a different one. */
+    static void texCoord(int unit, float s, float t) {
         if (recording() && !state().isBuilding()
-                && state().record(() -> state().texCoord(s, t))) {
+                && state().record(() -> state().texCoord(unit, s, t))) {
             return;
         }
-        state().texCoord(s, t);
+        state().texCoord(unit, s, t);
     }
 
     // vertex arrays
@@ -912,11 +917,11 @@ public final class GL11 {
     }
 
     public static void glTexCoordPointer(int size, int stride, FloatBuffer pointer) {
-        state().arrays().texCoord().pointAt(pointer, size, AttributeType.FLOAT, false, stride);
+        state().arrays().texCoord(state().clientActiveTexture()).pointAt(pointer, size, AttributeType.FLOAT, false, stride);
     }
 
     public static void glTexCoordPointer(int size, int type, int stride, long offset) {
-        pointIntoBuffer(state().arrays().texCoord(), size,
+        pointIntoBuffer(state().arrays().texCoord(state().clientActiveTexture()), size,
                 componentType(type, "glTexCoordPointer"), false, stride, offset,
                 "glTexCoordPointer");
     }
@@ -954,7 +959,7 @@ public final class GL11 {
         return switch (array) {
             case GL_VERTEX_ARRAY -> arrays.position();
             case GL_COLOR_ARRAY -> arrays.color();
-            case GL_TEXTURE_COORD_ARRAY -> arrays.texCoord();
+            case GL_TEXTURE_COORD_ARRAY -> arrays.texCoord(state().clientActiveTexture());
             default -> throw new UnsupportedOperationException(
                     call + " does not yet emulate array 0x" + Integer.toHexString(array));
         };

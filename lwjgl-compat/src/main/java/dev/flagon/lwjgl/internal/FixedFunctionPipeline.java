@@ -11,8 +11,8 @@ import dev.flagon.platform.graphics.IndexType;
  */
 public final class FixedFunctionPipeline {
 
-    /** floats per vertex: xyz, rgba, st. */
-    public static final int VERTEX_FLOATS = 9;
+    /** floats per vertex: xyz, rgba, then st for each texture unit. */
+    public static final int VERTEX_FLOATS = 7 + 2 * VertexArrays.UNITS;
 
     private static final int VERTEX_STRIDE = VERTEX_FLOATS * Float.BYTES;
     private static final int COLOR_OFFSET = 3 * Float.BYTES;
@@ -24,18 +24,24 @@ public final class FixedFunctionPipeline {
 
             layout(location = 0) in vec3 in_position;
             layout(location = 1) in vec4 in_color;
-            layout(location = 2) in vec2 in_texCoord;
+            layout(location = 2) in vec2 in_texCoord0;
+            layout(location = 3) in vec2 in_texCoord1;
+            layout(location = 4) in vec2 in_texCoord2;
+            layout(location = 5) in vec2 in_texCoord3;
 
             uniform mat4 u_modelView;
             uniform mat4 u_projection;
             uniform float u_pointSize;
 
             out vec4 v_color;
-            out vec2 v_texCoord;
+            out vec2 v_texCoord[4];
 
             void main() {
                 v_color = in_color;
-                v_texCoord = in_texCoord;
+                v_texCoord[0] = in_texCoord0;
+                v_texCoord[1] = in_texCoord1;
+                v_texCoord[2] = in_texCoord2;
+                v_texCoord[3] = in_texCoord3;
                 gl_PointSize = u_pointSize;
                 gl_Position = u_projection * u_modelView * vec4(in_position, 1.0);
             }
@@ -46,19 +52,44 @@ public final class FixedFunctionPipeline {
             precision highp float;
 
             in vec4 v_color;
-            in vec2 v_texCoord;
+            in vec2 v_texCoord[4];
 
-            uniform sampler2D u_texture;
-            uniform bool u_textureEnabled;
+            uniform sampler2D u_texture0;
+            uniform sampler2D u_texture1;
+            uniform sampler2D u_texture2;
+            uniform sampler2D u_texture3;
+            uniform bool u_textureEnabled[4];
+            uniform int u_textureEnv[4];
             uniform bool u_alphaTestEnabled;
             uniform float u_alphaTestThreshold;
 
             out vec4 out_color;
 
+            // gl combines the units in order, each one taking the result of the last as its
+            // incoming fragment. the modes are GL_MODULATE, GL_REPLACE and GL_ADD.
+            vec4 combine(vec4 incoming, vec4 sampled, int mode) {
+                if (mode == 1) {
+                    return sampled;
+                }
+                if (mode == 2) {
+                    return vec4(incoming.rgb + sampled.rgb, incoming.a * sampled.a);
+                }
+                return incoming * sampled;
+            }
+
             void main() {
                 vec4 color = v_color;
-                if (u_textureEnabled) {
-                    color *= texture(u_texture, v_texCoord);
+                if (u_textureEnabled[0]) {
+                    color = combine(color, texture(u_texture0, v_texCoord[0]), u_textureEnv[0]);
+                }
+                if (u_textureEnabled[1]) {
+                    color = combine(color, texture(u_texture1, v_texCoord[1]), u_textureEnv[1]);
+                }
+                if (u_textureEnabled[2]) {
+                    color = combine(color, texture(u_texture2, v_texCoord[2]), u_textureEnv[2]);
+                }
+                if (u_textureEnabled[3]) {
+                    color = combine(color, texture(u_texture3, v_texCoord[3]), u_textureEnv[3]);
                 }
                 // gl's alpha test discards, it does not blend; discard is the faithful mapping
                 if (u_alphaTestEnabled && color.a <= u_alphaTestThreshold) {
@@ -78,8 +109,8 @@ public final class FixedFunctionPipeline {
     private final int modelViewUniform;
     private final int projectionUniform;
     private final int pointSizeUniform;
-    private final int textureUniform;
-    private final int textureEnabledUniform;
+    private final int[] textureEnabledUniforms = new int[VertexArrays.UNITS];
+    private final int[] textureEnvUniforms = new int[VertexArrays.UNITS];
     private final int alphaTestEnabledUniform;
     private final int alphaTestThresholdUniform;
 
@@ -93,13 +124,18 @@ public final class FixedFunctionPipeline {
         modelViewUniform = device.uniformLocation(program, "u_modelView");
         projectionUniform = device.uniformLocation(program, "u_projection");
         pointSizeUniform = device.uniformLocation(program, "u_pointSize");
-        textureUniform = device.uniformLocation(program, "u_texture");
-        textureEnabledUniform = device.uniformLocation(program, "u_textureEnabled");
+        for (int unit = 0; unit < VertexArrays.UNITS; unit++) {
+            textureEnabledUniforms[unit] =
+                    device.uniformLocation(program, "u_textureEnabled[" + unit + "]");
+            textureEnvUniforms[unit] = device.uniformLocation(program, "u_textureEnv[" + unit + "]");
+        }
         alphaTestEnabledUniform = device.uniformLocation(program, "u_alphaTestEnabled");
         alphaTestThresholdUniform = device.uniformLocation(program, "u_alphaTestThreshold");
 
         device.useProgram(program);
-        device.uniform1i(textureUniform, 0);
+        for (int unit = 0; unit < VertexArrays.UNITS; unit++) {
+            device.uniform1i(device.uniformLocation(program, "u_texture" + unit), unit);
+        }
     }
 
     /** uploads and draws {@code vertexCount} vertices of interleaved data. */
@@ -120,8 +156,10 @@ public final class FixedFunctionPipeline {
                 VERTEX_STRIDE, 0);
         device.attributePointer(VertexArrays.COLOR, 4, AttributeType.FLOAT, false,
                 VERTEX_STRIDE, COLOR_OFFSET);
-        device.attributePointer(VertexArrays.TEX_COORD, 2, AttributeType.FLOAT, false,
-                VERTEX_STRIDE, TEX_COORD_OFFSET);
+        for (int unit = 0; unit < VertexArrays.UNITS; unit++) {
+            device.attributePointer(VertexArrays.TEX_COORD + unit, 2, AttributeType.FLOAT, false,
+                    VERTEX_STRIDE, TEX_COORD_OFFSET + unit * 2 * Float.BYTES);
+        }
 
         issue(mode, 0, drawable);
     }
@@ -173,7 +211,10 @@ public final class FixedFunctionPipeline {
         device.uniformMatrix4(modelViewUniform, render.modelView());
         device.uniformMatrix4(projectionUniform, render.projection());
         device.uniform1f(pointSizeUniform, render.pointSize());
-        device.uniform1i(textureEnabledUniform, render.isTextureEnabled() ? 1 : 0);
+        for (int unit = 0; unit < VertexArrays.UNITS; unit++) {
+            device.uniform1i(textureEnabledUniforms[unit], render.isTextureEnabled(unit) ? 1 : 0);
+            device.uniform1i(textureEnvUniforms[unit], render.textureEnv(unit));
+        }
         device.uniform1i(alphaTestEnabledUniform, render.isAlphaTestEnabled() ? 1 : 0);
         device.uniform1f(alphaTestThresholdUniform, render.alphaTestThreshold());
     }
@@ -182,7 +223,10 @@ public final class FixedFunctionPipeline {
         bindSlot(VertexArrays.POSITION, arrays.position(), 0.0f, 0.0f, 0.0f, 1.0f);
         bindSlot(VertexArrays.COLOR, arrays.color(),
                 render.red(), render.green(), render.blue(), render.alpha());
-        bindSlot(VertexArrays.TEX_COORD, arrays.texCoord(), render.s(), render.t(), 0.0f, 1.0f);
+        for (int unit = 0; unit < VertexArrays.UNITS; unit++) {
+            bindSlot(VertexArrays.TEX_COORD + unit, arrays.texCoord(unit),
+                    render.s(unit), render.t(unit), 0.0f, 1.0f);
+        }
     }
 
     /**
