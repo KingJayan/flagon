@@ -86,7 +86,7 @@ close correctly.
 
 Verified in Chromium and Firefox on both backends by the `lwjgl`, `input`, `arrays`, `shaders`, `texture`, and
 `audio` demos, which assert framebuffer output, drive real keyboard, mouse and wheel events, and
-play audio through to completion. The compatibility layer is also covered by 157 JVM tests running against recording and
+play audio through to completion. The compatibility layer is also covered by 170 JVM tests running against recording and
 fake devices.
 
 | Call group | State |
@@ -111,9 +111,13 @@ fake devices.
 | Client arrays | works |
 | `glDrawArrays`, `glDrawElements` | works, except indexed `GL_QUADS` |
 | `GL15` buffer objects | works |
+| Display lists: `glGenLists`, `glNewList`, `glCallList`, `glDeleteLists`, `glIsList` | works, see below |
+| `glPushAttrib` / `glPopAttrib` | works |
+| `glLoadMatrix`, `glMultMatrix` | works |
 | `glGetError` | works |
 | `glGetString` vendor/renderer/version/GLSL version/extensions | works, describes WebGL2 |
 | `glGetInteger` max texture size, texture units, vertex attributes | works |
+| `glGetInteger`, `glGetFloat`, `glGetBoolean`, `glIsEnabled` of state the layer sets | works, answered from the mirror |
 | Any other `glGetInteger`/`glGetString` name | refused |
 | `glNormalPointer`, `glIndexPointer` | not emulated |
 | Lighting, fog, display lists, `glTexEnv` | not emulated |
@@ -149,11 +153,8 @@ exist. Neither do these `GL11` entry points:
 | Missing | Why |
 |---------|-----|
 | `glReadPixels`, `glCopyTexSubImage2D` | not written yet |
-| `glNewList`, `glCallList`, `glDeleteLists` | display lists; the immediate-mode path rebuilds each frame instead |
 | `glLight*`, `glMaterial*`, `glColorMaterial`, `glFog*`, `glShadeModel`, `glNormal3f`, `glNormalPointer` | fixed-function lighting and fog, which the translated pipeline does not implement |
-| `glPushAttrib`, `glPopAttrib` | the attribute stack is not tracked |
 | `glActiveTexture`, `glClientActiveTexture` | one texture unit is bound at a time |
-| `glLoadMatrix*`, `glMultMatrix*` | the matrix stack is driven by the transform calls only |
 | `glHint`, `glPolygonOffset`, `glLineWidth`, `glPointSize` | not written yet |
 
 If your application needs one of these, open an issue: the layer grows by what applications
@@ -169,6 +170,29 @@ with it, and `GL_TEXTURE_MIN_FILTER` refuses the four mipmapped filters. `GL_CLA
 
 A texture takes its parameters when its name is first bound, as desktop GL does, so re-uploading an
 image no longer resets the filtering the application chose.
+
+### Display lists
+
+A list holds the calls made between `glNewList` and `glEndList`, not a compiled form of them:
+WebGL has nothing to compile them into, and replaying the calls costs only the loop.
+
+An immediate-mode block is recorded as the vertices it built rather than as one command per
+`glVertex`, so a list costs one array copy at `glEnd` and no allocation per vertex.
+
+Calls whose data would have moved on by the time the list replays — `glDrawArrays`,
+`glDrawElements`, texture uploads and `glTexParameteri` — are refused inside a list rather than
+recorded, because a list that replayed them would read whatever the application had bound by then.
+
+### The attribute stack
+
+`glPushAttrib` saves the whole of the state the layer mirrors and `glPopAttrib` restores only the
+groups the mask named, as desktop GL does. `GL_ENABLE_BIT`, `GL_COLOR_BUFFER_BIT`,
+`GL_DEPTH_BUFFER_BIT`, `GL_CURRENT_BIT`, `GL_VIEWPORT_BIT`, `GL_SCISSOR_BIT`, `GL_TRANSFORM_BIT`,
+`GL_TEXTURE_BIT` and `GL_POLYGON_BIT` are honoured.
+
+The state `glGet` reports comes from that same mirror, not from the host: WebGL does not report
+everything desktop GL does, and a mirror the setters keep current answers uniformly on both
+backends.
 
 ### GL_QUADS
 

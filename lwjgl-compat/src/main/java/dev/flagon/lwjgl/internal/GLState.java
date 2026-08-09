@@ -3,9 +3,11 @@ package dev.flagon.lwjgl.internal;
 import dev.flagon.platform.graphics.BlendFactor;
 import dev.flagon.platform.graphics.BufferTarget;
 import dev.flagon.platform.graphics.CompareFunc;
+import dev.flagon.platform.graphics.CullFace;
 import dev.flagon.platform.graphics.GraphicsDevice;
 import dev.flagon.platform.graphics.IndexType;
 import dev.flagon.platform.graphics.ShaderStage;
+import dev.flagon.platform.graphics.Winding;
 
 import java.util.ArrayDeque;
 import java.util.Deque;
@@ -14,9 +16,6 @@ import java.util.Map;
 
 /**
  * the context state gl keeps internally and exposes only through its setters.
- *
- * <p>a singleton because gl's api is a singleton; {@link #attach} is called once the display
- * exists and {@link #detach} when it is destroyed.
  */
 public final class GLState implements RenderState {
 
@@ -38,6 +37,38 @@ public final class GLState implements RenderState {
     private boolean alphaTestEnabled;
     private float alphaTestThreshold;
     private CompareFunc alphaTestFunc = CompareFunc.ALWAYS;
+
+    private boolean depthTest;
+    private boolean blend;
+    private boolean cullFaceEnabled;
+    private boolean scissorTest;
+    private float clearRed;
+    private float clearGreen;
+    private float clearBlue;
+    private float clearAlpha;
+    private double clearDepthValue = 1.0;
+    private boolean maskRed = true;
+    private boolean maskGreen = true;
+    private boolean maskBlue = true;
+    private boolean maskAlpha = true;
+    private boolean depthWrite = true;
+    private CompareFunc depthFunc = CompareFunc.LESS;
+    private BlendFactor blendSource = BlendFactor.ONE;
+    private BlendFactor blendDestination = BlendFactor.ZERO;
+    private CullFace culledFaces = CullFace.BACK;
+    private Winding frontFace = Winding.COUNTER_CLOCKWISE;
+    private int viewportX;
+    private int viewportY;
+    private int viewportWidth;
+    private int viewportHeight;
+    private int scissorX;
+    private int scissorY;
+    private int scissorWidth;
+    private int scissorHeight;
+    private int boundTexture = GraphicsDevice.NO_TEXTURE;
+
+    private final Deque<Attributes> attributeStack = new ArrayDeque<>();
+    private final DisplayLists displayLists = new DisplayLists();
 
     private float[] vertices = new float[FixedFunctionPipeline.VERTEX_FLOATS * 256];
     private int floatCount;
@@ -65,6 +96,10 @@ public final class GLState implements RenderState {
         this.pipeline = new FixedFunctionPipeline(device);
         this.attributes = new GenericArrays(device.maxAttributes());
         this.shaders = new ShaderPipeline(device, device.maxAttributes());
+        this.viewportWidth = device.width();
+        this.viewportHeight = device.height();
+        this.scissorWidth = viewportWidth;
+        this.scissorHeight = viewportHeight;
     }
 
     public static void attach(GraphicsDevice device) {
@@ -220,6 +255,10 @@ public final class GLState implements RenderState {
         vertexCount++;
     }
 
+    public boolean isBuilding() {
+        return building;
+    }
+
     public void end() {
         if (!building) {
             throw new IllegalStateException("glEnd called without glBegin");
@@ -227,6 +266,18 @@ public final class GLState implements RenderState {
         building = false;
         if (vertexCount == 0) {
             return;
+        }
+        // a list holds the vertices the block built, not the calls that built them
+        if (displayLists.isRecording()) {
+            float[] captured = java.util.Arrays.copyOf(vertices, floatCount);
+            DrawMode mode = primitive;
+            int count = vertexCount;
+            if (record(() -> {
+                pipeline.drawImmediate(mode, captured, captured.length, count, this);
+                restoreBindings();
+            })) {
+                return;
+            }
         }
         pipeline.drawImmediate(primitive, vertices, floatCount, vertexCount, this);
         restoreBindings();
@@ -296,10 +347,6 @@ public final class GLState implements RenderState {
 
     // shader programs
 
-    /**
-     * the bound program decides which pipeline a draw goes through: gl's own state feeds the
-     * fixed-function shader, and a program of the application's replaces it wholesale.
-     */
     public void useProgram(int newProgram) {
         program = newProgram;
         device.useProgram(newProgram);
@@ -313,9 +360,6 @@ public final class GLState implements RenderState {
         return attributes;
     }
 
-    /**
-     * which stage a shader name was created for
-     */
     public void trackShader(int shader, ShaderStage stage) {
         shaderStages.put(shader, stage);
     }
@@ -401,10 +445,6 @@ public final class GLState implements RenderState {
         return t;
     }
 
-    /**
-     * the shader implements GL_GREATER, which is what desktop code uses the alpha test for.
-     * any other comparison would silently render the wrong thing, so it is rejected instead.
-     */
     public void alphaFunc(CompareFunc func, float reference) {
         if (func != CompareFunc.GREATER) {
             throw new UnsupportedOperationException(
@@ -419,6 +459,228 @@ public final class GLState implements RenderState {
     }
 
     public void setBlendFunc(BlendFactor source, BlendFactor destination) {
+        blendSource = source;
+        blendDestination = destination;
         device.setBlendFunc(source, destination);
+    }
+
+    // mirrored server state
+
+    public void setDepthTest(boolean enabled) {
+        depthTest = enabled;
+        device.setDepthTest(enabled);
+    }
+
+    public void setBlend(boolean enabled) {
+        blend = enabled;
+        device.setBlend(enabled);
+    }
+
+    public void setCullFace(boolean enabled) {
+        cullFaceEnabled = enabled;
+        device.setCullFace(enabled);
+    }
+
+    public void setScissorTest(boolean enabled) {
+        scissorTest = enabled;
+        device.setScissorTest(enabled);
+    }
+
+    public void setCulledFaces(CullFace faces) {
+        culledFaces = faces;
+        device.setCulledFaces(faces);
+    }
+
+    public void setFrontFace(Winding winding) {
+        frontFace = winding;
+        device.setFrontFace(winding);
+    }
+
+    public void setDepthFunc(CompareFunc func) {
+        depthFunc = func;
+        device.setDepthFunc(func);
+    }
+
+    public void setDepthWrite(boolean enabled) {
+        depthWrite = enabled;
+        device.setDepthWrite(enabled);
+    }
+
+    public void setColorMask(boolean red, boolean green, boolean blue, boolean alpha) {
+        maskRed = red;
+        maskGreen = green;
+        maskBlue = blue;
+        maskAlpha = alpha;
+        device.setColorMask(red, green, blue, alpha);
+    }
+
+    public void clearColor(float red, float green, float blue, float alpha) {
+        clearRed = red;
+        clearGreen = green;
+        clearBlue = blue;
+        clearAlpha = alpha;
+        device.clearColor(red, green, blue, alpha);
+    }
+
+    public void clearDepth(double depth) {
+        clearDepthValue = depth;
+        device.clearDepth(depth);
+    }
+
+    public void viewport(int x, int y, int width, int height) {
+        viewportX = x;
+        viewportY = y;
+        viewportWidth = width;
+        viewportHeight = height;
+        device.viewport(x, y, width, height);
+    }
+
+    public void setScissor(int x, int y, int width, int height) {
+        scissorX = x;
+        scissorY = y;
+        scissorWidth = width;
+        scissorHeight = height;
+        device.setScissor(x, y, width, height);
+    }
+
+    public void bindTexture(int texture) {
+        boundTexture = texture;
+        device.bindTexture(0, texture);
+    }
+
+    public int boundTexture() {
+        return boundTexture;
+    }
+
+    public void deleteTexture(int texture) {
+        if (boundTexture == texture) {
+            boundTexture = GraphicsDevice.NO_TEXTURE;
+        }
+        device.deleteTexture(texture);
+    }
+
+    /** the restore path skips the validation {@link #alphaFunc} does: it was validated on the way in. */
+    void restoreAlphaFunc(CompareFunc func, float reference) {
+        alphaTestFunc = func;
+        alphaTestThreshold = reference;
+    }
+
+    // the attribute stack
+
+    public void pushAttrib(int mask) {
+        attributeStack.push(new Attributes(mask,
+                depthTest, blend, cullFaceEnabled, scissorTest, textureEnabled, alphaTestEnabled,
+                clearRed, clearGreen, clearBlue, clearAlpha, clearDepthValue,
+                maskRed, maskGreen, maskBlue, maskAlpha, depthWrite,
+                depthFunc, blendSource, blendDestination, alphaTestFunc, alphaTestThreshold,
+                culledFaces, frontFace,
+                viewportX, viewportY, viewportWidth, viewportHeight,
+                scissorX, scissorY, scissorWidth, scissorHeight,
+                red, green, blue, alpha, s, t, matrixMode, boundTexture));
+    }
+
+    public void popAttrib() {
+        if (attributeStack.isEmpty()) {
+            throw new IllegalStateException("glPopAttrib called with an empty attribute stack");
+        }
+        attributeStack.pop().restore(this);
+    }
+
+    // display lists
+
+    public DisplayLists lists() {
+        return displayLists;
+    }
+
+    /**
+     * @return true when the call belongs in the list being recorded and must not also run now
+     */
+    public boolean record(Runnable call) {
+        return displayLists.record(call);
+    }
+
+    public boolean isRecording() {
+        return displayLists.isRecording();
+    }
+
+    public void refuseWhileRecording(String call) {
+        if (displayLists.isRecording()) {
+            throw new UnsupportedOperationException(
+                    call + " cannot be compiled into a display list; call it outside "
+                            + "glNewList/glEndList");
+        }
+    }
+
+    // queries
+
+    public boolean isEnabled(int capability) {
+        return switch (capability) {
+            case 0x0B71 -> depthTest;
+            case 0x0BE2 -> blend;
+            case 0x0B44 -> cullFaceEnabled;
+            case 0x0C11 -> scissorTest;
+            case 0x0DE1 -> textureEnabled;
+            case 0x0BC0 -> alphaTestEnabled;
+            default -> throw new UnsupportedOperationException(
+                    "glIsEnabled does not emulate capability 0x" + Integer.toHexString(capability));
+        };
+    }
+
+    public int[] viewportBox() {
+        return new int[] {viewportX, viewportY, viewportWidth, viewportHeight};
+    }
+
+    public int[] scissorBox() {
+        return new int[] {scissorX, scissorY, scissorWidth, scissorHeight};
+    }
+
+    public float[] clearColorValue() {
+        return new float[] {clearRed, clearGreen, clearBlue, clearAlpha};
+    }
+
+    public float[] currentColor() {
+        return new float[] {red, green, blue, alpha};
+    }
+
+    public int matrixMode() {
+        return matrixMode;
+    }
+
+    public CompareFunc depthFunc() {
+        return depthFunc;
+    }
+
+    public BlendFactor blendSource() {
+        return blendSource;
+    }
+
+    public BlendFactor blendDestination() {
+        return blendDestination;
+    }
+
+    public CullFace culledFaces() {
+        return culledFaces;
+    }
+
+    public Winding frontFace() {
+        return frontFace;
+    }
+
+    public boolean depthWrite() {
+        return depthWrite;
+    }
+
+    public double clearDepthValue() {
+        return clearDepthValue;
+    }
+
+    // matrix loading
+
+    public void loadMatrix(float[] matrix) {
+        System.arraycopy(matrix, 0, active(), 0, 16);
+    }
+
+    public void multMatrix(float[] matrix) {
+        Matrix4.multiply(active(), matrix);
     }
 }
