@@ -171,6 +171,9 @@ public interface GraphicsDevice {
 
     void deleteTexture(int texture);
 
+    /** which unit the texture calls below act on, as {@code glActiveTexture} selects it. */
+    void activeTexture(int unit);
+
     void bindTexture(int unit, int texture);
 
     /** uploads one mipmap level; level 0 is the base image. */

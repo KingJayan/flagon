@@ -102,6 +102,13 @@ public final class GL11 {
     public static final int GL_TEXTURE_MAX_LEVEL = 0x813D;
     public static final int GL_GENERATE_MIPMAP = 0x8191;
 
+    public static final int GL_TEXTURE_ENV = 0x2300;
+    public static final int GL_TEXTURE_ENV_MODE = 0x2200;
+    public static final int GL_MODULATE = 0x2100;
+    public static final int GL_ADD = 0x0104;
+    public static final int GL_DECAL = 0x2101;
+    public static final int GL_COMBINE = 0x8570;
+
     public static final int GL_RGBA = 0x1908;
 
     public static final int GL_BYTE = 0x1400;
@@ -869,11 +876,16 @@ public final class GL11 {
     }
 
     public static void glTexCoord2f(float s, float t) {
+        texCoord(0, s, t);
+    }
+
+    /** the coordinate belongs to a unit; {@link GL13#glMultiTexCoord2f} names a different one. */
+    static void texCoord(int unit, float s, float t) {
         if (recording() && !state().isBuilding()
-                && state().record(() -> state().texCoord(s, t))) {
+                && state().record(() -> state().texCoord(unit, s, t))) {
             return;
         }
-        state().texCoord(s, t);
+        state().texCoord(unit, s, t);
     }
 
     // vertex arrays
@@ -912,11 +924,11 @@ public final class GL11 {
     }
 
     public static void glTexCoordPointer(int size, int stride, FloatBuffer pointer) {
-        state().arrays().texCoord().pointAt(pointer, size, AttributeType.FLOAT, false, stride);
+        state().arrays().texCoord(state().clientActiveTexture()).pointAt(pointer, size, AttributeType.FLOAT, false, stride);
     }
 
     public static void glTexCoordPointer(int size, int type, int stride, long offset) {
-        pointIntoBuffer(state().arrays().texCoord(), size,
+        pointIntoBuffer(state().arrays().texCoord(state().clientActiveTexture()), size,
                 componentType(type, "glTexCoordPointer"), false, stride, offset,
                 "glTexCoordPointer");
     }
@@ -954,7 +966,7 @@ public final class GL11 {
         return switch (array) {
             case GL_VERTEX_ARRAY -> arrays.position();
             case GL_COLOR_ARRAY -> arrays.color();
-            case GL_TEXTURE_COORD_ARRAY -> arrays.texCoord();
+            case GL_TEXTURE_COORD_ARRAY -> arrays.texCoord(state().clientActiveTexture());
             default -> throw new UnsupportedOperationException(
                     call + " does not yet emulate array 0x" + Integer.toHexString(array));
         };
@@ -1038,6 +1050,38 @@ public final class GL11 {
         if (enabled) {
             device().generateMipmap();
         }
+    }
+
+    /**
+     * the texture environment decides how a unit's sample is combined with what came before it.
+     * GL_MODULATE, GL_REPLACE and GL_ADD are the modes the compatibility shader implements.
+     */
+    public static void glTexEnvi(int target, int name, int value) {
+        if (target != GL_TEXTURE_ENV) {
+            throw new UnsupportedOperationException(
+                    "glTexEnvi emulates GL_TEXTURE_ENV only, got 0x" + Integer.toHexString(target));
+        }
+        if (name != GL_TEXTURE_ENV_MODE) {
+            throw new UnsupportedOperationException(
+                    "glTexEnvi does not emulate parameter 0x" + Integer.toHexString(name));
+        }
+        int mode = switch (value) {
+            case GL_MODULATE -> 0;
+            case GL_REPLACE -> 1;
+            case GL_ADD -> 2;
+            default -> throw new UnsupportedOperationException(
+                    "glTexEnvi does not emulate mode 0x" + Integer.toHexString(value)
+                            + "; GL_MODULATE, GL_REPLACE and GL_ADD are the modes the "
+                            + "compatibility shader implements");
+        };
+        if (recording() && state().record(() -> state().setTextureEnv(mode))) {
+            return;
+        }
+        state().setTextureEnv(mode);
+    }
+
+    public static void glTexEnvf(int target, int name, float value) {
+        glTexEnvi(target, name, (int) value);
     }
 
     /** builds every level below the base from it. */

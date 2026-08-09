@@ -1,20 +1,27 @@
 package dev.flagon.lwjgl.internal;
 
 /**
- * the three client arrays the fixed-function shader has attributes for
+ the client arrays the fixed-function shader has attributes for: a position, a colour, and one
+ texture coordinate per texture unit
  */
 public final class VertexArrays {
+
+    public static final int UNITS = 4;
 
     public static final int POSITION = 0;
     public static final int COLOR = 1;
     public static final int TEX_COORD = 2;
-    public static final int SLOTS = 3;
+    public static final int SLOTS = TEX_COORD + UNITS;
 
-    private final ClientArray[] slots = {
-            new ClientArray(3),
-            new ClientArray(4),
-            new ClientArray(2),
-    };
+    private final ClientArray[] slots = new ClientArray[SLOTS];
+
+    public VertexArrays() {
+        slots[POSITION] = new ClientArray(3);
+        slots[COLOR] = new ClientArray(4);
+        for (int unit = 0; unit < UNITS; unit++) {
+            slots[TEX_COORD + unit] = new ClientArray(2);
+        }
+    }
 
     public ClientArray slot(int slot) {
         return slots[slot];
@@ -28,8 +35,17 @@ public final class VertexArrays {
         return slots[COLOR];
     }
 
-    public ClientArray texCoord() {
-        return slots[TEX_COORD];
+    public ClientArray texCoord(int unit) {
+        return slots[TEX_COORD + requireUnit(unit)];
+    }
+
+    public static int requireUnit(int unit) {
+        if (unit < 0 || unit >= UNITS) {
+            throw new UnsupportedOperationException(
+                    "texture unit " + unit + " is out of range; the fixed-function pipeline here "
+                            + "has " + UNITS + " units");
+        }
+        return unit;
     }
 
     /** @return true when geometry can be drawn at all; gl draws nothing without positions */

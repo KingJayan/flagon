@@ -55,5 +55,12 @@ for (const backend of BACKENDS) {
       expectColor(await readPixel(page, 750, 290), [255, 0, 0], 'the base level, drawn one to one');
       expectColor(await readPixel(page, 724, 206), [0, 0, 255], 'a lower level, minified');
     });
+
+    test('combines two texture units through the environment mode each was given', async ({ page }) => {
+      await runDemo(page, backend);
+
+      expectColor(await readPixel(page, 830, 290), [128, 0, 0], 'unit 1 modulating unit 0');
+      expectColor(await readPixel(page, 900, 290), [128, 128, 128], 'unit 1 replacing unit 0');
+    });
   });
 }

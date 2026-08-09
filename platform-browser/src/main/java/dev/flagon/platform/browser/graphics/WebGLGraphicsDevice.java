@@ -690,6 +690,11 @@ public final class WebGLGraphicsDevice implements GraphicsDevice {
     }
 
     @Override
+    public void activeTexture(int unit) {
+        gl.activeTexture(WebGL2.TEXTURE0 + unit);
+    }
+
+    @Override
     public void bindTexture(int unit, int texture) {
         gl.activeTexture(WebGL2.TEXTURE0 + unit);
         gl.bindTexture(WebGL2.TEXTURE_2D, texture == NO_TEXTURE ? null : lookup(texture, "texture"));
