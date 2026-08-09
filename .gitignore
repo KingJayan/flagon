@@ -15,3 +15,4 @@ web/blob-report/
 vendor/
 
 .todo.md
+.vscode/settings.json
