@@ -6,6 +6,9 @@ import dev.flagon.platform.graphics.BufferTarget;
 import dev.flagon.platform.graphics.BufferUsage;
 import dev.flagon.platform.graphics.CompareFunc;
 import dev.flagon.platform.graphics.GraphicsDevice;
+import dev.flagon.platform.graphics.GraphicsError;
+import dev.flagon.platform.graphics.GraphicsInfo;
+import dev.flagon.platform.graphics.GraphicsLimit;
 import dev.flagon.platform.graphics.IndexType;
 import dev.flagon.platform.graphics.Primitive;
 import dev.flagon.platform.graphics.ShaderStage;
@@ -435,9 +438,27 @@ final class RecordingGraphicsDevice implements GraphicsDevice {
         return 480;
     }
 
+    GraphicsError nextError = GraphicsError.NONE;
+
     @Override
-    public String takeError() {
-        return null;
+    public GraphicsError takeError() {
+        GraphicsError error = nextError;
+        nextError = GraphicsError.NONE;
+        return error;
+    }
+
+    @Override
+    public String information(GraphicsInfo information) {
+        return "recorded " + information;
+    }
+
+    @Override
+    public int limit(GraphicsLimit limit) {
+        return switch (limit) {
+            case MAX_TEXTURE_SIZE -> 4096;
+            case MAX_TEXTURE_UNITS -> 16;
+            case MAX_VERTEX_ATTRIBUTES -> 8;
+        };
     }
 
     /** @return the recorded calls whose first word matches {@code name}. */

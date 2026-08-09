@@ -109,6 +109,10 @@ fake devices.
 | Client arrays | works |
 | `glDrawArrays`, `glDrawElements` | works, except indexed `GL_QUADS` |
 | `GL15` buffer objects | works |
+| `glGetError` | works |
+| `glGetString` vendor/renderer/version/GLSL version/extensions | works, describes WebGL2 |
+| `glGetInteger` max texture size, texture units, vertex attributes | works |
+| Any other `glGetInteger`/`glGetString` name | refused |
 | `glNormalPointer`, `glIndexPointer` | not emulated |
 | Lighting, fog, display lists, `glTexEnv` | not emulated |
 | `GL20` shader/program objects, uniforms and generic attributes | works |

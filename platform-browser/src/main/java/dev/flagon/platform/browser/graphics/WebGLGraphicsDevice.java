@@ -6,6 +6,9 @@ import dev.flagon.platform.graphics.BufferTarget;
 import dev.flagon.platform.graphics.BufferUsage;
 import dev.flagon.platform.graphics.CompareFunc;
 import dev.flagon.platform.graphics.GraphicsDevice;
+import dev.flagon.platform.graphics.GraphicsError;
+import dev.flagon.platform.graphics.GraphicsInfo;
+import dev.flagon.platform.graphics.GraphicsLimit;
 import dev.flagon.platform.graphics.IndexType;
 import dev.flagon.platform.graphics.Primitive;
 import dev.flagon.platform.graphics.ShaderException;
@@ -15,6 +18,8 @@ import dev.flagon.platform.graphics.TextureWrap;
 import dev.flagon.platform.UnsupportedCapabilityException;
 import dev.flagon.platform.browser.js.JsArrays;
 import org.teavm.jso.JSObject;
+import org.teavm.jso.core.JSArray;
+import org.teavm.jso.core.JSString;
 import org.teavm.jso.typedarrays.Float32Array;
 import org.teavm.jso.typedarrays.Int32Array;
 import org.teavm.jso.typedarrays.Int8Array;
@@ -37,8 +42,6 @@ public final class WebGLGraphicsDevice implements GraphicsDevice {
 
     // gl gives a texture its parameters when the name is first bound, not on every upload
     private final Set<Integer> defaulted = new HashSet<>();
-
-    private String pendingError;
 
     public WebGLGraphicsDevice(WebGL2 gl) {
         this.gl = gl;
@@ -715,13 +718,54 @@ public final class WebGLGraphicsDevice implements GraphicsDevice {
     }
 
     @Override
-    public String takeError() {
-        String pending = pendingError;
-        pendingError = null;
-        if (pending != null) {
-            return pending;
+    public GraphicsError takeError() {
+        return switch (gl.getError()) {
+            case 0 -> GraphicsError.NONE;
+            case WebGL2.INVALID_ENUM -> GraphicsError.INVALID_ENUM;
+            case WebGL2.INVALID_VALUE -> GraphicsError.INVALID_VALUE;
+            case WebGL2.INVALID_OPERATION -> GraphicsError.INVALID_OPERATION;
+            case WebGL2.INVALID_FRAMEBUFFER_OPERATION -> GraphicsError.INVALID_FRAMEBUFFER_OPERATION;
+            case WebGL2.OUT_OF_MEMORY -> GraphicsError.OUT_OF_MEMORY;
+            default -> GraphicsError.CONTEXT_LOST;
+        };
+    }
+
+    @Override
+    public String information(GraphicsInfo information) {
+        if (information == GraphicsInfo.EXTENSIONS) {
+            return extensions();
         }
-        int code = gl.getError();
-        return code == 0 ? null : "gl error 0x" + Integer.toHexString(code);
+        String said = gl.getParameterString(switch (information) {
+            case VENDOR -> WebGL2.VENDOR;
+            case RENDERER -> WebGL2.RENDERER;
+            case VERSION -> WebGL2.VERSION;
+            case SHADING_LANGUAGE_VERSION -> WebGL2.SHADING_LANGUAGE_VERSION;
+            case EXTENSIONS -> WebGL2.VENDOR;
+        });
+        return said == null ? "" : said;
+    }
+
+    private String extensions() {
+        JSArray<JSString> supported = gl.getSupportedExtensions();
+        if (supported == null) {
+            return "";
+        }
+        StringBuilder joined = new StringBuilder();
+        for (int index = 0; index < supported.getLength(); index++) {
+            if (index > 0) {
+                joined.append(' ');
+            }
+            joined.append(supported.get(index).stringValue());
+        }
+        return joined.toString();
+    }
+
+    @Override
+    public int limit(GraphicsLimit limit) {
+        return gl.getParameter(switch (limit) {
+            case MAX_TEXTURE_SIZE -> WebGL2.MAX_TEXTURE_SIZE;
+            case MAX_TEXTURE_UNITS -> WebGL2.MAX_TEXTURE_IMAGE_UNITS;
+            case MAX_VERTEX_ATTRIBUTES -> WebGL2.MAX_VERTEX_ATTRIBS;
+        });
     }
 }

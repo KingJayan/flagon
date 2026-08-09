@@ -1,7 +1,10 @@
 package dev.flagon.platform.browser.graphics;
 
+import org.teavm.jso.JSMethod;
 import org.teavm.jso.JSObject;
 import org.teavm.jso.JSProperty;
+import org.teavm.jso.core.JSArray;
+import org.teavm.jso.core.JSString;
 import org.teavm.jso.typedarrays.Float32Array;
 import org.teavm.jso.typedarrays.Int32Array;
 import org.teavm.jso.typedarrays.Int8Array;
@@ -86,6 +89,17 @@ public interface WebGL2 extends JSObject {
     int LINK_STATUS = 0x8B82;
     int VALIDATE_STATUS = 0x8B83;
     int MAX_VERTEX_ATTRIBS = 0x8869;
+    int INVALID_ENUM = 0x0500;
+    int INVALID_VALUE = 0x0501;
+    int INVALID_OPERATION = 0x0502;
+    int OUT_OF_MEMORY = 0x0505;
+    int INVALID_FRAMEBUFFER_OPERATION = 0x0506;
+    int MAX_TEXTURE_SIZE = 0x0D33;
+    int MAX_TEXTURE_IMAGE_UNITS = 0x8872;
+    int VENDOR = 0x1F00;
+    int RENDERER = 0x1F01;
+    int VERSION = 0x1F02;
+    int SHADING_LANGUAGE_VERSION = 0x8B8C;
 
     int UNPACK_PREMULTIPLY_ALPHA_WEBGL = 0x9241;
 
@@ -238,6 +252,11 @@ public interface WebGL2 extends JSObject {
     void drawElements(int mode, int count, int type, int offset);
 
     int getParameter(int name);
+
+    @JSMethod("getParameter")
+    String getParameterString(int name);
+
+    JSArray<JSString> getSupportedExtensions();
 
     int getError();
 
