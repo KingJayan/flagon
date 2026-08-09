@@ -25,7 +25,7 @@ for (const backend of BACKENDS) {
 
       await page.locator('#bundle').selectOption('example');
       await expect(page.locator('#program')).toHaveValue('');
-      await expect(page.locator('#program option')).toHaveCount(1);
+      await expect(page.locator('#program option')).toHaveCount(3);
 
       await page.locator('#run').click();
       await expect(page.getByTestId('phases').locator('li')).toHaveText(
@@ -84,18 +84,17 @@ for (const backend of BACKENDS) {
       await expect(rate).toBeHidden();
     });
 
-    test('remembers a bundle it has already booted', async ({ page }) => {
+    test('offers a bundle its programs without having run it', async ({ page }) => {
       await open(page, backend, 'bundle=example');
-      await expect(page.getByTestId('phases').locator('li')).toHaveText(
-        ['platform: browser', 'select: spinner', 'program: spinner'],
-        { timeout: 30_000 },
-      );
-
-      await page.locator('#bundle').selectOption('sandbox');
-      await expect(page.locator('#program option')).toHaveCount(1);
-      await page.locator('#bundle').selectOption('example');
       await expect(page.locator('#program option')).toHaveCount(3);
       await expect(page.locator('#program option').nth(1)).toContainText('spinner — ');
+
+      await page.locator('#bundle').selectOption('sandbox');
+      await expect(page.locator('#program option')).toHaveCount(12);
+      await expect(page.locator('#program option').nth(1)).toContainText('hello — ');
+
+      await page.locator('#bundle').selectOption('example');
+      await expect(page.locator('#program option')).toHaveCount(3);
     });
   });
 }

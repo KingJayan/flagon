@@ -132,6 +132,26 @@
           <version>3.5.2</version>
         </plugin>
         <plugin>
+          <groupId>org.codehaus.mojo</groupId>
+          <artifactId>exec-maven-plugin</artifactId>
+          <version>3.5.0</version>
+          <executions>
+            <execution>
+              <id>write-catalog</id>
+              <phase>prepare-package</phase>
+              <goals>
+                <goal>java</goal>
+              </goals>
+              <configuration>
+                <mainClass>${flagon.bundle.catalogClass}</mainClass>
+                <arguments>
+                  <argument>${flagon.bundleOutput}/${flagon.bundle.name}.catalog.json</argument>
+                </arguments>
+              </configuration>
+            </execution>
+          </executions>
+        </plugin>
+        <plugin>
           <groupId>org.teavm</groupId>
           <artifactId>teavm-maven-plugin</artifactId>
           <version>${teavm.version}</version>
@@ -161,9 +181,6 @@
     </pluginManagement>
 
     <plugins>
-      <!-- the loader a wasm module needs is a resource of the compiler, so it is unpacked
-           beside the bundles rather than vendored and left to drift from the toolchain. the
-           shell serves it either way, so a -Pjs build emits it too -->
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-dependency-plugin</artifactId>
