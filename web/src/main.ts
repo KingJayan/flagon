@@ -44,6 +44,9 @@ function setState(state: State): void {
   stateBadge.textContent = state;
   stateBadge.setAttribute('aria-label', `run state: ${state}`);
   stopButton.disabled = state !== 'running';
+  if (state !== 'running') {
+    relent();
+  }
   progress.hidden = state !== 'loading' && state !== 'booting';
   if (state === 'running') {
     watchFrames();
@@ -270,10 +273,39 @@ runButton.addEventListener('click', () => {
   location.search = next.toString();
 });
 
+/**
+ * stop is a request: it sets the flag Display.isCloseRequested() reports, and a program that
+ * never asks never stops. so the button stays live, and if the request goes untaken the shell
+ * says so and offers the one thing that always works.
+ */
+const GRACE = 4000;
+
+let insisting: number | undefined;
+
+function relent(): void {
+  if (insisting !== undefined) {
+    clearTimeout(insisting);
+    insisting = undefined;
+  }
+  delete stopButton.dataset.force;
+  stopButton.textContent = 'Stop';
+}
+
 stopButton.addEventListener('click', () => {
-  stopButton.disabled = true;
+  if (stopButton.dataset.force === 'true') {
+    location.reload();
+    return;
+  }
   window.__flagonCloseRequested = true;
-  append('close requested; the program stops at its next frame');
+  append('close requested; a program that polls Display.isCloseRequested() stops at its next frame');
+  insisting = window.setTimeout(() => {
+    if (app.dataset.state !== 'running') {
+      return;
+    }
+    stopButton.dataset.force = 'true';
+    stopButton.textContent = 'Reload';
+    append('the program has not taken the close request; only reloading the page ends it', 'warn');
+  }, GRACE);
 });
 
 const host: HostBridge = {
