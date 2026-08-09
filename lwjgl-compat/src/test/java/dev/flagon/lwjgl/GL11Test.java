@@ -8,6 +8,7 @@ import org.lwjgl.opengl.GL11;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -359,5 +360,164 @@ class GL11Test {
         assertThrows(UnsupportedOperationException.class,
                 () -> GL11.glTexImage2D(GL11.GL_TEXTURE_2D, 0, GL11.GL_RGBA, 1, 1, 0,
                         GL11.GL_RGBA, GL11.GL_FLOAT, pixels));
+    }
+
+    @Test
+    void aDisplayListReplaysTheCallsItRecorded() {
+        int list = GL11.glGenLists(1);
+        GL11.glNewList(list, GL11.GL_COMPILE);
+        GL11.glClearColor(0.25f, 0.5f, 0.75f, 1.0f);
+        GL11.glEndList();
+
+        assertEquals(java.util.List.of(), device.calls("clearColor"));
+
+        GL11.glCallList(list);
+        assertEquals(java.util.List.of("clearColor 0.25 0.5 0.75 1.0"), device.calls("clearColor"));
+    }
+
+    @Test
+    void compileAndExecuteBothRecordsAndRuns() {
+        int list = GL11.glGenLists(1);
+        GL11.glNewList(list, GL11.GL_COMPILE_AND_EXECUTE);
+        GL11.glClearColor(1.0f, 0.0f, 0.0f, 1.0f);
+        GL11.glEndList();
+
+        assertEquals(1, device.calls("clearColor").size());
+        GL11.glCallList(list);
+        assertEquals(2, device.calls("clearColor").size());
+    }
+
+    @Test
+    void aListHoldsTheVerticesAQuadBlockBuiltRatherThanEachCall() {
+        int list = GL11.glGenLists(1);
+        GL11.glNewList(list, GL11.GL_COMPILE);
+        GL11.glBegin(GL11.GL_TRIANGLES);
+        GL11.glColor3f(1.0f, 0.0f, 0.0f);
+        GL11.glVertex2f(1.0f, 2.0f);
+        GL11.glEnd();
+        GL11.glEndList();
+
+        assertEquals(java.util.List.of(), device.calls("drawArrays"));
+
+        GL11.glCallList(list);
+        assertEquals(java.util.List.of("drawArrays TRIANGLES 0 1"), device.calls("drawArrays"));
+        assertEquals(1.0f, device.lastBufferData[3], 1.0e-6f);
+    }
+
+    @Test
+    void aCallToAListThatWasNeverBuiltIsIgnored() {
+        GL11.glCallList(4242);
+        assertEquals(java.util.List.of(), device.calls("drawArrays"));
+    }
+
+    @Test
+    void deletingAListForgetsIt() {
+        int list = GL11.glGenLists(1);
+        GL11.glNewList(list, GL11.GL_COMPILE);
+        GL11.glClearColor(1.0f, 0.0f, 0.0f, 1.0f);
+        GL11.glEndList();
+        assertTrue(GL11.glIsList(list));
+
+        GL11.glDeleteLists(list, 1);
+        assertFalse(GL11.glIsList(list));
+        GL11.glCallList(list);
+        assertEquals(java.util.List.of(), device.calls("clearColor"));
+    }
+
+    @Test
+    void refusesToCompileACallWhoseDataWouldHaveMovedOnByTheReplay() {
+        int list = GL11.glGenLists(1);
+        GL11.glNewList(list, GL11.GL_COMPILE);
+        assertThrows(UnsupportedOperationException.class,
+                () -> GL11.glDrawArrays(GL11.GL_TRIANGLES, 0, 3));
+        assertThrows(UnsupportedOperationException.class,
+                () -> GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_S,
+                        GL11.GL_REPEAT));
+        GL11.glEndList();
+    }
+
+    @Test
+    void loadsAndMultipliesTheMatrixTheApplicationSupplies() {
+        float[] scale = new float[16];
+        scale[0] = 2.0f;
+        scale[5] = 2.0f;
+        scale[10] = 2.0f;
+        scale[15] = 1.0f;
+
+        GL11.glMatrixMode(GL11.GL_MODELVIEW);
+        GL11.glLoadMatrixf(scale);
+        float[] read = new float[16];
+        GL11.glGetFloat(GL11.GL_MODELVIEW_MATRIX, java.nio.FloatBuffer.wrap(read));
+        assertEquals(2.0f, read[0], 1.0e-6f);
+
+        GL11.glMultMatrixf(scale);
+        GL11.glGetFloat(GL11.GL_MODELVIEW_MATRIX, java.nio.FloatBuffer.wrap(read));
+        assertEquals(4.0f, read[0], 1.0e-6f);
+    }
+
+    @Test
+    void aLoadedMatrixIsCopiedSoTheCallerMayReuseTheArray() {
+        float[] matrix = new float[16];
+        matrix[0] = 3.0f;
+        GL11.glLoadMatrixf(matrix);
+        matrix[0] = 9.0f;
+
+        float[] read = new float[16];
+        GL11.glGetFloat(GL11.GL_MODELVIEW_MATRIX, java.nio.FloatBuffer.wrap(read));
+        assertEquals(3.0f, read[0], 1.0e-6f);
+    }
+
+    @Test
+    void popAttribPutsBackOnlyTheGroupsTheMaskNamed() {
+        GL11.glEnable(GL11.GL_DEPTH_TEST);
+        GL11.glDepthMask(false);
+        GL11.glPushAttrib(GL11.GL_ENABLE_BIT);
+        GL11.glDisable(GL11.GL_DEPTH_TEST);
+        GL11.glDepthMask(true);
+        GL11.glPopAttrib();
+
+        assertTrue(GL11.glIsEnabled(GL11.GL_DEPTH_TEST));
+        assertTrue(GL11.glGetBoolean(GL11.GL_DEPTH_WRITEMASK));
+    }
+
+    @Test
+    void popAttribRestoresTheColorBufferGroupThroughToTheDevice() {
+        GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
+        GL11.glPushAttrib(GL11.GL_COLOR_BUFFER_BIT);
+        GL11.glBlendFunc(GL11.GL_ONE, GL11.GL_ZERO);
+        GL11.glPopAttrib();
+
+        assertEquals("blendFunc SRC_ALPHA ONE_MINUS_SRC_ALPHA",
+                device.calls("blendFunc").getLast());
+        assertEquals(GL11.GL_SRC_ALPHA, GL11.glGetInteger(GL11.GL_BLEND_SRC));
+    }
+
+    @Test
+    void anEmptyAttributeStackSaysSoRatherThanRestoringNothing() {
+        assertThrows(IllegalStateException.class, GL11::glPopAttrib);
+    }
+
+    @Test
+    void reportsTheStateItWasSetTo() {
+        GL11.glViewport(10, 20, 30, 40);
+        GL11.glScissor(1, 2, 3, 4);
+        GL11.glMatrixMode(GL11.GL_PROJECTION);
+        GL11.glDepthFunc(GL11.GL_GEQUAL);
+
+        int[] read = new int[4];
+        GL11.glGetInteger(GL11.GL_VIEWPORT, java.nio.IntBuffer.wrap(read));
+        assertArrayEquals(new int[] {10, 20, 30, 40}, read);
+        GL11.glGetInteger(GL11.GL_SCISSOR_BOX, java.nio.IntBuffer.wrap(read));
+        assertArrayEquals(new int[] {1, 2, 3, 4}, read);
+        assertEquals(GL11.GL_PROJECTION, GL11.glGetInteger(GL11.GL_MATRIX_MODE));
+        assertEquals(GL11.GL_GEQUAL, GL11.glGetInteger(GL11.GL_DEPTH_FUNC));
+    }
+
+    @Test
+    void reportsWhichCapabilitiesAreOn() {
+        assertFalse(GL11.glIsEnabled(GL11.GL_BLEND));
+        GL11.glEnable(GL11.GL_BLEND);
+        assertTrue(GL11.glIsEnabled(GL11.GL_BLEND));
+        assertThrows(UnsupportedOperationException.class, () -> GL11.glIsEnabled(0x4242));
     }
 }

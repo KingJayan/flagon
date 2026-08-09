@@ -132,6 +132,35 @@ public final class GL11 {
     public static final int GL_COLOR_ARRAY = 0x8076;
     public static final int GL_TEXTURE_COORD_ARRAY = 0x8078;
 
+    public static final int GL_COMPILE = 0x1300;
+    public static final int GL_COMPILE_AND_EXECUTE = 0x1301;
+
+    public static final int GL_CURRENT_BIT = 0x00000001;
+    public static final int GL_POLYGON_BIT = 0x00000008;
+    public static final int GL_VIEWPORT_BIT = 0x00000800;
+    public static final int GL_TRANSFORM_BIT = 0x00001000;
+    public static final int GL_ENABLE_BIT = 0x00002000;
+    public static final int GL_TEXTURE_BIT = 0x00040000;
+    public static final int GL_SCISSOR_BIT = 0x00080000;
+    public static final int GL_ALL_ATTRIB_BITS = 0x000FFFFF;
+
+    public static final int GL_CURRENT_COLOR = 0x0B00;
+    public static final int GL_MATRIX_MODE = 0x0BA0;
+    public static final int GL_VIEWPORT = 0x0BA2;
+    public static final int GL_MODELVIEW_MATRIX = 0x0BA6;
+    public static final int GL_PROJECTION_MATRIX = 0x0BA7;
+    public static final int GL_BLEND_DST = 0x0BE0;
+    public static final int GL_BLEND_SRC = 0x0BE1;
+    public static final int GL_CULL_FACE_MODE = 0x0B45;
+    public static final int GL_FRONT_FACE = 0x0B46;
+    public static final int GL_DEPTH_WRITEMASK = 0x0B72;
+    public static final int GL_DEPTH_CLEAR_VALUE = 0x0B73;
+    public static final int GL_DEPTH_FUNC = 0x0B74;
+    public static final int GL_SCISSOR_BOX = 0x0C10;
+    public static final int GL_COLOR_CLEAR_VALUE = 0x0C22;
+    public static final int GL_COLOR_WRITEMASK = 0x0C23;
+    public static final int GL_TEXTURE_BINDING_2D = 0x8069;
+
     private GL11() {
     }
 
@@ -143,17 +172,37 @@ public final class GL11 {
         return GLState.get().device();
     }
 
+    /**
+     * a call the display list being recorded should hold instead of running
+     */
+    private static boolean recording() {
+        return state().isRecording();
+    }
+
     // framebuffer
 
     public static void glClearColor(float red, float green, float blue, float alpha) {
-        device().clearColor(red, green, blue, alpha);
+        if (recording() && state().record(() -> state().clearColor(red, green, blue, alpha))) {
+            return;
+        }
+        state().clearColor(red, green, blue, alpha);
     }
 
     public static void glClearDepth(double depth) {
-        device().clearDepth(depth);
+        if (recording() && state().record(() -> state().clearDepth(depth))) {
+            return;
+        }
+        state().clearDepth(depth);
     }
 
     public static void glClear(int mask) {
+        if (recording() && state().record(() -> clear(mask))) {
+            return;
+        }
+        clear(mask);
+    }
+
+    private static void clear(int mask) {
         device().clear(
                 (mask & GL_COLOR_BUFFER_BIT) != 0,
                 (mask & GL_DEPTH_BUFFER_BIT) != 0,
@@ -161,7 +210,10 @@ public final class GL11 {
     }
 
     public static void glViewport(int x, int y, int width, int height) {
-        device().viewport(x, y, width, height);
+        if (recording() && state().record(() -> state().viewport(x, y, width, height))) {
+            return;
+        }
+        state().viewport(x, y, width, height);
     }
 
     /** gl measures the scissor box from the bottom left, as it measures the viewport. */
@@ -169,65 +221,104 @@ public final class GL11 {
         if (width < 0 || height < 0) {
             throw new IllegalArgumentException("glScissor: negative size " + width + "x" + height);
         }
-        device().setScissor(x, y, width, height);
+        if (recording() && state().record(() -> state().setScissor(x, y, width, height))) {
+            return;
+        }
+        state().setScissor(x, y, width, height);
     }
 
     public static void glCullFace(int face) {
-        device().setCulledFaces(switch (face) {
+        CullFace faces = switch (face) {
             case GL_FRONT -> CullFace.FRONT;
             case GL_BACK -> CullFace.BACK;
             case GL_FRONT_AND_BACK -> CullFace.FRONT_AND_BACK;
             default -> throw new UnsupportedOperationException(
                     "glCullFace: unknown face 0x" + Integer.toHexString(face));
-        });
+        };
+        if (recording() && state().record(() -> state().setCulledFaces(faces))) {
+            return;
+        }
+        state().setCulledFaces(faces);
     }
 
     public static void glFrontFace(int winding) {
-        device().setFrontFace(switch (winding) {
+        Winding front = switch (winding) {
             case GL_CW -> Winding.CLOCKWISE;
             case GL_CCW -> Winding.COUNTER_CLOCKWISE;
             default -> throw new UnsupportedOperationException(
                     "glFrontFace: unknown winding 0x" + Integer.toHexString(winding));
-        });
+        };
+        if (recording() && state().record(() -> state().setFrontFace(front))) {
+            return;
+        }
+        state().setFrontFace(front);
     }
 
     public static void glColorMask(boolean red, boolean green, boolean blue, boolean alpha) {
-        device().setColorMask(red, green, blue, alpha);
+        if (recording() && state().record(() -> state().setColorMask(red, green, blue, alpha))) {
+            return;
+        }
+        state().setColorMask(red, green, blue, alpha);
     }
 
     public static void glDepthMask(boolean enabled) {
-        device().setDepthWrite(enabled);
+        if (recording() && state().record(() -> state().setDepthWrite(enabled))) {
+            return;
+        }
+        state().setDepthWrite(enabled);
     }
 
     public static void glDepthFunc(int func) {
-        device().setDepthFunc(compareFunc(func, "glDepthFunc"));
+        CompareFunc compare = compareFunc(func, "glDepthFunc");
+        if (recording() && state().record(() -> state().setDepthFunc(compare))) {
+            return;
+        }
+        state().setDepthFunc(compare);
     }
 
     public static void glBlendFunc(int source, int destination) {
-        device().setBlendFunc(blendFactor(source, "glBlendFunc"),
-                blendFactor(destination, "glBlendFunc"));
+        BlendFactor from = blendFactor(source, "glBlendFunc");
+        BlendFactor to = blendFactor(destination, "glBlendFunc");
+        if (recording() && state().record(() -> state().setBlendFunc(from, to))) {
+            return;
+        }
+        state().setBlendFunc(from, to);
     }
 
     public static void glAlphaFunc(int func, float reference) {
-        state().alphaFunc(compareFunc(func, "glAlphaFunc"), reference);
+        CompareFunc compare = compareFunc(func, "glAlphaFunc");
+        if (recording() && state().record(() -> state().alphaFunc(compare, reference))) {
+            return;
+        }
+        state().alphaFunc(compare, reference);
     }
 
     // capabilities
 
     public static void glEnable(int capability) {
+        if (recording() && state().record(() -> setCapability(capability, true))) {
+            return;
+        }
         setCapability(capability, true);
     }
 
     public static void glDisable(int capability) {
+        if (recording() && state().record(() -> setCapability(capability, false))) {
+            return;
+        }
         setCapability(capability, false);
+    }
+
+    public static boolean glIsEnabled(int capability) {
+        return state().isEnabled(capability);
     }
 
     private static void setCapability(int capability, boolean enabled) {
         switch (capability) {
-            case GL_DEPTH_TEST -> device().setDepthTest(enabled);
-            case GL_BLEND -> device().setBlend(enabled);
-            case GL_CULL_FACE -> device().setCullFace(enabled);
-            case GL_SCISSOR_TEST -> device().setScissorTest(enabled);
+            case GL_DEPTH_TEST -> state().setDepthTest(enabled);
+            case GL_BLEND -> state().setBlend(enabled);
+            case GL_CULL_FACE -> state().setCullFace(enabled);
+            case GL_SCISSOR_TEST -> state().setScissorTest(enabled);
             case GL_TEXTURE_2D -> state().setTextureEnabled(enabled);
             case GL_ALPHA_TEST -> state().setAlphaTestEnabled(enabled);
             default -> throw new UnsupportedOperationException(
@@ -236,12 +327,37 @@ public final class GL11 {
         }
     }
 
+    // display lists
+
+    public static int glGenLists(int count) {
+        return state().lists().generate(count);
+    }
+
+    public static void glNewList(int list, int mode) {
+        state().lists().begin(list, mode);
+    }
+
+    public static void glEndList() {
+        state().lists().end();
+    }
+
+    public static void glCallList(int list) {
+        if (recording() && state().record(() -> state().lists().call(list))) {
+            return;
+        }
+        state().lists().call(list);
+    }
+
+    public static void glDeleteLists(int list, int count) {
+        state().lists().delete(list, count);
+    }
+
+    public static boolean glIsList(int list) {
+        return state().lists().exists(list);
+    }
+
     // queries
 
-    /**
-     * a context that has been lost reports GL_INVALID_OPERATION: there is no desktop error for it,
-     * and every call after it fails anyway.
-     */
     public static int glGetError() {
         GraphicsError error = device().takeError();
         return switch (error) {
@@ -268,55 +384,262 @@ public final class GL11 {
     }
 
     public static int glGetInteger(int name) {
-        return device().limit(switch (name) {
-            case GL_MAX_TEXTURE_SIZE -> GraphicsLimit.MAX_TEXTURE_SIZE;
-            case GL_MAX_TEXTURE_UNITS, GL_MAX_TEXTURE_IMAGE_UNITS -> GraphicsLimit.MAX_TEXTURE_UNITS;
-            case GL_MAX_VERTEX_ATTRIBS -> GraphicsLimit.MAX_VERTEX_ATTRIBUTES;
+        return switch (name) {
+            case GL_MAX_TEXTURE_SIZE -> device().limit(GraphicsLimit.MAX_TEXTURE_SIZE);
+            case GL_MAX_TEXTURE_UNITS, GL_MAX_TEXTURE_IMAGE_UNITS ->
+                    device().limit(GraphicsLimit.MAX_TEXTURE_UNITS);
+            case GL_MAX_VERTEX_ATTRIBS -> device().limit(GraphicsLimit.MAX_VERTEX_ATTRIBUTES);
+            case GL_MATRIX_MODE -> state().matrixMode();
+            case GL_TEXTURE_BINDING_2D -> state().boundTexture();
+            case GL_DEPTH_FUNC -> compareEnum(state().depthFunc());
+            case GL_BLEND_SRC -> blendEnum(state().blendSource());
+            case GL_BLEND_DST -> blendEnum(state().blendDestination());
+            case GL_CULL_FACE_MODE -> switch (state().culledFaces()) {
+                case FRONT -> GL_FRONT;
+                case BACK -> GL_BACK;
+                case FRONT_AND_BACK -> GL_FRONT_AND_BACK;
+            };
+            case GL_FRONT_FACE -> state().frontFace() == Winding.CLOCKWISE ? GL_CW : GL_CCW;
             default -> throw new UnsupportedOperationException(
                     "glGetInteger does not emulate 0x" + Integer.toHexString(name));
-        });
+        };
+    }
+
+    /** the vector forms fill the buffer from its current position, without moving it. */
+    public static void glGetInteger(int name, IntBuffer values) {
+        int[] read = switch (name) {
+            case GL_VIEWPORT -> state().viewportBox();
+            case GL_SCISSOR_BOX -> state().scissorBox();
+            default -> new int[] {glGetInteger(name)};
+        };
+        put(values, read, name);
+    }
+
+    public static float glGetFloat(int name) {
+        return switch (name) {
+            case GL_DEPTH_CLEAR_VALUE -> (float) state().clearDepthValue();
+            default -> {
+                float[] vector = floatVector(name);
+                if (vector.length != 1) {
+                    throw new UnsupportedOperationException(
+                            "glGetFloat: 0x" + Integer.toHexString(name) + " is a vector of "
+                                    + vector.length + "; read it into a FloatBuffer");
+                }
+                yield vector[0];
+            }
+        };
+    }
+
+    public static void glGetFloat(int name, FloatBuffer values) {
+        float[] read = floatVector(name);
+        if (values.remaining() < read.length) {
+            throw new IllegalArgumentException("glGetFloat: 0x" + Integer.toHexString(name)
+                    + " needs room for " + read.length + " floats, got " + values.remaining());
+        }
+        values.duplicate().put(read);
+    }
+
+    private static float[] floatVector(int name) {
+        return switch (name) {
+            case GL_MODELVIEW_MATRIX -> state().modelView().clone();
+            case GL_PROJECTION_MATRIX -> state().projection().clone();
+            case GL_CURRENT_COLOR -> state().currentColor();
+            case GL_COLOR_CLEAR_VALUE -> state().clearColorValue();
+            case GL_DEPTH_CLEAR_VALUE -> new float[] {(float) state().clearDepthValue()};
+            default -> throw new UnsupportedOperationException(
+                    "glGetFloat does not emulate 0x" + Integer.toHexString(name));
+        };
+    }
+
+    public static boolean glGetBoolean(int name) {
+        return switch (name) {
+            case GL_DEPTH_WRITEMASK -> state().depthWrite();
+            default -> throw new UnsupportedOperationException(
+                    "glGetBoolean does not emulate 0x" + Integer.toHexString(name));
+        };
+    }
+
+    private static void put(IntBuffer values, int[] read, int name) {
+        if (values.remaining() < read.length) {
+            throw new IllegalArgumentException("glGetInteger: 0x" + Integer.toHexString(name)
+                    + " needs room for " + read.length + " ints, got " + values.remaining());
+        }
+        values.duplicate().put(read);
+    }
+
+    private static int compareEnum(CompareFunc func) {
+        return switch (func) {
+            case NEVER -> GL_NEVER;
+            case LESS -> GL_LESS;
+            case EQUAL -> GL_EQUAL;
+            case LESS_OR_EQUAL -> GL_LEQUAL;
+            case GREATER -> GL_GREATER;
+            case NOT_EQUAL -> GL_NOTEQUAL;
+            case GREATER_OR_EQUAL -> GL_GEQUAL;
+            case ALWAYS -> GL_ALWAYS;
+        };
+    }
+
+    private static int blendEnum(BlendFactor factor) {
+        return switch (factor) {
+            case ZERO -> GL_ZERO;
+            case ONE -> GL_ONE;
+            case SRC_COLOR -> GL_SRC_COLOR;
+            case ONE_MINUS_SRC_COLOR -> GL_ONE_MINUS_SRC_COLOR;
+            case DST_COLOR -> GL_DST_COLOR;
+            case ONE_MINUS_DST_COLOR -> GL_ONE_MINUS_DST_COLOR;
+            case SRC_ALPHA -> GL_SRC_ALPHA;
+            case ONE_MINUS_SRC_ALPHA -> GL_ONE_MINUS_SRC_ALPHA;
+            case DST_ALPHA -> GL_DST_ALPHA;
+            case ONE_MINUS_DST_ALPHA -> GL_ONE_MINUS_DST_ALPHA;
+        };
     }
 
     // matrices
 
     public static void glMatrixMode(int mode) {
+        if (recording() && state().record(() -> state().matrixMode(mode))) {
+            return;
+        }
         state().matrixMode(mode);
     }
 
     public static void glLoadIdentity() {
+        if (recording() && state().record(() -> state().loadIdentity())) {
+            return;
+        }
         state().loadIdentity();
     }
 
     public static void glPushMatrix() {
+        if (recording() && state().record(() -> state().pushMatrix())) {
+            return;
+        }
         state().pushMatrix();
     }
 
     public static void glPopMatrix() {
+        if (recording() && state().record(() -> state().popMatrix())) {
+            return;
+        }
         state().popMatrix();
     }
 
     public static void glTranslatef(float x, float y, float z) {
+        if (recording() && state().record(() -> state().translate(x, y, z))) {
+            return;
+        }
         state().translate(x, y, z);
     }
 
     public static void glRotatef(float degrees, float x, float y, float z) {
+        if (recording() && state().record(() -> state().rotate(degrees, x, y, z))) {
+            return;
+        }
         state().rotate(degrees, x, y, z);
     }
 
     public static void glScalef(float x, float y, float z) {
+        if (recording() && state().record(() -> state().scale(x, y, z))) {
+            return;
+        }
         state().scale(x, y, z);
     }
 
     public static void glOrtho(double left, double right, double bottom, double top,
                                double near, double far) {
-        state().ortho((float) left, (float) right, (float) bottom, (float) top,
-                (float) near, (float) far);
+        float l = (float) left;
+        float r = (float) right;
+        float b = (float) bottom;
+        float tp = (float) top;
+        float n = (float) near;
+        float f = (float) far;
+        if (recording() && state().record(() -> state().ortho(l, r, b, tp, n, f))) {
+            return;
+        }
+        state().ortho(l, r, b, tp, n, f);
     }
 
     public static void glFrustum(double left, double right, double bottom, double top,
                                  double near, double far) {
-        state().frustum((float) left, (float) right, (float) bottom, (float) top,
-                (float) near, (float) far);
+        float l = (float) left;
+        float r = (float) right;
+        float b = (float) bottom;
+        float tp = (float) top;
+        float n = (float) near;
+        float f = (float) far;
+        if (recording() && state().record(() -> state().frustum(l, r, b, tp, n, f))) {
+            return;
+        }
+        state().frustum(l, r, b, tp, n, f);
+    }
+
+    /** the matrix is column-major, sixteen floats read from the buffer's current position. */
+    public static void glLoadMatrix(FloatBuffer matrix) {
+        loadMatrix(read16(matrix, "glLoadMatrix"));
+    }
+
+    public static void glLoadMatrixf(float[] matrix) {
+        loadMatrix(require16(matrix, "glLoadMatrixf"));
+    }
+
+    public static void glMultMatrix(FloatBuffer matrix) {
+        multMatrix(read16(matrix, "glMultMatrix"));
+    }
+
+    public static void glMultMatrixf(float[] matrix) {
+        multMatrix(require16(matrix, "glMultMatrixf"));
+    }
+
+    private static void loadMatrix(float[] matrix) {
+        if (recording() && state().record(() -> state().loadMatrix(matrix))) {
+            return;
+        }
+        state().loadMatrix(matrix);
+    }
+
+    private static void multMatrix(float[] matrix) {
+        if (recording() && state().record(() -> state().multMatrix(matrix))) {
+            return;
+        }
+        state().multMatrix(matrix);
+    }
+
+    /** copied rather than referenced: the caller may reuse the array before a list replays it. */
+    private static float[] require16(float[] matrix, String call) {
+        if (matrix.length < 16) {
+            throw new IllegalArgumentException(
+                    call + " needs 16 floats, got " + matrix.length);
+        }
+        float[] copy = new float[16];
+        System.arraycopy(matrix, 0, copy, 0, 16);
+        return copy;
+    }
+
+    private static float[] read16(FloatBuffer matrix, String call) {
+        if (matrix.remaining() < 16) {
+            throw new IllegalArgumentException(
+                    call + " needs 16 floats, got " + matrix.remaining());
+        }
+        float[] copy = new float[16];
+        matrix.duplicate().get(copy);
+        return copy;
+    }
+
+    // the attribute stack
+
+    public static void glPushAttrib(int mask) {
+        if (recording() && state().record(() -> state().pushAttrib(mask))) {
+            return;
+        }
+        state().pushAttrib(mask);
+    }
+
+    public static void glPopAttrib() {
+        if (recording() && state().record(() -> state().popAttrib())) {
+            return;
+        }
+        state().popAttrib();
     }
 
     // immediate mode
@@ -338,14 +661,22 @@ public final class GL11 {
     }
 
     public static void glColor3f(float red, float green, float blue) {
-        state().color(red, green, blue, 1.0f);
+        glColor4f(red, green, blue, 1.0f);
     }
 
     public static void glColor4f(float red, float green, float blue, float alpha) {
+        if (recording() && !state().isBuilding()
+                && state().record(() -> state().color(red, green, blue, alpha))) {
+            return;
+        }
         state().color(red, green, blue, alpha);
     }
 
     public static void glTexCoord2f(float s, float t) {
+        if (recording() && !state().isBuilding()
+                && state().record(() -> state().texCoord(s, t))) {
+            return;
+        }
         state().texCoord(s, t);
     }
 
@@ -395,10 +726,12 @@ public final class GL11 {
     }
 
     public static void glDrawArrays(int mode, int first, int count) {
+        state().refuseWhileRecording("glDrawArrays");
         state().drawArrays(primitive(mode), first, count);
     }
 
     public static void glDrawElements(int mode, int count, int type, long offset) {
+        state().refuseWhileRecording("glDrawElements");
         if (offset < 0 || offset > Integer.MAX_VALUE) {
             throw new IllegalArgumentException("index offset out of range: " + offset);
         }
@@ -438,16 +771,20 @@ public final class GL11 {
     }
 
     public static void glDeleteTextures(int texture) {
-        device().deleteTexture(texture);
+        state().deleteTexture(texture);
     }
 
     public static void glBindTexture(int target, int texture) {
         requireTexture2D(target, "glBindTexture");
-        device().bindTexture(0, texture);
+        if (recording() && state().record(() -> state().bindTexture(texture))) {
+            return;
+        }
+        state().bindTexture(texture);
     }
 
     public static void glTexParameteri(int target, int name, int value) {
         requireTexture2D(target, "glTexParameteri");
+        state().refuseWhileRecording("glTexParameteri");
         switch (name) {
             case GL_TEXTURE_MIN_FILTER ->
                     device().setTextureMinFilter(filter(value, "GL_TEXTURE_MIN_FILTER"));
@@ -474,7 +811,6 @@ public final class GL11 {
         };
     }
 
-    /** GL_CLAMP is desktop-only; webgl clamps to the edge, which is what it is asked for here. */
     private static TextureWrap wrap(int value) {
         return switch (value) {
             case GL_REPEAT -> TextureWrap.REPEAT;
@@ -489,6 +825,7 @@ public final class GL11 {
     public static void glTexImage2D(int target, int level, int internalFormat, int width,
                                     int height, int border, int format, int type, int[] pixels) {
         requireTexture2D(target, "glTexImage2D");
+        state().refuseWhileRecording("glTexImage2D");
         requireBaseLevel(level, "glTexImage2D");
         requireRgbaBytes(format, type);
         device().textureImage(width, height, spread(pixels, width * height));
@@ -499,6 +836,7 @@ public final class GL11 {
                                     int height, int border, int format, int type,
                                     ByteBuffer pixels) {
         requireTexture2D(target, "glTexImage2D");
+        state().refuseWhileRecording("glTexImage2D");
         requireBaseLevel(level, "glTexImage2D");
         requireRgbaBytes(format, type);
         device().textureImage(width, height, bytes(pixels, width * height * 4));
@@ -508,6 +846,7 @@ public final class GL11 {
                                     int height, int border, int format, int type,
                                     IntBuffer pixels) {
         requireTexture2D(target, "glTexImage2D");
+        state().refuseWhileRecording("glTexImage2D");
         requireBaseLevel(level, "glTexImage2D");
         requireRgbaBytes(format, type);
         int[] copied = new int[width * height];
@@ -519,6 +858,7 @@ public final class GL11 {
     public static void glTexSubImage2D(int target, int level, int x, int y, int width, int height,
                                        int format, int type, ByteBuffer pixels) {
         requireTexture2D(target, "glTexSubImage2D");
+        state().refuseWhileRecording("glTexSubImage2D");
         requireBaseLevel(level, "glTexSubImage2D");
         requireRgbaBytes(format, type);
         device().textureSubImage(x, y, width, height, bytes(pixels, width * height * 4));
@@ -527,6 +867,7 @@ public final class GL11 {
     public static void glTexSubImage2D(int target, int level, int x, int y, int width, int height,
                                        int format, int type, int[] pixels) {
         requireTexture2D(target, "glTexSubImage2D");
+        state().refuseWhileRecording("glTexSubImage2D");
         requireBaseLevel(level, "glTexSubImage2D");
         requireRgbaBytes(format, type);
         device().textureSubImage(x, y, width, height, spread(pixels, width * height));

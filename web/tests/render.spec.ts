@@ -86,6 +86,27 @@ for (const backend of BACKENDS) {
       expectColor(await readPixel(page, 130, 320), [230, 0, 230], 'the quad left facing forward');
     });
 
+    test('replays a display list built once before the loop', async ({ page }) => {
+      await runDemo(page, backend);
+
+      expectColor(await readPixel(page, 240, 240), [0, 204, 204], 'the recorded quad');
+      expectColor(await readPixel(page, 240, 210), [0, 204, 51], 'below it, the panel');
+    });
+
+    /** the pop puts the scissor test back, so the second quad is drawn whole */
+    test('restores the state glPushAttrib saved', async ({ page }) => {
+      await runDemo(page, backend);
+
+      expectColor(await readPixel(page, 320, 50), [51, 102, 255], 'after the pop');
+    });
+
+    test('places a quad by the matrix the application loaded', async ({ page }) => {
+      await runDemo(page, backend);
+
+      expectColor(await readPixel(page, 575, 245), [230, 128, 0], 'the translated quad');
+      expectColor(await readPixel(page, 545, 245), [26, 38, 77], 'left of it');
+    });
+
     test('reports the frame loop finishing', async ({ page }) => {
       await open(page, backend, 'program=lwjgl');
       await expect(page.getByTestId('log')).toContainText('frame 60', { timeout: 30_000 });

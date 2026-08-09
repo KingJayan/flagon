@@ -6,6 +6,8 @@ import org.lwjgl.opengl.Display;
 import org.lwjgl.opengl.DisplayMode;
 import org.lwjgl.opengl.GL11;
 
+import java.nio.FloatBuffer;
+
 /**
  create a display, loop until it closes, present each frame
  */
@@ -14,6 +16,8 @@ public final class LwjglDemoProgram implements Program {
     private static final int WIDTH = 640;
     private static final int HEIGHT = 360;
     private static final int MAX_FRAMES = 900;
+
+    private int panelList;
 
     @Override
     public String id() {
@@ -41,6 +45,8 @@ public final class LwjglDemoProgram implements Program {
                 + " on " + GL11.glGetString(GL11.GL_RENDERER)
                 + ", textures up to " + GL11.glGetInteger(GL11.GL_MAX_TEXTURE_SIZE));
 
+        buildPanelList();
+
         int frame = 0;
         while (!Display.isCloseRequested() && frame < MAX_FRAMES) {
             drawFrame(frame);
@@ -54,6 +60,14 @@ public final class LwjglDemoProgram implements Program {
         Platforms.get().console().info("rendered " + frame + " frames, "
                 + (GL11.glGetError() == GL11.GL_NO_ERROR ? "no gl errors" : "gl errors were raised"));
         Display.destroy();
+    }
+
+    // built once and replayed every frame, which is what a display list is for
+    private void buildPanelList() {
+        panelList = GL11.glGenLists(1);
+        GL11.glNewList(panelList, GL11.GL_COMPILE);
+        quads(200.0f, 100.0f, 280.0f, 140.0f, 0.0f, 0.8f, 0.8f);
+        GL11.glEndList();
     }
 
     private void drawFrame(int frame) {
@@ -92,6 +106,33 @@ public final class LwjglDemoProgram implements Program {
         GL11.glFrontFace(GL11.GL_CCW);
         quads(100.0f, 20.0f, 160.0f, 60.0f, 0.9f, 0.0f, 0.9f);
         GL11.glDisable(GL11.GL_CULL_FACE);
+
+        GL11.glCallList(panelList);
+
+        // the scissor state is saved, changed, and put back by the pop rather than by hand
+        GL11.glPushAttrib(GL11.GL_ENABLE_BIT | GL11.GL_SCISSOR_BIT);
+        GL11.glEnable(GL11.GL_SCISSOR_TEST);
+        GL11.glScissor(0, 0, 1, 1);
+        quads(300.0f, 300.0f, 340.0f, 320.0f, 1.0f, 1.0f, 1.0f);
+        GL11.glPopAttrib();
+        quads(300.0f, 300.0f, 340.0f, 320.0f, 0.2f, 0.4f, 1.0f);
+
+        // the same translation glTranslatef would make, supplied as a matrix
+        GL11.glPushMatrix();
+        GL11.glLoadMatrix(translation(560.0f, 100.0f));
+        quads(0.0f, 0.0f, 30.0f, 30.0f, 0.9f, 0.5f, 0.0f);
+        GL11.glPopMatrix();
+    }
+
+    private static FloatBuffer translation(float x, float y) {
+        float[] matrix = new float[16];
+        matrix[0] = 1.0f;
+        matrix[5] = 1.0f;
+        matrix[10] = 1.0f;
+        matrix[15] = 1.0f;
+        matrix[12] = x;
+        matrix[13] = y;
+        return FloatBuffer.wrap(matrix);
     }
 
     private void quads(float left, float top, float right, float bottom,
