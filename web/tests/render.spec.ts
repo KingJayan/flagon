@@ -140,6 +140,13 @@ for (const backend of BACKENDS) {
       expectColor(await readPixel(page, 620, 240), [0, 255, 0], 'the capability quad');
     });
 
+    /** the quad is only its colour when glu projects a point out to the window and back */
+    test('carries a point through gluProject and gluUnProject', async ({ page }) => {
+      await runDemo(page, backend);
+
+      expectColor(await readPixel(page, 620, 190), [0, 153, 204], 'the projected quad');
+    });
+
     test('reports the frame loop finishing', async ({ page }) => {
       await open(page, backend, 'program=lwjgl');
       await expect(page.getByTestId('log')).toContainText('frame 60', { timeout: 30_000 });

@@ -86,7 +86,7 @@ close correctly.
 
 Verified in Chromium and Firefox on both backends by the `lwjgl`, `input`, `arrays`, `shaders`, `texture`, and
 `audio` demos, which assert framebuffer output, drive real keyboard, mouse and wheel events, and
-play audio through to completion. The compatibility layer is also covered by 228 JVM tests running against recording and
+play audio through to completion. The compatibility layer is also covered by 236 JVM tests running against recording and
 fake devices.
 
 | Call group | State |
@@ -160,15 +160,20 @@ An entry point that is present but asked for something it does not emulate throw
 cheaper than debugging incorrect rendering.
 
 An entry point that is **absent** cannot throw at all: the bundle simply does not compile, and the
-compiler names the missing method. The list below is what an application is most likely to reach
-for and not find.
+compiler names the missing method. If your application reaches for one, open an issue: the layer
+grows by what applications actually call.
 
-### What is not here
+### GLU
 
-`org.lwjgl.util.glu.GLU` does not exist.
+`gluPerspective`, `gluLookAt`, `gluOrtho2D` and `gluPickMatrix` build their matrices out of the
+`GL11` matrix calls, so they stack and pop with everything else. `gluProject` and `gluUnProject`
+take the model-view and projection matrices and the viewport as buffers, the way lwjgl does, and
+return false rather than throwing when the point has no answer.
 
-If your application needs one of these, open an issue: the layer grows by what applications
-actually call.
+`gluBuild2DMipmaps` uploads the base level and asks the device to build the rest, which is what a
+driver does anyway. `gluScaleImage` resamples `GL_RGBA` bytes with a box filter and returns
+`GLU_INVALID_ENUM` for any other format, rather than glu's bilinear filter over every format.
+Both return zero on success, as glu does.
 
 ### Context capabilities
 
