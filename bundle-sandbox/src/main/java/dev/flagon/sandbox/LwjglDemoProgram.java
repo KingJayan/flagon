@@ -8,9 +8,11 @@ import org.lwjgl.opengl.DisplayMode;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL14;
 import org.lwjgl.opengl.GLContext;
+import org.lwjgl.util.glu.GLU;
 
 import java.nio.ByteBuffer;
 import java.nio.FloatBuffer;
+import java.nio.IntBuffer;
 
 /**
  create a display, loop until it closes, present each frame
@@ -140,6 +142,47 @@ public final class LwjglDemoProgram implements Program {
         drawFoggedQuad();
         drawBlendedQuad();
         drawCapabilityQuad();
+        drawProjectedQuad();
+    }
+
+    // green only when a point survives the round trip out to the window and back through glu
+    private void drawProjectedQuad() {
+        GL11.glMatrixMode(GL11.GL_PROJECTION);
+        GL11.glPushMatrix();
+        GL11.glLoadIdentity();
+        GLU.gluPerspective(60.0f, WIDTH / HEIGHT, 1.0f, 100.0f);
+        GL11.glMatrixMode(GL11.GL_MODELVIEW);
+        GL11.glPushMatrix();
+        GL11.glLoadIdentity();
+        GLU.gluLookAt(0.0f, 0.0f, 8.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f);
+
+        FloatBuffer modelView = FloatBuffer.wrap(new float[16]);
+        FloatBuffer projection = FloatBuffer.wrap(new float[16]);
+        GL11.glGetFloat(GL11.GL_MODELVIEW_MATRIX, modelView);
+        GL11.glGetFloat(GL11.GL_PROJECTION_MATRIX, projection);
+        IntBuffer viewport = IntBuffer.wrap(new int[4]);
+        GL11.glGetInteger(GL11.GL_VIEWPORT, viewport);
+
+        FloatBuffer window = FloatBuffer.wrap(new float[3]);
+        FloatBuffer object = FloatBuffer.wrap(new float[3]);
+        boolean roundTrip = GLU.gluProject(2.0f, -1.0f, 3.0f, modelView, projection,
+                viewport, window)
+                && GLU.gluUnProject(window.get(0), window.get(1), window.get(2),
+                        modelView, projection, viewport, object)
+                && near(object.get(0), 2.0f) && near(object.get(1), -1.0f)
+                && near(object.get(2), 3.0f);
+
+        GL11.glPopMatrix();
+        GL11.glMatrixMode(GL11.GL_PROJECTION);
+        GL11.glPopMatrix();
+        GL11.glMatrixMode(GL11.GL_MODELVIEW);
+
+        quads(600.0f, 150.0f, 640.0f, 190.0f, roundTrip ? 0.0f : 1.0f, roundTrip ? 0.6f : 0.0f,
+                roundTrip ? 0.8f : 0.0f);
+    }
+
+    private static boolean near(float value, float expected) {
+        return Math.abs(value - expected) < 0.01f;
     }
 
     // green only when the context reports the versions and the core extensions it is built on
