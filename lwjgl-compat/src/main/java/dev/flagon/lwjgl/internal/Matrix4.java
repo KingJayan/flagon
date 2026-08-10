@@ -109,6 +109,39 @@ public final class Matrix4 {
         multiply(target, m);
     }
 
+    public static float[] normalMatrix(float[] m) {
+        float a = m[0];
+        float b = m[1];
+        float c = m[2];
+        float d = m[4];
+        float e = m[5];
+        float f = m[6];
+        float g = m[8];
+        float h = m[9];
+        float i = m[10];
+
+        float determinant = a * (e * i - f * h) - d * (b * i - c * h) + g * (b * f - c * e);
+        if (determinant == 0.0f) {
+            return new float[] {1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 1.0f};
+        }
+        float scale = 1.0f / determinant;
+        // the transpose of the inverse, written out column-major
+        return new float[] {
+                (e * i - f * h) * scale, (g * f - d * i) * scale, (d * h - g * e) * scale,
+                (h * c - b * i) * scale, (a * i - g * c) * scale, (g * b - a * h) * scale,
+                (b * f - e * c) * scale, (d * c - a * f) * scale, (a * e - d * b) * scale,
+        };
+    }
+
+    /** @return {@code m * point}, the four components of a point carried into the matrix's space */
+    public static float[] transform(float[] m, float x, float y, float z, float w) {
+        float[] out = new float[4];
+        for (int row = 0; row < 4; row++) {
+            out[row] = m[row] * x + m[4 + row] * y + m[8 + row] * z + m[12 + row] * w;
+        }
+        return out;
+    }
+
     public static float[] copy(float[] source) {
         float[] target = new float[16];
         System.arraycopy(source, 0, target, 0, 16);

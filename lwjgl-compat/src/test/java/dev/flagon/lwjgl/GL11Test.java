@@ -47,7 +47,8 @@ class GL11Test {
 
         assertArrayEquals(
                 new float[] {1.0f, 2.0f, 3.0f, 1.0f, 0.5f, 0.25f, 1.0f,
-                        0.5f, 0.75f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f},
+                        0.5f, 0.75f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f,
+                        0.0f, 0.0f, 1.0f},
                 device.lastBufferData, 1.0e-6f);
         assertEquals(java.util.List.of("drawArrays TRIANGLES 0 1"), device.calls("drawArrays"));
     }
@@ -139,9 +140,9 @@ class GL11Test {
 
     @Test
     void unsupportedCapabilitiesAreReportedRatherThanIgnored() {
-        // gl_lighting, which this layer does not declare and will not honour
+        // gl_line_stipple, which this layer does not declare and will not honour
         UnsupportedOperationException failure = assertThrows(UnsupportedOperationException.class,
-                () -> GL11.glEnable(0x0B50));
+                () -> GL11.glEnable(0x0B24));
         assertTrue(failure.getMessage().contains("glEnable"), failure.getMessage());
     }
 
