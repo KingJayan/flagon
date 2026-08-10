@@ -86,7 +86,7 @@ close correctly.
 
 Verified in Chromium and Firefox on both backends by the `lwjgl`, `input`, `arrays`, `shaders`, `texture`, and
 `audio` demos, which assert framebuffer output, drive real keyboard, mouse and wheel events, and
-play audio through to completion. The compatibility layer is also covered by 208 JVM tests running against recording and
+play audio through to completion. The compatibility layer is also covered by 220 JVM tests running against recording and
 fake devices.
 
 | Call group | State |
@@ -134,6 +134,11 @@ fake devices.
 | `glIndexPointer` | not emulated |
 | `GL13` `glActiveTexture`, `glClientActiveTexture`, `glMultiTexCoord` | works, four units |
 | `glTexEnvi` `GL_TEXTURE_ENV_MODE` | `GL_MODULATE`, `GL_REPLACE`, `GL_ADD` |
+| `GL12` `glDrawRangeElements` | works, the range is checked and dropped |
+| `GL14` `glBlendFuncSeparate`, `glBlendEquation`, `glBlendEquationSeparate`, `glBlendColor` | works |
+| `GL14` `glMultiDrawArrays` | works, one draw per range |
+| `GL14` `glPointParameter` `GL_POINT_SIZE_MIN`/`MAX` | works, clamps the point size |
+| `GL14` `glPointParameter` fade and distance attenuation | refused |
 | `GL20` shader/program objects, uniforms and generic attributes | works |
 | Desktop GLSL 1.10 / 1.20 | works, translated |
 | GLSL 1.30+, fixed-function GLSL built-ins | refused |
@@ -160,7 +165,7 @@ for and not find.
 
 ### What is not here
 
-`GL12`, `GL14`, `GLContext`, `ContextCapabilities` and `org.lwjgl.util.glu.GLU` do not exist.
+`GLContext`, `ContextCapabilities` and `org.lwjgl.util.glu.GLU` do not exist.
 
 If your application needs one of these, open an issue: the layer grows by what applications
 actually call.

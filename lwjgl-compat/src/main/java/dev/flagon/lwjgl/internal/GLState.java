@@ -1,5 +1,6 @@
 package dev.flagon.lwjgl.internal;
 
+import dev.flagon.platform.graphics.BlendEquation;
 import dev.flagon.platform.graphics.BlendFactor;
 import dev.flagon.platform.graphics.BufferTarget;
 import dev.flagon.platform.graphics.CompareFunc;
@@ -58,6 +59,11 @@ public final class GLState implements RenderState {
     private CompareFunc depthFunc = CompareFunc.LESS;
     private BlendFactor blendSource = BlendFactor.ONE;
     private BlendFactor blendDestination = BlendFactor.ZERO;
+    private BlendFactor blendSourceAlpha = BlendFactor.ONE;
+    private BlendFactor blendDestinationAlpha = BlendFactor.ZERO;
+    private BlendEquation blendEquation = BlendEquation.ADD;
+    private BlendEquation blendEquationAlpha = BlendEquation.ADD;
+    private final float[] blendColor = new float[4];
     private CullFace culledFaces = CullFace.BACK;
     private Winding frontFace = Winding.COUNTER_CLOCKWISE;
     private int viewportX;
@@ -95,6 +101,8 @@ public final class GLState implements RenderState {
     private final float[] s = new float[VertexArrays.UNITS];
     private final float[] t = new float[VertexArrays.UNITS];
     private float pointSize = 1.0f;
+    private float pointSizeMin;
+    private float pointSizeMax = Float.MAX_VALUE;
     private final Lighting lighting = new Lighting();
     private float normalX;
     private float normalY;
@@ -516,9 +524,26 @@ public final class GLState implements RenderState {
         pointSize = size;
     }
 
+    /** the clamp gl applies to a point's size, not the size itself. */
+    public void setPointSizeMin(float size) {
+        pointSizeMin = size;
+    }
+
+    public void setPointSizeMax(float size) {
+        pointSizeMax = size;
+    }
+
+    public float pointSizeMin() {
+        return pointSizeMin;
+    }
+
+    public float pointSizeMax() {
+        return pointSizeMax;
+    }
+
     @Override
     public float pointSize() {
-        return pointSize;
+        return Math.min(Math.max(pointSize, pointSizeMin), pointSizeMax);
     }
 
     /**
@@ -542,6 +567,55 @@ public final class GLState implements RenderState {
         blendSource = source;
         blendDestination = destination;
         device.setBlendFunc(source, destination);
+    }
+
+    public void setBlendFuncSeparate(BlendFactor sourceColor, BlendFactor destinationColor,
+                                     BlendFactor sourceAlpha, BlendFactor destinationAlpha) {
+        blendSource = sourceColor;
+        blendDestination = destinationColor;
+        blendSourceAlpha = sourceAlpha;
+        blendDestinationAlpha = destinationAlpha;
+        device.setBlendFuncSeparate(sourceColor, destinationColor, sourceAlpha, destinationAlpha);
+    }
+
+    public BlendFactor blendSourceAlpha() {
+        return blendSourceAlpha;
+    }
+
+    public BlendFactor blendDestinationAlpha() {
+        return blendDestinationAlpha;
+    }
+
+    public void setBlendEquation(BlendEquation equation) {
+        blendEquation = equation;
+        blendEquationAlpha = equation;
+        device.setBlendEquation(equation);
+    }
+
+    public void setBlendEquationSeparate(BlendEquation color, BlendEquation alpha) {
+        blendEquation = color;
+        blendEquationAlpha = alpha;
+        device.setBlendEquationSeparate(color, alpha);
+    }
+
+    public BlendEquation blendEquation() {
+        return blendEquation;
+    }
+
+    public BlendEquation blendEquationAlpha() {
+        return blendEquationAlpha;
+    }
+
+    public void setBlendColor(float red, float green, float blue, float alpha) {
+        blendColor[0] = red;
+        blendColor[1] = green;
+        blendColor[2] = blue;
+        blendColor[3] = alpha;
+        device.setBlendColor(red, green, blue, alpha);
+    }
+
+    public float[] blendColor() {
+        return blendColor.clone();
     }
 
     // mirrored server state

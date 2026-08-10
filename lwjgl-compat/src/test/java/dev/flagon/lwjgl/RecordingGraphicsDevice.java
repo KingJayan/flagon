@@ -1,6 +1,7 @@
 package dev.flagon.lwjgl;
 
 import dev.flagon.platform.graphics.AttributeType;
+import dev.flagon.platform.graphics.BlendEquation;
 import dev.flagon.platform.graphics.BlendFactor;
 import dev.flagon.platform.graphics.BufferTarget;
 import dev.flagon.platform.graphics.BufferUsage;
@@ -92,6 +93,28 @@ final class RecordingGraphicsDevice implements GraphicsDevice {
     @Override
     public void setBlendFunc(BlendFactor source, BlendFactor destination) {
         calls.add("blendFunc " + source + " " + destination);
+    }
+
+    @Override
+    public void setBlendFuncSeparate(BlendFactor sourceColor, BlendFactor destinationColor,
+                                     BlendFactor sourceAlpha, BlendFactor destinationAlpha) {
+        calls.add("blendFuncSeparate " + sourceColor + " " + destinationColor + " "
+                + sourceAlpha + " " + destinationAlpha);
+    }
+
+    @Override
+    public void setBlendEquation(BlendEquation equation) {
+        calls.add("blendEquation " + equation);
+    }
+
+    @Override
+    public void setBlendEquationSeparate(BlendEquation color, BlendEquation alpha) {
+        calls.add("blendEquationSeparate " + color + " " + alpha);
+    }
+
+    @Override
+    public void setBlendColor(float red, float green, float blue, float alpha) {
+        calls.add("blendColor " + red + " " + green + " " + blue + " " + alpha);
     }
 
     @Override

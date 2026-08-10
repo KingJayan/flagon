@@ -5,6 +5,7 @@ import dev.flagon.runtime.Program;
 import org.lwjgl.opengl.Display;
 import org.lwjgl.opengl.DisplayMode;
 import org.lwjgl.opengl.GL11;
+import org.lwjgl.opengl.GL14;
 
 import java.nio.ByteBuffer;
 import java.nio.FloatBuffer;
@@ -135,6 +136,17 @@ public final class LwjglDemoProgram implements Program {
 
         drawLitQuad();
         drawFoggedQuad();
+        drawBlendedQuad();
+    }
+
+    // a constant blend colour half mixed with a white quad, subtracted from the panel under it
+    private void drawBlendedQuad() {
+        GL11.glEnable(GL11.GL_BLEND);
+        GL14.glBlendColor(0.5f, 0.5f, 0.5f, 1.0f);
+        GL11.glBlendFunc(GL14.GL_CONSTANT_COLOR, GL11.GL_ZERO);
+        GL14.glBlendEquation(GL14.GL_FUNC_ADD);
+        quads(500.0f, 100.0f, 540.0f, 140.0f, 1.0f, 1.0f, 1.0f);
+        GL11.glDisable(GL11.GL_BLEND);
     }
 
     private void drawLitQuad() {

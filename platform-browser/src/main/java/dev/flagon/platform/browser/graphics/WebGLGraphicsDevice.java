@@ -1,6 +1,7 @@
 package dev.flagon.platform.browser.graphics;
 
 import dev.flagon.platform.graphics.AttributeType;
+import dev.flagon.platform.graphics.BlendEquation;
 import dev.flagon.platform.graphics.BlendFactor;
 import dev.flagon.platform.graphics.BufferTarget;
 import dev.flagon.platform.graphics.BufferUsage;
@@ -135,6 +136,28 @@ public final class WebGLGraphicsDevice implements GraphicsDevice {
     }
 
     @Override
+    public void setBlendFuncSeparate(BlendFactor sourceColor, BlendFactor destinationColor,
+                                     BlendFactor sourceAlpha, BlendFactor destinationAlpha) {
+        gl.blendFuncSeparate(blendFactor(sourceColor), blendFactor(destinationColor),
+                blendFactor(sourceAlpha), blendFactor(destinationAlpha));
+    }
+
+    @Override
+    public void setBlendEquation(BlendEquation equation) {
+        gl.blendEquation(blendEquation(equation));
+    }
+
+    @Override
+    public void setBlendEquationSeparate(BlendEquation color, BlendEquation alpha) {
+        gl.blendEquationSeparate(blendEquation(color), blendEquation(alpha));
+    }
+
+    @Override
+    public void setBlendColor(float red, float green, float blue, float alpha) {
+        gl.blendColor(red, green, blue, alpha);
+    }
+
+    @Override
     public void setCullFace(boolean enabled) {
         capability(WebGL2.CULL_FACE, enabled);
     }
@@ -241,6 +264,21 @@ public final class WebGLGraphicsDevice implements GraphicsDevice {
             case ONE_MINUS_SRC_ALPHA -> WebGL2.ONE_MINUS_SRC_ALPHA;
             case DST_ALPHA -> WebGL2.DST_ALPHA;
             case ONE_MINUS_DST_ALPHA -> WebGL2.ONE_MINUS_DST_ALPHA;
+            case CONSTANT_COLOR -> WebGL2.CONSTANT_COLOR;
+            case ONE_MINUS_CONSTANT_COLOR -> WebGL2.ONE_MINUS_CONSTANT_COLOR;
+            case CONSTANT_ALPHA -> WebGL2.CONSTANT_ALPHA;
+            case ONE_MINUS_CONSTANT_ALPHA -> WebGL2.ONE_MINUS_CONSTANT_ALPHA;
+            case SRC_ALPHA_SATURATE -> WebGL2.SRC_ALPHA_SATURATE;
+        };
+    }
+
+    private static int blendEquation(BlendEquation equation) {
+        return switch (equation) {
+            case ADD -> WebGL2.FUNC_ADD;
+            case SUBTRACT -> WebGL2.FUNC_SUBTRACT;
+            case REVERSE_SUBTRACT -> WebGL2.FUNC_REVERSE_SUBTRACT;
+            case MIN -> WebGL2.MIN;
+            case MAX -> WebGL2.MAX;
         };
     }
 

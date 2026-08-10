@@ -51,6 +51,17 @@ public interface WebGL2 extends JSObject {
     int ONE_MINUS_DST_ALPHA = 0x0305;
     int DST_COLOR = 0x0306;
     int ONE_MINUS_DST_COLOR = 0x0307;
+    int SRC_ALPHA_SATURATE = 0x0308;
+    int CONSTANT_COLOR = 0x8001;
+    int ONE_MINUS_CONSTANT_COLOR = 0x8002;
+    int CONSTANT_ALPHA = 0x8003;
+    int ONE_MINUS_CONSTANT_ALPHA = 0x8004;
+
+    int FUNC_ADD = 0x8006;
+    int FUNC_SUBTRACT = 0x800A;
+    int FUNC_REVERSE_SUBTRACT = 0x800B;
+    int MIN = 0x8007;
+    int MAX = 0x8008;
 
     int NEVER = 0x0200;
     int LESS = 0x0201;
@@ -141,6 +152,15 @@ public interface WebGL2 extends JSObject {
     void depthMask(boolean enabled);
 
     void blendFunc(int source, int destination);
+
+    void blendFuncSeparate(int sourceColor, int destinationColor,
+                           int sourceAlpha, int destinationAlpha);
+
+    void blendEquation(int equation);
+
+    void blendEquationSeparate(int color, int alpha);
+
+    void blendColor(float red, float green, float blue, float alpha);
 
     void colorMask(boolean red, boolean green, boolean blue, boolean alpha);
 

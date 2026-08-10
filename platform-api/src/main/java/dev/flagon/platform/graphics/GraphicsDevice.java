@@ -31,6 +31,17 @@ public interface GraphicsDevice {
 
     void setBlendFunc(BlendFactor source, BlendFactor destination);
 
+    /** the colour and alpha channels blend by their own factors. */
+    void setBlendFuncSeparate(BlendFactor sourceColor, BlendFactor destinationColor,
+                              BlendFactor sourceAlpha, BlendFactor destinationAlpha);
+
+    void setBlendEquation(BlendEquation equation);
+
+    void setBlendEquationSeparate(BlendEquation color, BlendEquation alpha);
+
+    /** the constant the {@code CONSTANT_} blend factors read. */
+    void setBlendColor(float red, float green, float blue, float alpha);
+
     void setCullFace(boolean enabled);
 
     void setCulledFaces(CullFace faces);
