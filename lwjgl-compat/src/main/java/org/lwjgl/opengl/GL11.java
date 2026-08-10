@@ -110,6 +110,10 @@ public final class GL11 {
     public static final int GL_COMBINE = 0x8570;
 
     public static final int GL_RGBA = 0x1908;
+    public static final int GL_RGB = 0x1907;
+    public static final int GL_ALPHA = 0x1906;
+    public static final int GL_LUMINANCE = 0x1909;
+    public static final int GL_LUMINANCE_ALPHA = 0x190A;
 
     public static final int GL_BYTE = 0x1400;
     public static final int GL_UNSIGNED_BYTE = 0x1401;
@@ -1430,8 +1434,10 @@ public final class GL11 {
         requireTexture2D(target, "glTexImage2D");
         state().refuseWhileRecording("glTexImage2D");
         requireLevel(level);
-        requireRgbaBytes(format, type);
-        device().textureImage(level, width, height, bytes(pixels, width * height * 4));
+        requireByteType(type, "glTexImage2D");
+        int pixelCount = width * height;
+        byte[] read = bytes(pixels, pixelCount * components(format, "glTexImage2D"));
+        device().textureImage(level, width, height, toRgba(read, pixelCount, format));
         rebuildMipmaps();
     }
 
@@ -1453,8 +1459,10 @@ public final class GL11 {
         requireTexture2D(target, "glTexSubImage2D");
         state().refuseWhileRecording("glTexSubImage2D");
         requireLevel(level);
-        requireRgbaBytes(format, type);
-        device().textureSubImage(level, x, y, width, height, bytes(pixels, width * height * 4));
+        requireByteType(type, "glTexSubImage2D");
+        int pixelCount = width * height;
+        byte[] read = bytes(pixels, pixelCount * components(format, "glTexSubImage2D"));
+        device().textureSubImage(level, x, y, width, height, toRgba(read, pixelCount, format));
         rebuildMipmaps();
     }
 
@@ -1501,8 +1509,80 @@ public final class GL11 {
     private static void requireRgbaBytes(int format, int type) {
         if (format != GL_RGBA || type != GL_UNSIGNED_BYTE) {
             throw new UnsupportedOperationException(
-                    "glTexImage2D emulates GL_RGBA/GL_UNSIGNED_BYTE only");
+                    "a texture uploaded from ints emulates GL_RGBA/GL_UNSIGNED_BYTE only");
         }
+    }
+
+    private static void requireByteType(int type, String call) {
+        if (type != GL_UNSIGNED_BYTE) {
+            throw new UnsupportedOperationException(
+                    call + " emulates GL_UNSIGNED_BYTE pixels only, got 0x"
+                            + Integer.toHexString(type));
+        }
+    }
+
+    /** @return how many bytes of the buffer one pixel of the format takes */
+    private static int components(int format, String call) {
+        return switch (format) {
+            case GL_RGBA, GL12.GL_BGRA -> 4;
+            case GL_RGB, GL12.GL_BGR -> 3;
+            case GL_LUMINANCE_ALPHA -> 2;
+            case GL_LUMINANCE, GL_ALPHA -> 1;
+            default -> throw new UnsupportedOperationException(
+                    call + " does not emulate format 0x" + Integer.toHexString(format));
+        };
+    }
+
+    /**
+     * webgl2 takes rgba bytes, so the narrower formats are widened here rather than at the device.
+     */
+    private static byte[] toRgba(byte[] source, int pixels, int format) {
+        if (format == GL_RGBA) {
+            return source;
+        }
+        byte[] rgba = new byte[pixels * 4];
+        int step = components(format, "glTexImage2D");
+        for (int pixel = 0; pixel < pixels; pixel++) {
+            int from = pixel * step;
+            int to = pixel * 4;
+            switch (format) {
+                case GL_RGB -> {
+                    rgba[to] = source[from];
+                    rgba[to + 1] = source[from + 1];
+                    rgba[to + 2] = source[from + 2];
+                    rgba[to + 3] = (byte) 0xFF;
+                }
+                case GL12.GL_BGR -> {
+                    rgba[to] = source[from + 2];
+                    rgba[to + 1] = source[from + 1];
+                    rgba[to + 2] = source[from];
+                    rgba[to + 3] = (byte) 0xFF;
+                }
+                case GL12.GL_BGRA -> {
+                    rgba[to] = source[from + 2];
+                    rgba[to + 1] = source[from + 1];
+                    rgba[to + 2] = source[from];
+                    rgba[to + 3] = source[from + 3];
+                }
+                case GL_LUMINANCE -> {
+                    rgba[to] = source[from];
+                    rgba[to + 1] = source[from];
+                    rgba[to + 2] = source[from];
+                    rgba[to + 3] = (byte) 0xFF;
+                }
+                case GL_LUMINANCE_ALPHA -> {
+                    rgba[to] = source[from];
+                    rgba[to + 1] = source[from];
+                    rgba[to + 2] = source[from];
+                    rgba[to + 3] = source[from + 1];
+                }
+                // an alpha texture is black where it is not transparent, the way gl samples it
+                case GL_ALPHA -> rgba[to + 3] = source[from];
+                default -> throw new UnsupportedOperationException(
+                        "glTexImage2D does not emulate format 0x" + Integer.toHexString(format));
+            }
+        }
+        return rgba;
     }
 
     private static void requireTexture2D(int target, String call) {

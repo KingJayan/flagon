@@ -5,6 +5,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.lwjgl.opengl.GL11;
+import org.lwjgl.opengl.GL12;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -242,6 +243,88 @@ class GL11Test {
         assertArrayEquals(new byte[] {0x10, 0x20, 0x30, 0x40, (byte) 0xFF, 0, 0, (byte) 0xFF},
                 device.lastRgba);
         assertEquals(0, pixels.position(), "the caller's buffer was consumed");
+    }
+
+    @Test
+    void widensAnRgbUploadToTheRgbaTheDeviceTakes() {
+        java.nio.ByteBuffer pixels = org.lwjgl.BufferUtils.createByteBuffer(6);
+        pixels.put((byte) 0x10).put((byte) 0x20).put((byte) 0x30);
+        pixels.put((byte) 0x40).put((byte) 0x50).put((byte) 0x60);
+        pixels.flip();
+
+        GL11.glTexImage2D(GL11.GL_TEXTURE_2D, 0, 0x1907, 2, 1, 0,
+                0x1907, GL11.GL_UNSIGNED_BYTE, pixels);
+
+        assertArrayEquals(new byte[] {0x10, 0x20, 0x30, (byte) 0xFF,
+                0x40, 0x50, 0x60, (byte) 0xFF}, device.lastRgba);
+    }
+
+    @Test
+    void readsABgraUploadInTheOrderItWasGiven() {
+        java.nio.ByteBuffer pixels = org.lwjgl.BufferUtils.createByteBuffer(4);
+        pixels.put((byte) 0x10).put((byte) 0x20).put((byte) 0x30).put((byte) 0x40);
+        pixels.flip();
+
+        GL11.glTexImage2D(GL11.GL_TEXTURE_2D, 0, GL12.GL_BGRA, 1, 1, 0,
+                GL12.GL_BGRA, GL11.GL_UNSIGNED_BYTE, pixels);
+
+        assertArrayEquals(new byte[] {0x30, 0x20, 0x10, 0x40}, device.lastRgba);
+    }
+
+    @Test
+    void spreadsALuminanceUploadAcrossTheColourChannels() {
+        java.nio.ByteBuffer pixels = org.lwjgl.BufferUtils.createByteBuffer(2);
+        pixels.put((byte) 0x7F).put((byte) 0x40);
+        pixels.flip();
+
+        GL11.glTexImage2D(GL11.GL_TEXTURE_2D, 0, GL11.GL_LUMINANCE_ALPHA, 1, 1, 0,
+                GL11.GL_LUMINANCE_ALPHA, GL11.GL_UNSIGNED_BYTE, pixels);
+
+        assertArrayEquals(new byte[] {0x7F, 0x7F, 0x7F, 0x40}, device.lastRgba);
+    }
+
+    @Test
+    void anAlphaUploadIsBlackWhereItIsOpaque() {
+        java.nio.ByteBuffer pixels = org.lwjgl.BufferUtils.createByteBuffer(1);
+        pixels.put((byte) 0x80);
+        pixels.flip();
+
+        GL11.glTexImage2D(GL11.GL_TEXTURE_2D, 0, GL11.GL_ALPHA, 1, 1, 0,
+                GL11.GL_ALPHA, GL11.GL_UNSIGNED_BYTE, pixels);
+
+        assertArrayEquals(new byte[] {0, 0, 0, (byte) 0x80}, device.lastRgba);
+    }
+
+    @Test
+    void aSubImageIsWidenedTheSameWay() {
+        java.nio.ByteBuffer pixels = org.lwjgl.BufferUtils.createByteBuffer(3);
+        pixels.put((byte) 0x11).put((byte) 0x22).put((byte) 0x33);
+        pixels.flip();
+
+        GL11.glTexSubImage2D(GL11.GL_TEXTURE_2D, 0, 1, 2, 1, 1,
+                0x1907, GL11.GL_UNSIGNED_BYTE, pixels);
+
+        assertArrayEquals(new byte[] {0x11, 0x22, 0x33, (byte) 0xFF}, device.lastRgba);
+    }
+
+    @Test
+    void aFormatWithNoRgbaAnswerNamesItself() {
+        java.nio.ByteBuffer pixels = org.lwjgl.BufferUtils.createByteBuffer(4);
+
+        UnsupportedOperationException failure = assertThrows(UnsupportedOperationException.class,
+                () -> GL11.glTexImage2D(GL11.GL_TEXTURE_2D, 0, 0x1902, 1, 1, 0,
+                        0x1902, GL11.GL_UNSIGNED_BYTE, pixels));
+        assertTrue(failure.getMessage().contains("format 0x1902"), failure.getMessage());
+    }
+
+    @Test
+    void aPixelTypeThatIsNotBytesNamesItself() {
+        java.nio.ByteBuffer pixels = org.lwjgl.BufferUtils.createByteBuffer(4);
+
+        UnsupportedOperationException failure = assertThrows(UnsupportedOperationException.class,
+                () -> GL11.glTexImage2D(GL11.GL_TEXTURE_2D, 0, GL11.GL_RGBA, 1, 1, 0,
+                        GL11.GL_RGBA, GL11.GL_FLOAT, pixels));
+        assertTrue(failure.getMessage().contains("GL_UNSIGNED_BYTE"), failure.getMessage());
     }
 
     @Test
