@@ -598,7 +598,7 @@ final class RecordingGraphicsDevice implements GraphicsDevice {
                 + " " + width + " " + height);
     }
 
-    /** a framebuffer of one repeated colour, so a read has something predictable in it. */
+    /** a framebuffer of one repeated color, so a read has something predictable in it. */
     public byte[] framebuffer = new byte[] {(byte) 0x10, (byte) 0x20, (byte) 0x30, (byte) 0x40};
 
     @Override

@@ -36,6 +36,11 @@
     </dependency>
 
     <dependency>
+      <groupId>dev.flagon</groupId>
+      <artifactId>socket-classlib</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+    <dependency>
       <groupId>org.teavm</groupId>
       <artifactId>teavm-classlib</artifactId>
       <scope>provided</scope>

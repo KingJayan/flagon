@@ -29,6 +29,27 @@ for (const backend of BACKENDS) {
       await expect(page.getByTestId('log')).toContainText('closed: true');
     });
 
+    /** the socket a desktop program opens, on a page that has none of its own */
+    test('carries an unmodified java.net.Socket through the same proxy', async ({ page }) => {
+      await runDemo(page, backend);
+
+      await expect(page.getByTestId('log')).toContainText(
+        'socket: connected true to localhost:5273',
+      );
+      await expect(page.getByTestId('log')).toContainText(
+        'socket body: flagon reached this server through a socket it could not open',
+      );
+      await expect(page.getByTestId('log')).toContainText('socket timeout kept: 30000');
+    });
+
+    test('refuses to listen, which a page can never do', async ({ page }) => {
+      await runDemo(page, backend);
+
+      await expect(page.getByTestId('log')).toContainText(
+        'socket listen refused: nothing can connect in to a page, so it cannot listen',
+      );
+    });
+
     test('reassembles a body that arrives as many frames', async ({ page }) => {
       await runDemo(page, backend);
 

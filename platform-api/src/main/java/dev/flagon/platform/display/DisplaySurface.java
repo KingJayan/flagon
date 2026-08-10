@@ -14,7 +14,7 @@ public interface DisplaySurface {
 
     void setTitle(String title);
 
-    /** resizes the drawable area; hosts that cannot honour the request keep their own size. */
+    /** resizes the drawable area; hosts that cannot honor the request keep their own size. */
     void setSize(int width, int height);
 
     boolean isFullscreen();

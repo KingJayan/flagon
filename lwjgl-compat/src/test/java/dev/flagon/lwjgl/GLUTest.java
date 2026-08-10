@@ -97,7 +97,7 @@ class GLUTest {
     }
 
     @Test
-    void projectPutsTheCentreOfClipSpaceAtTheCentreOfTheViewport() {
+    void projectPutsThecenterOfClipSpaceAtThecenterOfTheViewport() {
         FloatBuffer modelView = identity();
         FloatBuffer projection = identity();
         FloatBuffer window = floats(3);

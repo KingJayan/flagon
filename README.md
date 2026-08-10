@@ -78,9 +78,9 @@ The `sandbox` bundle contains diagnostics and regression programs.
 > [!NOTE]
 > Appending ?program=selftest to the URL runs the compilation-backend regression suite.
 
-Networking goes through `dev.flagon.platform.net`, not `java.net.Socket`, which the browser
-classlib does not have. It needs a proxy served alongside the page, because a browser cannot open a
-socket itself.
+Networking goes through `dev.flagon.platform.net`, and `java.net.Socket` is supplied on top of it
+for code that opens one itself. It needs a proxy served alongside the page, because a browser cannot
+open a socket itself.
 The development server runs one; a hosted build runs `make serve`, which serves
 the site and the socket endpoint together. See [COMPATIBILITY.md](docs/COMPATIBILITY.md#networking).
 

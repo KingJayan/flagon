@@ -127,8 +127,8 @@ for (const backend of BACKENDS) {
       expectColor(await readPixel(page, 115, 80), [178, 178, 178], 'the fogged quad');
     });
 
-    /** src * constant colour, dst * zero, so a white quad lands at exactly the constant */
-    test('blends against the constant colour GL14 sets', async ({ page }) => {
+    /** src * constant color, dst * zero, so a white quad lands at exactly the constant */
+    test('blends against the constant color GL14 sets', async ({ page }) => {
       await runDemo(page, backend);
 
       expectColor(await readPixel(page, 520, 240), [128, 128, 128], 'the blended quad');
@@ -140,7 +140,7 @@ for (const backend of BACKENDS) {
       expectColor(await readPixel(page, 620, 240), [0, 255, 0], 'the capability quad');
     });
 
-    /** the quad is only its colour when glu projects a point out to the window and back */
+    /** the quad is only its color when glu projects a point out to the window and back */
     test('carries a point through gluProject and gluUnProject', async ({ page }) => {
       await runDemo(page, backend);
 

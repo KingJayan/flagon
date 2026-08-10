@@ -33,7 +33,7 @@ public final class GLU {
         GL11.glFrustum(-right, right, -top, top, zNear, zFar);
     }
 
-    /** the view matrix that puts the eye at its point, looking down at the centre. */
+    /** the view matrix that puts the eye at its point, looking down at the center. */
     public static void gluLookAt(float eyeX, float eyeY, float eyeZ,
                                  float centerX, float centerY, float centerZ,
                                  float upX, float upY, float upZ) {

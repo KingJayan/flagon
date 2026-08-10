@@ -1095,7 +1095,7 @@ public final class GL11 {
         }
     }
 
-    /** the shader keeps one material, so a face-by-face material cannot be honoured. */
+    /** the shader keeps one material, so a face-by-face material cannot be honored. */
     private static void requireBothFaces(int face, String call) {
         if (face != GL_FRONT_AND_BACK) {
             throw new UnsupportedOperationException(

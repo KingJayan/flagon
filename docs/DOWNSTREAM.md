@@ -56,6 +56,9 @@ Your bundle depends on:
 
 `lwjgl-compat` provides the `org.lwjgl.*` classes your application was compiled against.
 
+Add `socket-classlib` too if your application opens a `java.net.Socket`; without it the class is
+absent from the classlib and the bundle will not link.
+
 Your application's normal LWJGL dependency **must not** appear in the bundle module. Mark it as
 `provided` or exclude it entirely. Otherwise the real LWJGL classes will shadow the compatibility
 layer and the build will fail when native methods are linked.

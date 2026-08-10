@@ -1,7 +1,7 @@
 package dev.flagon.lwjgl.internal;
 
 /**
- the client arrays the fixed-function shader has attributes for: a position, a colour, and one
+ the client arrays the fixed-function shader has attributes for: a position, a color, and one
  texture coordinate per texture unit
  */
 public final class VertexArrays {
