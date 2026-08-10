@@ -7,6 +7,7 @@ import dev.flagon.lwjgl.internal.Lighting;
 import dev.flagon.lwjgl.internal.Matrix4;
 import dev.flagon.lwjgl.internal.VertexArrays;
 import dev.flagon.platform.graphics.AttributeType;
+import dev.flagon.platform.graphics.BlendEquation;
 import dev.flagon.platform.graphics.BlendFactor;
 import dev.flagon.platform.graphics.BufferTarget;
 import dev.flagon.platform.graphics.CompareFunc;
@@ -59,6 +60,7 @@ public final class GL11 {
     public static final int GL_ONE_MINUS_SRC_ALPHA = 0x0303;
     public static final int GL_DST_ALPHA = 0x0304;
     public static final int GL_ONE_MINUS_DST_ALPHA = 0x0305;
+    public static final int GL_SRC_ALPHA_SATURATE = 0x0308;
     public static final int GL_DST_COLOR = 0x0306;
     public static final int GL_ONE_MINUS_DST_COLOR = 0x0307;
 
@@ -632,6 +634,10 @@ public final class GL11 {
             case GL_DEPTH_FUNC -> compareEnum(state().depthFunc());
             case GL_BLEND_SRC -> blendEnum(state().blendSource());
             case GL_BLEND_DST -> blendEnum(state().blendDestination());
+            case GL14.GL_BLEND_SRC_ALPHA -> blendEnum(state().blendSourceAlpha());
+            case GL14.GL_BLEND_DST_ALPHA -> blendEnum(state().blendDestinationAlpha());
+            case GL14.GL_BLEND_EQUATION_RGB -> equationEnum(state().blendEquation());
+            case GL14.GL_BLEND_EQUATION_ALPHA -> equationEnum(state().blendEquationAlpha());
             case GL_CULL_FACE_MODE -> switch (state().culledFaces()) {
                 case FRONT -> GL_FRONT;
                 case BACK -> GL_BACK;
@@ -718,6 +724,16 @@ public final class GL11 {
         };
     }
 
+    private static int equationEnum(BlendEquation equation) {
+        return switch (equation) {
+            case ADD -> GL14.GL_FUNC_ADD;
+            case SUBTRACT -> GL14.GL_FUNC_SUBTRACT;
+            case REVERSE_SUBTRACT -> GL14.GL_FUNC_REVERSE_SUBTRACT;
+            case MIN -> GL14.GL_MIN;
+            case MAX -> GL14.GL_MAX;
+        };
+    }
+
     private static int blendEnum(BlendFactor factor) {
         return switch (factor) {
             case ZERO -> GL_ZERO;
@@ -730,6 +746,11 @@ public final class GL11 {
             case ONE_MINUS_SRC_ALPHA -> GL_ONE_MINUS_SRC_ALPHA;
             case DST_ALPHA -> GL_DST_ALPHA;
             case ONE_MINUS_DST_ALPHA -> GL_ONE_MINUS_DST_ALPHA;
+            case SRC_ALPHA_SATURATE -> GL_SRC_ALPHA_SATURATE;
+            case CONSTANT_COLOR -> GL14.GL_CONSTANT_COLOR;
+            case ONE_MINUS_CONSTANT_COLOR -> GL14.GL_ONE_MINUS_CONSTANT_COLOR;
+            case CONSTANT_ALPHA -> GL14.GL_CONSTANT_ALPHA;
+            case ONE_MINUS_CONSTANT_ALPHA -> GL14.GL_ONE_MINUS_CONSTANT_ALPHA;
         };
     }
 
@@ -1547,7 +1568,7 @@ public final class GL11 {
         };
     }
 
-    private static BlendFactor blendFactor(int factor, String call) {
+    static BlendFactor blendFactor(int factor, String call) {
         return switch (factor) {
             case GL_ZERO -> BlendFactor.ZERO;
             case GL_ONE -> BlendFactor.ONE;
@@ -1559,6 +1580,11 @@ public final class GL11 {
             case GL_ONE_MINUS_SRC_ALPHA -> BlendFactor.ONE_MINUS_SRC_ALPHA;
             case GL_DST_ALPHA -> BlendFactor.DST_ALPHA;
             case GL_ONE_MINUS_DST_ALPHA -> BlendFactor.ONE_MINUS_DST_ALPHA;
+            case GL_SRC_ALPHA_SATURATE -> BlendFactor.SRC_ALPHA_SATURATE;
+            case GL14.GL_CONSTANT_COLOR -> BlendFactor.CONSTANT_COLOR;
+            case GL14.GL_ONE_MINUS_CONSTANT_COLOR -> BlendFactor.ONE_MINUS_CONSTANT_COLOR;
+            case GL14.GL_CONSTANT_ALPHA -> BlendFactor.CONSTANT_ALPHA;
+            case GL14.GL_ONE_MINUS_CONSTANT_ALPHA -> BlendFactor.ONE_MINUS_CONSTANT_ALPHA;
             default -> throw new IllegalArgumentException(
                     call + ": unknown blend factor 0x" + Integer.toHexString(factor));
         };

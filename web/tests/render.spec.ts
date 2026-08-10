@@ -127,6 +127,13 @@ for (const backend of BACKENDS) {
       expectColor(await readPixel(page, 115, 80), [178, 178, 178], 'the fogged quad');
     });
 
+    /** src * constant colour, dst * zero, so a white quad lands at exactly the constant */
+    test('blends against the constant colour GL14 sets', async ({ page }) => {
+      await runDemo(page, backend);
+
+      expectColor(await readPixel(page, 520, 240), [128, 128, 128], 'the blended quad');
+    });
+
     test('reports the frame loop finishing', async ({ page }) => {
       await open(page, backend, 'program=lwjgl');
       await expect(page.getByTestId('log')).toContainText('frame 60', { timeout: 30_000 });
