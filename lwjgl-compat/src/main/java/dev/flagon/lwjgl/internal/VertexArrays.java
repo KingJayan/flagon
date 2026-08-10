@@ -11,7 +11,8 @@ public final class VertexArrays {
     public static final int POSITION = 0;
     public static final int COLOR = 1;
     public static final int TEX_COORD = 2;
-    public static final int SLOTS = TEX_COORD + UNITS;
+    public static final int NORMAL = TEX_COORD + UNITS;
+    public static final int SLOTS = NORMAL + 1;
 
     private final ClientArray[] slots = new ClientArray[SLOTS];
 
@@ -21,6 +22,7 @@ public final class VertexArrays {
         for (int unit = 0; unit < UNITS; unit++) {
             slots[TEX_COORD + unit] = new ClientArray(2);
         }
+        slots[NORMAL] = new ClientArray(3);
     }
 
     public ClientArray slot(int slot) {
@@ -37,6 +39,10 @@ public final class VertexArrays {
 
     public ClientArray texCoord(int unit) {
         return slots[TEX_COORD + requireUnit(unit)];
+    }
+
+    public ClientArray normal() {
+        return slots[NORMAL];
     }
 
     public static int requireUnit(int unit) {

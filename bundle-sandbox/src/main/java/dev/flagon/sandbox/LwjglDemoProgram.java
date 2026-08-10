@@ -83,11 +83,8 @@ public final class LwjglDemoProgram implements Program {
         GL11.glMatrixMode(GL11.GL_MODELVIEW);
         GL11.glLoadIdentity();
 
-        // a fixed green panel, so a screenshot has something stable to assert on. drawn with
-        // GL_QUADS, which webgl has no equivalent for, so the index expansion is covered too.
         quads(WIDTH * 0.25f, HEIGHT * 0.25f, WIDTH * 0.75f, HEIGHT * 0.75f, 0.0f, 0.8f, 0.2f);
 
-        // and a marker that moves, so the frame loop is visibly running
         float travel = WIDTH - 40.0f;
         float x = (frame * 4.0f) % travel;
         GL11.glPushMatrix();
@@ -95,13 +92,11 @@ public final class LwjglDemoProgram implements Program {
         triangleStrip(0.0f, 0.0f, 20.0f, 20.0f, 0.9f, 0.2f, 0.1f);
         GL11.glPopMatrix();
 
-        // a quad over the whole frame, of which only the scissor box may survive
         GL11.glEnable(GL11.GL_SCISSOR_TEST);
         GL11.glScissor(500, 300, 100, 40);
         quads(0.0f, 0.0f, WIDTH, HEIGHT, 0.9f, 0.9f, 0.1f);
         GL11.glDisable(GL11.GL_SCISSOR_TEST);
 
-        // the same quad twice, front-facing under one winding rule and not the other
         GL11.glEnable(GL11.GL_CULL_FACE);
         GL11.glCullFace(GL11.GL_BACK);
         GL11.glFrontFace(GL11.GL_CW);
@@ -112,7 +107,6 @@ public final class LwjglDemoProgram implements Program {
 
         GL11.glCallList(panelList);
 
-        // the scissor state is saved, changed, and put back by the pop rather than by hand
         GL11.glPushAttrib(GL11.GL_ENABLE_BIT | GL11.GL_SCISSOR_BIT);
         GL11.glEnable(GL11.GL_SCISSOR_TEST);
         GL11.glScissor(0, 0, 1, 1);
@@ -120,7 +114,6 @@ public final class LwjglDemoProgram implements Program {
         GL11.glPopAttrib();
         quads(300.0f, 300.0f, 340.0f, 320.0f, 0.2f, 0.4f, 1.0f);
 
-        // a stencil mask written by one quad, and a second quad that may only paint where it is
         GL11.glEnable(GL11.GL_STENCIL_TEST);
         GL11.glClearStencil(0);
         GL11.glClear(GL11.GL_STENCIL_BUFFER_BIT);
@@ -139,6 +132,40 @@ public final class LwjglDemoProgram implements Program {
         GL11.glLoadMatrix(translation(560.0f, 100.0f));
         quads(0.0f, 0.0f, 30.0f, 30.0f, 0.9f, 0.5f, 0.0f);
         GL11.glPopMatrix();
+
+        drawLitQuad();
+        drawFoggedQuad();
+    }
+
+    private void drawLitQuad() {
+        GL11.glEnable(GL11.GL_LIGHTING);
+        GL11.glEnable(GL11.GL_LIGHT0);
+        GL11.glLightModel(GL11.GL_LIGHT_MODEL_AMBIENT, colour(0.0f, 0.0f, 0.0f));
+        GL11.glLight(GL11.GL_LIGHT0, GL11.GL_POSITION, colour(0.0f, 0.0f, 1.0f, 0.0f));
+        GL11.glMaterial(GL11.GL_FRONT_AND_BACK, GL11.GL_AMBIENT, colour(0.0f, 0.0f, 0.0f));
+        GL11.glMaterial(GL11.GL_FRONT_AND_BACK, GL11.GL_DIFFUSE, colour(0.4f, 0.2f, 0.8f));
+        GL11.glNormal3f(0.0f, 0.0f, 1.0f);
+        quads(20.0f, 260.0f, 80.0f, 300.0f, 1.0f, 1.0f, 1.0f);
+        GL11.glDisable(GL11.GL_LIGHT0);
+        GL11.glDisable(GL11.GL_LIGHTING);
+    }
+
+    private void drawFoggedQuad() {
+        GL11.glEnable(GL11.GL_FOG);
+        GL11.glFogi(GL11.GL_FOG_MODE, GL11.GL_LINEAR);
+        GL11.glFogf(GL11.GL_FOG_START, 0.0f);
+        GL11.glFogf(GL11.GL_FOG_END, 1000.0f);
+        GL11.glFog(GL11.GL_FOG_COLOR, colour(0.0f, 0.0f, 0.0f));
+        quads(90.0f, 260.0f, 140.0f, 300.0f, 1.0f, 1.0f, 1.0f);
+        GL11.glDisable(GL11.GL_FOG);
+    }
+
+    private static FloatBuffer colour(float red, float green, float blue) {
+        return colour(red, green, blue, 1.0f);
+    }
+
+    private static FloatBuffer colour(float x, float y, float z, float w) {
+        return FloatBuffer.wrap(new float[] {x, y, z, w});
     }
 
     private static FloatBuffer translation(float x, float y) {

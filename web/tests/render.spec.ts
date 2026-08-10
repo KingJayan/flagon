@@ -115,6 +115,18 @@ for (const backend of BACKENDS) {
       expectColor(await readPixel(page, 390, 140), [0, 204, 51], 'outside it, the panel');
     });
 
+    test('lights a face by its normal and its material', async ({ page }) => {
+      await runDemo(page, backend);
+
+      expectColor(await readPixel(page, 50, 80), [102, 51, 204], 'the lit quad');
+    });
+
+    test('fades a quad into the fog by its distance', async ({ page }) => {
+      await runDemo(page, backend);
+
+      expectColor(await readPixel(page, 115, 80), [178, 178, 178], 'the fogged quad');
+    });
+
     test('reports the frame loop finishing', async ({ page }) => {
       await open(page, backend, 'program=lwjgl');
       await expect(page.getByTestId('log')).toContainText('frame 60', { timeout: 30_000 });

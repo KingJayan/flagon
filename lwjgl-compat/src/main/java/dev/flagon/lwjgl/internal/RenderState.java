@@ -31,4 +31,12 @@ public interface RenderState {
     float t(int unit);
 
     float pointSize();
+
+    Lighting lighting();
+
+    float normalX();
+
+    float normalY();
+
+    float normalZ();
 }

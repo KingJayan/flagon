@@ -1,0 +1,223 @@
+package dev.flagon.lwjgl.internal;
+
+/**
+ * the fixed-function lighting, material and fog state.
+ */
+public final class Lighting {
+
+    public static final int LIGHTS = 8;
+
+    public static final int LINEAR = 0;
+    public static final int EXP = 1;
+    public static final int EXP2 = 2;
+
+    private boolean enabled;
+    private final boolean[] lightEnabled = new boolean[LIGHTS];
+    private final int[] lightEnabledInts = new int[LIGHTS];
+
+    /** eye space, w = 0 for a directional light; gl transforms it when it is set. */
+    private final float[] position = new float[LIGHTS * 4];
+    private final float[] ambient = new float[LIGHTS * 4];
+    private final float[] diffuse = new float[LIGHTS * 4];
+    private final float[] specular = new float[LIGHTS * 4];
+    private final float[] attenuation = new float[LIGHTS * 3];
+
+    private final float[] modelAmbient = {0.2f, 0.2f, 0.2f, 1.0f};
+
+    private final float[] materialAmbient = {0.2f, 0.2f, 0.2f, 1.0f};
+    private final float[] materialDiffuse = {0.8f, 0.8f, 0.8f, 1.0f};
+    private final float[] materialSpecular = {0.0f, 0.0f, 0.0f, 1.0f};
+    private final float[] materialEmission = {0.0f, 0.0f, 0.0f, 1.0f};
+    private float shininess;
+    private boolean colorMaterial;
+
+    private boolean fogEnabled;
+    private int fogMode = EXP;
+    private final float[] fogColor = new float[4];
+    private float fogDensity = 1.0f;
+    private float fogStart;
+    private float fogEnd = 1.0f;
+
+    public Lighting() {
+        // gl's light 0 is white and the rest are black, and every light points down the -z axis
+        for (int light = 0; light < LIGHTS; light++) {
+            position[light * 4 + 2] = 1.0f;
+            attenuation[light * 3] = 1.0f;
+            if (light == 0) {
+                set(diffuse, 0, 1.0f, 1.0f, 1.0f, 1.0f);
+                set(specular, 0, 1.0f, 1.0f, 1.0f, 1.0f);
+            }
+        }
+    }
+
+    private static void set(float[] target, int light, float x, float y, float z, float w) {
+        target[light * 4] = x;
+        target[light * 4 + 1] = y;
+        target[light * 4 + 2] = z;
+        target[light * 4 + 3] = w;
+    }
+
+    public boolean isEnabled() {
+        return enabled;
+    }
+
+    public void setEnabled(boolean value) {
+        enabled = value;
+    }
+
+    public void setLightEnabled(int light, boolean value) {
+        lightEnabled[requireLight(light)] = value;
+        lightEnabledInts[light] = value ? 1 : 0;
+    }
+
+    public boolean isLightEnabled(int light) {
+        return lightEnabled[requireLight(light)];
+    }
+
+    public boolean[] lightEnabledFlagsCopy() {
+        return lightEnabled.clone();
+    }
+
+    public int[] lightEnabledFlags() {
+        return lightEnabledInts;
+    }
+
+    public static int requireLight(int light) {
+        if (light < 0 || light >= LIGHTS) {
+            throw new UnsupportedOperationException(
+                    "light " + light + " is out of range; gl has GL_LIGHT0 through GL_LIGHT"
+                            + (LIGHTS - 1));
+        }
+        return light;
+    }
+
+    /** the position gl stores is the one it was given, transformed by the modelview then. */
+    public void setPosition(int light, float[] eyeSpace) {
+        System.arraycopy(eyeSpace, 0, position, requireLight(light) * 4, 4);
+    }
+
+    public void setAmbient(int light, float[] rgba) {
+        System.arraycopy(rgba, 0, ambient, requireLight(light) * 4, 4);
+    }
+
+    public void setDiffuse(int light, float[] rgba) {
+        System.arraycopy(rgba, 0, diffuse, requireLight(light) * 4, 4);
+    }
+
+    public void setSpecular(int light, float[] rgba) {
+        System.arraycopy(rgba, 0, specular, requireLight(light) * 4, 4);
+    }
+
+    /** constant, linear and quadratic, the three factors gl divides a light's reach by. */
+    public void setAttenuation(int light, int which, float value) {
+        attenuation[requireLight(light) * 3 + which] = value;
+    }
+
+    public float[] positions() {
+        return position;
+    }
+
+    public float[] ambients() {
+        return ambient;
+    }
+
+    public float[] diffuses() {
+        return diffuse;
+    }
+
+    public float[] speculars() {
+        return specular;
+    }
+
+    public float[] attenuations() {
+        return attenuation;
+    }
+
+    public float[] modelAmbient() {
+        return modelAmbient;
+    }
+
+    public void setModelAmbient(float[] rgba) {
+        System.arraycopy(rgba, 0, modelAmbient, 0, 4);
+    }
+
+    public float[] materialAmbient() {
+        return materialAmbient;
+    }
+
+    public float[] materialDiffuse() {
+        return materialDiffuse;
+    }
+
+    public float[] materialSpecular() {
+        return materialSpecular;
+    }
+
+    public float[] materialEmission() {
+        return materialEmission;
+    }
+
+    public float shininess() {
+        return shininess;
+    }
+
+    public void setShininess(float value) {
+        shininess = value;
+    }
+
+    public boolean isColorMaterial() {
+        return colorMaterial;
+    }
+
+    public void setColorMaterial(boolean value) {
+        colorMaterial = value;
+    }
+
+    public boolean isFogEnabled() {
+        return fogEnabled;
+    }
+
+    public void setFogEnabled(boolean value) {
+        fogEnabled = value;
+    }
+
+    public int fogMode() {
+        return fogMode;
+    }
+
+    public void setFogMode(int mode) {
+        fogMode = mode;
+    }
+
+    public float[] fogColor() {
+        return fogColor;
+    }
+
+    public void setFogColor(float[] rgba) {
+        System.arraycopy(rgba, 0, fogColor, 0, 4);
+    }
+
+    public float fogDensity() {
+        return fogDensity;
+    }
+
+    public void setFogDensity(float value) {
+        fogDensity = value;
+    }
+
+    public float fogStart() {
+        return fogStart;
+    }
+
+    public void setFogStart(float value) {
+        fogStart = value;
+    }
+
+    public float fogEnd() {
+        return fogEnd;
+    }
+
+    public void setFogEnd(float value) {
+        fogEnd = value;
+    }
+}

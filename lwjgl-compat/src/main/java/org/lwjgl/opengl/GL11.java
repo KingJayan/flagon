@@ -3,6 +3,8 @@ package org.lwjgl.opengl;
 import dev.flagon.lwjgl.internal.ClientArray;
 import dev.flagon.lwjgl.internal.DrawMode;
 import dev.flagon.lwjgl.internal.GLState;
+import dev.flagon.lwjgl.internal.Lighting;
+import dev.flagon.lwjgl.internal.Matrix4;
 import dev.flagon.lwjgl.internal.VertexArrays;
 import dev.flagon.platform.graphics.AttributeType;
 import dev.flagon.platform.graphics.BlendFactor;
@@ -24,11 +26,7 @@ import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
 
 /**
- * gl 1.1 over webgl2.
- *
- * <p>calls that cannot be honoured throw {@link UnsupportedOperationException} naming the call,
- * rather than returning quietly — a rendering bug caused by an ignored state change is far more
- * expensive to find than a stack trace pointing at the call that caused it.
+ * gl 1.1 over webgl2
  */
 public final class GL11 {
 
@@ -161,8 +159,44 @@ public final class GL11 {
     public static final int GL_FOG_HINT = 0x0C54;
 
     public static final int GL_VERTEX_ARRAY = 0x8074;
+    public static final int GL_NORMAL_ARRAY = 0x8075;
     public static final int GL_COLOR_ARRAY = 0x8076;
     public static final int GL_TEXTURE_COORD_ARRAY = 0x8078;
+
+    public static final int GL_LIGHTING = 0x0B50;
+    public static final int GL_COLOR_MATERIAL = 0x0B57;
+    public static final int GL_LIGHT_MODEL_AMBIENT = 0x0B53;
+    public static final int GL_LIGHT0 = 0x4000;
+    public static final int GL_LIGHT1 = 0x4001;
+    public static final int GL_LIGHT2 = 0x4002;
+    public static final int GL_LIGHT3 = 0x4003;
+    public static final int GL_LIGHT4 = 0x4004;
+    public static final int GL_LIGHT5 = 0x4005;
+    public static final int GL_LIGHT6 = 0x4006;
+    public static final int GL_LIGHT7 = 0x4007;
+
+    public static final int GL_AMBIENT = 0x1200;
+    public static final int GL_DIFFUSE = 0x1201;
+    public static final int GL_SPECULAR = 0x1202;
+    public static final int GL_POSITION = 0x1203;
+    public static final int GL_CONSTANT_ATTENUATION = 0x1207;
+    public static final int GL_LINEAR_ATTENUATION = 0x1208;
+    public static final int GL_QUADRATIC_ATTENUATION = 0x1209;
+    public static final int GL_EMISSION = 0x1600;
+    public static final int GL_SHININESS = 0x1601;
+    public static final int GL_AMBIENT_AND_DIFFUSE = 0x1602;
+
+    public static final int GL_FOG = 0x0B60;
+    public static final int GL_FOG_DENSITY = 0x0B62;
+    public static final int GL_FOG_START = 0x0B63;
+    public static final int GL_FOG_END = 0x0B64;
+    public static final int GL_FOG_MODE = 0x0B65;
+    public static final int GL_FOG_COLOR = 0x0B66;
+    public static final int GL_EXP = 0x0800;
+    public static final int GL_EXP2 = 0x0801;
+
+    public static final int GL_FLAT = 0x1D00;
+    public static final int GL_SMOOTH = 0x1D01;
 
     public static final int GL_COMPILE = 0x1300;
     public static final int GL_COMPILE_AND_EXECUTE = 0x1301;
@@ -355,6 +389,12 @@ public final class GL11 {
             case GL_POLYGON_OFFSET_FILL -> device().setPolygonOffsetFill(enabled);
             case GL_TEXTURE_2D -> state().setTextureEnabled(enabled);
             case GL_ALPHA_TEST -> state().setAlphaTestEnabled(enabled);
+            case GL_LIGHTING -> state().lighting().setEnabled(enabled);
+            case GL_COLOR_MATERIAL -> state().lighting().setColorMaterial(enabled);
+            case GL_FOG -> state().lighting().setFogEnabled(enabled);
+            case GL_LIGHT0, GL_LIGHT1, GL_LIGHT2, GL_LIGHT3,
+                 GL_LIGHT4, GL_LIGHT5, GL_LIGHT6, GL_LIGHT7 ->
+                    state().lighting().setLightEnabled(capability - GL_LIGHT0, enabled);
             default -> throw new UnsupportedOperationException(
                     (enabled ? "glEnable" : "glDisable") + " does not yet emulate capability 0x"
                             + Integer.toHexString(capability));
@@ -469,11 +509,6 @@ public final class GL11 {
         state().pointSize(size);
     }
 
-    /**
-     * a hint is advisory in gl and webgl exposes none of these, so it is accepted and has no
-     * effect. an unknown target is still refused, because that is a mistake rather than a
-     * preference.
-     */
     public static void glHint(int target, int mode) {
         switch (target) {
             case GL_PERSPECTIVE_CORRECTION_HINT, GL_POINT_SMOOTH_HINT, GL_LINE_SMOOTH_HINT,
@@ -888,6 +923,251 @@ public final class GL11 {
         state().texCoord(unit, s, t);
     }
 
+    public static void glNormal3f(float x, float y, float z) {
+        if (recording() && !state().isBuilding()
+                && state().record(() -> state().normal(x, y, z))) {
+            return;
+        }
+        state().normal(x, y, z);
+    }
+
+    // lighting, materials and fog
+
+    public static void glLightf(int light, int parameter, float value) {
+        int index = lightIndex(light, "glLightf");
+        if (recording() && state().record(() -> lightScalar(index, parameter, value))) {
+            return;
+        }
+        lightScalar(index, parameter, value);
+    }
+
+    public static void glLighti(int light, int parameter, int value) {
+        glLightf(light, parameter, value);
+    }
+
+    public static void glLight(int light, int parameter, FloatBuffer values) {
+        glLight(light, parameter, read4(values, "glLight"));
+    }
+
+    public static void glLightfv(int light, int parameter, float[] values) {
+        glLight(light, parameter, require4(values, "glLightfv"));
+    }
+
+    private static void glLight(int light, int parameter, float[] values) {
+        int index = lightIndex(light, "glLight");
+        if (recording() && state().record(() -> lightVector(index, parameter, values))) {
+            return;
+        }
+        lightVector(index, parameter, values);
+    }
+
+    private static void lightScalar(int light, int parameter, float value) {
+        Lighting lighting = state().lighting();
+        switch (parameter) {
+            case GL_CONSTANT_ATTENUATION -> lighting.setAttenuation(light, 0, value);
+            case GL_LINEAR_ATTENUATION -> lighting.setAttenuation(light, 1, value);
+            case GL_QUADRATIC_ATTENUATION -> lighting.setAttenuation(light, 2, value);
+            default -> throw new UnsupportedOperationException(
+                    "glLightf does not emulate parameter 0x" + Integer.toHexString(parameter));
+        }
+    }
+
+    private static void lightVector(int light, int parameter, float[] values) {
+        Lighting lighting = state().lighting();
+        switch (parameter) {
+            // gl fixes a light's position in eye space the moment it is set
+            case GL_POSITION -> lighting.setPosition(light, Matrix4.transform(state().modelView(),
+                    values[0], values[1], values[2], values[3]));
+            case GL_AMBIENT -> lighting.setAmbient(light, values);
+            case GL_DIFFUSE -> lighting.setDiffuse(light, values);
+            case GL_SPECULAR -> lighting.setSpecular(light, values);
+            case GL_CONSTANT_ATTENUATION, GL_LINEAR_ATTENUATION, GL_QUADRATIC_ATTENUATION ->
+                    lightScalar(light, parameter, values[0]);
+            default -> throw new UnsupportedOperationException(
+                    "glLight does not emulate parameter 0x" + Integer.toHexString(parameter));
+        }
+    }
+
+    private static int lightIndex(int light, String call) {
+        if (light < GL_LIGHT0 || light > GL_LIGHT7) {
+            throw new IllegalArgumentException(
+                    call + " wants GL_LIGHT0 through GL_LIGHT7, got 0x"
+                            + Integer.toHexString(light));
+        }
+        return Lighting.requireLight(light - GL_LIGHT0);
+    }
+
+    public static void glLightModel(int parameter, FloatBuffer values) {
+        glLightModel(parameter, read4(values, "glLightModel"));
+    }
+
+    public static void glLightModelfv(int parameter, float[] values) {
+        glLightModel(parameter, require4(values, "glLightModelfv"));
+    }
+
+    private static void glLightModel(int parameter, float[] values) {
+        if (parameter != GL_LIGHT_MODEL_AMBIENT) {
+            throw new UnsupportedOperationException(
+                    "glLightModel emulates GL_LIGHT_MODEL_AMBIENT only, got 0x"
+                            + Integer.toHexString(parameter));
+        }
+        if (recording() && state().record(() -> state().lighting().setModelAmbient(values))) {
+            return;
+        }
+        state().lighting().setModelAmbient(values);
+    }
+
+    public static void glMaterialf(int face, int parameter, float value) {
+        requireBothFaces(face, "glMaterialf");
+        if (parameter != GL_SHININESS) {
+            throw new UnsupportedOperationException(
+                    "glMaterialf emulates GL_SHININESS only, got 0x"
+                            + Integer.toHexString(parameter));
+        }
+        if (recording() && state().record(() -> state().lighting().setShininess(value))) {
+            return;
+        }
+        state().lighting().setShininess(value);
+    }
+
+    public static void glMateriali(int face, int parameter, int value) {
+        glMaterialf(face, parameter, value);
+    }
+
+    public static void glMaterial(int face, int parameter, FloatBuffer values) {
+        glMaterial(face, parameter, read4(values, "glMaterial"));
+    }
+
+    public static void glMaterialfv(int face, int parameter, float[] values) {
+        glMaterial(face, parameter, require4(values, "glMaterialfv"));
+    }
+
+    private static void glMaterial(int face, int parameter, float[] values) {
+        requireBothFaces(face, "glMaterial");
+        if (parameter == GL_SHININESS) {
+            glMaterialf(face, parameter, values[0]);
+            return;
+        }
+        if (recording() && state().record(() -> material(parameter, values))) {
+            return;
+        }
+        material(parameter, values);
+    }
+
+    private static void material(int parameter, float[] values) {
+        Lighting lighting = state().lighting();
+        switch (parameter) {
+            case GL_AMBIENT -> System.arraycopy(values, 0, lighting.materialAmbient(), 0, 4);
+            case GL_DIFFUSE -> System.arraycopy(values, 0, lighting.materialDiffuse(), 0, 4);
+            case GL_SPECULAR -> System.arraycopy(values, 0, lighting.materialSpecular(), 0, 4);
+            case GL_EMISSION -> System.arraycopy(values, 0, lighting.materialEmission(), 0, 4);
+            case GL_AMBIENT_AND_DIFFUSE -> {
+                System.arraycopy(values, 0, lighting.materialAmbient(), 0, 4);
+                System.arraycopy(values, 0, lighting.materialDiffuse(), 0, 4);
+            }
+            default -> throw new UnsupportedOperationException(
+                    "glMaterial does not emulate parameter 0x" + Integer.toHexString(parameter));
+        }
+    }
+
+    /** the shader keeps one material, so a face-by-face material cannot be honoured. */
+    private static void requireBothFaces(int face, String call) {
+        if (face != GL_FRONT_AND_BACK) {
+            throw new UnsupportedOperationException(
+                    call + " emulates GL_FRONT_AND_BACK only: the fixed-function shader here "
+                            + "carries a single material, so front and back cannot differ");
+        }
+    }
+
+    public static void glColorMaterial(int face, int mode) {
+        requireBothFaces(face, "glColorMaterial");
+        if (mode != GL_AMBIENT_AND_DIFFUSE) {
+            throw new UnsupportedOperationException(
+                    "glColorMaterial emulates GL_AMBIENT_AND_DIFFUSE only, got 0x"
+                            + Integer.toHexString(mode));
+        }
+    }
+
+    /** gl's flat shading needs a provoking vertex the shader cannot pick, so only smooth is here. */
+    public static void glShadeModel(int model) {
+        if (model != GL_SMOOTH) {
+            throw new UnsupportedOperationException(
+                    "glShadeModel emulates GL_SMOOTH only: flat shading would need a provoking "
+                            + "vertex, which gl es does not expose");
+        }
+    }
+
+    public static void glFogf(int parameter, float value) {
+        if (recording() && state().record(() -> fog(parameter, value))) {
+            return;
+        }
+        fog(parameter, value);
+    }
+
+    public static void glFogi(int parameter, int value) {
+        glFogf(parameter, value);
+    }
+
+    public static void glFog(int parameter, FloatBuffer values) {
+        glFog(parameter, read4(values, "glFog"));
+    }
+
+    public static void glFogfv(int parameter, float[] values) {
+        glFog(parameter, require4(values, "glFogfv"));
+    }
+
+    private static void glFog(int parameter, float[] values) {
+        if (parameter != GL_FOG_COLOR) {
+            glFogf(parameter, values[0]);
+            return;
+        }
+        if (recording() && state().record(() -> state().lighting().setFogColor(values))) {
+            return;
+        }
+        state().lighting().setFogColor(values);
+    }
+
+    private static void fog(int parameter, float value) {
+        Lighting lighting = state().lighting();
+        switch (parameter) {
+            case GL_FOG_MODE -> lighting.setFogMode(fogMode((int) value));
+            case GL_FOG_DENSITY -> lighting.setFogDensity(value);
+            case GL_FOG_START -> lighting.setFogStart(value);
+            case GL_FOG_END -> lighting.setFogEnd(value);
+            default -> throw new UnsupportedOperationException(
+                    "glFog does not emulate parameter 0x" + Integer.toHexString(parameter));
+        }
+    }
+
+    private static int fogMode(int mode) {
+        return switch (mode) {
+            case GL_LINEAR -> Lighting.LINEAR;
+            case GL_EXP -> Lighting.EXP;
+            case GL_EXP2 -> Lighting.EXP2;
+            default -> throw new IllegalArgumentException(
+                    "glFog wants GL_LINEAR, GL_EXP or GL_EXP2, got 0x"
+                            + Integer.toHexString(mode));
+        };
+    }
+
+    private static float[] require4(float[] values, String call) {
+        if (values.length < 4) {
+            throw new IllegalArgumentException(call + " wants four components, got "
+                    + values.length);
+        }
+        return java.util.Arrays.copyOf(values, 4);
+    }
+
+    private static float[] read4(FloatBuffer values, String call) {
+        if (values.remaining() < 4) {
+            throw new IllegalArgumentException(call + " wants four components, got "
+                    + values.remaining());
+        }
+        float[] copied = new float[4];
+        values.duplicate().get(copied);
+        return copied;
+    }
+
     // vertex arrays
 
     public static void glEnableClientState(int array) {
@@ -921,6 +1201,15 @@ public final class GL11 {
         AttributeType component = componentType(type, "glColorPointer");
         pointIntoBuffer(state().arrays().color(), size, component,
                 component != AttributeType.FLOAT, stride, offset, "glColorPointer");
+    }
+
+    public static void glNormalPointer(int stride, FloatBuffer pointer) {
+        state().arrays().normal().pointAt(pointer, 3, AttributeType.FLOAT, false, stride);
+    }
+
+    public static void glNormalPointer(int type, int stride, long offset) {
+        pointIntoBuffer(state().arrays().normal(), 3, componentType(type, "glNormalPointer"),
+                false, stride, offset, "glNormalPointer");
     }
 
     public static void glTexCoordPointer(int size, int stride, FloatBuffer pointer) {
@@ -967,6 +1256,7 @@ public final class GL11 {
             case GL_VERTEX_ARRAY -> arrays.position();
             case GL_COLOR_ARRAY -> arrays.color();
             case GL_TEXTURE_COORD_ARRAY -> arrays.texCoord(state().clientActiveTexture());
+            case GL_NORMAL_ARRAY -> arrays.normal();
             default -> throw new UnsupportedOperationException(
                     call + " does not yet emulate array 0x" + Integer.toHexString(array));
         };
@@ -1137,7 +1427,6 @@ public final class GL11 {
         rebuildMipmaps();
     }
 
-    /** replaces a rectangle of the bound texture, which is what an atlas edit costs. */
     public static void glTexSubImage2D(int target, int level, int x, int y, int width, int height,
                                        int format, int type, ByteBuffer pixels) {
         requireTexture2D(target, "glTexSubImage2D");
@@ -1158,7 +1447,6 @@ public final class GL11 {
         rebuildMipmaps();
     }
 
-    /** GL_GENERATE_MIPMAP means the levels are rebuilt whenever the base image changes. */
     private static void rebuildMipmaps() {
         if (state().automaticMipmaps()) {
             device().generateMipmap();
