@@ -527,8 +527,13 @@ final class RecordingGraphicsDevice implements GraphicsDevice {
         return error;
     }
 
+    String extensions = "";
+
     @Override
     public String information(GraphicsInfo information) {
+        if (information == GraphicsInfo.EXTENSIONS) {
+            return extensions;
+        }
         return "recorded " + information;
     }
 
