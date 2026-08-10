@@ -129,10 +129,12 @@ public final class NetDemoProgram implements Program {
             for (int tries = 0; tries < 80 && !capped; tries++) {
                 Thread.sleep(250);
                 int later = connection.available();
-                capped = later - held <= CREEP && later > 0 && later < FLOOD_SIZE;
+                capped = later - held <= CREEP && later > 0;
                 held = later;
             }
-            console.info("paced: queue held at " + held + " bytes, capped: " + capped);
+            // a host that buffers the whole flood settles above it, having never had to hold back
+            console.info("paced: queue held at " + held + " bytes, capped: " + capped
+                    + ", held back: " + (held < FLOOD_SIZE));
 
             drain(connection, held);
             boolean resumed = false;
