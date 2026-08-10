@@ -86,7 +86,7 @@ close correctly.
 
 Verified in Chromium and Firefox on both backends by the `lwjgl`, `input`, `arrays`, `shaders`, `texture`, and
 `audio` demos, which assert framebuffer output, drive real keyboard, mouse and wheel events, and
-play audio through to completion. The compatibility layer is also covered by 220 JVM tests running against recording and
+play audio through to completion. The compatibility layer is also covered by 228 JVM tests running against recording and
 fake devices.
 
 | Call group | State |
@@ -165,10 +165,23 @@ for and not find.
 
 ### What is not here
 
-`GLContext`, `ContextCapabilities` and `org.lwjgl.util.glu.GLU` do not exist.
+`org.lwjgl.util.glu.GLU` does not exist.
 
 If your application needs one of these, open an issue: the layer grows by what applications
 actually call.
+
+### Context capabilities
+
+`GLContext.getCapabilities()` answers a `ContextCapabilities` built once per context. The
+`OpenGL11` through `OpenGL20` flags are true because those classes are backed by real entry points
+here; `OpenGL21` and above are false. The extension flags split in two: the ones WebGL2 carries in
+core (multitexture, buffer objects, shaders, non-power-of-two textures, separate and constant
+blending, framebuffer objects) are always true, and the rest are answered from the host's own
+extension list, so `GL_EXT_texture_filter_anisotropic` is true only where the browser lists it.
+`isSupported(String)` asks that list directly, with or without the `GL_` prefix.
+
+`GLContext.useContext(Object)` rereads the list. There is one context here, the one
+`Display.create()` opened, so the argument names it and is otherwise unused.
 
 ### Lighting, materials and fog
 
