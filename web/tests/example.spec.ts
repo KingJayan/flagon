@@ -1,5 +1,12 @@
 import { test, expect, type Page } from '@playwright/test';
-import { BACKENDS, open, readPixel, watchForFailures, type Backend } from './harness';
+import {
+  BACKENDS,
+  expectChanging,
+  open,
+  readPixel,
+  watchForFailures,
+  type Backend,
+} from './harness';
 
 /** the application jar, compiled against the real lwjgl and never modified. */
 async function runSpinner(page: Page, backend: Backend, frames = 600): Promise<void> {
@@ -50,12 +57,7 @@ for (const backend of BACKENDS) {
       await page.keyboard.press('ArrowUp');
       await page.keyboard.press('ArrowUp');
 
-      const samples = new Set<string>();
-      for (let attempt = 0; attempt < 10; attempt++) {
-        samples.add(await rotation());
-        await page.waitForTimeout(100);
-      }
-      expect(samples.size, 'the square never rotated').toBeGreaterThan(1);
+      await expectChanging(rotation, 'the square never rotated');
     });
 
     test('reports the application exiting on its own terms', async ({ page }) => {
@@ -142,12 +144,7 @@ for (const backend of BACKENDS) {
     test('runs a simulation the player can watch', async ({ page }) => {
       await runBlocks(page, backend);
 
-      const seen = new Set<number>();
-      for (let sample = 0; sample < 8; sample++) {
-        seen.add(await ballAt(page));
-        await page.waitForTimeout(120);
-      }
-      expect(seen.size, 'nothing moved').toBeGreaterThan(1);
+      await expectChanging(() => ballAt(page), 'nothing moved');
     });
 
     test('takes the paddle where the keyboard says', async ({ page }) => {

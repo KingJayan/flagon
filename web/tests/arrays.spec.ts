@@ -1,5 +1,13 @@
 import { test, expect, type Page } from '@playwright/test';
-import { BACKENDS, expectColor, open, readPixel, watchForFailures, type Backend } from './harness';
+import {
+  BACKENDS,
+  expectChanging,
+  expectColor,
+  open,
+  readPixel,
+  watchForFailures,
+  type Backend,
+} from './harness';
 
 const GREEN = [0, 204, 51];
 const RED = [230, 51, 26];
@@ -49,26 +57,23 @@ for (const backend of BACKENDS) {
     test('re-reads a client array as its contents change', async ({ page }) => {
       await runDemo(page, backend);
 
-      const heights = new Set<number>();
-      for (let attempt = 0; attempt < 12; attempt++) {
-        const column = await page.evaluate(() => {
-          const canvas = document.getElementById('flagon-canvas') as HTMLCanvasElement;
-          const gl = canvas.getContext('webgl2')!;
-          const pixels = new Uint8Array(360 * 4);
-          gl.readPixels(460, 0, 1, 360, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
-          let covered = 0;
-          for (let y = 0; y < 360; y++) {
-            if (pixels[y * 4] > 128) {
-              covered++;
+      await expectChanging(
+        () =>
+          page.evaluate(() => {
+            const canvas = document.getElementById('flagon-canvas') as HTMLCanvasElement;
+            const gl = canvas.getContext('webgl2')!;
+            const pixels = new Uint8Array(360 * 4);
+            gl.readPixels(460, 0, 1, 360, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
+            let covered = 0;
+            for (let y = 0; y < 360; y++) {
+              if (pixels[y * 4] > 128) {
+                covered++;
+              }
             }
-          }
-          return covered;
-        });
-        heights.add(column);
-        await page.waitForTimeout(120);
-      }
-
-      expect(heights.size, 'the client array quad never changed size').toBeGreaterThan(1);
+            return covered;
+          }),
+        'the client array quad never changed size',
+      );
     });
 
     /** the handle table has to hand a deleted name back, or a long session grows it forever */

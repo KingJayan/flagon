@@ -6,7 +6,7 @@ BUNDLES := $(WEB)/public/flagon
 ARGS ?=
 N ?= 3
 
-.PHONY: help setup deps browsers bundles bundles-js build bundles-release \
+.PHONY: help setup deps browsers browsers-deps browser-chromium browser-firefox bundles bundles-js build bundles-release \
         bundles-release-js build-release test browser flake typecheck site dev serve \
         check report merge-reports watch version release publish clean verify-bundles
 
@@ -20,8 +20,19 @@ setup: deps browsers ## install everything a fresh checkout needs
 deps: ## install the shell's packages
 	cd $(WEB) && bun install --frozen-lockfile
 
-browsers: ## install the engines the tests drive
-	cd $(WEB) && bunx playwright install-deps chromium firefox && bunx playwright install chromium firefox
+browsers: browsers-deps ## install the engines the tests drive
+	cd $(WEB) && bunx playwright install chromium firefox
+
+# the engine binaries cache; these are apt's, are system-wide, and do not. ci installs them only
+# for the job that needs them, headless chromium having everything it wants on a runner already.
+browsers-deps: ## install the system libraries the engines link against
+	cd $(WEB) && bunx playwright install-deps chromium firefox
+
+browser-chromium: ## install just the engine the sharded tests drive
+	cd $(WEB) && bunx playwright install chromium
+
+browser-firefox: ## install just firefox, and the libraries it wants
+	cd $(WEB) && bunx playwright install-deps firefox && bunx playwright install firefox
 
 bundles: ## compile java to webassembly gc
 	$(MVN) package
@@ -64,7 +75,7 @@ build-release: ## compile both backends as a hosted build ships them
 test: ## run the jvm unit tests
 	$(MVN) test
 
-browser: ## drive the real bundles in a browser (ARGS='--shard=1/3')
+browser: ## drive the real bundles in a browser (ARGS='--shard=1/4')
 	@test -d $(BUNDLES) || { echo "no bundles yet; run 'make build'"; exit 1; }
 	cd $(WEB) && bunx playwright test $(ARGS)
 
