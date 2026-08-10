@@ -95,6 +95,10 @@ public final class GLState implements RenderState {
     private final float[] s = new float[VertexArrays.UNITS];
     private final float[] t = new float[VertexArrays.UNITS];
     private float pointSize = 1.0f;
+    private final Lighting lighting = new Lighting();
+    private float normalX;
+    private float normalY;
+    private float normalZ = 1.0f;
 
     private GLState(GraphicsDevice device) {
         this.device = device;
@@ -259,6 +263,9 @@ public final class GLState implements RenderState {
             vertices[floatCount++] = s[unit];
             vertices[floatCount++] = t[unit];
         }
+        vertices[floatCount++] = normalX;
+        vertices[floatCount++] = normalY;
+        vertices[floatCount++] = normalZ;
         vertexCount++;
     }
 
@@ -478,6 +485,33 @@ public final class GLState implements RenderState {
         return t[unit];
     }
 
+    @Override
+    public Lighting lighting() {
+        return lighting;
+    }
+
+    /** the normal gl carries until the next glNormal3f, in object space. */
+    public void normal(float x, float y, float z) {
+        normalX = x;
+        normalY = y;
+        normalZ = z;
+    }
+
+    @Override
+    public float normalX() {
+        return normalX;
+    }
+
+    @Override
+    public float normalY() {
+        return normalY;
+    }
+
+    @Override
+    public float normalZ() {
+        return normalZ;
+    }
+
     public void pointSize(float size) {
         pointSize = size;
     }
@@ -632,6 +666,9 @@ public final class GLState implements RenderState {
         attributeStack.push(new Attributes(mask,
                 depthTest, blend, cullFaceEnabled, scissorTest, textureEnabled[activeTexture],
                 alphaTestEnabled,
+                lighting.isEnabled(), lighting.isFogEnabled(), lighting.isColorMaterial(),
+                lighting.lightEnabledFlagsCopy(),
+                normalX, normalY, normalZ,
                 clearRed, clearGreen, clearBlue, clearAlpha, clearDepthValue,
                 maskRed, maskGreen, maskBlue, maskAlpha, depthWrite,
                 depthFunc, blendSource, blendDestination, alphaTestFunc, alphaTestThreshold,
@@ -683,6 +720,11 @@ public final class GLState implements RenderState {
             case 0x0C11 -> scissorTest;
             case 0x0DE1 -> textureEnabled[activeTexture];
             case 0x0BC0 -> alphaTestEnabled;
+            case 0x0B50 -> lighting.isEnabled();
+            case 0x0B57 -> lighting.isColorMaterial();
+            case 0x0B60 -> lighting.isFogEnabled();
+            case 0x4000, 0x4001, 0x4002, 0x4003, 0x4004, 0x4005, 0x4006, 0x4007 ->
+                    lighting.isLightEnabled(capability - 0x4000);
             default -> throw new UnsupportedOperationException(
                     "glIsEnabled does not emulate capability 0x" + Integer.toHexString(capability));
         };

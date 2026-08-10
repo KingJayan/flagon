@@ -125,9 +125,9 @@ class VertexArrayTest {
 
     @Test
     void anUnsupportedClientArrayNamesItself() {
-        // gl_normal_array, undeclared here for the same reason
+        // gl_edge_flag_array, undeclared here for the same reason
         UnsupportedOperationException failure = assertThrows(UnsupportedOperationException.class,
-                () -> GL11.glEnableClientState(0x8075));
+                () -> GL11.glEnableClientState(0x8079));
         assertTrue(failure.getMessage().contains("glEnableClientState"));
     }
 

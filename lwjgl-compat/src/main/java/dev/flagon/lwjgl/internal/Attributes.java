@@ -16,6 +16,11 @@ public record Attributes(
         boolean scissorTest,
         boolean texture,
         boolean alphaTest,
+        boolean lighting,
+        boolean fog,
+        boolean colorMaterial,
+        boolean[] lightEnabled,
+        float normalX, float normalY, float normalZ,
         float clearRed, float clearGreen, float clearBlue, float clearAlpha,
         double clearDepth,
         boolean maskRed, boolean maskGreen, boolean maskBlue, boolean maskAlpha,
@@ -55,10 +60,17 @@ public record Attributes(
             state.setScissorTest(scissorTest);
             state.setTextureEnabled(texture);
             state.setAlphaTestEnabled(alphaTest);
+            state.lighting().setEnabled(lighting);
+            state.lighting().setFogEnabled(fog);
+            state.lighting().setColorMaterial(colorMaterial);
+            for (int light = 0; light < lightEnabled.length; light++) {
+                state.lighting().setLightEnabled(light, lightEnabled[light]);
+            }
         }
         if (saved(CURRENT_BIT)) {
             state.color(red, green, blue, alpha);
             state.texCoord(0, s, t);
+            state.normal(normalX, normalY, normalZ);
         }
         if (saved(COLOR_BUFFER_BIT)) {
             state.setBlend(blend);

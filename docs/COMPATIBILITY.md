@@ -86,7 +86,7 @@ close correctly.
 
 Verified in Chromium and Firefox on both backends by the `lwjgl`, `input`, `arrays`, `shaders`, `texture`, and
 `audio` demos, which assert framebuffer output, drive real keyboard, mouse and wheel events, and
-play audio through to completion. The compatibility layer is also covered by 189 JVM tests running against recording and
+play audio through to completion. The compatibility layer is also covered by 208 JVM tests running against recording and
 fake devices.
 
 | Call group | State |
@@ -126,8 +126,12 @@ fake devices.
 | `glGetInteger` max texture size, texture units, vertex attributes | works |
 | `glGetInteger`, `glGetFloat`, `glGetBoolean`, `glIsEnabled` of state the layer sets | works, answered from the mirror |
 | Any other `glGetInteger`/`glGetString` name | refused |
-| `glNormalPointer`, `glIndexPointer` | not emulated |
-| Lighting and fog | not emulated |
+| `glNormal3f`, `glNormalPointer`, `GL_NORMAL_ARRAY` | works |
+| `glLight*`, `glLightModel` `GL_LIGHT_MODEL_AMBIENT` | works, eight lights, see below |
+| `glMaterial*`, `glColorMaterial` | works, `GL_FRONT_AND_BACK` only |
+| `glShadeModel` | `GL_SMOOTH` only |
+| `glFog*` (`GL_LINEAR`, `GL_EXP`, `GL_EXP2`) | works |
+| `glIndexPointer` | not emulated |
 | `GL13` `glActiveTexture`, `glClientActiveTexture`, `glMultiTexCoord` | works, four units |
 | `glTexEnvi` `GL_TEXTURE_ENV_MODE` | `GL_MODULATE`, `GL_REPLACE`, `GL_ADD` |
 | `GL20` shader/program objects, uniforms and generic attributes | works |
@@ -156,15 +160,30 @@ for and not find.
 
 ### What is not here
 
-`GL12`, `GL14`, `GLContext`, `ContextCapabilities` and `org.lwjgl.util.glu.GLU` do not
-exist. Neither do these `GL11` entry points:
-
-| Missing | Why |
-|---------|-----|
-| `glLight*`, `glMaterial*`, `glColorMaterial`, `glFog*`, `glShadeModel`, `glNormal3f`, `glNormalPointer` | fixed-function lighting and fog, which the translated pipeline does not implement |
+`GL12`, `GL14`, `GLContext`, `ContextCapabilities` and `org.lwjgl.util.glu.GLU` do not exist.
 
 If your application needs one of these, open an issue: the layer grows by what applications
 actually call.
+
+### Lighting, materials and fog
+
+The fixed-function light model is evaluated in the vertex shader, per vertex, the way desktop GL
+evaluates it. Eight lights are available. A light's position is carried into eye space by the
+modelview matrix in force when `glLight` sets it, so moving the camera afterwards leaves the light
+where it was put; `w == 0` makes it directional. Constant, linear and quadratic attenuation all
+apply to a positional light.
+
+One material is kept, not one per face, so `glMaterial` and `glColorMaterial` take
+`GL_FRONT_AND_BACK` and refuse anything narrower. `glColorMaterial` takes `GL_AMBIENT_AND_DIFFUSE`,
+the mode applications actually use. `glShadeModel` takes `GL_SMOOTH`: flat shading needs a
+provoking vertex, which GL ES does not expose.
+
+Fog is applied per fragment along the eye-space distance, in all three of GL's curves, and reaches
+the colour but never the alpha.
+
+`glPushAttrib` saves whether lighting, fog, colour material and each light are enabled, and the
+current normal. It does not save light or material parameters — `GL_LIGHTING_BIT` and `GL_FOG_BIT`
+are not emulated.
 
 ### Mipmaps
 

@@ -38,6 +38,10 @@ final class RecordingGraphicsDevice implements GraphicsDevice {
     float[] lastModelView = new float[16];
     float[] lastProjection = new float[16];
 
+    private final Map<Integer, String> uniformNames = new HashMap<>();
+    private final Map<String, float[]> uniformFloatValues = new HashMap<>();
+    private final Map<String, int[]> uniformIntValues = new HashMap<>();
+
     private final Map<Integer, String> shaderSources = new HashMap<>();
     private int nextName = 1;
     boolean compilesShaders = true;
@@ -282,6 +286,7 @@ final class RecordingGraphicsDevice implements GraphicsDevice {
     @Override
     public int uniformLocation(int program, String name) {
         int location = nextName++;
+        uniformNames.put(location, name);
         if (name.equals("u_modelView")) {
             modelViewLocation = location;
         } else if (name.equals("u_projection")) {
@@ -302,11 +307,36 @@ final class RecordingGraphicsDevice implements GraphicsDevice {
 
     @Override
     public void uniform1i(int location, int value) {
+        remember(location, new int[] {value});
         calls.add("uniform1i " + location + " " + value);
+    }
+
+    private void remember(int location, float[] values) {
+        String name = uniformNames.get(location);
+        if (name != null) {
+            uniformFloatValues.put(name, values);
+        }
+    }
+
+    private void remember(int location, int[] values) {
+        String name = uniformNames.get(location);
+        if (name != null) {
+            uniformIntValues.put(name, values);
+        }
+    }
+
+    /** @return what the named uniform was last given, or null when the shader never got it */
+    float[] uniformFloats(String name) {
+        return uniformFloatValues.get(name);
+    }
+
+    int[] uniformInts(String name) {
+        return uniformIntValues.get(name);
     }
 
     @Override
     public void uniform1f(int location, float value) {
+        remember(location, new float[] {value});
         calls.add("uniform1f " + location + " " + value);
     }
 
@@ -322,6 +352,7 @@ final class RecordingGraphicsDevice implements GraphicsDevice {
 
     @Override
     public void uniform4f(int location, float x, float y, float z, float w) {
+        remember(location, new float[] {x, y, z, w});
         calls.add("uniform4f " + location);
     }
 
@@ -344,6 +375,7 @@ final class RecordingGraphicsDevice implements GraphicsDevice {
     public void uniformFloats(int location, int components, float[] values, int count) {
         lastUniformFloats = new float[components * count];
         System.arraycopy(values, 0, lastUniformFloats, 0, lastUniformFloats.length);
+        remember(location, lastUniformFloats);
         calls.add("uniformFloats " + location + " " + components + " " + count);
     }
 
@@ -351,6 +383,7 @@ final class RecordingGraphicsDevice implements GraphicsDevice {
     public void uniformInts(int location, int components, int[] values, int count) {
         lastUniformInts = new int[components * count];
         System.arraycopy(values, 0, lastUniformInts, 0, lastUniformInts.length);
+        remember(location, lastUniformInts);
         calls.add("uniformInts " + location + " " + components + " " + count);
     }
 
@@ -359,6 +392,7 @@ final class RecordingGraphicsDevice implements GraphicsDevice {
                                 int count) {
         lastUniformFloats = new float[size * size * count];
         System.arraycopy(values, 0, lastUniformFloats, 0, lastUniformFloats.length);
+        remember(location, lastUniformFloats);
         calls.add("uniformMatrices " + location + " " + size + " " + transpose + " " + count);
     }
 
