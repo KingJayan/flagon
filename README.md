@@ -30,9 +30,10 @@ Flagon itself is application-agnostic. Work on any particular application lives 
 - Run existing desktop Java/LWJGL applications directly in the browser
 - No application source modifications required
 - Ahead-of-time Java → WebAssembly GC compilation with TeaVM, with a JavaScript fallback
-- `GL11`, `GL15` and `GL20` reimplemented on WebGL2, including immediate mode, the matrix stacks
-  and GLSL 1.10/1.20 translation. `GL12`/`GL13`/`GL14`, `GLU` and fixed-function lighting are not
-  there; the [compatibility matrix](docs/COMPATIBILITY.md) lists call by call what is
+- `GL11` through `GL15`, `GL20`, `GLContext` and `GLU` reimplemented on WebGL2, including immediate
+  mode, display lists, the matrix stacks, fixed-function lighting, materials and fog, multitexture
+  and GLSL 1.10/1.20 translation. The [compatibility matrix](docs/COMPATIBILITY.md) lists call by
+  call what each one emulates and what it refuses
 - Browser-native implementations of input, filesystem, audio, networking, and platform APIs
 - Application-agnostic architecture for downstream projects
 

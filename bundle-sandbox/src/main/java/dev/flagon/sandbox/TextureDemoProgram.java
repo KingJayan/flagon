@@ -34,6 +34,8 @@ public final class TextureDemoProgram implements Program {
     private int mipmapped;
     private int red;
     private int grey;
+    private int rgb;
+    private int luminance;
 
     @Override
     public String id() {
@@ -65,6 +67,8 @@ public final class TextureDemoProgram implements Program {
         mipmapped = uploadMipmapped();
         red = upload(1, 1, new int[] {0xFFFF0000});
         grey = upload(1, 1, new int[] {0xFF808080});
+        rgb = uploadBytes(1, 1, 0x1907, new byte[] {0x20, (byte) 0xA0, 0x40});
+        luminance = uploadBytes(1, 1, GL11.GL_LUMINANCE, new byte[] {(byte) 0x80});
         Platforms.get().console().info("uploaded texture " + texture + " (2x2) and " + faded
                 + " (1x1)");
 
@@ -81,6 +85,8 @@ public final class TextureDemoProgram implements Program {
         GL11.glDeleteTextures(mipmapped);
         GL11.glDeleteTextures(red);
         GL11.glDeleteTextures(grey);
+        GL11.glDeleteTextures(rgb);
+        GL11.glDeleteTextures(luminance);
         Platforms.get().console().info("rendered " + frame + " frames");
         Display.destroy();
     }
@@ -91,6 +97,18 @@ public final class TextureDemoProgram implements Program {
         GL11.glTexImage2D(GL11.GL_TEXTURE_2D, 0, GL11.GL_RGBA, width, height, 0,
                 GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, pixels);
         // nearest, so every screen pixel of the quad is exactly one texel
+        GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_NEAREST);
+        GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_NEAREST);
+        return name;
+    }
+
+    private static int uploadBytes(int width, int height, int format, byte[] pixels) {
+        int name = GL11.glGenTextures();
+        GL11.glBindTexture(GL11.GL_TEXTURE_2D, name);
+        java.nio.ByteBuffer buffer = org.lwjgl.BufferUtils.createByteBuffer(pixels.length);
+        buffer.put(pixels).flip();
+        GL11.glTexImage2D(GL11.GL_TEXTURE_2D, 0, format, width, height, 0,
+                format, GL11.GL_UNSIGNED_BYTE, buffer);
         GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_NEAREST);
         GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_NEAREST);
         return name;
@@ -152,6 +170,13 @@ public final class TextureDemoProgram implements Program {
         texturedQuad(720.0f, 150.0f, 728.0f, 158.0f);
 
         multiTextured();
+
+        // uploaded three bytes and one byte a texel, widened to the rgba the device takes
+        GL11.glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
+        GL11.glBindTexture(GL11.GL_TEXTURE_2D, rgb);
+        texturedQuad(800.0f, 150.0f, 860.0f, 210.0f);
+        GL11.glBindTexture(GL11.GL_TEXTURE_2D, luminance);
+        texturedQuad(870.0f, 150.0f, 930.0f, 210.0f);
 
         GL11.glDisable(GL11.GL_TEXTURE_2D);
     }
