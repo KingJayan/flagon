@@ -44,7 +44,10 @@ for (const backend of BACKENDS) {
       );
     });
 
-    /** a body nobody is reading stops arriving, and starts again where it left off */
+    /**
+     a body nobody is reading stops arriving, and starts again where it left off. a host that
+     buffers the whole flood never has to hold back, so only the settling is asserted here
+     */
     test('holds the proxy off while the reader is behind', async ({ page }) => {
       await runDemo(page, backend);
 
