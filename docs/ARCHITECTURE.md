@@ -23,6 +23,12 @@ different host — including a plain JVM, which is what makes most of it unit-te
 `runtime` sits beside these layers. It owns startup and shutdown, but knows neither what a browser
 is nor what LWJGL is.
 
+`socket-classlib` sits beside it again, and is the one module that does not follow the rule above:
+it declares classes in `java.net`, to supply the `Socket` teavm's classlib has none of. It is
+compiled with `--patch-module` because the jvm owns that package name, and holds no behaviour --
+`NetworkSocket` in `runtime` does, where a plain jvm can test it. A bundle that wants sockets
+depends on it; one that does not, does not.
+
 ## Composition
 
 `Platforms` is installed once at boot as a static holder. This is a deliberate exception to

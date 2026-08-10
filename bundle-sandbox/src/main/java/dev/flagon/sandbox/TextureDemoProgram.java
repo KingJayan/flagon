@@ -116,7 +116,7 @@ public final class TextureDemoProgram implements Program {
 
     /**
      the base level is red and every level below it is blue, so which level was sampled is
-     visible in the colour rather than in the sharpness
+     visible in the color rather than in the sharpness
      */
     private static int uploadMipmapped() {
         int name = GL11.glGenTextures();
@@ -183,7 +183,7 @@ public final class TextureDemoProgram implements Program {
 
     /**
      two units at once: the second modulates the first, then replaces it, so which mode was in
-     force is visible in the colour
+     force is visible in the color
      */
     private void multiTextured() {
         GL13.glActiveTexture(GL13.GL_TEXTURE1);

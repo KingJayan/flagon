@@ -82,7 +82,7 @@ class GL12And14Test {
     }
 
     @Test
-    void theConstantBlendFactorsAreAvailableWithTheirColour() {
+    void theConstantBlendFactorsAreAvailableWithTheircolor() {
         GL11.glBlendFunc(GL14.GL_CONSTANT_COLOR, GL14.GL_ONE_MINUS_CONSTANT_ALPHA);
         GL14.glBlendColor(0.25f, 0.5f, 0.75f, 1.0f);
 

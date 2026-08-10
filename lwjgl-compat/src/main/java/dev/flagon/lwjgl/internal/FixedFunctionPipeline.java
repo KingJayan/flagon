@@ -184,7 +184,7 @@ public final class FixedFunctionPipeline {
                     discard;
                 }
                 if (u_fogEnabled) {
-                    // fog reaches the colour but never the alpha
+                    // fog reaches the color but never the alpha
                     float blend = clamp(fogFactor(v_eyeDistance), 0.0, 1.0);
                     color = vec4(mix(u_fogColor.rgb, color.rgb, blend), color.a);
                 }

@@ -31,7 +31,7 @@ public interface GraphicsDevice {
 
     void setBlendFunc(BlendFactor source, BlendFactor destination);
 
-    /** the colour and alpha channels blend by their own factors. */
+    /** the color and alpha channels blend by their own factors. */
     void setBlendFuncSeparate(BlendFactor sourceColor, BlendFactor destinationColor,
                               BlendFactor sourceAlpha, BlendFactor destinationAlpha);
 

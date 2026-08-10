@@ -29,7 +29,7 @@ assertions. What remains is in the [issue tracker](https://github.com/KingJayan/
 | Lifecycle reporting | works | `window.__flagonHost` |
 | Filesystem | works | `java.io` on the Origin Private File System, see below |
 | Threading | partial | blocking frame loops via TeaVM green threads |
-| Networking | works through a proxy, not through `java.net.Socket` | `Network.connect()` over a websocket, see below |
+| Networking | works through a proxy, sockets included | `Network.connect()` over a websocket, see below |
 | Input | works | DOM events and Pointer Lock, see below |
 | Audio | works | `OpenAL` over Web Audio, see below |
 | Graphics | partial | GL 1.1 fixed-function and GL 2.0 shaders over WebGL2, see below |
@@ -53,7 +53,10 @@ on both backends.
 | Reflection | untested — likely a problem for the game |
 | `File`, `FileInputStream`, `FileOutputStream`, `RandomAccessFile` | works, see below |
 | `java.net.URL`, `HttpURLConnection` over HTTP | works through a proxy, see below |
-| `java.net.Socket`, `ServerSocket`, `DatagramSocket` | absent from the classlib; use `Network.connect()` |
+| `java.net.Socket`, `InetAddress` | supplied by `socket-classlib`, carried by `Network.connect()` |
+| `Socket.setSoTimeout` | recorded and readable, but a read still blocks |
+| `ServerSocket` | refused: nothing can connect in to a page |
+| `DatagramSocket` | absent; the proxy transports streams only |
 
 ### Files are real, and they persist
 
@@ -204,9 +207,9 @@ the mode applications actually use. `glShadeModel` takes `GL_SMOOTH`: flat shadi
 provoking vertex, which GL ES does not expose.
 
 Fog is applied per fragment along the eye-space distance, in all three of GL's curves, and reaches
-the colour but never the alpha.
+the color but never the alpha.
 
-`glPushAttrib` saves whether lighting, fog, colour material and each light are enabled, and the
+`glPushAttrib` saves whether lighting, fog, color material and each light are enabled, and the
 current normal. It does not save light or material parameters — `GL_LIGHTING_BIT` and `GL_FOG_BIT`
 are not emulated.
 
@@ -311,9 +314,15 @@ listener.
 
 ### Networking
 
-A browser cannot open raw TCP sockets, so `java.net.Socket` is not in the classlib and an
-application that uses it will not compile into a bundle. Networking here means
-`dev.flagon.platform.net`, and it needs a proxy served alongside the page.
+A browser cannot open raw TCP sockets, so networking here means `dev.flagon.platform.net`, and it
+needs a proxy served alongside the page.
+
+TeaVM's classlib has no `java.net.Socket`, so the `socket-classlib` module supplies one, along with
+`InetAddress`, `InetSocketAddress`, `ServerSocket` and the socket exceptions. A bundle that depends
+on it can run unmodified socket code; the class is a shell over `NetworkSocket`, which is the same
+`Network.connect()` everything else here goes through. Options a page does not own -- keep alive, no
+delay, buffer sizes, traffic class -- are accepted and ignored, and `ServerSocket` refuses at the
+call rather than being absent.
 
 `Network.connect()` opens a websocket to a proxy, which owns the real socket and forwards bytes in
 both directions. To callers, a `Connection` remains a blocking byte stream; reads suspend the
@@ -351,7 +360,9 @@ Three capabilities remain unavailable:
 
 - **HTTPS.** TLS over raw sockets is not implemented. HTTPS URLs fall back to TeaVM's XHR-based
   handler and remain subject to CORS.
-- **Listening.** Browsers cannot accept inbound socket connections.
+- **Listening.** Browsers cannot accept inbound socket connections, so `ServerSocket` refuses.
+- **Read timeouts.** A `Connection` read blocks in the host with no way to hand it a deadline, so
+  `setSoTimeout` is kept for whoever reads it back and a read waits rather than giving up.
 - **UDP.** The proxy transports streams only.
 
 ### Input

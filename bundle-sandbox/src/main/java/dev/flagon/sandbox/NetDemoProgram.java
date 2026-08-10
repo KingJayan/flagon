@@ -8,7 +8,12 @@ import dev.flagon.platform.net.NetworkException;
 import dev.flagon.runtime.Program;
 
 import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
+import java.net.InetAddress;
+import java.net.ServerSocket;
+import java.net.Socket;
 import java.net.URL;
 import java.net.URLConnection;
 import java.nio.charset.StandardCharsets;
@@ -50,10 +55,12 @@ public final class NetDemoProgram implements Program {
         fetch(console, network, host, port);
         bulk(console, network, host, port);
         fetchByUrl(console, "http://" + address + PROBE);
+        fetchBySocket(console, host, port);
         paced(console, network, host, port);
         pacedWrite(console, network, host, port);
         refused(console, network, host);
         disallowed(console, network);
+        listening(console);
         console.info("net: done");
     }
 
@@ -98,6 +105,43 @@ public final class NetDemoProgram implements Program {
             console.info("bulk: " + length + " bytes in order");
         } finally {
             connection.close();
+        }
+    }
+
+    /** the same file once more, through the java.net.Socket a desktop program would have opened */
+    private void fetchBySocket(ConsoleSink console, String host, int port) throws Exception {
+        try (Socket socket = new Socket(InetAddress.getByName(host), port)) {
+            socket.setSoTimeout(30_000);
+            socket.setTcpNoDelay(true);
+            console.info("socket: connected " + socket.isConnected()
+                    + " to " + socket.getInetAddress().getHostName() + ":" + socket.getPort());
+
+            OutputStream out = socket.getOutputStream();
+            out.write(("GET " + PROBE + " HTTP/1.1\r\nHost: " + host + ":" + port
+                    + "\r\nConnection: close\r\n\r\n").getBytes(StandardCharsets.UTF_8));
+
+            InputStream in = socket.getInputStream();
+            ByteArrayOutputStream collected = new ByteArrayOutputStream();
+            byte[] chunk = new byte[512];
+            int count = in.read(chunk);
+            while (count >= 0) {
+                collected.write(chunk, 0, count);
+                count = in.read(chunk);
+            }
+            String response = new String(collected.toByteArray(), StandardCharsets.UTF_8);
+            int body = response.indexOf("\r\n\r\n");
+            console.info("socket body: " + response.substring(body + 4).trim());
+            console.info("socket timeout kept: " + socket.getSoTimeout());
+        }
+    }
+
+    /** a page cannot be dialled in to, and says so rather than failing to link */
+    private void listening(ConsoleSink console) {
+        try {
+            new ServerSocket(25_565);
+            console.warn("socket: a page listened, which it cannot");
+        } catch (IOException refused) {
+            console.info("socket listen refused: " + refused.getMessage());
         }
     }
 

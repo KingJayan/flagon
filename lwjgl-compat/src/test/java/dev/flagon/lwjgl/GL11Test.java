@@ -141,7 +141,7 @@ class GL11Test {
 
     @Test
     void unsupportedCapabilitiesAreReportedRatherThanIgnored() {
-        // gl_line_stipple, which this layer does not declare and will not honour
+        // gl_line_stipple, which this layer does not declare and will not honor
         UnsupportedOperationException failure = assertThrows(UnsupportedOperationException.class,
                 () -> GL11.glEnable(0x0B24));
         assertTrue(failure.getMessage().contains("glEnable"), failure.getMessage());
@@ -272,7 +272,7 @@ class GL11Test {
     }
 
     @Test
-    void spreadsALuminanceUploadAcrossTheColourChannels() {
+    void spreadsALuminanceUploadAcrossThecolorChannels() {
         java.nio.ByteBuffer pixels = org.lwjgl.BufferUtils.createByteBuffer(2);
         pixels.put((byte) 0x7F).put((byte) 0x40);
         pixels.flip();
