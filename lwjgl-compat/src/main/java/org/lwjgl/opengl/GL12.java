@@ -11,6 +11,7 @@ public final class GL12 {
     public static final int GL_MAX_ELEMENTS_VERTICES = 0x80E8;
     public static final int GL_MAX_ELEMENTS_INDICES = 0x80E9;
     public static final int GL_UNSIGNED_INT_8_8_8_8_REV = 0x8367;
+    public static final int GL_BGR = 0x80E0;
     public static final int GL_BGRA = 0x80E1;
     public static final int GL_RESCALE_NORMAL = 0x803A;
 

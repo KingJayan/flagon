@@ -62,5 +62,12 @@ for (const backend of BACKENDS) {
       expectColor(await readPixel(page, 830, 290), [128, 0, 0], 'unit 1 modulating unit 0');
       expectColor(await readPixel(page, 900, 290), [128, 128, 128], 'unit 1 replacing unit 0');
     });
+
+    test('widens a texture uploaded in a narrower format', async ({ page }) => {
+      await runDemo(page, backend);
+
+      expectColor(await readPixel(page, 830, 180), [32, 160, 64], 'the rgb texture');
+      expectColor(await readPixel(page, 900, 180), [128, 128, 128], 'the luminance texture');
+    });
   });
 }

@@ -86,7 +86,7 @@ close correctly.
 
 Verified in Chromium and Firefox on both backends by the `lwjgl`, `input`, `arrays`, `shaders`, `texture`, and
 `audio` demos, which assert framebuffer output, drive real keyboard, mouse and wheel events, and
-play audio through to completion. The compatibility layer is also covered by 236 JVM tests running against recording and
+play audio through to completion. The compatibility layer is also covered by 243 JVM tests running against recording and
 fake devices.
 
 | Call group | State |
@@ -99,7 +99,9 @@ fake devices.
 | `GL11` matrix stacks: push/pop/load/translate/rotate/scale/ortho/frustum | works |
 | Immediate mode: `glBegin`/`glVertex`/`glColor`/`glTexCoord`/`glEnd` | works |
 | `GL_QUADS` | works, expanded to indexed triangles |
-| Textures: gen/bind/delete, RGBA upload, nearest and linear filtering | works |
+| Textures: gen/bind/delete, nearest and linear filtering | works |
+| Texture uploads in `GL_RGBA`, `GL_RGB`, `GL_BGR`, `GL_BGRA`, `GL_LUMINANCE`, `GL_LUMINANCE_ALPHA`, `GL_ALPHA` | works, widened to rgba |
+| Texture uploads of anything but `GL_UNSIGNED_BYTE` pixels | refused |
 | `glTexParameteri` wrapping (`GL_REPEAT`, `GL_CLAMP`, `GL_MIRRORED_REPEAT`), min and mag filters separately | works |
 | Mipmaps: uploads per level, `glGenerateMipmap`, `GL_GENERATE_MIPMAP`, base/max level | works |
 | The four mipmapped minification filters | works |
