@@ -50,13 +50,29 @@ on both backends.
 | `NullPointerException` on null dereference | works **only with `strict` mode** |
 | Interfaces, default methods, records, virtual dispatch | works |
 | Lambdas, method references, captured locals | works |
-| Reflection | untested — likely a problem for the game |
+| `Class` identity, hierarchy, `isInstance`, `cast`, `forName` | works, see below |
+| `getDeclaredFields`, `getDeclaredMethods`, `getConstructors` | answer empty, see below |
+| `Constructor.newInstance`, `Proxy` | refused, see below |
 | `File`, `FileInputStream`, `FileOutputStream`, `RandomAccessFile` | works, see below |
 | `java.net.URL`, `HttpURLConnection` over HTTP | works through a proxy, see below |
 | `java.net.Socket`, `InetAddress` | supplied by `socket-classlib`, carried by `Network.connect()` |
 | `Socket.setSoTimeout` | recorded and readable, but a read still blocks |
 | `ServerSocket` | refused: nothing can connect in to a page |
 | `DatagramSocket` | absent; the proxy transports streams only |
+
+### Reflection reaches types, not members
+
+The compiler ships what it can see being reached, so a class keeps its identity -- `getName`,
+`getSimpleName`, `getSuperclass`, `getInterfaces`, `isInstance`, `isAssignableFrom`, `cast`, and
+`Class.forName` for a class something already reaches -- and `java.lang.reflect.Array` works.
+
+Members do not survive. `getDeclaredFields`, `getDeclaredMethods` and `getConstructors` return
+empty arrays rather than throwing, which is the sharp edge: code that walks the result does nothing
+and reports no error. `Constructor.newInstance` throws `NoSuchMethodException`, and
+`Proxy.newProxyInstance` throws `SecurityException`.
+
+Both backends behave identically. The `selftest` program pins all of it, so a TeaVM upgrade that
+changes any of it fails the suite rather than surprising an application.
 
 ### Files are real, and they persist
 

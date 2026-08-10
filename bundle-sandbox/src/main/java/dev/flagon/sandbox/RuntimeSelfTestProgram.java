@@ -53,6 +53,7 @@ public final class RuntimeSelfTestProgram implements Program {
         lambdasAndClosures();
         clockBehaviour();
         nioBuffers();
+        reflection();
         entryPointArguments(arguments);
 
         console.info("selftest: " + (checks - failures.size()) + "/" + checks + " checks passed");
@@ -242,6 +243,62 @@ public final class RuntimeSelfTestProgram implements Program {
             joined.append(arguments[i].trim());
         }
         Platforms.get().console().info("arguments: [" + joined + "]");
+    }
+
+    /**
+     * what reflection does here, pinned rather than assumed
+     *
+     * <p>the compiler keeps only what it can see being reached, so a class carries its identity
+     * and its place in the hierarchy but not its members. asking for members is the sharp edge:
+     * it does not fail, it answers empty, and code that walks the answer quietly does nothing.
+     * these checks are here so a teavm upgrade that changes any of it is noticed.
+     */
+    private void reflection() {
+        check("class name", "dev.flagon.sandbox.RuntimeSelfTestProgram$Square",
+                Square.class.getName());
+        check("simple name", "Square", Square.class.getSimpleName());
+        check("name off an instance", Square.class.getName(), new Square(1.0d).getClass().getName());
+        check("isInstance", true, Square.class.isInstance(new Square(1.0d)));
+        check("isInstance of another type", false, Square.class.isInstance("text"));
+        check("isAssignableFrom", true, Shape.class.isAssignableFrom(Square.class));
+        check("superclass", Base.class.getName(), Derived.class.getSuperclass().getName());
+        check("interfaces are counted", 1, Square.class.getInterfaces().length);
+        check("isInterface", true, Shape.class.isInterface());
+        check("isArray", true, new int[0].getClass().isArray());
+        check("cast keeps the object", 4.0d, Square.class.cast(new Square(2.0d)).area());
+        check("array by reflection", 3, java.lang.reflect.Array.getLength(
+                java.lang.reflect.Array.newInstance(String.class, 3)));
+
+        try {
+            check("forName finds a reachable class", "java.lang.String",
+                    Class.forName("java.lang.String").getName());
+        } catch (ClassNotFoundException missing) {
+            check("forName finds a reachable class", "java.lang.String", "threw " + missing);
+        }
+
+        // the silent half: members are stripped, so these answer empty rather than throwing
+        check("declared fields are stripped", 0, Square.class.getDeclaredFields().length);
+        check("declared methods are stripped", 0, Square.class.getDeclaredMethods().length);
+        check("constructors are stripped", 0, Square.class.getConstructors().length);
+
+        try {
+            Base made = Base.class.getDeclaredConstructor().newInstance();
+            check("constructing by reflection is refused", true, made == null);
+        } catch (ReflectiveOperationException expected) {
+            check("constructing by reflection is refused", true, true);
+        }
+
+        try {
+            Object proxied = java.lang.reflect.Proxy.newProxyInstance(
+                    Shape.class.getClassLoader(), new Class<?>[] {Shape.class}, (p, m, a) -> 5.0d);
+            check("a proxy is refused", true, proxied == null);
+        } catch (SecurityException | IllegalArgumentException expected) {
+            check("a proxy is refused", true, true);
+        }
+
+        Platforms.get().console().info("reflection: " + Square.class.getSimpleName() + " reports "
+                + Square.class.getDeclaredMethods().length + " methods and "
+                + Square.class.getDeclaredFields().length + " fields");
     }
 
     private interface Shape {

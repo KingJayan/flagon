@@ -47,8 +47,9 @@ unmodified applications report through the active host automatically.
 TeaVM compiles Java bytecode to JavaScript at build time. There is no JVM and no runtime class
 loading, so two constraints shape the project:
 
-- **Reachability decides what ships.** Reflection and `ServiceLoader` are avoided; programs are
-  registered explicitly in `ProgramRegistry`.
+- **Reachability decides what ships.** Member reflection therefore finds nothing at all, which
+  [COMPATIBILITY.md](COMPATIBILITY.md#reflection-reaches-types-not-members) pins down.
+  `ServiceLoader` is avoided; programs are registered explicitly in `ProgramRegistry`.
 - **Application jars are build inputs.** Loading a jar means compiling it, so each application is
   built as a Maven module with the jar on its classpath. `example-app` and `bundle-example`
   demonstrate the downstream layout described in [DOWNSTREAM.md](DOWNSTREAM.md).
