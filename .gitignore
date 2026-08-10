@@ -16,3 +16,4 @@ vendor/
 
 .todo.md
 .vscode/settings.json
+.claude/
