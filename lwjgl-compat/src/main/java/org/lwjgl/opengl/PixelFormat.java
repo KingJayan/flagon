@@ -2,7 +2,7 @@ package org.lwjgl.opengl;
 
 /**
  * accepted for source compatibility. the canvas context is requested once with fixed
- * attributes, so per-format requests cannot be honoured after the fact.
+ * attributes, so per-format requests cannot be honored after the fact.
  */
 public final class PixelFormat {
 

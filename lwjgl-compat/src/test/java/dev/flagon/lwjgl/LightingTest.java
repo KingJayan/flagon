@@ -118,7 +118,7 @@ class LightingTest {
     }
 
     @Test
-    void lightColoursReachTheShaderInTheirOwnUniforms() {
+    void lightcolorsReachTheShaderInTheirOwnUniforms() {
         GL11.glEnable(GL11.GL_LIGHTING);
         GL11.glEnable(GL11.GL_LIGHT1);
         GL11.glLight(GL11.GL_LIGHT1, GL11.GL_DIFFUSE, floats(0.25f, 0.5f, 0.75f, 1.0f));
@@ -151,7 +151,7 @@ class LightingTest {
     }
 
     @Test
-    void materialColoursReachTheShader() {
+    void materialcolorsReachTheShader() {
         GL11.glEnable(GL11.GL_LIGHTING);
         GL11.glMaterial(GL11.GL_FRONT_AND_BACK, GL11.GL_AMBIENT_AND_DIFFUSE,
                 floats(0.1f, 0.2f, 0.3f, 1.0f));
@@ -166,14 +166,14 @@ class LightingTest {
     }
 
     @Test
-    void aOneSidedMaterialSaysWhyItCannotBeHonoured() {
+    void aOneSidedMaterialSaysWhyItCannotBehonored() {
         UnsupportedOperationException failure = assertThrows(UnsupportedOperationException.class,
                 () -> GL11.glMaterial(GL11.GL_FRONT, GL11.GL_AMBIENT, floats(1.0f, 1.0f, 1.0f, 1.0f)));
         assertTrue(failure.getMessage().contains("GL_FRONT_AND_BACK"), failure.getMessage());
     }
 
     @Test
-    void colorMaterialTellsTheShaderToTakeTheVertexColour() {
+    void colorMaterialTellsTheShaderToTakeTheVertexcolor() {
         GL11.glEnable(GL11.GL_LIGHTING);
         GL11.glColorMaterial(GL11.GL_FRONT_AND_BACK, GL11.GL_AMBIENT_AND_DIFFUSE);
         GL11.glEnable(GL11.GL_COLOR_MATERIAL);
@@ -191,7 +191,7 @@ class LightingTest {
     }
 
     @Test
-    void fogReachesTheShaderWithItsCurveAndItsColour() {
+    void fogReachesTheShaderWithItsCurveAndItscolor() {
         GL11.glEnable(GL11.GL_FOG);
         GL11.glFogi(GL11.GL_FOG_MODE, GL11.GL_LINEAR);
         GL11.glFogf(GL11.GL_FOG_START, 10.0f);

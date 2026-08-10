@@ -69,7 +69,7 @@ for (const backend of BACKENDS) {
 }
 
 /** where the bright pixels of the paddle row average out to, in canvas pixels from the left */
-async function paddleCentre(page: Page): Promise<number> {
+async function paddlecenter(page: Page): Promise<number> {
   return page.evaluate(() => {
     const canvas = document.getElementById('flagon-canvas') as HTMLCanvasElement;
     const gl = canvas.getContext('webgl2')!;
@@ -153,13 +153,13 @@ for (const backend of BACKENDS) {
     test('takes the paddle where the keyboard says', async ({ page }) => {
       await runBlocks(page, backend);
 
-      const before = await paddleCentre(page);
+      const before = await paddlecenter(page);
 
       await page.keyboard.down('ArrowLeft');
       await page.waitForTimeout(400);
       await page.keyboard.up('ArrowLeft');
 
-      const after = await paddleCentre(page);
+      const after = await paddlecenter(page);
       expect(after, `the paddle went from ${before} to ${after}`).toBeLessThan(before - 40);
     });
 

@@ -195,7 +195,7 @@ public final class LwjglDemoProgram implements Program {
         quads(600.0f, 100.0f, 640.0f, 140.0f, whole ? 0.0f : 1.0f, whole ? 1.0f : 0.0f, 0.0f);
     }
 
-    // a constant blend colour half mixed with a white quad, subtracted from the panel under it
+    // a constant blend color half mixed with a white quad, subtracted from the panel under it
     private void drawBlendedQuad() {
         GL11.glEnable(GL11.GL_BLEND);
         GL14.glBlendColor(0.5f, 0.5f, 0.5f, 1.0f);
@@ -208,10 +208,10 @@ public final class LwjglDemoProgram implements Program {
     private void drawLitQuad() {
         GL11.glEnable(GL11.GL_LIGHTING);
         GL11.glEnable(GL11.GL_LIGHT0);
-        GL11.glLightModel(GL11.GL_LIGHT_MODEL_AMBIENT, colour(0.0f, 0.0f, 0.0f));
-        GL11.glLight(GL11.GL_LIGHT0, GL11.GL_POSITION, colour(0.0f, 0.0f, 1.0f, 0.0f));
-        GL11.glMaterial(GL11.GL_FRONT_AND_BACK, GL11.GL_AMBIENT, colour(0.0f, 0.0f, 0.0f));
-        GL11.glMaterial(GL11.GL_FRONT_AND_BACK, GL11.GL_DIFFUSE, colour(0.4f, 0.2f, 0.8f));
+        GL11.glLightModel(GL11.GL_LIGHT_MODEL_AMBIENT, color(0.0f, 0.0f, 0.0f));
+        GL11.glLight(GL11.GL_LIGHT0, GL11.GL_POSITION, color(0.0f, 0.0f, 1.0f, 0.0f));
+        GL11.glMaterial(GL11.GL_FRONT_AND_BACK, GL11.GL_AMBIENT, color(0.0f, 0.0f, 0.0f));
+        GL11.glMaterial(GL11.GL_FRONT_AND_BACK, GL11.GL_DIFFUSE, color(0.4f, 0.2f, 0.8f));
         GL11.glNormal3f(0.0f, 0.0f, 1.0f);
         quads(20.0f, 260.0f, 80.0f, 300.0f, 1.0f, 1.0f, 1.0f);
         GL11.glDisable(GL11.GL_LIGHT0);
@@ -223,16 +223,16 @@ public final class LwjglDemoProgram implements Program {
         GL11.glFogi(GL11.GL_FOG_MODE, GL11.GL_LINEAR);
         GL11.glFogf(GL11.GL_FOG_START, 0.0f);
         GL11.glFogf(GL11.GL_FOG_END, 1000.0f);
-        GL11.glFog(GL11.GL_FOG_COLOR, colour(0.0f, 0.0f, 0.0f));
+        GL11.glFog(GL11.GL_FOG_COLOR, color(0.0f, 0.0f, 0.0f));
         quads(90.0f, 260.0f, 140.0f, 300.0f, 1.0f, 1.0f, 1.0f);
         GL11.glDisable(GL11.GL_FOG);
     }
 
-    private static FloatBuffer colour(float red, float green, float blue) {
-        return colour(red, green, blue, 1.0f);
+    private static FloatBuffer color(float red, float green, float blue) {
+        return color(red, green, blue, 1.0f);
     }
 
-    private static FloatBuffer colour(float x, float y, float z, float w) {
+    private static FloatBuffer color(float x, float y, float z, float w) {
         return FloatBuffer.wrap(new float[] {x, y, z, w});
     }
 
