@@ -2,10 +2,12 @@ package dev.flagon.sandbox;
 
 import dev.flagon.platform.Platforms;
 import dev.flagon.runtime.Program;
+import org.lwjgl.opengl.ContextCapabilities;
 import org.lwjgl.opengl.Display;
 import org.lwjgl.opengl.DisplayMode;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL14;
+import org.lwjgl.opengl.GLContext;
 
 import java.nio.ByteBuffer;
 import java.nio.FloatBuffer;
@@ -137,6 +139,17 @@ public final class LwjglDemoProgram implements Program {
         drawLitQuad();
         drawFoggedQuad();
         drawBlendedQuad();
+        drawCapabilityQuad();
+    }
+
+    // green only when the context reports the versions and the core extensions it is built on
+    private void drawCapabilityQuad() {
+        ContextCapabilities capabilities = GLContext.getCapabilities();
+        boolean whole = capabilities.OpenGL11 && capabilities.OpenGL12 && capabilities.OpenGL13
+                && capabilities.OpenGL14 && capabilities.OpenGL15 && capabilities.OpenGL20
+                && capabilities.GL_ARB_multitexture && capabilities.GL_ARB_vertex_buffer_object
+                && !capabilities.OpenGL30 && !capabilities.isSupported("GL_NV_make_believe");
+        quads(600.0f, 100.0f, 640.0f, 140.0f, whole ? 0.0f : 1.0f, whole ? 1.0f : 0.0f, 0.0f);
     }
 
     // a constant blend colour half mixed with a white quad, subtracted from the panel under it

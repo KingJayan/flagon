@@ -134,6 +134,12 @@ for (const backend of BACKENDS) {
       expectColor(await readPixel(page, 520, 240), [128, 128, 128], 'the blended quad');
     });
 
+    test('reports the context capabilities the host really has', async ({ page }) => {
+      await runDemo(page, backend);
+
+      expectColor(await readPixel(page, 620, 240), [0, 255, 0], 'the capability quad');
+    });
+
     test('reports the frame loop finishing', async ({ page }) => {
       await open(page, backend, 'program=lwjgl');
       await expect(page.getByTestId('log')).toContainText('frame 60', { timeout: 30_000 });

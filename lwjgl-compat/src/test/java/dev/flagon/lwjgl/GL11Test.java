@@ -360,7 +360,8 @@ class GL11Test {
     @Test
     void answersTheStringsAndLimitsAnApplicationChecksItselfAgainst() {
         assertEquals("recorded RENDERER", GL11.glGetString(GL11.GL_RENDERER));
-        assertEquals("recorded EXTENSIONS", GL11.glGetString(GL11.GL_EXTENSIONS));
+        device.extensions = "EXT_color_buffer_float";
+        assertEquals("EXT_color_buffer_float", GL11.glGetString(GL11.GL_EXTENSIONS));
         assertEquals(4096, GL11.glGetInteger(GL11.GL_MAX_TEXTURE_SIZE));
         assertEquals(16, GL11.glGetInteger(GL11.GL_MAX_TEXTURE_IMAGE_UNITS));
         assertThrows(UnsupportedOperationException.class, () -> GL11.glGetInteger(GL11.GL_BLEND));
