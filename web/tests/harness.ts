@@ -22,32 +22,63 @@ export function watchForFailures(page: Page): { failures: string[] } {
   return { failures };
 }
 
-/** reads one pixel straight out of the live webgl2 framebuffer. */
-export async function readPixel(page: Page, x: number, y: number): Promise<number[]> {
-  return page.evaluate(
-    ([px, py]) => {
-      const canvas = document.getElementById('flagon-canvas') as HTMLCanvasElement | null;
-      if (!canvas) {
-        throw new Error('no canvas on the page');
-      }
-      const gl = canvas.getContext('webgl2');
-      if (!gl) {
-        throw new Error('no webgl2 context');
-      }
+export async function readPixels(page: Page, points: number[][]): Promise<number[][]> {
+  return page.evaluate((wanted) => {
+    const canvas = document.getElementById('flagon-canvas') as HTMLCanvasElement | null;
+    if (!canvas) {
+      throw new Error('no canvas on the page');
+    }
+    const gl = canvas.getContext('webgl2');
+    if (!gl) {
+      throw new Error('no webgl2 context');
+    }
+    return wanted.map(([px, py]) => {
       const pixel = new Uint8Array(4);
       gl.readPixels(px, py, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, pixel);
       return Array.from(pixel);
-    },
-    [x, y],
-  );
+    });
+  }, points);
+}
+
+/** reads one pixel straight out of the live webgl2 framebuffer. */
+export async function readPixel(page: Page, x: number, y: number): Promise<number[]> {
+  return (await readPixels(page, [[x, y]]))[0];
+}
+
+export async function expectChanging<T>(sample: () => Promise<T>, message: string): Promise<void> {
+  const seen = new Set<T>();
+  await expect
+    .poll(
+      async () => {
+        seen.add(await sample());
+        return seen.size;
+      },
+      { message, intervals: [50, 50, 100, 100, 200, 200, 400], timeout: 15_000 },
+    )
+    .toBeGreaterThan(1);
+}
+
+const TOLERANCE = 2;
+
+function checkColor(
+  assert: typeof expect | typeof expect.soft,
+  actual: number[],
+  expected: number[],
+  label: string,
+): void {
+  for (let channel = 0; channel < 3; channel++) {
+    assert(
+      Math.abs(actual[channel] - expected[channel]),
+      `${label}: channel ${channel} was ${actual} expected ~${expected}`,
+    ).toBeLessThanOrEqual(TOLERANCE);
+  }
 }
 
 /** allows for the small differences between float shader output and 8-bit framebuffers. */
 export function expectColor(actual: number[], expected: number[], label: string): void {
-  for (let channel = 0; channel < 3; channel++) {
-    expect(
-      Math.abs(actual[channel] - expected[channel]),
-      `${label}: channel ${channel} was ${actual} expected ~${expected}`,
-    ).toBeLessThanOrEqual(2);
-  }
+  checkColor(expect, actual, expected, label);
+}
+
+export function expectColorSoft(actual: number[], expected: number[], label: string): void {
+  checkColor(expect.soft, actual, expected, label);
 }

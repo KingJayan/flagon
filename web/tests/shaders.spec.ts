@@ -1,5 +1,12 @@
 import { test, expect, type Page } from '@playwright/test';
-import { BACKENDS, open, readPixel, watchForFailures, type Backend } from './harness';
+import {
+  BACKENDS,
+  expectChanging,
+  open,
+  readPixel,
+  watchForFailures,
+  type Backend,
+} from './harness';
 
 const CLEAR = [15, 15, 26];
 
@@ -72,12 +79,7 @@ for (const backend of BACKENDS) {
           return bits;
         });
 
-      const samples = new Set<string>();
-      for (let attempt = 0; attempt < 10; attempt++) {
-        samples.add(await signature());
-        await page.waitForTimeout(100);
-      }
-      expect(samples.size, 'the scale uniform never changed the triangle').toBeGreaterThan(1);
+      await expectChanging(signature, 'the scale uniform never changed the triangle');
     });
 
     /** glUseProgram(0) has to give the fixed-function pipeline its shader back. */

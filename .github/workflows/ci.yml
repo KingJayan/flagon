@@ -36,7 +36,22 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shard: [1, 2, 3]
+        include:
+          - project: chromium
+            shard: 1
+            shards: 4
+          - project: chromium
+            shard: 2
+            shards: 4
+          - project: chromium
+            shard: 3
+            shards: 4
+          - project: chromium
+            shard: 4
+            shards: 4
+          - project: firefox
+            shard: 1
+            shards: 1
     steps:
       - uses: actions/checkout@v5
 
@@ -62,23 +77,27 @@ jobs:
       - name: Typecheck and build the shell
         run: make site
 
-      # the download is what costs; the system packages are apt's and cannot be cached
+      - name: Resolve the playwright version
+        id: playwright
+        run: echo "version=$(cd web && bunx playwright --version | awk '{print $2}')" >> "$GITHUB_OUTPUT"
+
       - name: Cache the browsers
         uses: actions/cache@v5
         with:
           path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ hashFiles('web/bun.lock') }}
+          key: playwright-${{ runner.os }}-${{ matrix.project }}-${{ steps.playwright.outputs.version }}
+          restore-keys: playwright-${{ runner.os }}-${{ matrix.project }}-
 
-      - name: Install the browsers
-        run: make browsers
+      - name: Install the browser
+        run: make browser-${{ matrix.project }}
 
       - name: Browser tests
-        run: make browser ARGS="--shard=${{ matrix.shard }}/${{ strategy.job-total }}"
+        run: make browser ARGS="--project=${{ matrix.project }} --shard=${{ matrix.shard }}/${{ matrix.shards }}"
 
       - uses: actions/upload-artifact@v5
         if: failure()
         with:
-          name: blob-report-${{ matrix.shard }}
+          name: blob-report-${{ matrix.project }}-${{ matrix.shard }}
           path: web/blob-report/
           retention-days: 7
 

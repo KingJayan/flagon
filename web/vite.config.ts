@@ -1,5 +1,8 @@
-import { defineConfig, type Plugin } from 'vite';
+import { defineConfig, type Plugin, type ViteDevServer } from 'vite';
 import { tcpProxy } from './tcp-proxy';
+
+
+type Serving = { middlewares: ViteDevServer['middlewares'] };
 
 const BULK_PROBE = '/flagon-net-bulk.bin';
 const BULK_PROBE_SIZE = 256 * 1024;
@@ -11,17 +14,19 @@ function bulkProbe(): Plugin {
   for (let at = 0; at < body.length; at++) {
     body[at] = at % 251;
   }
+  const attach = (server: Serving): void => {
+    server.middlewares.use(BULK_PROBE, (_asked, answer) => {
+      answer.writeHead(200, {
+        'content-type': 'application/octet-stream',
+        'content-length': String(body.length),
+      });
+      answer.end(body);
+    });
+  };
   return {
     name: 'flagon-bulk-probe',
-    configureServer(server) {
-      server.middlewares.use(BULK_PROBE, (_asked, answer) => {
-        answer.writeHead(200, {
-          'content-type': 'application/octet-stream',
-          'content-length': String(body.length),
-        });
-        answer.end(body);
-      });
-    },
+    configureServer: attach,
+    configurePreviewServer: attach,
   };
 }
 
@@ -29,45 +34,47 @@ const FLOOD = '/flagon-net-flood.bin';
 const FLOOD_SIZE = 32 * 1024 * 1024;
 
 function flood(): Plugin {
+  const attach = (server: Serving): void => {
+    server.middlewares.use(FLOOD, (asked, answer) => {
+      if (asked.method === 'POST') {
+        let taken = 0;
+        asked.on('data', (chunk: Buffer) => {
+          taken += chunk.length;
+        });
+        asked.on('end', () => {
+          // a length, not chunked framing, the page reading this response by hand
+          const body = 'taken ' + taken;
+          answer.writeHead(200, {
+            'content-type': 'text/plain',
+            'content-length': String(body.length),
+          });
+          answer.end(body);
+        });
+        return;
+      }
+      answer.writeHead(200, {
+        'content-type': 'application/octet-stream',
+        'content-length': String(FLOOD_SIZE),
+      });
+      const chunk = Buffer.alloc(64 * 1024);
+      let written = 0;
+      const pump = (): void => {
+        while (written < FLOOD_SIZE) {
+          written += chunk.length;
+          if (!answer.write(chunk)) {
+            answer.once('drain', pump);
+            return;
+          }
+        }
+        answer.end();
+      };
+      pump();
+    });
+  };
   return {
     name: 'flagon-net-flood',
-    configureServer(server) {
-      server.middlewares.use(FLOOD, (asked, answer) => {
-        if (asked.method === 'POST') {
-          let taken = 0;
-          asked.on('data', (chunk: Buffer) => {
-            taken += chunk.length;
-          });
-          asked.on('end', () => {
-            // a length, not chunked framing, the page reading this response by hand
-            const body = 'taken ' + taken;
-            answer.writeHead(200, {
-              'content-type': 'text/plain',
-              'content-length': String(body.length),
-            });
-            answer.end(body);
-          });
-          return;
-        }
-        answer.writeHead(200, {
-          'content-type': 'application/octet-stream',
-          'content-length': String(FLOOD_SIZE),
-        });
-        const chunk = Buffer.alloc(64 * 1024);
-        let written = 0;
-        const pump = (): void => {
-          while (written < FLOOD_SIZE) {
-            written += chunk.length;
-            if (!answer.write(chunk)) {
-              answer.once('drain', pump);
-              return;
-            }
-          }
-          answer.end();
-        };
-        pump();
-      });
-    },
+    configureServer: attach,
+    configurePreviewServer: attach,
   };
 }
 

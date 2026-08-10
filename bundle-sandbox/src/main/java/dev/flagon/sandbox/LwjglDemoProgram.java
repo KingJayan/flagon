@@ -35,8 +35,19 @@ public final class LwjglDemoProgram implements Program {
         return "renders through the LWJGL compatibility layer";
     }
 
+    private static int frameLimit(String[] arguments) {
+        for (int i = 0; i + 1 < arguments.length; i++) {
+            if (arguments[i].equals("--frames")) {
+                return Integer.parseInt(arguments[i + 1]);
+            }
+        }
+        return MAX_FRAMES;
+    }
+
     @Override
     public void run(String[] arguments) throws Exception {
+        int frameLimit = frameLimit(arguments);
+
         Display.setDisplayMode(new DisplayMode(WIDTH, HEIGHT));
         Display.setTitle("Flagon — LWJGL demo");
         Display.create();
@@ -54,7 +65,7 @@ public final class LwjglDemoProgram implements Program {
         buildPanelList();
 
         int frame = 0;
-        while (!Display.isCloseRequested() && frame < MAX_FRAMES) {
+        while (!Display.isCloseRequested() && frame < frameLimit) {
             drawFrame(frame);
             Display.update();
             frame++;
