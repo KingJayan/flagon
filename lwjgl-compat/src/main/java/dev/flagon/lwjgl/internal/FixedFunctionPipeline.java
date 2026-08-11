@@ -195,7 +195,9 @@ public final class FixedFunctionPipeline {
     private final GraphicsDevice device;
     private final int program;
     private final int buffer;
+    private final int immediateArray;
     private final QuadIndices quadIndices;
+    private final float[] normalMatrix = new float[9];
 
     private final StagingArrays staging;
 
@@ -233,6 +235,7 @@ public final class FixedFunctionPipeline {
         this.device = device;
         this.program = device.createProgram(VERTEX_SHADER, FRAGMENT_SHADER);
         this.buffer = device.createBuffer();
+        this.immediateArray = describeImmediateLayout();
         this.quadIndices = new QuadIndices(device);
         this.staging = new StagingArrays(device, VertexArrays.SLOTS);
 
@@ -284,8 +287,17 @@ public final class FixedFunctionPipeline {
         }
         begin(render);
 
+        device.bindVertexArray(immediateArray);
         device.bindBuffer(BufferTarget.ARRAY, buffer);
         device.bufferData(BufferTarget.ARRAY, vertices, floatCount, BufferUsage.STREAM);
+        issue(mode, 0, drawable);
+        device.bindVertexArray(GraphicsDevice.NO_VERTEX_ARRAY);
+    }
+
+    private int describeImmediateLayout() {
+        int array = device.createVertexArray();
+        device.bindVertexArray(array);
+        device.bindBuffer(BufferTarget.ARRAY, buffer);
         for (int slot = 0; slot < VertexArrays.SLOTS; slot++) {
             device.enableAttribute(slot);
         }
@@ -299,8 +311,8 @@ public final class FixedFunctionPipeline {
         }
         device.attributePointer(VertexArrays.NORMAL, 3, AttributeType.FLOAT, false,
                 VERTEX_STRIDE, NORMAL_OFFSET);
-
-        issue(mode, 0, drawable);
+        device.bindVertexArray(GraphicsDevice.NO_VERTEX_ARRAY);
+        return array;
     }
 
     /** draws {@code count} vertices from {@code first}, read through the client arrays. */
@@ -364,7 +376,7 @@ public final class FixedFunctionPipeline {
             return;
         }
         device.uniformMatrices(normalMatrixUniform, 3, false,
-                Matrix4.normalMatrix(render.modelView()), 1);
+                Matrix4.normalMatrix(render.modelView(), normalMatrix), 1);
         device.uniformInts(lightEnabledUniform, 1, lighting.lightEnabledFlags(), Lighting.LIGHTS);
         device.uniformFloats(lightPositionUniform, 4, lighting.positions(), Lighting.LIGHTS);
         device.uniformFloats(lightAmbientUniform, 4, lighting.ambients(), Lighting.LIGHTS);
@@ -421,6 +433,7 @@ public final class FixedFunctionPipeline {
     public void dispose() {
         staging.dispose();
         quadIndices.dispose();
+        device.deleteVertexArray(immediateArray);
         device.deleteBuffer(buffer);
         device.deleteProgram(program);
     }

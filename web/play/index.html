@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Flagon</title>
+    <link rel="icon" href="/favicon.ico" type="image/x-icon" />
+    <link rel="stylesheet" href="/src/play.css" />
+  </head>
+  <body>
+    <canvas id="flagon-canvas" width="854" height="480" aria-label="the running program"></canvas>
+
+    <div id="veil" class="veil" data-testid="veil" role="status">
+      <p class="headline" id="headline" data-testid="headline">Starting</p>
+      <p class="detail" id="detail" data-testid="detail"></p>
+    </div>
+
+    <script type="module" src="/src/play.ts"></script>
+  </body>
+</html>

@@ -272,6 +272,8 @@ public interface WebGL2 extends JSObject {
 
     void bindVertexArray(JSObject array);
 
+    void deleteVertexArray(JSObject array);
+
     JSObject createTexture();
 
     void deleteTexture(JSObject texture);
