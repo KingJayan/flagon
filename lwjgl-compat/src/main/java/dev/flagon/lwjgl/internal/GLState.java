@@ -42,6 +42,9 @@ public final class GLState implements RenderState {
     private float alphaTestThreshold;
     private CompareFunc alphaTestFunc = CompareFunc.ALWAYS;
 
+    private boolean normalize;
+    private boolean rescaleNormal;
+
     private boolean depthTest;
     private boolean blend;
     private boolean cullFaceEnabled;
@@ -786,8 +789,22 @@ public final class GLState implements RenderState {
 
     // queries
 
+    /**
+     * the pipeline normalizes the normal it transforms whatever is asked, so both of these are
+     * already true of every draw. what is kept is the answer glIsEnabled owes the caller.
+     */
+    public void setNormalRescaling(int capability, boolean enabled) {
+        if (capability == 0x0BA1) {
+            normalize = enabled;
+        } else {
+            rescaleNormal = enabled;
+        }
+    }
+
     public boolean isEnabled(int capability) {
         return switch (capability) {
+            case 0x0BA1 -> normalize;
+            case 0x803A -> rescaleNormal;
             case 0x0B71 -> depthTest;
             case 0x0BE2 -> blend;
             case 0x0B44 -> cullFaceEnabled;

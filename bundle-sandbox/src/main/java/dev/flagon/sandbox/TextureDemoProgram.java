@@ -5,6 +5,7 @@ import dev.flagon.runtime.Program;
 import org.lwjgl.opengl.Display;
 import org.lwjgl.opengl.DisplayMode;
 import org.lwjgl.opengl.GL11;
+import org.lwjgl.opengl.GL12;
 import org.lwjgl.opengl.GL13;
 
 /**
@@ -36,6 +37,7 @@ public final class TextureDemoProgram implements Program {
     private int grey;
     private int rgb;
     private int luminance;
+    private int packed;
 
     @Override
     public String id() {
@@ -69,6 +71,7 @@ public final class TextureDemoProgram implements Program {
         grey = upload(1, 1, new int[] {0xFF808080});
         rgb = uploadBytes(1, 1, 0x1907, new byte[] {0x20, (byte) 0xA0, 0x40});
         luminance = uploadBytes(1, 1, GL11.GL_LUMINANCE, new byte[] {(byte) 0x80});
+        packed = uploadPacked(0xFF2080C0);
         Platforms.get().console().info("uploaded texture " + texture + " (2x2) and " + faded
                 + " (1x1)");
 
@@ -87,6 +90,7 @@ public final class TextureDemoProgram implements Program {
         GL11.glDeleteTextures(grey);
         GL11.glDeleteTextures(rgb);
         GL11.glDeleteTextures(luminance);
+        GL11.glDeleteTextures(packed);
         Platforms.get().console().info("rendered " + frame + " frames");
         Display.destroy();
     }
@@ -97,6 +101,17 @@ public final class TextureDemoProgram implements Program {
         GL11.glTexImage2D(GL11.GL_TEXTURE_2D, 0, GL11.GL_RGBA, width, height, 0,
                 GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, pixels);
         // nearest, so every screen pixel of the quad is exactly one texel
+        GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_NEAREST);
+        GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_NEAREST);
+        return name;
+    }
+
+    /** one int a texel, the packed type and channel order applications upload images with */
+    private static int uploadPacked(int argb) {
+        int name = GL11.glGenTextures();
+        GL11.glBindTexture(GL11.GL_TEXTURE_2D, name);
+        GL11.glTexImage2D(GL11.GL_TEXTURE_2D, 0, GL12.GL_BGRA, 1, 1, 0,
+                GL12.GL_BGRA, GL12.GL_UNSIGNED_INT_8_8_8_8_REV, new int[] {argb});
         GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_NEAREST);
         GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_NEAREST);
         return name;
@@ -177,6 +192,10 @@ public final class TextureDemoProgram implements Program {
         texturedQuad(800.0f, 150.0f, 860.0f, 210.0f);
         GL11.glBindTexture(GL11.GL_TEXTURE_2D, luminance);
         texturedQuad(870.0f, 150.0f, 930.0f, 210.0f);
+
+        // the packed type an application uploads its own images with
+        GL11.glBindTexture(GL11.GL_TEXTURE_2D, packed);
+        texturedQuad(800.0f, 220.0f, 860.0f, 280.0f);
 
         GL11.glDisable(GL11.GL_TEXTURE_2D);
     }

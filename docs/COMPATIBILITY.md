@@ -143,7 +143,8 @@ fake devices.
 | `GL_QUADS` | works, expanded to indexed triangles |
 | Textures: gen/bind/delete, nearest and linear filtering | works |
 | Texture uploads in `GL_RGBA`, `GL_RGB`, `GL_BGR`, `GL_BGRA`, `GL_LUMINANCE`, `GL_LUMINANCE_ALPHA`, `GL_ALPHA` | works, widened to rgba |
-| Texture uploads of anything but `GL_UNSIGNED_BYTE` pixels | refused |
+| Texture uploads of `GL_UNSIGNED_INT_8_8_8_8_REV` pixels in a four-component format | works |
+| Texture uploads of any other pixel type | refused |
 | `glTexParameteri` wrapping (`GL_REPEAT`, `GL_CLAMP`, `GL_MIRRORED_REPEAT`), min and mag filters separately | works |
 | Mipmaps: uploads per level, `glGenerateMipmap`, `GL_GENERATE_MIPMAP`, base/max level | works |
 | The four mipmapped minification filters | works |
@@ -168,9 +169,11 @@ fake devices.
 | `glGetError` | works |
 | `glGetString` vendor/renderer/version/GLSL version/extensions | works, describes WebGL2 |
 | `glGetInteger` max texture size, texture units, vertex attributes | works |
+| `glGetInteger` `GL_MAX_ELEMENTS_VERTICES` / `GL_MAX_ELEMENTS_INDICES` | works, unbounded |
 | `glGetInteger`, `glGetFloat`, `glGetBoolean`, `glIsEnabled` of state the layer sets | works, answered from the mirror |
 | Any other `glGetInteger`/`glGetString` name | refused |
 | `glNormal3f`, `glNormalPointer`, `GL_NORMAL_ARRAY` | works |
+| `GL_NORMALIZE`, `GL_RESCALE_NORMAL` | accepted, always in force |
 | `glLight*`, `glLightModel` `GL_LIGHT_MODEL_AMBIENT` | works, eight lights, see below |
 | `glMaterial*`, `glColorMaterial` | works, `GL_FRONT_AND_BACK` only |
 | `glShadeModel` | `GL_SMOOTH` only |
