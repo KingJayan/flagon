@@ -51,8 +51,9 @@ on both backends.
 | Interfaces, default methods, records, virtual dispatch | works |
 | Lambdas, method references, captured locals | works |
 | `Class` identity, hierarchy, `isInstance`, `cast`, `forName` | works, see below |
-| `getDeclaredFields`, `getDeclaredMethods`, `getConstructors` | answer empty, see below |
-| `Constructor.newInstance`, `Proxy` | refused, see below |
+| `getDeclaredFields`, `getDeclaredMethods`, `getConstructors` | answer empty unless the class opted in, see below |
+| `Field.get`/`set`, `Method.invoke`, `Constructor.newInstance` | work on an opted-in class, refused otherwise |
+| `Proxy` | refused, see below |
 | `File`, `FileInputStream`, `FileOutputStream`, `RandomAccessFile` | works, see below |
 | `java.net.URL`, `HttpURLConnection` over HTTP | works through a proxy, see below |
 | `java.net.Socket`, `InetAddress` | supplied by `socket-classlib`, carried by `Network.connect()` |
@@ -66,13 +67,35 @@ The compiler ships what it can see being reached, so a class keeps its identity 
 `getSimpleName`, `getSuperclass`, `getInterfaces`, `isInstance`, `isAssignableFrom`, `cast`, and
 `Class.forName` for a class something already reaches -- and `java.lang.reflect.Array` works.
 
-Members do not survive. `getDeclaredFields`, `getDeclaredMethods` and `getConstructors` return
-empty arrays rather than throwing, which is the sharp edge: code that walks the result does nothing
-and reports no error. `Constructor.newInstance` throws `NoSuchMethodException`, and
-`Proxy.newProxyInstance` throws `SecurityException`.
+Members do not survive by default. `getDeclaredFields`, `getDeclaredMethods` and `getConstructors`
+return empty arrays rather than throwing, which is the sharp edge: code that walks the result does
+nothing and reports no error. `Proxy.newProxyInstance` throws `SecurityException` and is not
+opt-in-able.
 
-Both backends behave identically. The `selftest` program pins all of it, so a TeaVM upgrade that
-changes any of it fails the suite rather than surprising an application.
+A class can opt out of that, and then reflection over it behaves as it does on a JVM: every
+declared field, method and constructor is listed, `Field.get`/`set` reach private fields,
+`Method.invoke` and `Constructor.newInstance` work, and `Class.forName` finds the class by name.
+
+Name the class one of two ways, both provided by `toolchain/reflect-policy`:
+
+```java
+@Reflectable
+public final class Settings { ... }
+```
+
+```xml
+<!-- for a jar you cannot annotate; globs, separated by commas or whitespace -->
+<flagon.reflect.classes>com.example.Settings, com.example.model.*</flagon.reflect.classes>
+```
+
+A bundle gets neither unless it depends on `reflect-policy`. Keep the list small: a class named
+here keeps everything it can reach, so naming an application wholesale gives up what ahead-of-time
+compilation buys.
+
+Both backends behave identically, in both directions. The `selftest` program pins all of it --
+including a class that is *not* opted in, sitting in the same bundle and still reporting zero
+members -- so a TeaVM upgrade that changes any of it fails the suite rather than surprising an
+application.
 
 ### Files are real, and they persist
 

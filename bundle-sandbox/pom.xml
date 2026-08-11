@@ -19,6 +19,8 @@
     <flagon.bundle.mainClass>dev.flagon.sandbox.SandboxMain</flagon.bundle.mainClass>
     <flagon.bundle.catalogClass>dev.flagon.sandbox.SandboxCatalog</flagon.bundle.catalogClass>
     <flagon.bundle.name>sandbox</flagon.bundle.name>
+    <!-- the half of the reflection opt-in that names classes it cannot annotate -->
+    <flagon.reflect.classes>dev.flagon.sandbox.ReflectedBy*</flagon.reflect.classes>
   </properties>
 
   <dependencies>
@@ -38,6 +40,11 @@
     <dependency>
       <groupId>dev.flagon</groupId>
       <artifactId>socket-classlib</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>dev.flagon</groupId>
+      <artifactId>reflect-policy</artifactId>
       <version>${project.version}</version>
     </dependency>
     <dependency>
