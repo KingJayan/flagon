@@ -171,6 +171,7 @@ public final class GL11 {
 
     public static final int GL_LIGHTING = 0x0B50;
     public static final int GL_COLOR_MATERIAL = 0x0B57;
+    public static final int GL_NORMALIZE = 0x0BA1;
     public static final int GL_LIGHT_MODEL_AMBIENT = 0x0B53;
     public static final int GL_LIGHT0 = 0x4000;
     public static final int GL_LIGHT1 = 0x4001;
@@ -398,6 +399,8 @@ public final class GL11 {
             case GL_LIGHTING -> state().lighting().setEnabled(enabled);
             case GL_COLOR_MATERIAL -> state().lighting().setColorMaterial(enabled);
             case GL_FOG -> state().lighting().setFogEnabled(enabled);
+            case GL_NORMALIZE, GL12.GL_RESCALE_NORMAL ->
+                    state().setNormalRescaling(capability, enabled);
             case GL_LIGHT0, GL_LIGHT1, GL_LIGHT2, GL_LIGHT3,
                  GL_LIGHT4, GL_LIGHT5, GL_LIGHT6, GL_LIGHT7 ->
                     state().lighting().setLightEnabled(capability - GL_LIGHT0, enabled);
@@ -633,6 +636,8 @@ public final class GL11 {
             case GL_MAX_TEXTURE_UNITS, GL_MAX_TEXTURE_IMAGE_UNITS ->
                     device().limit(GraphicsLimit.MAX_TEXTURE_UNITS);
             case GL_MAX_VERTEX_ATTRIBS -> device().limit(GraphicsLimit.MAX_VERTEX_ATTRIBUTES);
+            // a hint about what one draw call should carry; webgl has no such ceiling of its own
+            case GL12.GL_MAX_ELEMENTS_VERTICES, GL12.GL_MAX_ELEMENTS_INDICES -> Integer.MAX_VALUE;
             case GL_MATRIX_MODE -> state().matrixMode();
             case GL_TEXTURE_BINDING_2D -> state().boundTexture();
             case GL_DEPTH_FUNC -> compareEnum(state().depthFunc());
@@ -1434,7 +1439,7 @@ public final class GL11 {
         requireTexture2D(target, "glTexImage2D");
         state().refuseWhileRecording("glTexImage2D");
         requireLevel(level);
-        requireByteType(type, "glTexImage2D");
+        requirePixelType(type, format, "glTexImage2D");
         int pixelCount = width * height;
         byte[] read = bytes(pixels, pixelCount * components(format, "glTexImage2D"));
         device().textureImage(level, width, height, toRgba(read, pixelCount, format));
@@ -1459,7 +1464,7 @@ public final class GL11 {
         requireTexture2D(target, "glTexSubImage2D");
         state().refuseWhileRecording("glTexSubImage2D");
         requireLevel(level);
-        requireByteType(type, "glTexSubImage2D");
+        requirePixelType(type, format, "glTexSubImage2D");
         int pixelCount = width * height;
         byte[] read = bytes(pixels, pixelCount * components(format, "glTexSubImage2D"));
         device().textureSubImage(level, x, y, width, height, toRgba(read, pixelCount, format));
@@ -1506,19 +1511,32 @@ public final class GL11 {
         return rgba;
     }
 
+    /** one int per pixel is 0xAARRGGBB, which is what GL_BGRA with the packed type names */
     private static void requireRgbaBytes(int format, int type) {
-        if (format != GL_RGBA || type != GL_UNSIGNED_BYTE) {
+        boolean bytes = format == GL_RGBA && type == GL_UNSIGNED_BYTE;
+        boolean packed = format == GL12.GL_BGRA && type == GL12.GL_UNSIGNED_INT_8_8_8_8_REV;
+        if (!bytes && !packed) {
             throw new UnsupportedOperationException(
-                    "a texture uploaded from ints emulates GL_RGBA/GL_UNSIGNED_BYTE only");
+                    "a texture uploaded from ints emulates GL_RGBA/GL_UNSIGNED_BYTE and "
+                            + "GL_BGRA/GL_UNSIGNED_INT_8_8_8_8_REV only");
         }
     }
 
-    private static void requireByteType(int type, String call) {
-        if (type != GL_UNSIGNED_BYTE) {
-            throw new UnsupportedOperationException(
-                    call + " emulates GL_UNSIGNED_BYTE pixels only, got 0x"
-                            + Integer.toHexString(type));
+    /**
+     * a packed 8_8_8_8_REV pixel puts its first component in the lowest bits, so on the
+     * little-endian machines browsers run on it lies in memory as the bytes of its own format.
+     * the buffer is read as those bytes, which is what the device takes anyway.
+     */
+    private static void requirePixelType(int type, int format, String call) {
+        if (type == GL_UNSIGNED_BYTE) {
+            return;
         }
+        if (type == GL12.GL_UNSIGNED_INT_8_8_8_8_REV && components(format, call) == 4) {
+            return;
+        }
+        throw new UnsupportedOperationException(
+                call + " emulates GL_UNSIGNED_BYTE pixels, and GL_UNSIGNED_INT_8_8_8_8_REV for a "
+                        + "four-component format, got 0x" + Integer.toHexString(type));
     }
 
     /** @return how many bytes of the buffer one pixel of the format takes */

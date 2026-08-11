@@ -272,6 +272,54 @@ class GL11Test {
     }
 
     @Test
+    void takesThePackedPixelTypeMinecraftUploadsWith() {
+        java.nio.ByteBuffer pixels = org.lwjgl.BufferUtils.createByteBuffer(4);
+        pixels.put((byte) 0x10).put((byte) 0x20).put((byte) 0x30).put((byte) 0x40);
+        pixels.flip();
+
+        GL11.glTexImage2D(GL11.GL_TEXTURE_2D, 0, GL12.GL_BGRA, 1, 1, 0,
+                GL12.GL_BGRA, GL12.GL_UNSIGNED_INT_8_8_8_8_REV, pixels);
+
+        assertArrayEquals(new byte[] {0x30, 0x20, 0x10, 0x40}, device.lastRgba);
+    }
+
+    @Test
+    void takesThePackedTypeFromIntsToo() {
+        GL11.glTexImage2D(GL11.GL_TEXTURE_2D, 0, GL12.GL_BGRA, 1, 1, 0,
+                GL12.GL_BGRA, GL12.GL_UNSIGNED_INT_8_8_8_8_REV, new int[] {0x40102030});
+
+        assertArrayEquals(new byte[] {0x10, 0x20, 0x30, 0x40}, device.lastRgba);
+    }
+
+    @Test
+    void refusesThePackedTypeForAFormatItCannotFill() {
+        java.nio.ByteBuffer pixels = org.lwjgl.BufferUtils.createByteBuffer(4);
+        UnsupportedOperationException failure = assertThrows(UnsupportedOperationException.class,
+                () -> GL11.glTexImage2D(GL11.GL_TEXTURE_2D, 0, GL11.GL_RGB, 1, 1, 0,
+                        GL11.GL_RGB, GL12.GL_UNSIGNED_INT_8_8_8_8_REV, pixels));
+        assertTrue(failure.getMessage().contains("four-component"), failure.getMessage());
+    }
+
+    @Test
+    void keepsTheNormalRescalingFlagsItIsAlreadyHonouring() {
+        assertFalse(GL11.glIsEnabled(GL11.GL_NORMALIZE));
+        GL11.glEnable(GL11.GL_NORMALIZE);
+        GL11.glEnable(GL12.GL_RESCALE_NORMAL);
+        assertTrue(GL11.glIsEnabled(GL11.GL_NORMALIZE));
+        assertTrue(GL11.glIsEnabled(GL12.GL_RESCALE_NORMAL));
+
+        GL11.glDisable(GL11.GL_NORMALIZE);
+        assertFalse(GL11.glIsEnabled(GL11.GL_NORMALIZE));
+        assertTrue(GL11.glIsEnabled(GL12.GL_RESCALE_NORMAL));
+    }
+
+    @Test
+    void answersTheDrawRangeHintsRatherThanRefusingThem() {
+        assertEquals(Integer.MAX_VALUE, GL11.glGetInteger(GL12.GL_MAX_ELEMENTS_VERTICES));
+        assertEquals(Integer.MAX_VALUE, GL11.glGetInteger(GL12.GL_MAX_ELEMENTS_INDICES));
+    }
+
+    @Test
     void spreadsALuminanceUploadAcrossThecolorChannels() {
         java.nio.ByteBuffer pixels = org.lwjgl.BufferUtils.createByteBuffer(2);
         pixels.put((byte) 0x7F).put((byte) 0x40);
