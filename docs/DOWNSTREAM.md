@@ -26,6 +26,27 @@ layer, then compiles everything into JavaScript with TeaVM.
 
 The `examples/app` and `examples/bundle` modules in this repository demonstrate this layout.
 
+## Trying a jar without any of this
+
+If you only want to see whether a jar runs, you do not need a module of your own. Put the jar in
+`vendor/` in a checkout of this repository -- any jar, any filename -- and build:
+
+```
+make app
+```
+
+Nothing is configured and nothing is edited. The build asks the jar what it runs: its manifest
+`Main-Class` if it declares one, otherwise every class in it with a `main`. Each answer becomes a
+program, an entry point calling it is written, and both backends are compiled to `app.wasm` and
+`app.js`. `/play/` then runs it with the viewport to itself.
+
+That entry point is written rather than reflected upon on purpose. The call to your main is an
+ordinary one, so the compiler can follow it and ship everything it reaches; a reflected call would
+reach nothing.
+
+What this path does not give you is a place to put your own composition -- a second platform, your
+own catalog, programs that are not just a `main`. That is what the rest of this document is for.
+
 ## 1. Create a bundle module
 
 Your bundle depends on:

@@ -39,6 +39,7 @@ export default defineConfig({
         '**/display.spec.ts',
         '**/example.spec.ts',
         '**/input.spec.ts',
+        '**/play.spec.ts',
         '**/render.spec.ts',
         '**/shaders.spec.ts',
         '**/shell.spec.ts',

@@ -8,6 +8,9 @@ package dev.flagon.lwjgl.internal;
 public final class Matrix4 {
 
     private static final float[] SCRATCH = new float[16];
+    // the matrix each of the operations below builds to post-multiply by. it is never live across
+    // a call, and multiply() reads it before touching SCRATCH, so one is enough for all of them
+    private static final float[] OPERAND = new float[16];
 
     private Matrix4() {
     }
@@ -69,7 +72,7 @@ public final class Matrix4 {
         float s = (float) Math.sin(radians);
         float ic = 1.0f - c;
 
-        float[] rotation = new float[16];
+        float[] rotation = zeroed(OPERAND);
         rotation[0] = nx * nx * ic + c;
         rotation[1] = ny * nx * ic + nz * s;
         rotation[2] = nz * nx * ic - ny * s;
@@ -85,7 +88,7 @@ public final class Matrix4 {
 
     public static void ortho(float[] target, float left, float right, float bottom, float top,
                              float near, float far) {
-        float[] m = new float[16];
+        float[] m = zeroed(OPERAND);
         m[0] = 2.0f / (right - left);
         m[5] = 2.0f / (top - bottom);
         m[10] = -2.0f / (far - near);
@@ -98,7 +101,7 @@ public final class Matrix4 {
 
     public static void frustum(float[] target, float left, float right, float bottom, float top,
                                float near, float far) {
-        float[] m = new float[16];
+        float[] m = zeroed(OPERAND);
         m[0] = 2.0f * near / (right - left);
         m[5] = 2.0f * near / (top - bottom);
         m[8] = (right + left) / (right - left);
@@ -109,7 +112,19 @@ public final class Matrix4 {
         multiply(target, m);
     }
 
+    private static float[] zeroed(float[] m) {
+        for (int i = 0; i < 16; i++) {
+            m[i] = 0.0f;
+        }
+        return m;
+    }
+
     public static float[] normalMatrix(float[] m) {
+        return normalMatrix(m, new float[9]);
+    }
+
+    /** the same, into a buffer the caller keeps, since a draw wants one every time it lights. */
+    public static float[] normalMatrix(float[] m, float[] out) {
         float a = m[0];
         float b = m[1];
         float c = m[2];
@@ -122,15 +137,30 @@ public final class Matrix4 {
 
         float determinant = a * (e * i - f * h) - d * (b * i - c * h) + g * (b * f - c * e);
         if (determinant == 0.0f) {
-            return new float[] {1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 1.0f};
+            setIdentity3(out);
+            return out;
         }
         float scale = 1.0f / determinant;
         // the transpose of the inverse, written out column-major
-        return new float[] {
-                (e * i - f * h) * scale, (g * f - d * i) * scale, (d * h - g * e) * scale,
-                (h * c - b * i) * scale, (a * i - g * c) * scale, (g * b - a * h) * scale,
-                (b * f - e * c) * scale, (d * c - a * f) * scale, (a * e - d * b) * scale,
-        };
+        out[0] = (e * i - f * h) * scale;
+        out[1] = (g * f - d * i) * scale;
+        out[2] = (d * h - g * e) * scale;
+        out[3] = (h * c - b * i) * scale;
+        out[4] = (a * i - g * c) * scale;
+        out[5] = (g * b - a * h) * scale;
+        out[6] = (b * f - e * c) * scale;
+        out[7] = (d * c - a * f) * scale;
+        out[8] = (a * e - d * b) * scale;
+        return out;
+    }
+
+    private static void setIdentity3(float[] out) {
+        for (int i = 0; i < 9; i++) {
+            out[i] = 0.0f;
+        }
+        out[0] = 1.0f;
+        out[4] = 1.0f;
+        out[8] = 1.0f;
     }
 
     /** @return {@code m * point}, the four components of a point carried into the matrix's space */

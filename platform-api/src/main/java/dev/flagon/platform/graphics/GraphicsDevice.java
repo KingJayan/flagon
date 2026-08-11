@@ -6,6 +6,8 @@ package dev.flagon.platform.graphics;
 public interface GraphicsDevice {
 
     int NO_BUFFER = 0;
+    /** the array the device starts on, which every draw that does not want one of its own uses */
+    int NO_VERTEX_ARRAY = 0;
     int NO_TEXTURE = 0;
     int NO_PROGRAM = 0;
     int NO_SHADER = 0;
@@ -168,6 +170,16 @@ public interface GraphicsDevice {
     int attributeLocation(int program, String name);
 
     int maxAttributes();
+
+    /**
+      * @return a vertex array remembering an attribute layout, so a draw that always uses the same
+      *         one can bind it instead of describing every slot again
+      */
+    int createVertexArray();
+
+    void bindVertexArray(int array);
+
+    void deleteVertexArray(int array);
 
     void enableAttribute(int location);
 

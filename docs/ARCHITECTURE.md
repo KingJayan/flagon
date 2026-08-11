@@ -34,6 +34,10 @@ no behaviour -- `NetworkSocket` in `runtime` does, where a plain jvm can test it
 `ReflectionPolicy` found through `META-INF/services`, and it decides which classes keep their
 members through compilation; see [Reflection](#reflection) below.
 
+`toolchain/app-entry` runs before the compiler. It reads whatever jar was put in `vendor/`, asks it
+what it runs, and writes `bundle-app`s programs from the answer. Writing the calls rather than
+reflecting over them is what lets reachability find the application at all.
+
 ## Composition
 
 `Platforms` is installed once at boot as a static holder. This is a deliberate exception to

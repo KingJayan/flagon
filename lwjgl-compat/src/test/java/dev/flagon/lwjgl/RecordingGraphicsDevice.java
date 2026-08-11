@@ -430,6 +430,23 @@ final class RecordingGraphicsDevice implements GraphicsDevice {
     }
 
     @Override
+    public int createVertexArray() {
+        int array = nextName++;
+        calls.add("createVertexArray " + array);
+        return array;
+    }
+
+    @Override
+    public void bindVertexArray(int array) {
+        calls.add("bindVertexArray " + array);
+    }
+
+    @Override
+    public void deleteVertexArray(int array) {
+        calls.add("deleteVertexArray " + array);
+    }
+
+    @Override
     public void enableAttribute(int location) {
         calls.add("enableAttribute " + location);
     }

@@ -11,8 +11,9 @@ test-results/
 web/playwright-report/
 web/blob-report/
 
-# the game jar
-vendor/
+# your own jar
+vendor/*
+!vendor/.gitkeep
 
 .todo.md
 .vscode/settings.json
