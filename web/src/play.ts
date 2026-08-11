@@ -78,8 +78,8 @@ function whyNot(): string {
 /** `app` is the one bundle that may legitimately be absent, so say what makes it appear */
 function missing(url: string): string {
   return bundle === 'app'
-    ? 'No application has been built yet. Put a jar in vendor/, point flagon.app.mainClass at its '
-      + 'main class, and run make bundles. See docs/DOWNSTREAM.md.'
+    ? 'No application has been built yet. Put a jar in vendor/ -- any jar -- and run make app. '
+      + 'See docs/DOWNSTREAM.md.'
     : `The bundle at ${url} is not being served. Run make build.`;
 }
 
