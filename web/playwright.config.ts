@@ -13,7 +13,12 @@ export default defineConfig({
   },
   projects: [
     {
+      name: 'bundles',
+      testMatch: /.*\.setup\.ts/,
+    },
+    {
       name: 'chromium',
+      dependencies: ['bundles'],
       use: {
         ...devices['Desktop Chrome'],
         launchOptions: { args: ['--autoplay-policy=no-user-gesture-required', '--mute-audio'] },
@@ -21,6 +26,7 @@ export default defineConfig({
     },
     {
       name: 'firefox',
+      dependencies: ['bundles'],
       // the fallback backend is why a second engine is here; wasm gc is chromium's to prove
       grepInvert: /on wasm/,
       // headless firefox has neither a gpu nor sound on a ci runner, so anything that opens a
