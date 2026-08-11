@@ -1,9 +1,9 @@
 package dev.flagon.appentry;
 
+import java.io.BufferedInputStream;
+import java.io.DataInputStream;
 import java.io.IOException;
 import java.lang.reflect.Modifier;
-import java.net.URL;
-import java.net.URLClassLoader;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -18,15 +18,6 @@ import java.util.jar.Manifest;
 
 /**
  * writes the entry points for whatever jar was dropped in
- *
- * <p>nobody has to say anything about the jar. it is asked what it runs -- its manifest first,
- * then every class in it with a {@code main} -- and each answer becomes a program. a jar with one
- * runs on sight; a jar with several offers all of them rather than guessing between them.
- *
- * <p>what it writes are ordinary calls, not reflection. that is the point: the compiler ships what
- * it can see being reached, and a reflected call reaches nothing.
- *
- * <p>run by the build before {@code bundle-app} compiles. never at runtime.
  */
 public final class WriteAppEntry {
 
@@ -49,42 +40,114 @@ public final class WriteAppEntry {
     /** what the jar says it runs, and failing that, everything in it that could be run */
     private static List<String> runnableIn(Path jar) throws IOException {
         try (JarFile opened = new JarFile(jar.toFile())) {
-            Manifest manifest = opened.getManifest();
-            if (manifest != null) {
-                String declared = manifest.getMainAttributes().getValue("Main-Class");
-                if (declared != null && !declared.isBlank()) {
-                    return List.of(declared.trim());
-                }
+            String declared = declaredBy(opened);
+            if (declared != null && hasMain(opened, declared.replace('.', '/') + ".class")) {
+                return List.of(declared);
             }
-            return search(jar, opened);
+            if (declared != null) {
+                System.out.println("manifest names " + declared
+                        + ", which the jar has no runnable class for. searching instead");
+            }
+            return search(opened);
         }
     }
 
-    private static List<String> search(Path jar, JarFile opened) throws IOException {
+    private static String declaredBy(JarFile opened) throws IOException {
+        Manifest manifest = opened.getManifest();
+        if (manifest == null) {
+            return null;
+        }
+        String declared = manifest.getMainAttributes().getValue("Main-Class");
+        return declared == null || declared.isBlank() ? null : declared.trim();
+    }
+
+    private static List<String> search(JarFile opened) {
         List<String> found = new ArrayList<>();
-        try (URLClassLoader loader = new URLClassLoader(new URL[] {jar.toUri().toURL()}, null)) {
-            Enumeration<JarEntry> entries = opened.entries();
-            while (entries.hasMoreElements()) {
-                String name = entries.nextElement().getName();
-                if (!name.endsWith(".class") || name.contains("$")) {
-                    continue;
-                }
-                String type = name.substring(0, name.length() - ".class".length()).replace('/', '.');
-                if (hasMain(loader, type)) {
-                    found.add(type);
-                }
+        Enumeration<JarEntry> entries = opened.entries();
+        while (entries.hasMoreElements()) {
+            String name = entries.nextElement().getName();
+            if (!name.endsWith(".class") || name.contains("$")) {
+                continue;
+            }
+            if (hasMain(opened, name)) {
+                found.add(name.substring(0, name.length() - ".class".length()).replace('/', '.'));
             }
         }
         return found;
     }
 
-    /** loaded without initializing it: this is someone else's code, and it is not being run */
-    private static boolean hasMain(ClassLoader loader, String type) {
-        try {
-            var found = Class.forName(type, false, loader).getDeclaredMethod("main", String[].class);
-            return Modifier.isStatic(found.getModifiers());
-        } catch (ReflectiveOperationException | LinkageError absent) {
+    /**
+     * whether the class file declares {@code public static void main(String[])}
+     */
+    private static boolean hasMain(JarFile opened, String entry) {
+        JarEntry found = opened.getJarEntry(entry);
+        if (found == null) {
             return false;
+        }
+        try (DataInputStream in = new DataInputStream(
+                new BufferedInputStream(opened.getInputStream(found)))) {
+            if (in.readInt() != 0xCAFEBABE) {
+                return false;
+            }
+            in.skipBytes(4);
+            String[] constants = constantPool(in);
+            in.skipBytes(6);
+            in.skipBytes(2 * in.readUnsignedShort());
+            skipMembers(in);
+            return declaresMain(in, constants);
+        } catch (IOException | RuntimeException unreadable) {
+            return false;
+        }
+    }
+
+    /** only the utf8 entries are kept; nothing else here names a method */
+    private static String[] constantPool(DataInputStream in) throws IOException {
+        String[] constants = new String[in.readUnsignedShort()];
+        for (int at = 1; at < constants.length; at++) {
+            int tag = in.readUnsignedByte();
+            switch (tag) {
+                case 1 -> constants[at] = in.readUTF();
+                case 7, 8, 16, 19, 20 -> in.skipBytes(2);
+                case 15 -> in.skipBytes(3);
+                case 5, 6 -> {
+                    in.skipBytes(8);
+                    at++;
+                }
+                default -> in.skipBytes(4);
+            }
+        }
+        return constants;
+    }
+
+    private static boolean declaresMain(DataInputStream in, String[] constants) throws IOException {
+        int methods = in.readUnsignedShort();
+        for (int at = 0; at < methods; at++) {
+            int access = in.readUnsignedShort();
+            String name = constants[in.readUnsignedShort()];
+            String descriptor = constants[in.readUnsignedShort()];
+            skipAttributes(in);
+            if ((access & (Modifier.PUBLIC | Modifier.STATIC))
+                    == (Modifier.PUBLIC | Modifier.STATIC)
+                    && "main".equals(name) && "([Ljava/lang/String;)V".equals(descriptor)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static void skipMembers(DataInputStream in) throws IOException {
+        int members = in.readUnsignedShort();
+        for (int at = 0; at < members; at++) {
+            in.skipBytes(6);
+            skipAttributes(in);
+        }
+    }
+
+    private static void skipAttributes(DataInputStream in) throws IOException {
+        int attributes = in.readUnsignedShort();
+        for (int at = 0; at < attributes; at++) {
+            in.skipBytes(2);
+            in.skipBytes(in.readInt());
         }
     }
 
