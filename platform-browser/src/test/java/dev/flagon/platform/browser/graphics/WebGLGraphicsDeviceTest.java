@@ -133,10 +133,43 @@ class WebGLGraphicsDeviceTest {
 
     @Test
     void bindsNothingForNameZeroInsteadOfLookingItUp() {
+        // bound to something first: unbinding what is already unbound is a call the device skips
+        device.bindBuffer(dev.flagon.platform.graphics.BufferTarget.ARRAY, device.createBuffer());
         device.bindBuffer(dev.flagon.platform.graphics.BufferTarget.ARRAY,
                 GraphicsDevice.NO_BUFFER);
 
         assertEquals("bindBuffer(34962, null)", context.lastCall("bindBuffer"));
+    }
+
+    @Test
+    void bindsTheSameBufferOnlyOnce() {
+        int buffer = device.createBuffer();
+        device.bindBuffer(dev.flagon.platform.graphics.BufferTarget.ARRAY, buffer);
+        device.bindBuffer(dev.flagon.platform.graphics.BufferTarget.ARRAY, buffer);
+
+        assertEquals(1, context.count("bindBuffer"));
+    }
+
+    @Test
+    void setsTheSameUniformOnlyOnce() {
+        int program = device.createProgram("vertex", "fragment");
+        int location = device.uniformLocation(program, "u_value");
+
+        device.uniform1f(location, 1.0f);
+        device.uniform1f(location, 1.0f);
+        device.uniform1f(location, 2.0f);
+
+        assertEquals(2, context.count("uniform1f"));
+    }
+
+    @Test
+    void enablesACapabilityOnlyOnce() {
+        device.setDepthTest(true);
+        device.setDepthTest(true);
+        device.setDepthTest(false);
+
+        assertEquals(1, context.count("enable"));
+        assertEquals(1, context.count("disable"));
     }
 
     @Test

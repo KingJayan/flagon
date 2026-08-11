@@ -29,11 +29,10 @@ import org.teavm.jso.typedarrays.Int32Array;
 import org.teavm.jso.typedarrays.Int8Array;
 import org.teavm.jso.typedarrays.Uint8Array;
 
+import java.util.BitSet;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map;
-import java.util.Set;
 
 /** {@link GraphicsDevice} on a WebGL2 context. */
 public final class WebGLGraphicsDevice implements GraphicsDevice {
@@ -43,14 +42,49 @@ public final class WebGLGraphicsDevice implements GraphicsDevice {
     private final GlNames handles = new GlNames();
     private final GlNames uniforms = new GlNames();
     private final Map<String, Integer> uniformNames = new HashMap<>();
+    private final UniformCache cache = new UniformCache();
 
-    // gl gives a texture its parameters when the name is first bound, not on every upload
-    private final Set<Integer> defaulted = new HashSet<>();
+    private final JSObject defaultVertexArray;
+
+    // gl gives a texture its parameters when the name is first bound, not on every upload.
+    // names are small ints handed out by a table, so a bitset asks nothing of the allocator
+    private final BitSet defaulted = new BitSet();
+
+    private final boolean[] capabilityOn = new boolean[6];
+    private final boolean[] capabilityKnown = new boolean[6];
+
+    // webgl2 guarantees at least 32 combined texture units, and names a unit past its own limit
+    // an error rather than something to be tracked
+    private final int[] boundTexture = new int[32];
+    private int activeUnit = -1;
+
+    private int boundArrayBuffer = NO_BUFFER;
 
     public WebGLGraphicsDevice(WebGL2 gl) {
         this.gl = gl;
         // webgl2 core profile requires a bound vertex array object before any attribute is set
-        gl.bindVertexArray(gl.createVertexArray());
+        this.defaultVertexArray = gl.createVertexArray();
+        gl.bindVertexArray(defaultVertexArray);
+    }
+
+    @Override
+    public int createVertexArray() {
+        return store(gl.createVertexArray());
+    }
+
+    @Override
+    public void bindVertexArray(int array) {
+        gl.bindVertexArray(array == NO_VERTEX_ARRAY ? defaultVertexArray
+                : lookup(array, "vertex array"));
+    }
+
+    @Override
+    public void deleteVertexArray(int array) {
+        if (array == NO_VERTEX_ARRAY) {
+            return;
+        }
+        gl.deleteVertexArray(lookup(array, "vertex array"));
+        handles.remove(array);
     }
 
     private int store(JSObject object) {
@@ -99,7 +133,7 @@ public final class WebGLGraphicsDevice implements GraphicsDevice {
 
     @Override
     public void setDepthTest(boolean enabled) {
-        capability(WebGL2.DEPTH_TEST, enabled);
+        capability(0, WebGL2.DEPTH_TEST, enabled);
     }
 
     @Override
@@ -127,7 +161,7 @@ public final class WebGLGraphicsDevice implements GraphicsDevice {
 
     @Override
     public void setBlend(boolean enabled) {
-        capability(WebGL2.BLEND, enabled);
+        capability(1, WebGL2.BLEND, enabled);
     }
 
     @Override
@@ -159,7 +193,7 @@ public final class WebGLGraphicsDevice implements GraphicsDevice {
 
     @Override
     public void setCullFace(boolean enabled) {
-        capability(WebGL2.CULL_FACE, enabled);
+        capability(2, WebGL2.CULL_FACE, enabled);
     }
 
     @Override
@@ -178,7 +212,7 @@ public final class WebGLGraphicsDevice implements GraphicsDevice {
 
     @Override
     public void setScissorTest(boolean enabled) {
-        capability(WebGL2.SCISSOR_TEST, enabled);
+        capability(3, WebGL2.SCISSOR_TEST, enabled);
     }
 
     @Override
@@ -193,7 +227,7 @@ public final class WebGLGraphicsDevice implements GraphicsDevice {
 
     @Override
     public void setStencilTest(boolean enabled) {
-        capability(WebGL2.STENCIL_TEST, enabled);
+        capability(4, WebGL2.STENCIL_TEST, enabled);
     }
 
     @Override
@@ -218,7 +252,7 @@ public final class WebGLGraphicsDevice implements GraphicsDevice {
 
     @Override
     public void setPolygonOffsetFill(boolean enabled) {
-        capability(WebGL2.POLYGON_OFFSET_FILL, enabled);
+        capability(5, WebGL2.POLYGON_OFFSET_FILL, enabled);
     }
 
     @Override
@@ -244,7 +278,14 @@ public final class WebGLGraphicsDevice implements GraphicsDevice {
         };
     }
 
-    private void capability(int capability, boolean enabled) {
+    // programs turn these on and off around every batch they draw, usually to whatever they
+    // already were. the slot is an index of our own, the constant being far too sparse to key on
+    private void capability(int slot, int capability, boolean enabled) {
+        if (capabilityKnown[slot] && capabilityOn[slot] == enabled) {
+            return;
+        }
+        capabilityKnown[slot] = true;
+        capabilityOn[slot] = enabled;
         if (enabled) {
             gl.enable(capability);
         } else {
@@ -291,10 +332,22 @@ public final class WebGLGraphicsDevice implements GraphicsDevice {
     public void deleteBuffer(int buffer) {
         gl.deleteBuffer(lookup(buffer, "buffer"));
         handles.remove(buffer);
+        // deleting the bound buffer unbinds it
+        if (boundArrayBuffer == buffer) {
+            boundArrayBuffer = NO_BUFFER;
+        }
     }
 
     @Override
     public void bindBuffer(BufferTarget target, int buffer) {
+        // ARRAY is context state and worth remembering; ELEMENT belongs to the bound vertex
+        // array and would go stale the moment one was switched
+        if (target == BufferTarget.ARRAY) {
+            if (buffer == boundArrayBuffer) {
+                return;
+            }
+            boundArrayBuffer = buffer;
+        }
         gl.bindBuffer(targetConstant(target), buffer == NO_BUFFER ? null : lookup(buffer, "buffer"));
     }
 
@@ -487,6 +540,7 @@ public final class WebGLGraphicsDevice implements GraphicsDevice {
             Map.Entry<String, Integer> entry = known.next();
             if (entry.getKey().startsWith(prefix)) {
                 uniforms.remove(entry.getValue());
+                cache.forget(entry.getValue());
                 known.remove();
             }
         }
@@ -544,7 +598,9 @@ public final class WebGLGraphicsDevice implements GraphicsDevice {
         if (location == NO_UNIFORM) {
             return;
         }
-        gl.uniform1i(uniform(location), value);
+        if (cache.changed(location, value)) {
+            gl.uniform1i(uniform(location), value);
+        }
     }
 
     @Override
@@ -552,7 +608,9 @@ public final class WebGLGraphicsDevice implements GraphicsDevice {
         if (location == NO_UNIFORM) {
             return;
         }
-        gl.uniform1f(uniform(location), value);
+        if (cache.changed(location, Float.floatToRawIntBits(value))) {
+            gl.uniform1f(uniform(location), value);
+        }
     }
 
     @Override
@@ -560,7 +618,9 @@ public final class WebGLGraphicsDevice implements GraphicsDevice {
         if (location == NO_UNIFORM) {
             return;
         }
-        gl.uniform2f(uniform(location), x, y);
+        if (cache.changed(location, Float.floatToRawIntBits(x), Float.floatToRawIntBits(y))) {
+            gl.uniform2f(uniform(location), x, y);
+        }
     }
 
     @Override
@@ -568,7 +628,10 @@ public final class WebGLGraphicsDevice implements GraphicsDevice {
         if (location == NO_UNIFORM) {
             return;
         }
-        gl.uniform3f(uniform(location), x, y, z);
+        if (cache.changed(location, Float.floatToRawIntBits(x), Float.floatToRawIntBits(y),
+                Float.floatToRawIntBits(z))) {
+            gl.uniform3f(uniform(location), x, y, z);
+        }
     }
 
     @Override
@@ -576,7 +639,10 @@ public final class WebGLGraphicsDevice implements GraphicsDevice {
         if (location == NO_UNIFORM) {
             return;
         }
-        gl.uniform4f(uniform(location), x, y, z, w);
+        if (cache.changed(location, Float.floatToRawIntBits(x), Float.floatToRawIntBits(y),
+                Float.floatToRawIntBits(z), Float.floatToRawIntBits(w))) {
+            gl.uniform4f(uniform(location), x, y, z, w);
+        }
     }
 
     @Override
@@ -584,7 +650,9 @@ public final class WebGLGraphicsDevice implements GraphicsDevice {
         if (location == NO_UNIFORM) {
             return;
         }
-        gl.uniform2i(uniform(location), x, y);
+        if (cache.changed(location, x, y)) {
+            gl.uniform2i(uniform(location), x, y);
+        }
     }
 
     @Override
@@ -592,7 +660,9 @@ public final class WebGLGraphicsDevice implements GraphicsDevice {
         if (location == NO_UNIFORM) {
             return;
         }
-        gl.uniform3i(uniform(location), x, y, z);
+        if (cache.changed(location, x, y, z)) {
+            gl.uniform3i(uniform(location), x, y, z);
+        }
     }
 
     @Override
@@ -600,12 +670,18 @@ public final class WebGLGraphicsDevice implements GraphicsDevice {
         if (location == NO_UNIFORM) {
             return;
         }
-        gl.uniform4i(uniform(location), x, y, z, w);
+        if (cache.changed(location, x, y, z, w)) {
+            gl.uniform4i(uniform(location), x, y, z, w);
+        }
     }
 
     @Override
     public void uniformFloats(int location, int components, float[] values, int count) {
         if (location == NO_UNIFORM) {
+            return;
+        }
+        requireComponents(components);
+        if (!cache.changed(location, values, components * count)) {
             return;
         }
         Float32Array data = JsArrays.floats(values, components * count);
@@ -623,6 +699,10 @@ public final class WebGLGraphicsDevice implements GraphicsDevice {
     @Override
     public void uniformInts(int location, int components, int[] values, int count) {
         if (location == NO_UNIFORM) {
+            return;
+        }
+        requireComponents(components);
+        if (!cache.changed(location, values, components * count)) {
             return;
         }
         Int32Array data = JsArrays.ints(values, components * count);
@@ -643,6 +723,10 @@ public final class WebGLGraphicsDevice implements GraphicsDevice {
         if (location == NO_UNIFORM) {
             return;
         }
+        requireMatrixSize(size);
+        if (!cache.changed(location, values, size * size * count)) {
+            return;
+        }
         Float32Array data = JsArrays.floats(values, size * size * count);
         JSObject at = uniform(location);
         switch (size) {
@@ -650,6 +734,22 @@ public final class WebGLGraphicsDevice implements GraphicsDevice {
             case 3 -> gl.uniformMatrix3fv(at, transpose, data);
             case 4 -> gl.uniformMatrix4fv(at, transpose, data);
             default -> throw new IllegalArgumentException(
+                    "a uniform matrix is 2x2 to 4x4, got " + size + "x" + size);
+        }
+    }
+
+    // checked before the cache is consulted, so a bad argument throws every time it is passed
+    // and not only the first
+    private static void requireComponents(int components) {
+        if (components < 1 || components > 4) {
+            throw new IllegalArgumentException(
+                    "a uniform vector has 1 to 4 components, got " + components);
+        }
+    }
+
+    private static void requireMatrixSize(int size) {
+        if (size < 2 || size > 4) {
+            throw new IllegalArgumentException(
                     "a uniform matrix is 2x2 to 4x4, got " + size + "x" + size);
         }
     }
@@ -724,19 +824,44 @@ public final class WebGLGraphicsDevice implements GraphicsDevice {
     public void deleteTexture(int texture) {
         gl.deleteTexture(lookup(texture, "texture"));
         handles.remove(texture);
-        defaulted.remove(texture);
+        defaulted.clear(texture);
+        // gl unbinds a deleted texture from every unit it was on, so the record has to follow
+        for (int unit = 0; unit < boundTexture.length; unit++) {
+            if (boundTexture[unit] == texture) {
+                boundTexture[unit] = NO_TEXTURE;
+            }
+        }
     }
 
     @Override
     public void activeTexture(int unit) {
+        selectUnit(unit);
+    }
+
+    private void selectUnit(int unit) {
+        if (unit == activeUnit) {
+            return;
+        }
+        activeUnit = unit;
         gl.activeTexture(WebGL2.TEXTURE0 + unit);
     }
 
     @Override
     public void bindTexture(int unit, int texture) {
-        gl.activeTexture(WebGL2.TEXTURE0 + unit);
+        // the unit is selected either way: what a texture is given next is given to whatever is
+        // bound to the active one, so skipping the bind must not skip the selection
+        selectUnit(unit);
+        boolean tracked = unit < boundTexture.length;
+        if (tracked && boundTexture[unit] == texture
+                && (texture == NO_TEXTURE || defaulted.get(texture))) {
+            return;
+        }
         gl.bindTexture(WebGL2.TEXTURE_2D, texture == NO_TEXTURE ? null : lookup(texture, "texture"));
-        if (texture != NO_TEXTURE && defaulted.add(texture)) {
+        if (tracked) {
+            boundTexture[unit] = texture;
+        }
+        if (texture != NO_TEXTURE && !defaulted.get(texture)) {
+            defaulted.set(texture);
             setTextureWrapS(TextureWrap.CLAMP_TO_EDGE);
             setTextureWrapT(TextureWrap.CLAMP_TO_EDGE);
             setTextureMinFilter(TextureFilter.NEAREST);

@@ -1,5 +1,9 @@
 import { defineConfig, type Plugin, type ViteDevServer } from 'vite';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { tcpProxy } from './tcp-proxy';
+
+const here = dirname(fileURLToPath(import.meta.url));
 
 
 type Serving = { middlewares: ViteDevServer['middlewares'] };
@@ -92,5 +96,11 @@ export default defineConfig({
   build: {
     target: 'es2022',
     sourcemap: true,
+    rollupOptions: {
+      input: {
+        shell: resolve(here, 'index.html'),
+        play: resolve(here, 'play/index.html'),
+      },
+    },
   },
 });
