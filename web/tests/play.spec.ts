@@ -32,10 +32,23 @@ for (const backend of BACKENDS) {
 }
 
 test('says how to make the app bundle when there is none', async ({ page }) => {
+  await page.route('**/flagon/app.*', (route) => route.fulfill({ status: 404 }));
   await page.goto('/play/');
 
   await expect(page.getByTestId('headline')).toHaveText('Nothing to run', { timeout: 30_000 });
   await expect(page.getByTestId('detail')).toContainText('Put a jar in vendor/');
+});
+
+test('runs the bundle built from a jar in vendor/', async ({ page, request }) => {
+  const built = await request.head('/flagon/app.js');
+  test.skip(!built.ok(), "no app bundle — build one with 'make app MAIN=...'");
+
+  const logged: string[] = [];
+  page.on('console', (message) => logged.push(message.text()));
+  await page.goto('/play/?backend=js');
+
+  await expect(page.getByTestId('veil')).toBeHidden({ timeout: 30_000 });
+  expect(logged.some((line) => line.includes('platform'))).toBe(true);
 });
 
 test('names the bundles it will run when asked for one it will not', async ({ page }) => {

@@ -6,7 +6,12 @@ BUNDLES := $(WEB)/public/flagon
 ARGS ?=
 N ?= 3
 
-.PHONY: help setup deps browsers browsers-deps browser-chromium browser-firefox bundles bundles-js build bundles-release \
+# drop any jar in vendor/ and it is built into the `app` bundle, which /play/ runs. the jar names
+# its own main class, so nothing here needs to be told anything about it
+VENDOR_JAR := $(firstword $(wildcard vendor/*.jar))
+APP := $(if $(VENDOR_JAR),-Papp -Dflagon.app.jar=$(CURDIR)/$(VENDOR_JAR),)
+
+.PHONY: help setup deps browsers browsers-deps browser-chromium browser-firefox bundles bundles-js app build bundles-release \
         bundles-release-js build-release test browser flake typecheck site dev serve \
         check report merge-reports watch version release publish clean verify-bundles
 
@@ -35,11 +40,16 @@ browser-firefox: ## install just firefox, and the libraries it wants
 	cd $(WEB) && bunx playwright install-deps firefox && bunx playwright install firefox
 
 bundles: ## compile java to webassembly gc
-	$(MVN) package
+	$(MVN) $(APP) package
 	@$(MAKE) verify-bundles
 
+app: ## compile whatever jar is in vendor/ into a bundle, and say where to open it
+	@test -n "$(VENDOR_JAR)" || { echo "put a jar -- any jar -- in vendor/ first"; exit 1; }
+	@$(MAKE) build
+	@echo "run 'make dev' and open http://localhost:5273/play/"
+
 bundles-js: ## compile java to javascript, the fallback backend
-	$(MVN) -Pjs -DskipTests package
+	$(MVN) -Pjs $(APP) -DskipTests package
 	@$(MAKE) verify-bundles
 
 # a bundle compiled from class files that never compiled is small and throws at boot, and the
