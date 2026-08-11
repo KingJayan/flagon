@@ -69,5 +69,12 @@ for (const backend of BACKENDS) {
       expectColor(await readPixel(page, 830, 180), [32, 160, 64], 'the rgb texture');
       expectColor(await readPixel(page, 900, 180), [128, 128, 128], 'the luminance texture');
     });
+
+    /** GL_BGRA with the packed int type: what an application uploads its own images with */
+    test('takes a texture uploaded as packed ints', async ({ page }) => {
+      await runDemo(page, backend);
+
+      expectColor(await readPixel(page, 830, 110), [32, 128, 192], 'the packed texture');
+    });
   });
 }
