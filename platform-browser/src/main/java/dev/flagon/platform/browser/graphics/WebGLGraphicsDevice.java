@@ -60,6 +60,22 @@ public final class WebGLGraphicsDevice implements GraphicsDevice {
 
     private int boundArrayBuffer = NO_BUFFER;
 
+    // the rest of the render state, remembered for the same reason the capabilities are: a
+    // program sets these around every batch, almost always to what they already were. the
+    // starting values are gl's own, so the first call that agrees with them is rightly skipped
+    private boolean depthWrite = true;
+    private int depthFunc = WebGL2.LESS;
+    private int blendSourceColor = WebGL2.ONE;
+    private int blendDestinationColor = WebGL2.ZERO;
+    private int blendSourceAlpha = WebGL2.ONE;
+    private int blendDestinationAlpha = WebGL2.ZERO;
+    private int culledFaces = WebGL2.BACK;
+    private int frontFace = WebGL2.CCW;
+    private boolean redMask = true;
+    private boolean greenMask = true;
+    private boolean blueMask = true;
+    private boolean alphaMask = true;
+
     public WebGLGraphicsDevice(WebGL2 gl) {
         this.gl = gl;
         // webgl2 core profile requires a bound vertex array object before any attribute is set
@@ -138,12 +154,21 @@ public final class WebGLGraphicsDevice implements GraphicsDevice {
 
     @Override
     public void setDepthWrite(boolean enabled) {
+        if (depthWrite == enabled) {
+            return;
+        }
+        depthWrite = enabled;
         gl.depthMask(enabled);
     }
 
     @Override
     public void setDepthFunc(CompareFunc func) {
-        gl.depthFunc(compare(func));
+        int wanted = compare(func);
+        if (depthFunc == wanted) {
+            return;
+        }
+        depthFunc = wanted;
+        gl.depthFunc(wanted);
     }
 
     private static int compare(CompareFunc func) {
@@ -166,14 +191,37 @@ public final class WebGLGraphicsDevice implements GraphicsDevice {
 
     @Override
     public void setBlendFunc(BlendFactor source, BlendFactor destination) {
-        gl.blendFunc(blendFactor(source), blendFactor(destination));
+        int wantedSource = blendFactor(source);
+        int wantedDestination = blendFactor(destination);
+        if (blendSourceColor == wantedSource && blendDestinationColor == wantedDestination
+                && blendSourceAlpha == wantedSource && blendDestinationAlpha == wantedDestination) {
+            return;
+        }
+        blendSourceColor = wantedSource;
+        blendDestinationColor = wantedDestination;
+        blendSourceAlpha = wantedSource;
+        blendDestinationAlpha = wantedDestination;
+        gl.blendFunc(wantedSource, wantedDestination);
     }
 
     @Override
     public void setBlendFuncSeparate(BlendFactor sourceColor, BlendFactor destinationColor,
                                      BlendFactor sourceAlpha, BlendFactor destinationAlpha) {
-        gl.blendFuncSeparate(blendFactor(sourceColor), blendFactor(destinationColor),
-                blendFactor(sourceAlpha), blendFactor(destinationAlpha));
+        int wantedSourceColor = blendFactor(sourceColor);
+        int wantedDestinationColor = blendFactor(destinationColor);
+        int wantedSourceAlpha = blendFactor(sourceAlpha);
+        int wantedDestinationAlpha = blendFactor(destinationAlpha);
+        if (blendSourceColor == wantedSourceColor && blendDestinationColor == wantedDestinationColor
+                && blendSourceAlpha == wantedSourceAlpha
+                && blendDestinationAlpha == wantedDestinationAlpha) {
+            return;
+        }
+        blendSourceColor = wantedSourceColor;
+        blendDestinationColor = wantedDestinationColor;
+        blendSourceAlpha = wantedSourceAlpha;
+        blendDestinationAlpha = wantedDestinationAlpha;
+        gl.blendFuncSeparate(wantedSourceColor, wantedDestinationColor,
+                wantedSourceAlpha, wantedDestinationAlpha);
     }
 
     @Override
@@ -198,16 +246,26 @@ public final class WebGLGraphicsDevice implements GraphicsDevice {
 
     @Override
     public void setCulledFaces(CullFace faces) {
-        gl.cullFace(switch (faces) {
+        int wanted = switch (faces) {
             case FRONT -> WebGL2.FRONT;
             case BACK -> WebGL2.BACK;
             case FRONT_AND_BACK -> WebGL2.FRONT_AND_BACK;
-        });
+        };
+        if (culledFaces == wanted) {
+            return;
+        }
+        culledFaces = wanted;
+        gl.cullFace(wanted);
     }
 
     @Override
     public void setFrontFace(Winding winding) {
-        gl.frontFace(winding == Winding.CLOCKWISE ? WebGL2.CW : WebGL2.CCW);
+        int wanted = winding == Winding.CLOCKWISE ? WebGL2.CW : WebGL2.CCW;
+        if (frontFace == wanted) {
+            return;
+        }
+        frontFace = wanted;
+        gl.frontFace(wanted);
     }
 
     @Override
@@ -222,6 +280,13 @@ public final class WebGLGraphicsDevice implements GraphicsDevice {
 
     @Override
     public void setColorMask(boolean red, boolean green, boolean blue, boolean alpha) {
+        if (redMask == red && greenMask == green && blueMask == blue && alphaMask == alpha) {
+            return;
+        }
+        redMask = red;
+        greenMask = green;
+        blueMask = blue;
+        alphaMask = alpha;
         gl.colorMask(red, green, blue, alpha);
     }
 
@@ -893,13 +958,11 @@ public final class WebGLGraphicsDevice implements GraphicsDevice {
 
     @Override
     public byte[] readPixels(int x, int y, int width, int height) {
+        // readPixels wants the unsigned view; the signed one over the same buffer is what
+        // crosses back, in one call rather than the one per byte this used to cost
         Uint8Array data = Uint8Array.create(width * height * 4);
         gl.readPixels(x, y, width, height, WebGL2.RGBA, WebGL2.UNSIGNED_BYTE, data);
-        byte[] rgba = new byte[width * height * 4];
-        for (int index = 0; index < rgba.length; index++) {
-            rgba[index] = (byte) data.get(index);
-        }
-        return rgba;
+        return JsArrays.bytesOf(Int8Array.create(data.getBuffer()));
     }
 
     @Override
@@ -918,7 +981,9 @@ public final class WebGLGraphicsDevice implements GraphicsDevice {
             throw new IllegalArgumentException(
                     "need " + needed + " bytes, got " + rgba.length);
         }
-        return Uint8Array.create(Int8Array.copyFromJavaArray(rgba).getBuffer());
+        // a view where the backend allows one: an atlas upload is megabytes, and copying it
+        // out of the heap first doubles what the upload costs
+        return JsArrays.unsignedBytes(rgba, needed);
     }
 
     @Override
