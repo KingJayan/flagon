@@ -11,7 +11,7 @@ N ?= 3
 VENDOR_JAR := $(firstword $(wildcard vendor/*.jar))
 APP := $(if $(VENDOR_JAR),-Papp -Dflagon.app.jar=$(CURDIR)/$(VENDOR_JAR),)
 
-.PHONY: help setup deps browsers browsers-deps browser-chromium browser-firefox bundles bundles-js app build bundles-release \
+.PHONY: help setup deps browsers browsers-deps browser-chromium browser-served browser-firefox bundles bundles-js app build bundles-release \
         bundles-release-js build-release test browser flake typecheck site dev serve \
         check report merge-reports watch version release publish clean verify-bundles
 
@@ -35,6 +35,8 @@ browsers-deps: ## install the system libraries the engines link against
 
 browser-chromium: ## install just the engine the sharded tests drive
 	cd $(WEB) && bunx playwright install chromium
+
+browser-served: browser-chromium ## the served run drives chromium too
 
 browser-firefox: ## install just firefox, and the libraries it wants
 	cd $(WEB) && bunx playwright install-deps firefox && bunx playwright install firefox

@@ -2,81 +2,24 @@ import { defineConfig, type Plugin, type ViteDevServer } from 'vite';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { tcpProxy } from './tcp-proxy';
+import { answerNetProbe } from './net-probes';
 
 const here = dirname(fileURLToPath(import.meta.url));
 
 
 type Serving = { middlewares: ViteDevServer['middlewares'] };
 
-const BULK_PROBE = '/flagon-net-bulk.bin';
-const BULK_PROBE_SIZE = 256 * 1024;
-
-// a body far larger than one websocket frame, so the net demo can prove that a socket read
-// reassembles every byte in order. generated rather than committed, being a quarter megabyte
-function bulkProbe(): Plugin {
-  const body = Buffer.alloc(BULK_PROBE_SIZE);
-  for (let at = 0; at < body.length; at++) {
-    body[at] = at % 251;
-  }
+/** the fixtures the net demo measures itself against, on the servers the tests point at */
+function netProbes(): Plugin {
   const attach = (server: Serving): void => {
-    server.middlewares.use(BULK_PROBE, (_asked, answer) => {
-      answer.writeHead(200, {
-        'content-type': 'application/octet-stream',
-        'content-length': String(body.length),
-      });
-      answer.end(body);
-    });
-  };
-  return {
-    name: 'flagon-bulk-probe',
-    configureServer: attach,
-    configurePreviewServer: attach,
-  };
-}
-
-const FLOOD = '/flagon-net-flood.bin';
-const FLOOD_SIZE = 32 * 1024 * 1024;
-
-function flood(): Plugin {
-  const attach = (server: Serving): void => {
-    server.middlewares.use(FLOOD, (asked, answer) => {
-      if (asked.method === 'POST') {
-        let taken = 0;
-        asked.on('data', (chunk: Buffer) => {
-          taken += chunk.length;
-        });
-        asked.on('end', () => {
-          // a length, not chunked framing, the page reading this response by hand
-          const body = 'taken ' + taken;
-          answer.writeHead(200, {
-            'content-type': 'text/plain',
-            'content-length': String(body.length),
-          });
-          answer.end(body);
-        });
-        return;
+    server.middlewares.use((asked, answer, next) => {
+      if (!answerNetProbe(asked, answer)) {
+        next();
       }
-      answer.writeHead(200, {
-        'content-type': 'application/octet-stream',
-        'content-length': String(FLOOD_SIZE),
-      });
-      const chunk = Buffer.alloc(64 * 1024);
-      let written = 0;
-      const pump = (): void => {
-        while (written < FLOOD_SIZE) {
-          written += chunk.length;
-          if (!answer.write(chunk)) {
-            answer.once('drain', pump);
-            return;
-          }
-        }
-        answer.end();
-      };
-      pump();
     });
   };
   return {
-    name: 'flagon-net-flood',
+    name: 'flagon-net-probes',
     configureServer: attach,
     configurePreviewServer: attach,
   };
@@ -84,7 +27,7 @@ function flood(): Plugin {
 
 export default defineConfig({
   // the sandbox talks to the dev server itself, and to nothing else
-  plugins: [tcpProxy({ allow: ['localhost:*', '127.0.0.1:*'] }), bulkProbe(), flood()],
+  plugins: [tcpProxy({ allow: ['localhost:*', '127.0.0.1:*'] }), netProbes()],
   server: {
     port: 5273,
     strictPort: true,

@@ -1,5 +1,9 @@
 import { defineConfig, devices } from '@playwright/test';
 
+// building a site and starting its proxy is only worth it for the run that points at them
+const chosen = process.argv.filter((arg) => arg.startsWith('--project'));
+const servedRuns = chosen.length === 0 || chosen.some((arg) => arg.includes('served'));
+
 export default defineConfig({
   testDir: './tests',
   fullyParallel: true,
@@ -47,11 +51,30 @@ export default defineConfig({
       ],
       use: { ...devices['Desktop Firefox'] },
     },
+    {
+      // the sockets again, against the server that ships rather than against vite
+      name: 'served',
+      dependencies: ['bundles'],
+      testMatch: /net\.spec\.ts/,
+      use: { ...devices['Desktop Chrome'], baseURL: 'http://localhost:4273' },
+    },
   ],
-  webServer: {
-    command: process.env.CI ? 'bun run preview -- --port 5273' : 'bun run dev',
-    url: 'http://localhost:5273',
-    reuseExistingServer: !process.env.CI,
-    timeout: 60_000,
-  },
+  webServer: [
+    {
+      command: process.env.CI ? 'bun run preview -- --port 5273' : 'bun run dev',
+      url: 'http://localhost:5273',
+      reuseExistingServer: !process.env.CI,
+      timeout: 60_000,
+    },
+    ...(servedRuns
+      ? [
+          {
+            command: 'bun run build && bun run proxy -- --root dist --port 4273 --probes',
+            url: 'http://localhost:4273',
+            reuseExistingServer: !process.env.CI,
+            timeout: 180_000,
+          },
+        ]
+      : []),
+  ],
 });
