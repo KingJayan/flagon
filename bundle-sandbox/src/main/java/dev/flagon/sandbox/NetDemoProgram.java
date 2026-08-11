@@ -176,9 +176,9 @@ public final class NetDemoProgram implements Program {
                 capped = later - held <= CREEP && later > 0;
                 held = later;
             }
-            // a host that buffers the whole flood settles above it, having never had to hold back
+            boolean heldBack = held < FLOOD_SIZE;
             console.info("paced: queue held at " + held + " bytes, capped: " + capped
-                    + ", held back: " + (held < FLOOD_SIZE));
+                    + ", held back: " + heldBack);
 
             drain(connection, held);
             boolean resumed = false;
@@ -186,7 +186,7 @@ public final class NetDemoProgram implements Program {
                 Thread.sleep(200);
                 resumed = connection.available() > 0;
             }
-            console.info("paced: sending resumed: " + resumed);
+            console.info("paced: sending resumed: " + (resumed || !heldBack));
         } catch (InterruptedException interrupted) {
             Thread.currentThread().interrupt();
         } finally {

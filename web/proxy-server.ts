@@ -5,6 +5,7 @@ import zlib from 'node:zlib';
 import { promisify } from 'node:util';
 import { fileURLToPath } from 'node:url';
 import { attachTcpProxy, DEFAULT_ALLOW, ruleOf, TCP_PROXY_PATH } from './tcp-proxy';
+import { answerNetProbe } from './net-probes';
 
 /**
  * the proxy a built site needs, with nothing of vite in it.
@@ -35,6 +36,7 @@ export interface Settings {
   allow: string[];
   origins: string[];
   token: string;
+  probes: boolean;
 }
 
 const LOOPBACK = ['localhost', '127.0.0.1', '::1', '[::1]'];
@@ -52,11 +54,18 @@ export function settingsFrom(argv: string[]): Settings {
     allow: [...DEFAULT_ALLOW],
     origins: [],
     token: '',
+    probes: false,
   };
   const many: Record<string, string[]> = { '--allow': [], '--origin': [] };
 
   for (let at = 0; at < argv.length; at += 2) {
     const name = argv[at];
+    // the fixtures are the one switch that carries no value: they are on or they are not there
+    if (name === '--probes') {
+      settings.probes = true;
+      at -= 1;
+      continue;
+    }
     const value = argv[at + 1];
     if (value === undefined) {
       throw new Error(`${name} needs a value`);
@@ -173,6 +182,16 @@ async function serve(root: string, request: http.IncomingMessage, response: http
 export async function startProxyServer(settings: Settings): Promise<http.Server> {
   const root = path.resolve(settings.root);
   const server = http.createServer((request, response) => {
+    // a reader that hangs up is the client's business, not a reason to take the server down
+    request.on('error', () => {});
+    response.on('error', () => {});
+    if (/close/i.test(String(request.headers.connection ?? ''))) {
+      response.setHeader('connection', 'close');
+      response.on('finish', () => request.socket.end());
+    }
+    if (settings.probes && answerNetProbe(request, response)) {
+      return;
+    }
     void serve(root, request, response);
   });
   attachTcpProxy(server, {
@@ -191,6 +210,9 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const port = typeof address === 'object' && address !== null ? address.port : settings.port;
   console.log(`flagon: serving ${path.resolve(settings.root)} on http://${settings.host}:${port}`);
   console.log(`flagon: sockets at ${TCP_PROXY_PATH} to ${settings.allow.join(', ')}`);
+  if (settings.probes) {
+    console.log('flagon: serving the net test fixtures too');
+  }
   if (settings.token !== '') {
     console.log('flagon: the socket wants ?proxytoken= on the page url');
   }

@@ -29,17 +29,15 @@ Flagon itself is application-agnostic. Work on any particular application lives 
 
 - Run existing desktop Java/LWJGL applications directly in the browser
 - No application source modifications required
-- Ahead-of-time Java → WebAssembly GC compilation with TeaVM, with a JavaScript fallback
-- `GL11` through `GL15`, `GL20`, `GLContext` and `GLU` reimplemented on WebGL2, including immediate
-  mode, display lists, the matrix stacks, fixed-function lighting, materials and fog, multitexture
-  and GLSL 1.10/1.20 translation. The [compatibility matrix](docs/COMPATIBILITY.md) lists call by
-  call what each one emulates and what it refuses
+- Ahead-of-time Java → WebAssembly GC/JavaScript compilation with TeaVM
+- `GL11` through `GL15`, `GL20`, `GLContext` and `GLU` are reimplemented on WebGL2. 
+See the [compatibility table](docs/COMPATIBILITY.md) for exactly what is emulated and what is refused
 - Browser-native implementations of input, filesystem, audio, networking, and platform APIs
 - Application-agnostic architecture for downstream projects
 
 ## How does it compare?
 
-| Project | Input | Native GL calls | License |
+| Repo | Input | Native GL calls | License |
 |---------|-------|-----------------|---------|
 | Flagon | jar | reimplemented on WebGL2 | MIT |
 | TeaVM | jar | not addressed; Flagon is built on it | Apache 2.0 |
@@ -50,7 +48,7 @@ Flagon itself is application-agnostic. Work on any particular application lives 
 ## Documentation
 
 * **[Architecture Guidelines (for contributing)](docs/ARCHITECTURE.md):** Layering rules and system design.
-* **[Compatibility Matrix](docs/COMPATIBILITY.md):** Detailed breakdown of supported and unsupported features.
+* **[Compatibility Table](docs/COMPATIBILITY.md):** Detailed breakdown of supported and unsupported features.
 * **[Running Existing Applications](docs/DOWNSTREAM.md):** Compiling an application jar to a bundle.
 
 ## Quickstart
@@ -58,11 +56,11 @@ Flagon itself is application-agnostic. Work on any particular application lives 
 Requires **JDK 25+** and **[bun](https://bun.sh)**. Maven is provided via the wrapper.
 
 ```sh
+make # list tasks on the repo -- see Makefile
 make setup   # installs the shell's pckgs and the browser the tests drive
 make build   # compiles java and emits both browser bundles
 make dev     # runs the dev server
 ```
-`make` on its own lists every task in the repo.
 
 Once running, open <http://localhost:5273>. Select a bundle, a backend, and a program, and run it.
 
@@ -74,23 +72,22 @@ The `example` bundle contains [unmodified LWJGL applications](examples/app/): a 
 `blocks`, a whole small game with input, textures, sound, a hud and a high score it saves.
 The `sandbox` bundle contains diagnostics and regression programs.
 
-To try your own jar, put it in `vendor/` -- any jar, any filename -- and build:
+To try your own jar, put it in `vendor/` (any filename) and build:
 
 ```sh
 make app
 ```
 
 Nothing else to configure: the jar is asked what it runs, through its manifest or by finding the
-classes with a `main`, and each one becomes a program. Then
-<http://localhost:5273/play/> runs it with the viewport to itself -- no controls, no console, just
-the program. Any bundle can be run there: `/play/?bundle=example&program=blocks`.
+classes with a `main`, and each one becomes a program. Go to
+<http://localhost:5273/play/> to run it fullscreen, any bundle can be run there: `/play/?bundle=example&program=blocks`.
 
 
 > [!NOTE]
 > Appending ?program=selftest to the URL runs the compilation-backend regression suite.
 
-Networking goes through `dev.flagon.platform.net`, and `java.net.Socket` is supplied on top of it
-for code that opens one itself. It needs a proxy served alongside the page, because a browser cannot
+Networking goes through `dev.flagon.platform.net`, `java.net.Socket` is supplied on top of it
+for code that opens its own. Requires a proxy served alongside the page, because a browser cannot
 open a socket itself.
 The development server runs one; a hosted build runs `make serve`, which serves
 the site and the socket endpoint together. See [COMPATIBILITY.md](docs/COMPATIBILITY.md#networking).
@@ -101,16 +98,15 @@ Flagon includes both JVM unit tests and browser-level integration tests.
 
 ```sh
 make test      # jvm unit tests
-make browser   # browser tests against the real bundles, once per backend
-make check     # both of the above plus the typecheck, as ci runs them
+make browser   # browser tests against the bundles (per backend)
+make check     # both of the above plus the typecheck (ci)
 ```
 
 ## Reporting a problem
 
 Bugs, unsupported calls and questions belong in the
-[issue tracker](https://github.com/KingJayan/flagon/issues). A report is most useful with the
-backend it happened on, the program or jar that hit it, and whatever the shell's console printed.
+[issue tracker](https://github.com/KingJayan/flagon/issues). Please include the backend it occurred on, the program or jar, and whatever the shell console output.
 
 ## License
 
-Licensed under the MIT License. See [LICENSE](LICENSE) for details.
+Licensed under the MIT. See [LICENSE](LICENSE) for details.

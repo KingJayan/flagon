@@ -153,11 +153,27 @@ function open(client: WebSocket, asked: URL, allowed: Rule[]): void {
       return;
     }
     if (!socket.write(data)) {
-      client.pause();
+      hold(client, true);
     }
   });
-  socket.on('drain', () => client.resume());
+  socket.on('drain', () => hold(client, false));
   client.on('close', () => socket.destroy());
+}
+
+/**
+ * stops reading the page while the socket catches up
+ *
+ * <p>ws pauses the socket under it; runtimes that answer the same api without that method are
+ * given the socket directly, so the shipping server backs off the same way vite's does.
+ */
+function hold(client: WebSocket, holding: boolean): void {
+  const stream = (client as unknown as { _socket?: NodeJS.ReadWriteStream })._socket;
+  const paced = typeof client.pause === 'function' ? client : stream;
+  if (holding) {
+    paced?.pause();
+  } else {
+    paced?.resume();
+  }
 }
 
 function refuse(client: WebSocket, reason: string): void {

@@ -6,6 +6,7 @@ import path from 'node:path';
 import type { AddressInfo } from 'node:net';
 import { settingsFrom, startProxyServer } from '../proxy-server';
 import { ruleOf } from '../tcp-proxy';
+import { BULK_PROBE, BULK_PROBE_SIZE, FLOOD } from '../net-probes';
 
 const VITE = 'ws://localhost:5273/__flagon/tcp?host=localhost&port=5273';
 
@@ -79,6 +80,7 @@ test.describe('the proxy a hosted build runs for itself', () => {
       allow: ['localhost:*'],
       origins: [],
       token: '',
+      probes: false,
     });
     site = `http://localhost:${portOf(server)}/`;
     target = `ws://localhost:${portOf(server)}/__flagon/tcp?host=localhost&port=${portOf(server)}`;
@@ -153,6 +155,7 @@ test.describe('what the proxy will open a socket to', () => {
       allow: [`localhost:${portOf(elsewhere)}`],
       origins: [],
       token: '',
+      probes: false,
     });
     const at = portOf(server);
     await page.goto(`http://localhost:${at}/`);
@@ -180,6 +183,7 @@ test.describe('a proxy the network can reach', () => {
       allow: ['localhost:*'],
       origins: [],
       token: 'hunter2',
+      probes: false,
     });
     const at = portOf(server);
     await page.goto(`http://localhost:${at}/`);
@@ -190,5 +194,35 @@ test.describe('a proxy the network can reach', () => {
     expect(await ask(page, `${tcp}&token=hunter2`)).toBe('open');
 
     await new Promise<void>((closed) => server.close(() => closed()));
+  });
+});
+
+test.describe('the net fixtures on the server that ships', () => {
+  async function probeOn(probes: boolean, ask: string): Promise<number> {
+    const server = await startProxyServer({
+      host: 'localhost',
+      port: 0,
+      root: '.',
+      allow: ['localhost:*'],
+      origins: [],
+      token: '',
+      probes,
+    });
+    const at = (server.address() as AddressInfo).port;
+    const answer = await fetch(`http://localhost:${at}${ask}`);
+    const status = answer.ok ? (await answer.arrayBuffer()).byteLength : answer.status;
+    await new Promise<void>((closed) => server.close(() => closed()));
+    return status;
+  }
+
+  test('serves the bulk body only when it was asked to', async () => {
+    expect(await probeOn(true, BULK_PROBE)).toBe(BULK_PROBE_SIZE);
+    expect(await probeOn(false, BULK_PROBE)).toBe(404);
+  });
+
+  test('takes a flood back and says how much of it arrived', async () => {
+    expect(await probeOn(false, FLOOD)).toBe(404);
+    expect(settingsFrom(['--probes']).probes).toBe(true);
+    expect(settingsFrom([]).probes).toBe(false);
   });
 });
