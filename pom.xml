@@ -16,11 +16,12 @@
     <module>platform-api</module>
     <module>platform-browser</module>
     <module>runtime</module>
-    <module>socket-classlib</module>
+    <module>toolchain/socket-classlib</module>
+    <module>toolchain/reflect-policy</module>
     <module>lwjgl-compat</module>
     <module>bundle-sandbox</module>
-    <module>example-app</module>
-    <module>bundle-example</module>
+    <module>examples/app</module>
+    <module>examples/bundle</module>
   </modules>
 
   <properties>
@@ -40,12 +41,12 @@
     <!-- strict adds null/bounds checks so java exceptions are thrown instead of js TypeErrors -->
     <flagon.strict>true</flagon.strict>
     <flagon.sourceMaps>true</flagon.sourceMaps>
+    <!-- glob patterns naming classes whose members survive compilation; see reflect-policy -->
+    <flagon.reflect.classes></flagon.reflect.classes>
     <!-- where browser bundles are emitted for the web shell to serve. -->
     <flagon.bundleOutput>${maven.multiModuleProjectDirectory}/web/public/flagon</flagon.bundleOutput>
   </properties>
 
-  <!-- consumed by downstream repositories; see docs/DOWNSTREAM.md for details. release workflow sets
-       the version from the tag, so this stays a snapshot of the next release between them-->
   <distributionManagement>
     <repository>
       <id>github</id>
@@ -174,6 +175,9 @@
                 <debugInformationGenerated>${flagon.sourceMaps}</debugInformationGenerated>
                 <stopOnErrors>true</stopOnErrors>
                 <strict>${flagon.strict}</strict>
+                <properties>
+                  <flagon.reflect.classes>${flagon.reflect.classes}</flagon.reflect.classes>
+                </properties>
               </configuration>
             </execution>
           </executions>

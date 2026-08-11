@@ -48,17 +48,17 @@ for (const backend of BACKENDS) {
       const match = /selftest: (\d+)\/(\d+) checks passed/.exec(summary ?? '');
       expect(match, `no selftest summary in log:\n${summary}`).not.toBeNull();
       expect(match![1]).toBe(match![2]);
-      expect(Number(match![2])).toBeGreaterThanOrEqual(98);
+      expect(Number(match![2])).toBeGreaterThanOrEqual(106);
       expect(failures).toEqual([]);
     });
 
-    /** a class keeps its identity through compilation; its members do not survive at all */
-    test('reflects over types but not their members', async ({ page }) => {
+    test('reflects over the members of opted-in classes only', async ({ page }) => {
       await open(page, backend, 'program=selftest');
 
       const log = page.getByTestId('log');
       await expect(page.getByTestId('state')).toHaveText('exited', { timeout: 30_000 });
       await expect(log).toContainText('reflection: Square reports 0 methods and 0 fields');
+      await expect(log).toContainText('reflection: Reflected reports 2 methods and 2 fields');
       await expect(log).not.toContainText('selftest failure');
     });
 

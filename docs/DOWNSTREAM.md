@@ -24,7 +24,7 @@ LWJGL artifacts.
 `bundle-browser` depends on your application together with Flagon's runtime and compatibility
 layer, then compiles everything into JavaScript with TeaVM.
 
-The `example-app` and `bundle-example` modules in this repository demonstrate this layout.
+The `examples/app` and `examples/bundle` modules in this repository demonstrate this layout.
 
 ## 1. Create a bundle module
 
@@ -58,6 +58,10 @@ Your bundle depends on:
 
 Add `socket-classlib` too if your application opens a `java.net.Socket`; without it the class is
 absent from the classlib and the bundle will not link.
+
+Add `reflect-policy` if your application reflects over the fields, methods or constructors of its
+own classes. Without it those answer empty; with it, the classes you name keep their members. See
+[Reflection](COMPATIBILITY.md#reflection-reaches-types-not-members) for how to name them.
 
 Your application's normal LWJGL dependency **must not** appear in the bundle module. Mark it as
 `provided` or exclude it entirely. Otherwise the real LWJGL classes will shadow the compatibility
@@ -166,6 +170,7 @@ The following surfaces are intended for downstream use.
 | `BrowserPlatform.create` | Stable |
 | `window.__flagonHost` | Stable |
 | `flagon.bundle.*` build properties | Stable |
+| `@Reflectable`, `flagon.reflect.classes` | Stable |
 
 Everything else should be considered an implementation detail unless documented otherwise.
 
