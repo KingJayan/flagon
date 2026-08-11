@@ -5,6 +5,7 @@ import org.teavm.interop.Platforms;
 import org.teavm.jso.typedarrays.Float32Array;
 import org.teavm.jso.typedarrays.Int32Array;
 import org.teavm.jso.typedarrays.Int8Array;
+import org.teavm.jso.typedarrays.Uint8Array;
 import org.teavm.jso.typedarrays.Uint32Array;
 
 /**
@@ -44,6 +45,17 @@ public final class JsArrays {
         }
         Float32Array whole = Float32Array.fromJavaArray(values);
         return Float32Array.create(whole.getBuffer(), whole.getByteOffset(), length);
+    }
+
+    /** the same bytes as {@link #bytes}, typed as the pixel apis want them. */
+    public static Uint8Array unsignedBytes(byte[] values, int length) {
+        require(length, values.length);
+        if (copies()) {
+            return Uint8Array.create(Int8Array.copyFromJavaArray(prefix(values, length))
+                    .getBuffer());
+        }
+        Int8Array whole = Int8Array.fromJavaArray(values);
+        return Uint8Array.create(whole.getBuffer(), whole.getByteOffset(), length);
     }
 
     public static Int32Array ints(int[] values, int length) {
