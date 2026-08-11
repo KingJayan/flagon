@@ -40,8 +40,10 @@ test('says how to make the app bundle when there is none', async ({ page }) => {
 });
 
 test('runs the bundle built from a jar in vendor/', async ({ page, request }) => {
+  // a served page is not a bundle: the server answers an unknown path with html
   const built = await request.head('/flagon/app.js');
-  test.skip(!built.ok(), "no app bundle — build one with 'make app MAIN=...'");
+  const html = built.headers()['content-type']?.includes('text/html') ?? false;
+  test.skip(!built.ok() || html, "no app bundle — put a jar in vendor/ and run 'make app'");
 
   const logged: string[] = [];
   page.on('console', (message) => logged.push(message.text()));
