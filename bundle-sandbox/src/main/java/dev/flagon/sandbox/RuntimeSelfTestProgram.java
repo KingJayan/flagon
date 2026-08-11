@@ -54,6 +54,7 @@ public final class RuntimeSelfTestProgram implements Program {
         clockBehaviour();
         nioBuffers();
         reflection();
+        optedInReflection();
         entryPointArguments(arguments);
 
         console.info("selftest: " + (checks - failures.size()) + "/" + checks + " checks passed");
@@ -299,6 +300,44 @@ public final class RuntimeSelfTestProgram implements Program {
         Platforms.get().console().info("reflection: " + Square.class.getSimpleName() + " reports "
                 + Square.class.getDeclaredMethods().length + " methods and "
                 + Square.class.getDeclaredFields().length + " fields");
+    }
+
+    /**
+     * the other half: what a class opted into member reflection can do
+     */
+    private void optedInReflection() {
+        check("annotated fields survive", 2, Reflected.class.getDeclaredFields().length);
+        check("annotated constructors survive", 2, Reflected.class.getDeclaredConstructors().length);
+
+        try {
+            Object made = Reflected.class.getDeclaredConstructor(String.class, int.class)
+                    .newInstance("made", 3);
+            check("constructing by reflection", "made", ((Reflected) made).label());
+            check("invoking by reflection", 6,
+                    Reflected.class.getDeclaredMethod("twice").invoke(made));
+
+            java.lang.reflect.Field label = Reflected.class.getDeclaredField("label");
+            label.setAccessible(true);
+            check("reading a private field", "made", label.get(made));
+            label.set(made, "renamed");
+            check("writing a private field", "renamed", ((Reflected) made).label());
+        } catch (ReflectiveOperationException failed) {
+            check("an opted-in class reflects", "no failure", "threw " + failed);
+        }
+
+        try {
+            Class<?> named = Class.forName("dev.flagon.sandbox.ReflectedByPattern");
+            Object made = named.getDeclaredConstructor().newInstance();
+            check("a class named by the build is found", "dev.flagon.sandbox.ReflectedByPattern",
+                    named.getName());
+            check("invoking on it", "named by pattern", named.getDeclaredMethod("greet").invoke(made));
+        } catch (ReflectiveOperationException failed) {
+            check("a class named by the build reflects", "no failure", "threw " + failed);
+        }
+
+        Platforms.get().console().info("reflection: " + Reflected.class.getSimpleName() + " reports "
+                + Reflected.class.getDeclaredMethods().length + " methods and "
+                + Reflected.class.getDeclaredFields().length + " fields");
     }
 
     private interface Shape {

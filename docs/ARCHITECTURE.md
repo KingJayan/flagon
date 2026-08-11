@@ -23,11 +23,16 @@ different host — including a plain JVM, which is what makes most of it unit-te
 `runtime` sits beside these layers. It owns startup and shutdown, but knows neither what a browser
 is nor what LWJGL is.
 
-`socket-classlib` sits beside it again, and is the one module that does not follow the rule above:
-it declares classes in `java.net`, to supply the `Socket` teavm's classlib has none of. It is
-compiled with `--patch-module` because the jvm owns that package name, and holds no behaviour --
-`NetworkSocket` in `runtime` does, where a plain jvm can test it. A bundle that wants sockets
-depends on it; one that does not, does not.
+`toolchain/` holds the two modules that are not ordinary Java compiled into a bundle. Both are
+opt-in: a bundle that depends on one gets what it offers, and one that does not carries none of it.
+
+`toolchain/socket-classlib` declares classes in `java.net`, to supply the `Socket` teavm's classlib
+has none of. It is compiled with `--patch-module` because the jvm owns that package name, and holds
+no behaviour -- `NetworkSocket` in `runtime` does, where a plain jvm can test it.
+
+`toolchain/reflect-policy` runs inside the compiler rather than the browser. It is a
+`ReflectionPolicy` found through `META-INF/services`, and it decides which classes keep their
+members through compilation; see [Reflection](#reflection) below.
 
 ## Composition
 
@@ -47,11 +52,11 @@ unmodified applications report through the active host automatically.
 TeaVM compiles Java bytecode to JavaScript at build time. There is no JVM and no runtime class
 loading, so two constraints shape the project:
 
-- **Reachability decides what ships.** Member reflection therefore finds nothing at all, which
-  [COMPATIBILITY.md](COMPATIBILITY.md#reflection-reaches-types-not-members) pins down.
+- **Reachability decides what ships.** Member reflection therefore finds nothing unless a class is
+  named ahead of time, which [Reflection](#reflection) below covers.
   `ServiceLoader` is avoided; programs are registered explicitly in `ProgramRegistry`.
 - **Application jars are build inputs.** Loading a jar means compiling it, so each application is
-  built as a Maven module with the jar on its classpath. `example-app` and `bundle-example`
+  built as a Maven module with the jar on its classpath. `examples/app` and `examples/bundle`
   demonstrate the downstream layout described in [DOWNSTREAM.md](DOWNSTREAM.md).
 
 ## Backend selection
@@ -77,6 +82,24 @@ either way.
 
 `strict` mode is always enabled. It inserts Java null and bounds checks so desktop exception
 semantics (`NullPointerException`, etc.) continue to work correctly.
+
+## Reflection
+
+A class keeps its identity through compilation -- its name, its place in the hierarchy, casts and
+`instanceof` -- because those are decided by reachability. Its members are not: nothing reaches
+them, so nothing ships them, and `getDeclaredFields()` answers empty rather than throwing.
+
+`toolchain/reflect-policy` is how a class opts out of that. It names classes to the compiler, which
+then keeps every declared field, method and constructor, and lets `Class.forName` find them. A
+class is named either by carrying `@Reflectable`, for source the bundle owns, or by matching a glob
+in the `flagon.reflect.classes` build property, for a jar that cannot be annotated.
+
+The cost is paid per class, which is why it is opt-in: keeping a class whole keeps everything it
+can reach whole too. Naming a whole application defeats the point of ahead-of-time compilation.
+
+[COMPATIBILITY.md](COMPATIBILITY.md#reflection-reaches-types-not-members) records what each half
+does, and the `selftest` program asserts both in a real bundle so a teavm upgrade cannot change it
+quietly.
 
 ## Graphics
 

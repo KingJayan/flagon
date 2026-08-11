@@ -70,7 +70,7 @@ Bundles compile to WebAssembly GC by default; `make bundles-js` emits the same b
 JavaScript, which the shell falls back to on browsers without WebAssembly GC.
 `make build-release` emits both as a hosted build should ship them: optimized and minified, with
 no source maps or debug information beside them.
-The `example` bundle contains [unmodified LWJGL applications](example-app/): a spinning square, and
+The `example` bundle contains [unmodified LWJGL applications](examples/app/): a spinning square, and
 `blocks`, a whole small game with input, textures, sound, a hud and a high score it saves.
 The `sandbox` bundle contains diagnostics and regression programs.
 
