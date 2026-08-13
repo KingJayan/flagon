@@ -11,7 +11,11 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.net.Authenticator;
 import java.net.InetAddress;
+import java.net.InetSocketAddress;
+import java.net.PasswordAuthentication;
+import java.net.Proxy;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.URL;
@@ -61,6 +65,8 @@ public final class NetDemoProgram implements Program {
         refused(console, network, host);
         disallowed(console, network);
         listening(console);
+        proxied(console);
+        authenticated(console);
         console.info("net: done");
     }
 
@@ -143,6 +149,33 @@ public final class NetDemoProgram implements Program {
         } catch (IOException refused) {
             console.info("socket listen refused: " + refused.getMessage());
         }
+    }
+
+    /** a program picks its own proxy, and the one it picks is carried rather than obeyed */
+    private void proxied(ConsoleSink console) {
+        Proxy socks = new Proxy(Proxy.Type.SOCKS, new InetSocketAddress("localhost", 1080));
+        console.info("proxy: " + socks + ", direct: " + Proxy.NO_PROXY.type()
+                + ", same twice: "
+                + socks.equals(new Proxy(Proxy.Type.SOCKS, new InetSocketAddress("localhost", 1080))));
+        try {
+            new Proxy(Proxy.Type.DIRECT, new InetSocketAddress("localhost", 1080));
+            console.warn("proxy: DIRECT took an address");
+        } catch (IllegalArgumentException expected) {
+            console.info("proxy: a direct proxy has no address");
+        }
+    }
+
+    /** nothing challenges a connection here, so the authenticator answers whoever asks it */
+    private void authenticated(ConsoleSink console) {
+        Authenticator.setDefault(new Authenticator() {
+            @Override
+            protected PasswordAuthentication getPasswordAuthentication() {
+                return new PasswordAuthentication("who", ("for " + getRequestingPrompt()).toCharArray());
+            }
+        });
+        PasswordAuthentication answer = Authenticator.requestPasswordAuthentication(
+                "localhost", null, 8080, "http", "the proxy", "basic");
+        console.info("auth: " + answer.getUserName() + " " + new String(answer.getPassword()));
     }
 
     /** the same file again, this time through code that has never heard of a proxy */
