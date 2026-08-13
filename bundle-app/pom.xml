@@ -19,6 +19,7 @@
     <flagon.bundle.mainClass>dev.flagon.app.AppMain</flagon.bundle.mainClass>
     <flagon.bundle.catalogClass>dev.flagon.app.AppCatalog</flagon.bundle.catalogClass>
     <flagon.bundle.name>app</flagon.bundle.name>
+    <flagon.reflect.constructed>${project.build.directory}/app-classes.txt</flagon.reflect.constructed>
   </properties>
 
   <dependencies>
@@ -87,6 +88,7 @@
               <arguments>
                 <argument>${flagon.app.dir}</argument>
                 <argument>${project.build.directory}/generated-sources/app</argument>
+                <argument>${flagon.reflect.constructed}</argument>
               </arguments>
             </configuration>
           </execution>

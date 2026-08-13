@@ -292,9 +292,9 @@ public final class RuntimeSelfTestProgram implements Program {
         try {
             Object proxied = java.lang.reflect.Proxy.newProxyInstance(
                     Shape.class.getClassLoader(), new Class<?>[] {Shape.class}, (p, m, a) -> 5.0d);
-            check("a proxy is refused", true, proxied == null);
+            check("proxying an interface nobody named is refused", true, proxied == null);
         } catch (SecurityException | IllegalArgumentException expected) {
-            check("a proxy is refused", true, true);
+            check("proxying an interface nobody named is refused", true, true);
         }
 
         Platforms.get().console().info("reflection: " + Square.class.getSimpleName() + " reports "
@@ -333,6 +333,30 @@ public final class RuntimeSelfTestProgram implements Program {
             check("invoking on it", "named by pattern", named.getDeclaredMethod("greet").invoke(made));
         } catch (ReflectiveOperationException failed) {
             check("a class named by the build reflects", "no failure", "threw " + failed);
+        }
+
+        try {
+            Proxied stood = (Proxied) java.lang.reflect.Proxy.newProxyInstance(
+                    Proxied.class.getClassLoader(), new Class<?>[] {Proxied.class},
+                    (proxy, method, arguments) -> method.getName() + " " + arguments[0]);
+            check("proxying an interface the build named", "greet world", stood.greet("world"));
+            Platforms.get().console().info("reflection: Proxied stands in, saying "
+                    + stood.greet("world"));
+        } catch (RuntimeException failed) {
+            check("proxying an interface the build named", "greet world", "threw " + failed);
+        }
+
+        try {
+            Class<?> listed = Class.forName("dev.flagon.sandbox.ConstructedByName");
+            Object made = listed.getDeclaredConstructor(String.class).newInstance("listed");
+            check("a class listed for the compiler is constructed", "listed",
+                    ((ConstructedByName) made).label());
+            check("constructors are all it keeps", 0, listed.getDeclaredMethods().length);
+            Platforms.get().console().info("reflection: ConstructedByName reports "
+                    + listed.getDeclaredConstructors().length + " constructors and "
+                    + listed.getDeclaredMethods().length + " methods");
+        } catch (ReflectiveOperationException failed) {
+            check("a class listed for the compiler is constructed", "listed", "threw " + failed);
         }
 
         Platforms.get().console().info("reflection: " + Reflected.class.getSimpleName() + " reports "
