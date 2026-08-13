@@ -59,6 +59,21 @@ for (const backend of BACKENDS) {
       );
     });
 
+    /** a proxy of the application's own choosing, which the runtime carries but does not route by */
+    test('takes the proxy and the authenticator a desktop program installs', async ({
+      page,
+      baseURL,
+    }) => {
+      const host = hostOf(baseURL);
+      await runDemo(page, backend, host);
+
+      await expect(page.getByTestId('log')).toContainText(
+        'proxy: SOCKS @ localhost:1080, direct: DIRECT, same twice: true',
+      );
+      await expect(page.getByTestId('log')).toContainText('proxy: a direct proxy has no address');
+      await expect(page.getByTestId('log')).toContainText('auth: who for the proxy');
+    });
+
     test('reassembles a body that arrives as many frames', async ({ page, baseURL }) => {
       const host = hostOf(baseURL);
       await runDemo(page, backend, host);
