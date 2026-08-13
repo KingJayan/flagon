@@ -44,6 +44,9 @@
     <flagon.sourceMaps>true</flagon.sourceMaps>
     <!-- glob patterns naming classes whose members survive compilation; see reflect-policy -->
     <flagon.reflect.classes></flagon.reflect.classes>
+    <!-- your application and its libraries, and the one jar they are folded into for the build -->
+    <flagon.app.dir>${maven.multiModuleProjectDirectory}/vendor</flagon.app.dir>
+    <flagon.app.jar>${maven.multiModuleProjectDirectory}/target/app.jar</flagon.app.jar>
     <!-- where browser bundles are emitted for the web shell to serve. -->
     <flagon.bundleOutput>${maven.multiModuleProjectDirectory}/web/public/flagon</flagon.bundleOutput>
   </properties>
@@ -241,9 +244,9 @@
   </build>
 
   <profiles>
-    <!-- your own jar: put any jar in vendor/ and build. the jar names its own main class, so
-         nothing here has to be told anything about it. off unless -Papp asks for it, which the
-         Makefile does when it finds a jar -->
+    <!-- your own jar: put any jar in vendor/ and build, its libraries beside it if it has any.
+         the jar names its own main class, so nothing here has to be told anything about it. off
+         unless -Papp asks for it, which the Makefile does when it finds a jar -->
     <profile>
       <id>app</id>
       <modules>
@@ -251,6 +254,29 @@
       </modules>
       <build>
         <plugins>
+          <!-- one artifact can be depended on; a directory of them cannot. so they are folded
+               into one jar first, the application first in line where two carry the same class -->
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-antrun-plugin</artifactId>
+            <version>3.1.0</version>
+            <executions>
+              <execution>
+                <id>fold-vendor-jars</id>
+                <phase>validate</phase>
+                <goals>
+                  <goal>run</goal>
+                </goals>
+                <configuration>
+                  <target>
+                    <zip destfile="${flagon.app.jar}" duplicate="preserve" whenempty="create">
+                      <zipgroupfileset dir="${flagon.app.dir}" includes="*.jar"/>
+                    </zip>
+                  </target>
+                </configuration>
+              </execution>
+            </executions>
+          </plugin>
           <!-- the jar becomes a real artifact before the module that depends on it is built.
                it happens here because the root pom is the first thing the reactor builds -->
           <plugin>

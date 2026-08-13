@@ -29,14 +29,16 @@ The `examples/app` and `examples/bundle` modules in this repository demonstrate 
 ## Trying a jar without any of this
 
 If you only want to see whether a jar runs, you do not need a module of your own. Put the jar in
-`vendor/` in a checkout of this repository -- any jar, any filename -- and build:
+`vendor/` in a checkout of this repository -- any jar, any filename, with any libraries it needs
+beside it -- and build:
 
 ```
 make app
 ```
 
-Nothing is configured and nothing is edited. The build asks the jar what it runs: its manifest
-`Main-Class` if it declares one, otherwise every class in it with a `main`. Each answer becomes a
+Nothing is configured and nothing is edited. The jars are folded into one for the compiler, and
+the build asks the one that declares a `Main-Class` what it runs, taking every class with a `main`
+if none does. Each answer becomes a
 program, an entry point calling it is written, and both backends are compiled to `app.wasm` and
 `app.js`. `/play/` then runs it with the viewport to itself.
 

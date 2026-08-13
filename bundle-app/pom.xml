@@ -19,7 +19,6 @@
     <flagon.bundle.mainClass>dev.flagon.app.AppMain</flagon.bundle.mainClass>
     <flagon.bundle.catalogClass>dev.flagon.app.AppCatalog</flagon.bundle.catalogClass>
     <flagon.bundle.name>app</flagon.bundle.name>
-    <flagon.app.jar>${maven.multiModuleProjectDirectory}/vendor/app.jar</flagon.app.jar>
   </properties>
 
   <dependencies>
@@ -46,7 +45,7 @@
       <artifactId>reflect-policy</artifactId>
       <version>${project.version}</version>
     </dependency>
-    <!-- reads the jar at build time to write the entry point; never reaches the bundle -->
+    <!-- reads the jars at build time to write the entry point; never reaches the bundle -->
     <dependency>
       <groupId>dev.flagon</groupId>
       <artifactId>app-entry</artifactId>
@@ -70,7 +69,7 @@
 
   <build>
     <plugins>
-      <!-- asks the jar what its main class is and writes the call to it. an ordinary call, so
+      <!-- asks vendor/ what its main class is and writes the call to it. an ordinary call, so
            the compiler can follow it into the application -->
       <plugin>
         <groupId>org.codehaus.mojo</groupId>
@@ -86,7 +85,7 @@
               <mainClass>dev.flagon.appentry.WriteAppEntry</mainClass>
               <classpathScope>compile</classpathScope>
               <arguments>
-                <argument>${flagon.app.jar}</argument>
+                <argument>${flagon.app.dir}</argument>
                 <argument>${project.build.directory}/generated-sources/app</argument>
               </arguments>
             </configuration>

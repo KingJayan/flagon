@@ -6,10 +6,11 @@ BUNDLES := $(WEB)/public/flagon
 ARGS ?=
 N ?= 3
 
-# drop any jar in vendor/ and it is built into the `app` bundle, which /play/ runs. the jar names
-# its own main class, so nothing here needs to be told anything about it
-VENDOR_JAR := $(firstword $(wildcard vendor/*.jar))
-APP := $(if $(VENDOR_JAR),-Papp -Dflagon.app.jar=$(CURDIR)/$(VENDOR_JAR),)
+# drop any jar in vendor/ and it is built into the `app` bundle, which /play/ runs, its libraries
+# beside it if it needs any. the jar names its own main class, so nothing here needs to be told
+# anything about it
+VENDOR_JARS := $(wildcard vendor/*.jar)
+APP := $(if $(VENDOR_JARS),-Papp,)
 
 .PHONY: help setup deps browsers browsers-deps browser-chromium browser-served browser-firefox bundles bundles-js app build bundles-release \
         bundles-release-js build-release test browser flake typecheck site dev serve \
@@ -46,7 +47,7 @@ bundles: ## compile java to webassembly gc
 	@$(MAKE) verify-bundles
 
 app: ## compile whatever jar is in vendor/ into a bundle, and say where to open it
-	@test -n "$(VENDOR_JAR)" || { echo "put a jar -- any jar -- in vendor/ first"; exit 1; }
+	@test -n "$(VENDOR_JARS)" || { echo "put a jar -- any jar -- in vendor/ first"; exit 1; }
 	@$(MAKE) build
 	@echo "run 'make dev' and open http://localhost:5273/play/"
 
