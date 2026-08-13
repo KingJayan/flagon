@@ -57,6 +57,7 @@ on both backends.
 | `File`, `FileInputStream`, `FileOutputStream`, `RandomAccessFile` | works, see below |
 | `java.net.URL`, `HttpURLConnection` over HTTP | works through a proxy, see below |
 | `java.net.Socket`, `InetAddress` | supplied by `socket-classlib`, carried by `Network.connect()` |
+| `java.net.Proxy`, `Authenticator` | supplied by `socket-classlib`, carried but never routed by |
 | `Socket.setSoTimeout` | recorded and readable, but a read still blocks |
 | `ServerSocket` | refused: nothing can connect in to a page |
 | `DatagramSocket` | absent; the proxy transports streams only |
@@ -360,7 +361,9 @@ A browser cannot open raw TCP sockets, so networking here means `dev.flagon.plat
 needs a proxy served alongside the page.
 
 TeaVM's classlib has no `java.net.Socket`, so the `socket-classlib` module supplies one, along with
-`InetAddress`, `InetSocketAddress`, `ServerSocket` and the socket exceptions. A bundle that depends
+`InetAddress`, `InetSocketAddress`, `ServerSocket` and the socket exceptions. It supplies `Proxy`,
+`Authenticator` and `PasswordAuthentication` too: an application that picks its own proxy passes it
+around unchanged, though the only proxy a page really goes through is the one the shell serves. A bundle that depends
 on it can run unmodified socket code; the class is a shell over `NetworkSocket`, which is the same
 `Network.connect()` everything else here goes through. Options a page does not own -- keep alive, no
 delay, buffer sizes, traffic class -- are accepted and ignored, and `ServerSocket` refuses at the
