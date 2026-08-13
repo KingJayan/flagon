@@ -27,18 +27,46 @@ public final class WriteAppEntry {
 
     /**
      * {@code args[0]} a jar or a directory of them, {@code args[1]} the source directory to
-     * write into
+     * write into, {@code args[2]} where to list the classes they carry, if anywhere
      */
     public static void main(String[] args) throws Exception {
         Path given = Path.of(args[0]);
         Path into = Path.of(args[1]).resolve("dev/flagon/app");
         Files.createDirectories(into);
 
-        List<String> mains = runnableIn(jarsIn(given));
+        List<Path> jars = jarsIn(given);
+        List<String> mains = runnableIn(jars);
         Files.writeString(into.resolve("AppEntry.java"), source(mains));
         System.out.println(mains.isEmpty()
                 ? "nothing runnable in " + given + ", so the app bundle will say so"
                 : "app programs: " + mains);
+
+        // the build may pass the argument through empty, which asks for no list at all
+        if (args.length > 2 && args[2] != null && !args[2].isBlank()) {
+            List<String> classes = classesIn(jars);
+            Path listed = Path.of(args[2]).toAbsolutePath();
+            Files.createDirectories(listed.getParent());
+            Files.write(listed, classes);
+            System.out.println(classes.size() + " classes may be constructed by reflection");
+        }
+    }
+
+    /** every class the jars carry, for the compiler to keep the constructors of */
+    private static List<String> classesIn(List<Path> jars) throws IOException {
+        List<String> classes = new ArrayList<>();
+        for (Path jar : jars) {
+            try (JarFile opened = new JarFile(jar.toFile())) {
+                Enumeration<JarEntry> entries = opened.entries();
+                while (entries.hasMoreElements()) {
+                    String name = entries.nextElement().getName();
+                    if (name.endsWith(".class")) {
+                        classes.add(name.substring(0, name.length() - ".class".length())
+                                .replace('/', '.'));
+                    }
+                }
+            }
+        }
+        return classes;
     }
 
     /** the jars to consider, a directory holding an application's libraries beside it */

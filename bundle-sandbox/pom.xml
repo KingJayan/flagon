@@ -21,6 +21,8 @@
     <flagon.bundle.name>sandbox</flagon.bundle.name>
     <!-- the half of the reflection opt-in that names classes it cannot annotate -->
     <flagon.reflect.classes>dev.flagon.sandbox.ReflectedBy*</flagon.reflect.classes>
+    <flagon.reflect.proxies>dev.flagon.sandbox.Proxied</flagon.reflect.proxies>
+    <flagon.reflect.constructed>${project.basedir}/src/main/reflect/constructed.txt</flagon.reflect.constructed>
   </properties>
 
   <dependencies>
