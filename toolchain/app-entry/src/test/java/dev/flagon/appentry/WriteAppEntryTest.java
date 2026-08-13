@@ -45,13 +45,31 @@ class WriteAppEntryTest {
         assertTrue(entryFor(jar).contains("no jar in vendor/"));
     }
 
+    @Test
+    void runsTheJarThatNamesAMainClassAndNotItsLibraries() throws Exception {
+        Path vendor = Files.createDirectories(directory.resolve("vendor"));
+        Files.move(jar("real.Entry", "real.Entry"), vendor.resolve("app.jar"));
+        Files.move(jar("library.Tool", null), vendor.resolve("library.jar"));
+
+        String written = entryFor(vendor);
+        assertTrue(written.contains("real.Entry.main(arguments)"));
+        assertFalse(written.contains("library.Tool"));
+    }
+
+    @Test
+    void searchesEveryJarWhenNoneNamesAMainClass() throws Exception {
+        Path vendor = Files.createDirectories(directory.resolve("vendor"));
+        Files.move(jar("real.Entry", null), vendor.resolve("app.jar"));
+
+        assertTrue(entryFor(vendor).contains("real.Entry.main(arguments)"));
+    }
+
     private String entryFor(Path jar) throws Exception {
         Path into = Files.createDirectories(directory.resolve("out"));
         WriteAppEntry.main(new String[] {jar.toString(), into.toString()});
         return Files.readString(into.resolve("dev/flagon/app/AppEntry.java"));
     }
 
-    /** a jar holding {@code type} and claiming to run {@code declared}, either of which may be null */
     private Path jar(String type, String declared) throws Exception {
         Path classes = compile(type);
         Manifest manifest = new Manifest();

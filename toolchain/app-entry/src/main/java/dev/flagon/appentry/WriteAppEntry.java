@@ -15,6 +15,7 @@ import java.util.Set;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 import java.util.jar.Manifest;
+import java.util.stream.Stream;
 
 /**
  * writes the entry points for whatever jar was dropped in
@@ -24,17 +25,58 @@ public final class WriteAppEntry {
     private WriteAppEntry() {
     }
 
-    /** {@code args[0]} the jar, {@code args[1]} the source directory to write into */
+    /**
+     * {@code args[0]} a jar or a directory of them, {@code args[1]} the source directory to
+     * write into
+     */
     public static void main(String[] args) throws Exception {
-        Path jar = Path.of(args[0]);
+        Path given = Path.of(args[0]);
         Path into = Path.of(args[1]).resolve("dev/flagon/app");
         Files.createDirectories(into);
 
-        List<String> mains = Files.isRegularFile(jar) ? runnableIn(jar) : List.of();
+        List<String> mains = runnableIn(jarsIn(given));
         Files.writeString(into.resolve("AppEntry.java"), source(mains));
         System.out.println(mains.isEmpty()
-                ? "nothing runnable in " + jar + ", so the app bundle will say so"
+                ? "nothing runnable in " + given + ", so the app bundle will say so"
                 : "app programs: " + mains);
+    }
+
+    /** the jars to consider, a directory holding an application's libraries beside it */
+    private static List<Path> jarsIn(Path given) throws IOException {
+        if (Files.isRegularFile(given)) {
+            return List.of(given);
+        }
+        if (!Files.isDirectory(given)) {
+            return List.of();
+        }
+        try (Stream<Path> listed = Files.list(given)) {
+            return listed.filter(found -> found.getFileName().toString().endsWith(".jar"))
+                    .sorted()
+                    .toList();
+        }
+    }
+
+    /**
+     * what the application runs
+     *
+     * <p>a library beside it is on the classpath and nothing more, so a jar that declares a main
+     * class is taken to be the application, and only when none does is every jar searched.
+     */
+    private static List<String> runnableIn(List<Path> jars) throws IOException {
+        List<Path> declaring = new ArrayList<>();
+        for (Path jar : jars) {
+            try (JarFile opened = new JarFile(jar.toFile())) {
+                if (declaredBy(opened) != null) {
+                    declaring.add(jar);
+                }
+            }
+        }
+
+        List<String> mains = new ArrayList<>();
+        for (Path jar : declaring.isEmpty() ? jars : declaring) {
+            mains.addAll(runnableIn(jar));
+        }
+        return mains;
     }
 
     /** what the jar says it runs, and failing that, everything in it that could be run */
