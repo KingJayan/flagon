@@ -72,14 +72,15 @@ The `example` bundle contains [unmodified LWJGL applications](examples/app/): a 
 `blocks`, a whole small game with input, textures, sound, a hud and a high score it saves.
 The `sandbox` bundle contains diagnostics and regression programs.
 
-To try your own jar, put it in `vendor/` (any filename) and build:
+To try your own jar, put it in `vendor/` (any filename), any libraries it needs beside it, and
+build:
 
 ```sh
 make app
 ```
 
-Nothing else to configure: the jar is asked what it runs, through its manifest or by finding the
-classes with a `main`, and each one becomes a program. Go to
+Nothing else to configure: the jar that names a main class is the application, the rest are its
+libraries, and every class with a `main` becomes a program. Go to
 <http://localhost:5273/play/> to run it fullscreen, any bundle can be run there: `/play/?bundle=example&program=blocks`.
 
 
