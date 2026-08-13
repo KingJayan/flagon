@@ -53,7 +53,7 @@ on both backends.
 | `Class` identity, hierarchy, `isInstance`, `cast`, `forName` | works, see below |
 | `getDeclaredFields`, `getDeclaredMethods`, `getConstructors` | answer empty unless the class opted in, see below |
 | `Field.get`/`set`, `Method.invoke`, `Constructor.newInstance` | work on an opted-in class, refused otherwise |
-| `Proxy` | refused, see below |
+| `Proxy.newProxyInstance` | works for an interface the build named, refused otherwise, see below |
 | `File`, `FileInputStream`, `FileOutputStream`, `RandomAccessFile` | works, see below |
 | `java.net.URL`, `HttpURLConnection` over HTTP | works through a proxy, see below |
 | `java.net.Socket`, `InetAddress` | supplied by `socket-classlib`, carried by `Network.connect()` |
@@ -70,8 +70,8 @@ The compiler ships what it can see being reached, so a class keeps its identity 
 
 Members do not survive by default. `getDeclaredFields`, `getDeclaredMethods` and `getConstructors`
 return empty arrays rather than throwing, which is the sharp edge: code that walks the result does
-nothing and reports no error. `Proxy.newProxyInstance` throws `SecurityException` and is not
-opt-in-able.
+nothing and reports no error. `Proxy.newProxyInstance` throws `SecurityException` for an interface
+nobody named.
 
 A class can opt out of that, and then reflection over it behaves as it does on a JVM: every
 declared field, method and constructor is listed, `Field.get`/`set` reach private fields,
@@ -92,6 +92,25 @@ public final class Settings { ... }
 A bundle gets neither unless it depends on `reflect-policy`. Keep the list small: a class named
 here keeps everything it can reach, so naming an application wholesale gives up what ahead-of-time
 compilation buys.
+
+An interface `Proxy.newProxyInstance` may stand in for is named the same way, separately, because
+a proxy is a class the compiler has to write rather than members it has to keep:
+
+```xml
+<flagon.reflect.proxies>com.example.Listener*</flagon.reflect.proxies>
+```
+
+### A jar nobody wrote
+
+A jar you did not write cannot be annotated, and an obfuscated one cannot be globbed either: its
+classes are named `adm` and `pk`. So `make app` does not ask. The build lists every class in
+`vendor/` for the compiler, and each keeps its **constructors** -- which is what such a jar reflects
+for: a registry handed a `Class` and asked to build one. Members beyond that still need a glob.
+
+```xml
+<!-- a file naming classes, one per line; the app build writes its own -->
+<flagon.reflect.constructed>target/app-classes.txt</flagon.reflect.constructed>
+```
 
 Both backends behave identically, in both directions. The `selftest` program pins all of it --
 including a class that is *not* opted in, sitting in the same bundle and still reporting zero

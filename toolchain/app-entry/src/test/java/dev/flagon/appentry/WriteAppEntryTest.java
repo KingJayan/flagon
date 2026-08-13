@@ -1,5 +1,6 @@
 package dev.flagon.appentry;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -8,6 +9,7 @@ import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
 import java.util.jar.Attributes;
 import java.util.jar.JarEntry;
 import java.util.jar.JarOutputStream;
@@ -62,6 +64,31 @@ class WriteAppEntryTest {
         Files.move(jar("real.Entry", null), vendor.resolve("app.jar"));
 
         assertTrue(entryFor(vendor).contains("real.Entry.main(arguments)"));
+    }
+
+    /** the compiler is told which classes may be constructed by name, libraries included */
+    @Test
+    void listsEveryClassTheJarsCarry() throws Exception {
+        Path vendor = Files.createDirectories(directory.resolve("vendor"));
+        Files.move(jar("real.Entry", "real.Entry"), vendor.resolve("app.jar"));
+        Files.move(jar("library.Tool", null), vendor.resolve("library.jar"));
+        Path listed = directory.resolve("listed/classes.txt");
+
+        WriteAppEntry.main(new String[] {
+            vendor.toString(), directory.resolve("out").toString(), listed.toString()});
+
+        assertEquals(List.of("library.Tool", "real.Entry"),
+                Files.readAllLines(listed).stream().sorted().toList());
+    }
+
+    @Test
+    void listsNothingWhenTheBuildAsksForNoList() throws Exception {
+        Path jar = jar("real.Entry", "real.Entry");
+
+        WriteAppEntry.main(new String[] {
+            jar.toString(), directory.resolve("out").toString(), null});
+
+        assertFalse(Files.exists(directory.resolve("listed")));
     }
 
     private String entryFor(Path jar) throws Exception {

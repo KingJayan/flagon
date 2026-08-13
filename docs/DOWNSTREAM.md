@@ -194,6 +194,7 @@ The following surfaces are intended for downstream use.
 | `window.__flagonHost` | Stable |
 | `flagon.bundle.*` build properties | Stable |
 | `@Reflectable`, `flagon.reflect.classes` | Stable |
+| `flagon.reflect.proxies`, `flagon.reflect.constructed` | Stable |
 
 Everything else should be considered an implementation detail unless documented otherwise.
 

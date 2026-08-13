@@ -96,10 +96,17 @@ them, so nothing ships them, and `getDeclaredFields()` answers empty rather than
 `toolchain/reflect-policy` is how a class opts out of that. It names classes to the compiler, which
 then keeps every declared field, method and constructor, and lets `Class.forName` find them. A
 class is named either by carrying `@Reflectable`, for source the bundle owns, or by matching a glob
-in the `flagon.reflect.classes` build property, for a jar that cannot be annotated.
+in the `flagon.reflect.classes` build property, for a jar that cannot be annotated. An interface
+`Proxy.newProxyInstance` may stand in for is named by `flagon.reflect.proxies`, the compiler having
+to write the proxy rather than keep members.
 
 The cost is paid per class, which is why it is opt-in: keeping a class whole keeps everything it
 can reach whole too. Naming a whole application defeats the point of ahead-of-time compilation.
+
+A jar dropped in `vendor/` is the exception, because there is nobody to ask: it cannot be annotated
+and, obfuscated, cannot be globbed. `app-entry` lists its classes to a file named by
+`flagon.reflect.constructed`, and each keeps its constructors alone -- enough for the registries
+such a jar builds its world with, and far short of keeping it whole.
 
 [COMPATIBILITY.md](COMPATIBILITY.md#reflection-reaches-types-not-members) records what each half
 does, and the `selftest` program asserts both in a real bundle so a teavm upgrade cannot change it

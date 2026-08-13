@@ -62,6 +62,18 @@ for (const backend of BACKENDS) {
       await expect(log).not.toContainText('selftest failure');
     });
 
+    test('keeps the constructors of a class the build listed', async ({ page }) => {
+      await open(page, backend, 'program=selftest');
+
+      const log = page.getByTestId('log');
+      await expect(page.getByTestId('state')).toHaveText('exited', { timeout: 30_000 });
+      await expect(log).toContainText(
+        'reflection: ConstructedByName reports 2 constructors and 0 methods',
+      );
+      await expect(log).toContainText('reflection: Proxied stands in, saying greet world');
+      await expect(log).not.toContainText('selftest failure');
+    });
+
     test('reports an unknown program as a fatal boot failure', async ({ page }) => {
       await open(page, backend, 'program=does-not-exist');
 

@@ -44,6 +44,10 @@
     <flagon.sourceMaps>true</flagon.sourceMaps>
     <!-- glob patterns naming classes whose members survive compilation; see reflect-policy -->
     <flagon.reflect.classes></flagon.reflect.classes>
+    <!-- glob patterns naming interfaces java.lang.reflect.Proxy may stand in for -->
+    <flagon.reflect.proxies></flagon.reflect.proxies>
+    <!-- a file naming classes, one per line, whose constructors survive compilation -->
+    <flagon.reflect.constructed></flagon.reflect.constructed>
     <!-- your application and its libraries, and the one jar they are folded into for the build -->
     <flagon.app.dir>${maven.multiModuleProjectDirectory}/vendor</flagon.app.dir>
     <flagon.app.jar>${maven.multiModuleProjectDirectory}/target/app.jar</flagon.app.jar>
@@ -181,6 +185,8 @@
                 <strict>${flagon.strict}</strict>
                 <properties>
                   <flagon.reflect.classes>${flagon.reflect.classes}</flagon.reflect.classes>
+                  <flagon.reflect.proxies>${flagon.reflect.proxies}</flagon.reflect.proxies>
+                  <flagon.reflect.constructed>${flagon.reflect.constructed}</flagon.reflect.constructed>
                 </properties>
               </configuration>
             </execution>
