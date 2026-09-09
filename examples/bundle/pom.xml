@@ -36,12 +36,21 @@
       <groupId>dev.flagon</groupId>
       <artifactId>lwjgl2-compat</artifactId>
     </dependency>
+    <dependency>
+      <groupId>dev.flagon</groupId>
+      <artifactId>lwjgl3-compat</artifactId>
+    </dependency>
 
     <!-- the application, as a binary artifact. its own lwjgl dependency is provided, so the
          real org.lwjgl classes never reach this classpath. -->
     <dependency>
       <groupId>dev.flagon</groupId>
       <artifactId>example-app</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>dev.flagon</groupId>
+      <artifactId>thirdparty-app</artifactId>
       <version>${project.version}</version>
     </dependency>
 

@@ -22,7 +22,9 @@ import java.nio.IntBuffer;
  */
 public final class GLFW {
 
-    public static final long NULL = Addresses.NULL;
+    // real lwjgl leaves NULL to MemoryUtil, and a program static-importing both would not
+    // compile if this class named it too
+    static final long NULL = Addresses.NULL;
 
     public static final int GLFW_FALSE = 0;
     public static final int GLFW_TRUE = 1;
@@ -243,7 +245,8 @@ public final class GLFW {
             glfwDestroyWindow(window);
         }
         initialised = false;
-        onError = null;
+        // glfw keeps the error callback across a terminate, so the usual
+        // glfwSetErrorCallback(null).free() afterwards still has one to free
     }
 
     public static GLFWErrorCallback glfwSetErrorCallback(GLFWErrorCallbackI callback) {

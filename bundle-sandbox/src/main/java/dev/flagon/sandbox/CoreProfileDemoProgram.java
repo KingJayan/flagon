@@ -1,6 +1,7 @@
 package dev.flagon.sandbox;
 
 import static org.lwjgl.glfw.GLFW.*;
+import static org.lwjgl.system.MemoryUtil.NULL;
 
 import dev.flagon.platform.ConsoleSink;
 import dev.flagon.platform.Platforms;

@@ -25,7 +25,7 @@ for (const backend of BACKENDS) {
 
       await page.locator('#bundle').selectOption('example');
       await expect(page.locator('#program')).toHaveValue('');
-      await expect(page.locator('#program option')).toHaveCount(3);
+      await expect(page.locator('#program option')).toHaveCount(4);
 
       await page.locator('#run').click();
       await expect(page.getByTestId('phases').locator('li')).toHaveText(
@@ -127,7 +127,7 @@ for (const backend of BACKENDS) {
 
     test('offers a bundle its programs without having run it', async ({ page }) => {
       await open(page, backend, 'bundle=example');
-      await expect(page.locator('#program option')).toHaveCount(3);
+      await expect(page.locator('#program option')).toHaveCount(4);
       await expect(page.locator('#program option').nth(1)).toContainText('spinner — ');
 
       await page.locator('#bundle').selectOption('sandbox');
@@ -135,7 +135,7 @@ for (const backend of BACKENDS) {
       await expect(page.locator('#program option').nth(1)).toContainText('hello — ');
 
       await page.locator('#bundle').selectOption('example');
-      await expect(page.locator('#program option')).toHaveCount(3);
+      await expect(page.locator('#program option')).toHaveCount(4);
     });
   });
 }
