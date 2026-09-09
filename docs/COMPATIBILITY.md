@@ -28,7 +28,7 @@ assertions. What remains is in the [issue tracker](https://github.com/KingJayan/
 | `System.out` / `System.err` | works | split into lines and forwarded to the console |
 | Lifecycle reporting | works | `window.__flagonHost` |
 | Filesystem | works | `java.io` on the Origin Private File System, see below |
-| Threading | partial | blocking frame loops via TeaVM green threads |
+| Threading | works, cooperatively | green threads, with the executor half of `java.util.concurrent` supplied, see below |
 | Networking | works through a proxy, sockets included | `Network.connect()` over a websocket, see below |
 | Input | works | DOM events and Pointer Lock, see below |
 | Audio | works | `OpenAL` over Web Audio, see below |
@@ -572,6 +572,32 @@ carves its frames out of one arena and forgets their addresses when the frame cl
 Nothing outside the program can read an address, so a jar that passes one to real native code has
 nowhere to send it. `BufferUtils` and `memAlloc` still allocate direct, native-endian buffers so
 typed views behave as desktop code expects.
+
+### Threads, executors and futures
+
+TeaVM gives green threads: `Thread`, `synchronized`, `wait`/`notify`, `sleep`, `join`, the atomics,
+`ConcurrentHashMap` and the blocking queues all work. They are cooperative, not parallel -- one
+runs at a time and a switch happens only where one suspends -- so threads here buy ordering and
+responsiveness, never a second core.
+
+What TeaVM has no classes for at all is the half a modern client is built on: `ExecutorService`,
+`Executors`, `Future`, `CompletableFuture`, `CountDownLatch`, `ReentrantLock`,
+`ConcurrentLinkedQueue`. `toolchain/concurrent-classlib` supplies those over the green threads, the
+way `socket-classlib` supplies `java.net`. Depend on it and a render thread draining what worker
+threads produced runs unchanged; the `threading` demo runs exactly that shape in the browser.
+
+| Written | Behaviour |
+|---------|-----------|
+| `Executors.newFixedThreadPool(n)` | `n` green worker threads over one task queue |
+| `Executors.newCachedThreadPool`, `newWorkStealingPool` | bounded to `availableProcessors()`; more green threads buy nothing |
+| `CompletableFuture` chains (`supplyAsync`, `thenApply`, `thenCompose`, `thenCombine`, `allOf`, `exceptionally`) | work, on the shared pool |
+| `future.get()`, `latch.await()`, `lock.lock()` | suspend the calling green thread, so the frame loop keeps running |
+| `ForkJoinPool` | absent; ask for an executor instead |
+| a task that never suspends | holds the page until it returns, exactly as it would hold a real thread's core |
+
+The consequence worth planning around: work is interleaved, not parallel. A chunk pipeline whose
+stages suspend keeps the frame loop drawing, and one that computes straight through for 40ms costs
+a frame.
 
 ### Frame timing
 

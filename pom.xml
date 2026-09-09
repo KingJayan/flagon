@@ -17,6 +17,7 @@
     <module>platform-browser</module>
     <module>runtime</module>
     <module>toolchain/socket-classlib</module>
+    <module>toolchain/concurrent-classlib</module>
     <module>toolchain/reflect-policy</module>
     <module>toolchain/app-entry</module>
     <module>lwjgl-core</module>
