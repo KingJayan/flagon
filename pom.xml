@@ -25,6 +25,7 @@
     <module>lwjgl3-compat</module>
     <module>bundle-sandbox</module>
     <module>examples/app</module>
+    <module>examples/thirdparty</module>
     <module>examples/bundle</module>
   </modules>
 
@@ -34,6 +35,7 @@
     <teavm.version>0.15.0</teavm.version>
     <junit.version>5.11.4</junit.version>
     <lwjgl.version>2.9.3</lwjgl.version>
+    <lwjgl3.version>3.3.3</lwjgl3.version>
     <!-- comp backend for browser bundles: WEBASSEMBLY_GC or JAVASCRIPT. build with -Pjs for
          the latter; see docs/ARCHITECTURE.md "Backend selection" -->
     <flagon.target>WEBASSEMBLY_GC</flagon.target>

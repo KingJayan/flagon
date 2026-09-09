@@ -523,6 +523,23 @@ The page owns the window, so some of GLFW's surface is answered rather than obey
 Keys reach callers in GLFW's own numbering, translated from the host scancode; the `scancode`
 argument of the key callback carries the host's number, as GLFW's does.
 
+### What third-party LWJGL 3 code needs
+
+`examples/thirdparty` holds LWJGL's own guide sample, compiled against the real
+`org.lwjgl:lwjgl`, `lwjgl-glfw` and `lwjgl-opengl` artifacts exactly as a desktop project would,
+and bundled against this layer instead. It runs in the browser, verified by the `hello-lwjgl3`
+program. Running it first found two things this layer had wrong:
+
+- `GLFW` defined `NULL`. Real LWJGL leaves that to `MemoryUtil`, so a program static-importing both
+  would not compile. `NULL` now belongs to `MemoryUtil` alone.
+- `glfwTerminate()` cleared the error callback, so the documented
+  `glfwTerminate(); glfwSetErrorCallback(null).free();` threw. GLFW keeps the callback across a
+  terminate, and now so does this.
+
+`org.lwjgl.Version` and `org.lwjgl.glfw.Callbacks` (`glfwFreeCallbacks`) were added for the same
+program. What it still refuses is `GLFWAllocator` and `glfwInitAllocator`: those hand GLFW a real
+`malloc`, and an address here names a registered buffer rather than memory.
+
 ### GL 3.2 core profile
 
 `GL30`, `GL31`, `GL32` and `GL33` in `lwjgl3-compat` cover what a core-profile client calls:

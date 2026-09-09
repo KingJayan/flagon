@@ -52,6 +52,7 @@ export default defineConfig({
         '**/shell.spec.ts',
         '**/texture.spec.ts',
         '**/threading.spec.ts',
+        '**/thirdparty.spec.ts',
       ],
       use: { ...devices['Desktop Firefox'] },
     },
