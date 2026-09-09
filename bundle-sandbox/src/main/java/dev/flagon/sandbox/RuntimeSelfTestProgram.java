@@ -55,6 +55,7 @@ public final class RuntimeSelfTestProgram implements Program {
         nioBuffers();
         reflection();
         optedInReflection();
+        classDefinition();
         entryPointArguments(arguments);
 
         console.info("selftest: " + (checks - failures.size()) + "/" + checks + " checks passed");
@@ -300,6 +301,31 @@ public final class RuntimeSelfTestProgram implements Program {
         Platforms.get().console().info("reflection: " + Square.class.getSimpleName() + " reports "
                 + Square.class.getDeclaredMethods().length + " methods and "
                 + Square.class.getDeclaredFields().length + " fields");
+    }
+
+    /**
+     * whether a class can arrive after the compile, which is what a bytecode transformer needs
+     */
+    private void classDefinition() {
+        try {
+            Class.forName("dev.flagon.sandbox.NeverCompiled");
+            check("a class the compile never saw is not found", true, false);
+        } catch (ClassNotFoundException | RuntimeException expected) {
+            check("a class the compile never saw is not found", true, true);
+        }
+
+        boolean canDefine;
+        try {
+            ClassLoader.class.getDeclaredMethod("defineClass", String.class, byte[].class,
+                    int.class, int.class);
+            canDefine = true;
+        } catch (ReflectiveOperationException | RuntimeException absent) {
+            canDefine = false;
+        }
+        check("no class loader defines a class from bytes", false, canDefine);
+
+        Platforms.get().console().info("selftest: bytecode arriving at runtime is "
+                + (canDefine ? "possible" : "impossible") + " here");
     }
 
     /**
