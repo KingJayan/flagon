@@ -20,6 +20,23 @@ import org.teavm.jso.typedarrays.Uint32Array;
  */
 public interface WebGL2 extends JSObject {
 
+    int FRAMEBUFFER = 0x8D40;
+    int RENDERBUFFER = 0x8D41;
+    int COLOR_ATTACHMENT0 = 0x8CE0;
+    int DEPTH_ATTACHMENT = 0x8D00;
+    int STENCIL_ATTACHMENT = 0x8D20;
+    int DEPTH_STENCIL_ATTACHMENT = 0x821A;
+    int FRAMEBUFFER_COMPLETE = 0x8CD5;
+    int FRAMEBUFFER_INCOMPLETE_ATTACHMENT = 0x8CD6;
+    int FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT = 0x8CD7;
+    int FRAMEBUFFER_INCOMPLETE_DIMENSIONS = 0x8CD9;
+    int FRAMEBUFFER_UNSUPPORTED = 0x8CDD;
+    int RGBA8 = 0x8058;
+    int DEPTH_COMPONENT16 = 0x81A5;
+    int DEPTH_COMPONENT24 = 0x81A6;
+    int DEPTH24_STENCIL8 = 0x88F0;
+    int STENCIL_INDEX8 = 0x8D48;
+
     int DEPTH_BUFFER_BIT = 0x0100;
     int STENCIL_BUFFER_BIT = 0x0400;
     int STENCIL_TEST = 0x0B90;
@@ -308,6 +325,28 @@ public interface WebGL2 extends JSObject {
                            int framebufferX, int framebufferY, int width, int height);
 
     void readPixels(int x, int y, int width, int height, int format, int type, Uint8Array pixels);
+
+    JSObject createFramebuffer();
+
+    void bindFramebuffer(int target, JSObject framebuffer);
+
+    void deleteFramebuffer(JSObject framebuffer);
+
+    void framebufferTexture2D(int target, int attachment, int textureTarget, JSObject texture,
+                              int level);
+
+    void framebufferRenderbuffer(int target, int attachment, int renderbufferTarget,
+                                 JSObject renderbuffer);
+
+    int checkFramebufferStatus(int target);
+
+    JSObject createRenderbuffer();
+
+    void bindRenderbuffer(int target, JSObject renderbuffer);
+
+    void deleteRenderbuffer(JSObject renderbuffer);
+
+    void renderbufferStorage(int target, int format, int width, int height);
 
     void finish();
 

@@ -96,6 +96,49 @@ class CoreProfileTest {
     }
 
     @Test
+    void rendersIntoAFramebuffer() {
+        int framebuffer = GL30.glGenFramebuffers();
+        GL30.glBindFramebuffer(GL30.GL_FRAMEBUFFER, framebuffer);
+        assertEquals(framebuffer, GL30.glGetInteger(GL30.GL_FRAMEBUFFER_BINDING));
+        assertTrue(GL30.glIsFramebuffer(framebuffer));
+
+        int texture = device.createTexture();
+        GL30.glFramebufferTexture2D(GL30.GL_FRAMEBUFFER, GL30.GL_COLOR_ATTACHMENT0,
+                GL30.GL_TEXTURE_2D, texture, 0);
+
+        int renderbuffer = GL30.glGenRenderbuffers();
+        GL30.glBindRenderbuffer(GL30.GL_RENDERBUFFER, renderbuffer);
+        GL30.glRenderbufferStorage(GL30.GL_RENDERBUFFER, GL30.GL_DEPTH_COMPONENT24, 64, 64);
+        GL30.glFramebufferRenderbuffer(GL30.GL_FRAMEBUFFER, GL30.GL_DEPTH_ATTACHMENT,
+                GL30.GL_RENDERBUFFER, renderbuffer);
+
+        assertEquals(GL30.GL_FRAMEBUFFER_COMPLETE,
+                GL30.glCheckFramebufferStatus(GL30.GL_FRAMEBUFFER));
+        assertTrue(recorded("framebufferTexture COLOR " + texture + " 0"));
+        assertTrue(recorded("renderbufferStorage DEPTH24 64x64"));
+        assertTrue(recorded("framebufferRenderbuffer DEPTH " + renderbuffer));
+
+        GL30.glDeleteFramebuffers(framebuffer);
+        assertEquals(0, GL30.glGetInteger(GL30.GL_FRAMEBUFFER_BINDING));
+    }
+
+    @Test
+    void reportsAnIncompleteFramebuffer() {
+        device.status = dev.flagon.platform.graphics.FramebufferStatus.INCOMPLETE_ATTACHMENT;
+        GL30.glBindFramebuffer(GL30.GL_FRAMEBUFFER, GL30.glGenFramebuffers());
+        assertEquals(GL30.GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT,
+                GL30.glCheckFramebufferStatus(GL30.GL_FRAMEBUFFER));
+    }
+
+    @Test
+    void refusesASecondColourAttachment() {
+        GL30.glBindFramebuffer(GL30.GL_FRAMEBUFFER, GL30.glGenFramebuffers());
+        assertThrows(UnsupportedOperationException.class,
+                () -> GL30.glFramebufferTexture2D(GL30.GL_FRAMEBUFFER,
+                        GL30.GL_COLOR_ATTACHMENT0 + 1, GL30.GL_TEXTURE_2D, 1, 0));
+    }
+
+    @Test
     void refusesANegativeDivisor() {
         assertThrows(IllegalArgumentException.class, () -> GL33.glVertexAttribDivisor(0, -1));
     }

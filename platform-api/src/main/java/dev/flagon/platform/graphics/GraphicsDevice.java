@@ -10,6 +10,8 @@ public interface GraphicsDevice {
     int NO_VERTEX_ARRAY = 0;
     int NO_TEXTURE = 0;
     int NO_PROGRAM = 0;
+    int NO_FRAMEBUFFER = 0;
+    int NO_RENDERBUFFER = 0;
     int NO_SHADER = 0;
 
     /** a uniform the shader does not use */
@@ -239,6 +241,37 @@ public interface GraphicsDevice {
 
     /** @param divisor how many instances share one value of the attribute; 0 steps per vertex */
     void attributeDivisor(int location, int divisor);
+
+    /**
+      * @return a framebuffer to render into instead of the surface, empty until something is
+      *         attached to it
+      */
+    int createFramebuffer();
+
+    /** {@link #NO_FRAMEBUFFER} binds the surface back. */
+    void bindFramebuffer(int framebuffer);
+
+    void deleteFramebuffer(int framebuffer);
+
+    /** attaches a level of a texture, so a later draw writes into it. */
+    void framebufferTexture(FramebufferAttachment attachment, int texture, int level);
+
+    void framebufferRenderbuffer(FramebufferAttachment attachment, int renderbuffer);
+
+    FramebufferStatus framebufferStatus();
+
+    int boundFramebuffer();
+
+    int createRenderbuffer();
+
+    void bindRenderbuffer(int renderbuffer);
+
+    void deleteRenderbuffer(int renderbuffer);
+
+    void renderbufferStorage(RenderbufferFormat format, int width, int height);
+
+    /** allocates a level of the bound texture without filling it, for use as an attachment. */
+    void textureStorage(int level, int width, int height);
 
     /** reads a rectangle of the framebuffer as rgba bytes, the first row being the bottom one. */
     byte[] readPixels(int x, int y, int width, int height);
