@@ -7,12 +7,15 @@ import dev.flagon.platform.graphics.BufferTarget;
 import dev.flagon.platform.graphics.BufferUsage;
 import dev.flagon.platform.graphics.CompareFunc;
 import dev.flagon.platform.graphics.CullFace;
+import dev.flagon.platform.graphics.FramebufferAttachment;
+import dev.flagon.platform.graphics.FramebufferStatus;
 import dev.flagon.platform.graphics.GraphicsDevice;
 import dev.flagon.platform.graphics.GraphicsError;
 import dev.flagon.platform.graphics.GraphicsInfo;
 import dev.flagon.platform.graphics.GraphicsLimit;
 import dev.flagon.platform.graphics.IndexType;
 import dev.flagon.platform.graphics.Primitive;
+import dev.flagon.platform.graphics.RenderbufferFormat;
 import dev.flagon.platform.graphics.ShaderStage;
 import dev.flagon.platform.graphics.StencilOp;
 import dev.flagon.platform.graphics.Winding;
@@ -461,6 +464,79 @@ final class RecordingGraphicsDevice implements GraphicsDevice {
                                  boolean normalized, int strideInBytes, int offsetInBytes) {
         calls.add("attributePointer " + location + " " + components + " " + type + " "
                 + normalized + " " + strideInBytes + " " + offsetInBytes);
+    }
+
+    private int nextFramebuffer = 1;
+    private int nextRenderbuffer = 1;
+    private int boundFramebuffer = NO_FRAMEBUFFER;
+    FramebufferStatus status = FramebufferStatus.COMPLETE;
+
+    @Override
+    public int createFramebuffer() {
+        int framebuffer = nextFramebuffer++;
+        calls.add("createFramebuffer " + framebuffer);
+        return framebuffer;
+    }
+
+    @Override
+    public void bindFramebuffer(int framebuffer) {
+        boundFramebuffer = framebuffer;
+        calls.add("bindFramebuffer " + framebuffer);
+    }
+
+    @Override
+    public int boundFramebuffer() {
+        return boundFramebuffer;
+    }
+
+    @Override
+    public void deleteFramebuffer(int framebuffer) {
+        if (boundFramebuffer == framebuffer) {
+            boundFramebuffer = NO_FRAMEBUFFER;
+        }
+        calls.add("deleteFramebuffer " + framebuffer);
+    }
+
+    @Override
+    public void framebufferTexture(FramebufferAttachment attachment, int texture, int level) {
+        calls.add("framebufferTexture " + attachment + " " + texture + " " + level);
+    }
+
+    @Override
+    public void framebufferRenderbuffer(FramebufferAttachment attachment, int renderbuffer) {
+        calls.add("framebufferRenderbuffer " + attachment + " " + renderbuffer);
+    }
+
+    @Override
+    public FramebufferStatus framebufferStatus() {
+        return status;
+    }
+
+    @Override
+    public int createRenderbuffer() {
+        int renderbuffer = nextRenderbuffer++;
+        calls.add("createRenderbuffer " + renderbuffer);
+        return renderbuffer;
+    }
+
+    @Override
+    public void bindRenderbuffer(int renderbuffer) {
+        calls.add("bindRenderbuffer " + renderbuffer);
+    }
+
+    @Override
+    public void deleteRenderbuffer(int renderbuffer) {
+        calls.add("deleteRenderbuffer " + renderbuffer);
+    }
+
+    @Override
+    public void renderbufferStorage(RenderbufferFormat format, int width, int height) {
+        calls.add("renderbufferStorage " + format + " " + width + "x" + height);
+    }
+
+    @Override
+    public void textureStorage(int level, int width, int height) {
+        calls.add("textureStorage " + level + " " + width + "x" + height);
     }
 
     @Override

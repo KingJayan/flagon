@@ -7,12 +7,15 @@ import dev.flagon.platform.graphics.BufferTarget;
 import dev.flagon.platform.graphics.BufferUsage;
 import dev.flagon.platform.graphics.CompareFunc;
 import dev.flagon.platform.graphics.CullFace;
+import dev.flagon.platform.graphics.FramebufferAttachment;
+import dev.flagon.platform.graphics.FramebufferStatus;
 import dev.flagon.platform.graphics.GraphicsDevice;
 import dev.flagon.platform.graphics.GraphicsError;
 import dev.flagon.platform.graphics.GraphicsInfo;
 import dev.flagon.platform.graphics.GraphicsLimit;
 import dev.flagon.platform.graphics.IndexType;
 import dev.flagon.platform.graphics.Primitive;
+import dev.flagon.platform.graphics.RenderbufferFormat;
 import dev.flagon.platform.graphics.ShaderException;
 import dev.flagon.platform.graphics.ShaderStage;
 import dev.flagon.platform.graphics.StencilOp;
@@ -59,6 +62,7 @@ public final class WebGLGraphicsDevice implements GraphicsDevice {
     private int activeUnit = -1;
 
     private int boundArrayBuffer = NO_BUFFER;
+    private int boundFramebuffer = NO_FRAMEBUFFER;
 
     // the rest of the render state, remembered for the same reason the capabilities are: a
     // program sets these around every batch, almost always to what they already were. the
@@ -982,6 +986,112 @@ public final class WebGLGraphicsDevice implements GraphicsDevice {
     @Override
     public void flush() {
         gl.flush();
+    }
+
+    @Override
+    public int createFramebuffer() {
+        return store(gl.createFramebuffer());
+    }
+
+    @Override
+    public void bindFramebuffer(int framebuffer) {
+        gl.bindFramebuffer(WebGL2.FRAMEBUFFER, framebuffer == NO_FRAMEBUFFER ? null
+                : lookup(framebuffer, "framebuffer"));
+        boundFramebuffer = framebuffer;
+    }
+
+    @Override
+    public int boundFramebuffer() {
+        return boundFramebuffer;
+    }
+
+    @Override
+    public void deleteFramebuffer(int framebuffer) {
+        if (framebuffer == NO_FRAMEBUFFER) {
+            return;
+        }
+        // gl leaves the surface bound when the framebuffer bound to it goes away
+        if (boundFramebuffer == framebuffer) {
+            bindFramebuffer(NO_FRAMEBUFFER);
+        }
+        gl.deleteFramebuffer(lookup(framebuffer, "framebuffer"));
+        handles.remove(framebuffer);
+    }
+
+    @Override
+    public void framebufferTexture(FramebufferAttachment attachment, int texture, int level) {
+        gl.framebufferTexture2D(WebGL2.FRAMEBUFFER, attachmentConstant(attachment),
+                WebGL2.TEXTURE_2D, texture == NO_TEXTURE ? null : lookup(texture, "texture"),
+                level);
+    }
+
+    @Override
+    public void framebufferRenderbuffer(FramebufferAttachment attachment, int renderbuffer) {
+        gl.framebufferRenderbuffer(WebGL2.FRAMEBUFFER, attachmentConstant(attachment),
+                WebGL2.RENDERBUFFER, renderbuffer == NO_RENDERBUFFER ? null
+                        : lookup(renderbuffer, "renderbuffer"));
+    }
+
+    @Override
+    public FramebufferStatus framebufferStatus() {
+        return switch (gl.checkFramebufferStatus(WebGL2.FRAMEBUFFER)) {
+            case WebGL2.FRAMEBUFFER_COMPLETE -> FramebufferStatus.COMPLETE;
+            case WebGL2.FRAMEBUFFER_INCOMPLETE_ATTACHMENT ->
+                    FramebufferStatus.INCOMPLETE_ATTACHMENT;
+            case WebGL2.FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT ->
+                    FramebufferStatus.INCOMPLETE_MISSING_ATTACHMENT;
+            case WebGL2.FRAMEBUFFER_INCOMPLETE_DIMENSIONS ->
+                    FramebufferStatus.INCOMPLETE_DIMENSIONS;
+            case WebGL2.FRAMEBUFFER_UNSUPPORTED -> FramebufferStatus.UNSUPPORTED;
+            default -> FramebufferStatus.UNKNOWN;
+        };
+    }
+
+    @Override
+    public int createRenderbuffer() {
+        return store(gl.createRenderbuffer());
+    }
+
+    @Override
+    public void bindRenderbuffer(int renderbuffer) {
+        gl.bindRenderbuffer(WebGL2.RENDERBUFFER, renderbuffer == NO_RENDERBUFFER ? null
+                : lookup(renderbuffer, "renderbuffer"));
+    }
+
+    @Override
+    public void deleteRenderbuffer(int renderbuffer) {
+        if (renderbuffer == NO_RENDERBUFFER) {
+            return;
+        }
+        gl.deleteRenderbuffer(lookup(renderbuffer, "renderbuffer"));
+        handles.remove(renderbuffer);
+    }
+
+    @Override
+    public void renderbufferStorage(RenderbufferFormat format, int width, int height) {
+        gl.renderbufferStorage(WebGL2.RENDERBUFFER, switch (format) {
+            case RGBA8 -> WebGL2.RGBA8;
+            case DEPTH16 -> WebGL2.DEPTH_COMPONENT16;
+            case DEPTH24 -> WebGL2.DEPTH_COMPONENT24;
+            case DEPTH24_STENCIL8 -> WebGL2.DEPTH24_STENCIL8;
+            case STENCIL8 -> WebGL2.STENCIL_INDEX8;
+        }, width, height);
+    }
+
+    @Override
+    public void textureStorage(int level, int width, int height) {
+        gl.pixelStorei(WebGL2.UNPACK_PREMULTIPLY_ALPHA_WEBGL, 0);
+        gl.texImage2D(WebGL2.TEXTURE_2D, level, WebGL2.RGBA, width, height, 0,
+                WebGL2.RGBA, WebGL2.UNSIGNED_BYTE, null);
+    }
+
+    private static int attachmentConstant(FramebufferAttachment attachment) {
+        return switch (attachment) {
+            case COLOR -> WebGL2.COLOR_ATTACHMENT0;
+            case DEPTH -> WebGL2.DEPTH_ATTACHMENT;
+            case STENCIL -> WebGL2.STENCIL_ATTACHMENT;
+            case DEPTH_STENCIL -> WebGL2.DEPTH_STENCIL_ATTACHMENT;
+        };
     }
 
     private static Uint8Array pixels(int width, int height, byte[] rgba) {
