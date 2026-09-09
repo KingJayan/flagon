@@ -28,7 +28,6 @@ public final class ALState {
     private final AudioDevice device;
     private final ConsoleSink console;
     private int error = NO_ERROR;
-    private boolean warnedAboutDoppler;
 
     private ALState(AudioDevice device, ConsoleSink console) {
         this.device = device;
@@ -133,14 +132,6 @@ public final class ALState {
 
     public float maxDistance(int source) {
         return device.maxDistance(source);
-    }
-
-    public void warnAboutDoppler() {
-        if (warnedAboutDoppler || console == null) {
-            return;
-        }
-        warnedAboutDoppler = true;
-        console.warn("velocities are recorded but produce no doppler shift; web audio dropped it");
     }
 
 }

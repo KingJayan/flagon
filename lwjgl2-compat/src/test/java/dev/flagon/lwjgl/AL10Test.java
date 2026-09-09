@@ -326,6 +326,58 @@ class AL10Test {
     }
 
     @Test
+    void aVelocityAlongTheLineShiftsTheSource() {
+        int source = AL10.alGenSources();
+        AL10.alSource3f(source, AL10.AL_POSITION, 0.0f, 0.0f, 0.0f);
+        AL10.alListener3f(AL10.AL_POSITION, 0.0f, 0.0f, 10.0f);
+
+        assertEquals(1.0f, device.dopplerShift(source), 1.0e-6f);
+
+        AL10.alSource3f(source, AL10.AL_VELOCITY, 0.0f, 0.0f, 30.0f);
+        assertTrue(device.dopplerShift(source) > 1.0f);
+
+        AL10.alSource3f(source, AL10.AL_VELOCITY, 0.0f, 0.0f, -30.0f);
+        assertTrue(device.dopplerShift(source) < 1.0f);
+        assertEquals(AL10.AL_NO_ERROR, AL10.alGetError());
+    }
+
+    @Test
+    void theDopplerFactorAndSpeedOfSoundReachTheDevice() {
+        AL10.alDopplerFactor(2.0f);
+        assertEquals(2.0f, device.dopplerFactor());
+        assertEquals(2.0f, AL10.alGetFloat(AL10.AL_DOPPLER_FACTOR));
+
+        AL10.alSpeedOfSound(400.0f);
+        assertEquals(400.0f, device.speedOfSound());
+        assertEquals(400.0f, AL10.alGetFloat(AL10.AL_SPEED_OF_SOUND));
+
+        // al 1.0 named the same speed the other way round
+        AL10.alDopplerVelocity(320.0f);
+        assertEquals(320.0f, device.speedOfSound());
+        assertEquals(AL10.AL_NO_ERROR, AL10.alGetError());
+    }
+
+    @Test
+    void aZeroFactorLeavesTheSourceUnshifted() {
+        int source = AL10.alGenSources();
+        AL10.alListener3f(AL10.AL_POSITION, 0.0f, 0.0f, 10.0f);
+        AL10.alSource3f(source, AL10.AL_VELOCITY, 0.0f, 0.0f, 30.0f);
+
+        AL10.alDopplerFactor(0.0f);
+        assertEquals(1.0f, device.dopplerShift(source), 1.0e-6f);
+    }
+
+    @Test
+    void aNegativeFactorOrSpeedIsAnInvalidValue() {
+        AL10.alDopplerFactor(-1.0f);
+        assertEquals(AL10.AL_INVALID_VALUE, AL10.alGetError());
+        assertEquals(1.0f, device.dopplerFactor());
+
+        AL10.alSpeedOfSound(0.0f);
+        assertEquals(AL10.AL_INVALID_VALUE, AL10.alGetError());
+    }
+
+    @Test
     void aNumberThatNamesNoDistanceModelIsAnInvalidEnum() {
         AL10.alDistanceModel(0xD00F);
 
