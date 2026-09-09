@@ -114,6 +114,21 @@ such a jar builds its world with, and far short of keeping it whole.
 does, and the `selftest` program asserts both in a real bundle so a teavm upgrade cannot change it
 quietly.
 
+## Bytecode at runtime
+
+A mod loader built on Mixin transforms classes as they load: it reads the bytes, rewrites them with
+ASM and hands them to a class loader to define. None of that survives here, and the reason is not a
+missing feature but the shape of the target. There is no bytecode at runtime to rewrite -- the
+program was compiled to JavaScript or WebAssembly before it shipped -- and the class loader the
+runtime does expose has no `defineClass`, so there is nowhere to put a class that arrives late. The
+`selftest` program asserts both, in a real bundle: a class the compile never saw is not found, and
+no class loader can define one from bytes.
+
+That makes runtime transform a no-go, and it puts Fabric and Forge, whose loaders are built on it,
+out of reach at runtime. What is in reach is applying the same transform before the compile: mixins
+merged into the jar ahead of time reach TeaVM as ordinary classes, and the reflection above is
+already enough to load them. Until such a build step exists, this is a vanilla-only runtime.
+
 ## Graphics
 
 The compatibility layer rebuilds the parts of OpenGL 1.x that WebGL2 does not provide:

@@ -100,6 +100,17 @@ a proxy is a class the compiler has to write rather than members it has to keep:
 <flagon.reflect.proxies>com.example.Listener*</flagon.reflect.proxies>
 ```
 
+### Mixin and runtime bytecode transform
+
+Refused, and not by choice: a bundle is JavaScript or WebAssembly by the time it runs, so there is
+no bytecode to rewrite, and the class loader has no `defineClass` to put a rewritten class into. A
+class the compile never saw is not found. Fabric and Forge are built on exactly that, so a mod
+loader cannot run here.
+
+Applying mixins before the compile is a different question and stays open: merged into the jar
+ahead of time they reach the compiler as ordinary classes, and the reflection above already loads
+them. Until such a build step exists, treat the runtime as vanilla-only.
+
 ### A jar nobody wrote
 
 A jar you did not write cannot be annotated, and an obfuscated one cannot be globbed either: its

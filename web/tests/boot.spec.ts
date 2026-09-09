@@ -62,6 +62,15 @@ for (const backend of BACKENDS) {
       await expect(log).not.toContainText('selftest failure');
     });
 
+    test('cannot take a class that arrives after the compile', async ({ page }) => {
+      await open(page, backend, 'program=selftest');
+
+      const log = page.getByTestId('log');
+      await expect(page.getByTestId('state')).toHaveText('exited', { timeout: 30_000 });
+      await expect(log).toContainText('selftest: bytecode arriving at runtime is impossible here');
+      await expect(log).not.toContainText('selftest failure');
+    });
+
     test('keeps the constructors of a class the build listed', async ({ page }) => {
       await open(page, backend, 'program=selftest');
 
