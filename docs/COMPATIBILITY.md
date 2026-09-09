@@ -173,7 +173,8 @@ fake devices.
 | `Mouse` events, buttons, position, movement, wheel, grabbing | works |
 | `Mouse.setCursorPosition` | no-op, see below |
 | `BufferUtils` allocation, `MemoryUtil` text encoding | works |
-| `MemoryUtil.getAddress` | refused, see below |
+| `org.lwjgl.MemoryUtil.getAddress` (lwjgl 2) | refused, see below |
+| `org.lwjgl.system.MemoryUtil`, `MemoryStack`, `PointerBuffer` (lwjgl 3) | works, see below |
 | Client arrays | works |
 | `glDrawArrays`, `glDrawElements` | works, except indexed `GL_QUADS` |
 | `GL15` buffer objects | works |
@@ -471,11 +472,18 @@ grabbed cursor.
 
 ### Buffer addresses
 
-`MemoryUtil.getAddress()` and related methods throw
-`UnsupportedCapabilityException`.
+LWJGL 2's `org.lwjgl.MemoryUtil.getAddress()` throws `UnsupportedCapabilityException`. Nothing in
+LWJGL 2 needs the number back, so refusing beats inventing one.
 
-Buffers live in the managed heap and cannot be exposed as native pointers. `BufferUtils`
-continues to allocate direct, native-endian buffers so typed views behave as desktop code expects.
+LWJGL 3 is built on addresses, so `org.lwjgl.system.MemoryUtil` hands them out. They are not
+pointers: the high half names a slot in a table of registered buffers and the low half a byte
+offset into it. Adding to one walks the buffer, `memByteBuffer` turns one back into the bytes it
+came from, and an address this build never handed out is refused rather than followed. `MemoryStack`
+carves its frames out of one arena and forgets their addresses when the frame closes.
+
+Nothing outside the program can read an address, so a jar that passes one to real native code has
+nowhere to send it. `BufferUtils` and `memAlloc` still allocate direct, native-endian buffers so
+typed views behave as desktop code expects.
 
 ### Frame timing
 

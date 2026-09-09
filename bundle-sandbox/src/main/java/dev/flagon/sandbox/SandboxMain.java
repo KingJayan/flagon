@@ -26,6 +26,7 @@ public final class SandboxMain {
                 .register(new HelloProgram())
                 .register(new RuntimeSelfTestProgram())
                 .register(new LwjglDemoProgram())
+                .register(new Lwjgl3DemoProgram())
                 .register(new InputDemoProgram())
                 .register(new DisplayDemoProgram())
                 .register(new VertexArrayDemoProgram())
