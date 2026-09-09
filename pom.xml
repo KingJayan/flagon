@@ -21,6 +21,7 @@
     <module>toolchain/app-entry</module>
     <module>lwjgl-core</module>
     <module>lwjgl2-compat</module>
+    <module>lwjgl3-compat</module>
     <module>bundle-sandbox</module>
     <module>examples/app</module>
     <module>examples/bundle</module>
@@ -95,6 +96,11 @@
       <dependency>
         <groupId>dev.flagon</groupId>
         <artifactId>lwjgl2-compat</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>dev.flagon</groupId>
+        <artifactId>lwjgl3-compat</artifactId>
         <version>${project.version}</version>
       </dependency>
       <dependency>

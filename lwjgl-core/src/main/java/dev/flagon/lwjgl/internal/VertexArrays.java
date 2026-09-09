@@ -1,9 +1,5 @@
 package dev.flagon.lwjgl.internal;
 
-/**
- the client arrays the fixed-function shader has attributes for: a position, a color, and one
- texture coordinate per texture unit
- */
 public final class VertexArrays {
 
     public static final int UNITS = 4;
@@ -54,7 +50,6 @@ public final class VertexArrays {
         return unit;
     }
 
-    /** @return true when geometry can be drawn at all; gl draws nothing without positions */
     public boolean canDraw() {
         return position().isEnabled() && position().isBound();
     }

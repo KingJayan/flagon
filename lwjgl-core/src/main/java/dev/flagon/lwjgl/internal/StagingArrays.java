@@ -19,7 +19,6 @@ public final class StagingArrays {
         this.bytes = new byte[slots][];
     }
 
-    /** binds the array's storage and describes the slot's layout over it. */
     public void bind(int slot, ClientArray array) {
         if (array.buffer() != GraphicsDevice.NO_BUFFER) {
             device.bindBuffer(BufferTarget.ARRAY, array.buffer());

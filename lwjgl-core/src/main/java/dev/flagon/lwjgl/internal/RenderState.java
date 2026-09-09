@@ -1,7 +1,7 @@
 package dev.flagon.lwjgl.internal;
 
 /**
- everything a draw call needs to know about the gl context that is not the geometry itself
+ everything a draw call needs to know
  */
 public interface RenderState {
 
@@ -11,7 +11,6 @@ public interface RenderState {
 
     boolean isTextureEnabled(int unit);
 
-    /** the texture environment mode: 0 modulate, 1 replace, 2 add. */
     int textureEnv(int unit);
 
     boolean isAlphaTestEnabled();
