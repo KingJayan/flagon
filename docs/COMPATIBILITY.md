@@ -213,8 +213,8 @@ fake devices.
 | `GL14` `glPointParameter` `GL_POINT_SIZE_MIN`/`MAX` | works, clamps the point size |
 | `GL14` `glPointParameter` fade and distance attenuation | refused |
 | `GL20` shader/program objects, uniforms and generic attributes | works |
-| Desktop GLSL 1.10 / 1.20 | works, translated |
-| GLSL 1.30+, fixed-function GLSL built-ins | refused |
+| Desktop GLSL 1.10 to 3.30 | works, translated |
+| GLSL above 3.30, fixed-function GLSL built-ins | refused |
 | `glBegin`/`glEnd` with a bound program | refused |
 | `AL` / `AL10` buffers, sources and listener | works |
 | `alGetError` latching | works |
@@ -331,13 +331,25 @@ produce incorrect rendering.
 
 ### Desktop GLSL
 
-Desktop GLSL 1.10 and 1.20 are translated into GLSL ES where possible. Version directives are
-removed, equivalent language features are preserved, and fragment shaders are given a default
-precision qualifier when required.
+Desktop GLSL 1.10 and 1.20 become GLSL ES 1.00: the version directive is removed, equivalent
+language features are preserved, and fragment shaders are given a default precision qualifier
+when required.
 
-GLSL 1.30+ and fixed-function GLSL built-ins (`gl_Vertex`,
-`gl_ModelViewProjectionMatrix`, `ftransform()`, etc.) are refused. They depend on functionality
-that does not exist in GL ES.
+GLSL 1.30 to 3.30 — the core-profile versions, 1.50 among them — become GLSL ES 3.00, which is
+what WebGL2 compiles:
+
+| Written | Compiled |
+|---------|----------|
+| `#version 150 core` | `#version 300 es` |
+| `texture2D`, `texture2DLod`, `texture2DProj`, `textureCube`, `texture3D`, `shadow2D` | `texture`, `textureLod`, `textureProj` |
+| `gl_FragColor` | a declared `out vec4 flagon_FragColor` |
+| a fragment shader with no `precision float` | `precision highp float;` |
+| `gl_FragData` | refused; the page draws to one colour buffer |
+
+`in` and `out` are already what those versions say, so they are left alone, and an `#extension`
+directive keeps its place ahead of the injected declarations. GLSL above 3.30 and the
+fixed-function built-ins (`gl_Vertex`, `gl_ModelViewProjectionMatrix`, `ftransform()`) are
+refused: they depend on state GL ES does not have.
 
 ### Vertex attributes
 

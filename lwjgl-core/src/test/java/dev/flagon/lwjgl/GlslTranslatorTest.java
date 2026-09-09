@@ -64,19 +64,6 @@ class GlslTranslatorTest {
     }
 
     @Test
-    void glsl130AndAboveIsRejectedByName() {
-        UnsupportedOperationException thrown = assertThrows(UnsupportedOperationException.class,
-                () -> GlslTranslator.toGlslEs("""
-                        #version 330 core
-                        in vec3 position;
-                        void main() { gl_Position = vec4(position, 1.0); }
-                        """, ShaderStage.VERTEX));
-
-        assertTrue(thrown.getMessage().contains("330"), thrown.getMessage());
-        assertTrue(thrown.getMessage().contains("300 es"), thrown.getMessage());
-    }
-
-    @Test
     void fixedFunctionBuiltinsAreRejectedByName() {
         UnsupportedOperationException thrown = assertThrows(UnsupportedOperationException.class,
                 () -> GlslTranslator.toGlslEs("""
@@ -176,6 +163,85 @@ class GlslTranslatorTest {
                         "void main() { gl_Position = gl_Vertex / 2.0; }", ShaderStage.VERTEX));
 
         assertTrue(thrown.getMessage().contains("gl_Vertex"), thrown.getMessage());
+    }
+
+    @Test
+    void aCoreProfileVertexShaderBecomesEsThreeHundred() {
+        String translated = GlslTranslator.toGlslEs("""
+                #version 150 core
+                in vec3 position;
+                out vec2 uv;
+                void main() { gl_Position = vec4(position, 1.0); }
+                """, ShaderStage.VERTEX);
+
+        assertTrue(translated.startsWith("#version 300 es\n"), translated);
+        assertFalse(translated.contains("150"), translated);
+        assertTrue(translated.contains("in vec3 position;"), translated);
+        assertFalse(translated.contains("precision"), translated);
+    }
+
+    @Test
+    void aCoreProfileFragmentShaderGetsAnOutputAndAPrecision() {
+        String translated = GlslTranslator.toGlslEs("""
+                #version 150 core
+                uniform sampler2D atlas;
+                in vec2 uv;
+                void main() { gl_FragColor = texture2D(atlas, uv); }
+                """, ShaderStage.FRAGMENT);
+
+        assertTrue(translated.startsWith("#version 300 es\nprecision highp float;\n"), translated);
+        assertTrue(translated.contains("out vec4 flagon_FragColor;"), translated);
+        assertTrue(translated.contains("flagon_FragColor = texture(atlas, uv);"), translated);
+        assertFalse(translated.contains("gl_FragColor"), translated);
+        assertFalse(translated.contains("texture2D("), translated);
+    }
+
+    @Test
+    void aShaderThatDeclaresItsOwnOutputKeepsIt() {
+        String translated = GlslTranslator.toGlslEs("""
+                #version 150 core
+                precision mediump float;
+                out vec4 colour;
+                void main() { colour = vec4(1.0); }
+                """, ShaderStage.FRAGMENT);
+
+        assertFalse(translated.contains("flagon_FragColor"), translated);
+        assertFalse(translated.contains("precision highp float;"), translated);
+    }
+
+    @Test
+    void anExtensionDirectiveStaysAheadOfTheInjectedDeclarations() {
+        String translated = GlslTranslator.toGlslEs("""
+                #version 150 core
+                #extension GL_ARB_explicit_attrib_location : require
+                in vec2 uv;
+                void main() { gl_FragColor = vec4(uv, 0.0, 1.0); }
+                """, ShaderStage.FRAGMENT);
+
+        int extension = translated.indexOf("#extension");
+        assertTrue(extension >= 0, translated);
+        assertTrue(extension < translated.indexOf("precision highp float;"), translated);
+        assertTrue(extension < translated.indexOf("out vec4 flagon_FragColor;"), translated);
+    }
+
+    @Test
+    void gl330IsTranslatedAndAnythingAboveIsRefused() {
+        assertTrue(GlslTranslator.toGlslEs("#version 330 core\nvoid main() {}\n",
+                ShaderStage.VERTEX).startsWith("#version 300 es"));
+
+        UnsupportedOperationException thrown = assertThrows(UnsupportedOperationException.class,
+                () -> GlslTranslator.toGlslEs("#version 400 core\nvoid main() {}\n",
+                        ShaderStage.VERTEX));
+        assertTrue(thrown.getMessage().contains("400"), thrown.getMessage());
+    }
+
+    @Test
+    void multipleFragmentOutputsAreRefused() {
+        assertThrows(UnsupportedOperationException.class,
+                () -> GlslTranslator.toGlslEs("""
+                        #version 150 core
+                        void main() { gl_FragData[0] = vec4(1.0); }
+                        """, ShaderStage.FRAGMENT));
     }
 
     @Test
