@@ -31,7 +31,95 @@ public final class GlslTranslator {
             "ftransform",
     };
 
+    /** the lowest desktop version written against in/out rather than attribute/varying */
+    private static final int LOWEST_CORE = 130;
+    private static final int HIGHEST_CORE = 330;
+
+    private static final String FRAGMENT_OUT = "flagon_FragColor";
+
+    /** sampler calls the core profile replaced with the overloaded texture(). */
+    private static final String[][] SAMPLER_CALLS = {
+            {"texture2DProjLod", "textureProjLod"},
+            {"texture2DLodEXT", "textureLod"},
+            {"texture2DProj", "textureProj"},
+            {"texture2DLod", "textureLod"},
+            {"textureCubeLod", "textureLod"},
+            {"texture3DLod", "textureLod"},
+            {"texture3DProj", "textureProj"},
+            {"shadow2DProj", "textureProj"},
+            {"texture2D", "texture"},
+            {"textureCube", "texture"},
+            {"texture3D", "texture"},
+            {"shadow2D", "texture"},
+    };
+
     private GlslTranslator() {
+    }
+
+    /**
+     * glsl 1.30 to 3.30 already say in and out, so the version line, the sampler calls and the
+     * fragment output are what separate them from glsl es 3.00.
+     */
+    private static String toGlslEs300(String source, int directive, int end, ShaderStage stage) {
+        String body = renameSamplerCalls(source.substring(0, directive) + source.substring(end));
+        StringBuilder injected = new StringBuilder();
+        if (stage == ShaderStage.FRAGMENT) {
+            if (!declaresFloatPrecision(withoutComments(body))) {
+                injected.append("precision highp float;\n");
+            }
+            injected.append(fragmentOutput(body));
+            body = replaceWord(body, "gl_FragColor", FRAGMENT_OUT);
+        }
+        // an #extension directive has to stay ahead of any declaration
+        int after = afterExtensions(body);
+        return "#version 300 es\n" + body.substring(0, after) + injected + body.substring(after);
+    }
+
+    private static int afterExtensions(String body) {
+        String code = withoutComments(body);
+        int after = 0;
+        int at = 0;
+        while ((at = code.indexOf("#extension", at)) >= 0) {
+            int end = lineEnd(body, at);
+            after = end < body.length() ? end + 1 : end;
+            at = end;
+        }
+        return after;
+    }
+
+    private static String renameSamplerCalls(String source) {
+        String renamed = source;
+        for (String[] call : SAMPLER_CALLS) {
+            renamed = replaceWord(renamed, call[0], call[1]);
+        }
+        return renamed;
+    }
+
+    /**
+     * es 3.00 dropped gl_FragColor, so the shader gets an output of its own. a shader that already
+     * declares one is left alone.
+     */
+    private static String fragmentOutput(String source) {
+        String code = withoutComments(source);
+        if (indexOfWord(code, "gl_FragData", 0) >= 0) {
+            throw new UnsupportedOperationException(
+                    "shader writes gl_FragData, which es 3.00 dropped and webgl2 draws to one "
+                            + "colour buffer here. declare an out variable instead");
+        }
+        if (indexOfWord(code, "gl_FragColor", 0) < 0) {
+            return "";
+        }
+        return "out vec4 " + FRAGMENT_OUT + ";\n";
+    }
+
+    private static String replaceWord(String source, String word, String replacement) {
+        StringBuilder rewritten = new StringBuilder(source);
+        int at = indexOfWord(rewritten.toString(), word, 0);
+        while (at >= 0) {
+            rewritten.replace(at, at + word.length(), replacement);
+            at = indexOfWord(rewritten.toString(), word, at + replacement.length());
+        }
+        return rewritten.toString();
     }
 
     public static String toGlslEs(String source, ShaderStage stage) {
@@ -53,11 +141,14 @@ public final class GlslTranslator {
         }
 
         int number = versionNumber(version);
-        if (number > 120) {
+        if (number > HIGHEST_CORE) {
             throw new UnsupportedOperationException(
                     "shader asks for desktop GLSL " + version + "; webgl2 compiles GLSL ES 1.00 "
-                            + "and 3.00 only. GLSL 1.10 and 1.20 are accepted as ES 1.00, so port "
-                            + "the shader to '#version 300 es' or write it against 1.20");
+                            + "and 3.00 only. GLSL 1.10 to 3.30 are translated, so port the shader "
+                            + "to '#version 300 es' or write it against one of those");
+        }
+        if (number >= LOWEST_CORE) {
+            return toGlslEs300(source, directive, end, stage);
         }
         // 1.10 and 1.20 are read as es 1.00, which is what an absent directive already means
         String stripped = source.substring(0, directive) + source.substring(end);
