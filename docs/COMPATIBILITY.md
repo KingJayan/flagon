@@ -233,7 +233,7 @@ fake devices.
 | Distance attenuation | works |
 | Distance models (`AL_NONE` through `AL_EXPONENT_DISTANCE_CLAMPED`) | works, always clamped |
 | Cone angles, min/max gain | refused |
-| Doppler (`AL_VELOCITY`) | recorded, no effect |
+| Doppler (`AL_VELOCITY`, `alDopplerFactor`, `alSpeedOfSound`) | works, computed here |
 | Streaming (`alSourceQueueBuffers`) | works |
 | `ALC10` device and context | works |
 | `WaveData` | works, uncompressed pcm |
@@ -399,9 +399,13 @@ rolloff of zero; the source keeps the rolloff it was given.
 The panner always clamps distance between the reference and maximum distances, so the unclamped
 models behave as their clamped counterparts.
 
-Velocity is recorded for compatibility but produces no Doppler effect because Web Audio removed
-that functionality. `AL_SOURCE_RELATIVE` is emulated by offsetting the source relative to the
-listener.
+Web Audio removed its own Doppler, so the shift is computed here instead: both velocities are
+measured along the line from the source to the listener, each clamped to the speed sound travels,
+and the ratio OpenAL specifies multiplies the source's playback rate. `alDopplerFactor(0)`
+switches it off and `alSpeedOfSound` (or `alDopplerVelocity`, which names the same speed) sets what
+it is measured against. `AL_PITCH` still reads back what the caller set, not the shifted rate.
+
+`AL_SOURCE_RELATIVE` is emulated by offsetting the source relative to the listener.
 
 ### Networking
 

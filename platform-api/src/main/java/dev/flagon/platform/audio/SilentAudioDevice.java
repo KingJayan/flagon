@@ -47,6 +47,8 @@ public final class SilentAudioDevice implements AudioDevice {
     private final float[] listenerVelocity = new float[3];
     private final float[] listenerOrientation = {0.0f, 0.0f, -1.0f, 0.0f, 1.0f, 0.0f};
     private DistanceModel distanceModel = DistanceModel.INVERSE_CLAMPED;
+    private float dopplerFactor = Doppler.DEFAULT_FACTOR;
+    private float speedOfSound = Doppler.DEFAULT_SPEED_OF_SOUND;
     private float listenerGain = 1.0f;
     private int nextName = 1;
 
@@ -313,6 +315,39 @@ public final class SilentAudioDevice implements AudioDevice {
     @Override
     public DistanceModel distanceModel() {
         return distanceModel;
+    }
+
+    @Override
+    public void setDopplerFactor(float factor) {
+        if (factor < 0.0f) {
+            throw new AudioException("doppler factor must not be negative: " + factor);
+        }
+        dopplerFactor = factor;
+    }
+
+    @Override
+    public float dopplerFactor() {
+        return dopplerFactor;
+    }
+
+    @Override
+    public void setSpeedOfSound(float speed) {
+        if (speed <= 0.0f) {
+            throw new AudioException("speed of sound must be positive: " + speed);
+        }
+        speedOfSound = speed;
+    }
+
+    @Override
+    public float speedOfSound() {
+        return speedOfSound;
+    }
+
+    @Override
+    public float dopplerShift(int source) {
+        Source held = source(source);
+        return Doppler.shift(held.position, held.velocity, listenerPosition, listenerVelocity,
+                dopplerFactor, speedOfSound);
     }
 
     @Override
