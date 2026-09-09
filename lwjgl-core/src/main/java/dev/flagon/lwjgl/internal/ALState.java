@@ -5,10 +5,7 @@ import dev.flagon.platform.audio.AudioDevice;
 import dev.flagon.platform.audio.DistanceModel;
 
 /**
- * the context state openal keeps internally, and the error it hands back one call later.
- *
- * <p>a singleton because openal's api is one; {@link #attach} is called by {@code AL.create()}
- * and {@link #detach} by {@code AL.destroy()}.
+ openal context
  */
 public final class ALState {
 
@@ -69,10 +66,6 @@ public final class ALState {
         return device;
     }
 
-    /**
-     * latches an error the way openal does: the first one is kept until it is read, because a
-     * caller that checks once after a run of calls expects to hear about the first failure.
-     */
     public void fail(int code) {
         if (error == NO_ERROR) {
             error = code;
@@ -97,7 +90,6 @@ public final class ALState {
         };
     }
 
-    /** @return false for a number that names no model, which the caller latches as an error */
     public boolean setDistanceModel(int model) {
         DistanceModel wanted = switch (model) {
             case DISTANCE_NONE -> DistanceModel.NONE;
@@ -143,10 +135,6 @@ public final class ALState {
         return device.maxDistance(source);
     }
 
-    /**
-     * doppler shift left openal's successor: web audio removed velocity from its panner and
-     * listener. velocities are still recorded, so a caller reading one back sees what it set.
-     */
     public void warnAboutDoppler() {
         if (warnedAboutDoppler || console == null) {
             return;

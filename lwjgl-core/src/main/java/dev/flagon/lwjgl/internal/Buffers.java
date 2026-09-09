@@ -9,17 +9,13 @@ import java.nio.IntBuffer;
 import java.nio.ShortBuffer;
 
 /**
- * reads nio buffers as the flat bytes a gpu wants.
- *
- * <p>native order, not a fixed endianness: a js typed array reads whatever the machine uses,
- * and {@code BufferUtils} hands out buffers in the same order, so the two already agree.
+ * reads nio buffers as flat bytes
  */
 public final class Buffers {
 
     private Buffers() {
     }
 
-    /** @return how many bytes one element of {@code buffer} occupies */
     public static int elementSize(Buffer buffer) {
         if (buffer instanceof ByteBuffer) {
             return 1;
@@ -36,12 +32,6 @@ public final class Buffers {
         throw new IllegalArgumentException("unsupported buffer type " + buffer.getClass().getName());
     }
 
-    /**
-     * copies the whole of {@code source} — not just its remaining elements — because a pointer
-     * set once is drawn from many times, and gl reads it wherever the vertex layout says.
-     *
-     * @return the bytes written into {@code into}
-     */
     public static int readAll(Buffer source, byte[] into) {
         ByteBuffer target = ByteBuffer.wrap(into).order(ByteOrder.nativeOrder());
         int elements = source.capacity();
@@ -68,14 +58,12 @@ public final class Buffers {
         return target.position();
     }
 
-    /** @return the whole of {@code source} as bytes, sized exactly */
     public static byte[] readAll(Buffer source) {
         byte[] bytes = new byte[source.capacity() * elementSize(source)];
         readAll(source, bytes);
         return bytes;
     }
 
-    /** copies the elements between position and limit, leaving {@code source} untouched. */
     public static byte[] readRemaining(Buffer source) {
         int elementSize = elementSize(source);
         byte[] bytes = new byte[source.remaining() * elementSize];

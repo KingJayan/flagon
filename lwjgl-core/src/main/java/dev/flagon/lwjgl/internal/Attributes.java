@@ -6,7 +6,7 @@ import dev.flagon.platform.graphics.CullFace;
 import dev.flagon.platform.graphics.Winding;
 
 /**
- * a snapshot of the server state {@code glPushAttrib} saves
+ server state snapshot
  */
 public record Attributes(
         int mask,
@@ -51,7 +51,6 @@ public record Attributes(
         return (mask & bit) != 0;
     }
 
-    /** writes back every group the mask named through the setters that also drive the device */
     public void restore(GLState state) {
         if (saved(ENABLE_BIT)) {
             state.setDepthTest(depthTest);

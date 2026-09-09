@@ -36,7 +36,7 @@
     </dependency>
     <dependency>
       <groupId>dev.flagon</groupId>
-      <artifactId>lwjgl-compat</artifactId>
+      <artifactId>lwjgl2-compat</artifactId>
     </dependency>
 
     <dependency>
