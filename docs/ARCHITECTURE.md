@@ -114,6 +114,18 @@ such a jar builds its world with, and far short of keeping it whole.
 does, and the `selftest` program asserts both in a real bundle so a teavm upgrade cannot change it
 quietly.
 
+## Threads
+
+Green threads, so one runs at a time and a switch happens where one suspends. `socket-classlib`
+supplies `java.net`; `concurrent-classlib` supplies the executor and future half of
+`java.util.concurrent` on the same footing, because TeaVM ships neither. Both are patched into
+`java.base` at compile time and reach the compiler as ordinary classes.
+
+A render thread draining what workers produced is therefore a supported shape, and the `threading`
+demo runs it. What it is not is parallel: the workers interleave with the frame loop rather than
+running beside it. [COMPATIBILITY.md](COMPATIBILITY.md#threads-executors-and-futures) records what
+each part does.
+
 ## Bytecode at runtime
 
 A mod loader built on Mixin transforms classes as they load: it reads the bytes, rewrites them with
