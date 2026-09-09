@@ -146,6 +146,11 @@ close correctly.
 
 ## LWJGL
 
+Both bindings ship. `lwjgl2-compat` carries `Display`, `Keyboard`, `Mouse`, `GL11`-`GL20` and
+OpenAL; `lwjgl3-compat` carries `org.lwjgl.glfw` and `org.lwjgl.system`. They sit on the same
+`lwjgl-core`, so an application takes whichever one it was written against and the other is left
+out of the bundle by the compiler.
+
 Verified in Chromium and Firefox on both backends by the `lwjgl`, `input`, `arrays`, `shaders`, `texture`, and
 `audio` demos, which assert framebuffer output, drive real keyboard, mouse and wheel events, and
 play audio through to completion. The compatibility layer is also covered by 251 JVM tests running against recording and
@@ -469,6 +474,27 @@ Browsers do not allow pages to warp the cursor.
 A grabbed pointer has no position to set, and an ungrabbed pointer belongs to the user. The method
 is therefore implemented as a no-op, matching the common desktop use of recentering an already
 grabbed cursor.
+
+### GLFW
+
+`glfwInit`, `glfwCreateWindow`, `glfwSwapBuffers`, `glfwPollEvents`, `glfwWindowShouldClose` and
+the key, char, mouse-button, cursor, scroll, size, focus and close callbacks work, over the same
+surface `Display` uses. Verified in the browser by the `glfw` demo.
+
+The page owns the window, so some of GLFW's surface is answered rather than obeyed:
+
+| Call | Behaviour |
+|------|-----------|
+| `glfwWindowHint` | remembered, not obeyed; the page decides the context it can give |
+| `glfwCreateWindow` a second time | refused, and `glfwGetError` reports why |
+| `glfwSetWindowPos`, `glfwIconifyWindow`, `glfwSetCursorPos` | no-ops |
+| `glfwSetWindowMonitor` | asks the surface for fullscreen, which the host may refuse |
+| `glfwSetInputMode(GLFW_CURSOR, GLFW_CURSOR_DISABLED)` | asks for a pointer lock; read `glfwGetInputMode` back, since a browser may require a gesture and refuse |
+| `glfwJoystickPresent` | false; no gamepad is wired up |
+| `glfwGetKeyName` | null |
+
+Keys reach callers in GLFW's own numbering, translated from the host scancode; the `scancode`
+argument of the key callback carries the host's number, as GLFW's does.
 
 ### Buffer addresses
 

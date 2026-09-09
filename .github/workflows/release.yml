@@ -23,8 +23,6 @@ jobs:
       - name: Fetch maven
         run: for attempt in 1 2 3; do ./mvnw -B -v && exit 0; sleep 10; done; exit 1
 
-      # the tag is the version. the poms carry the next release as a snapshot between tags,
-      # so nothing has to be committed to cut one.
       - name: Set the version from the tag
         run: make version VERSION="${GITHUB_REF_NAME#v}"
 
@@ -38,7 +36,6 @@ jobs:
           path: web/public/flagon/
           retention-days: 1
 
-  # what gets published is optimized and minified, which is not what ci built or drove
   browser:
     needs: bundles
     runs-on: ubuntu-latest

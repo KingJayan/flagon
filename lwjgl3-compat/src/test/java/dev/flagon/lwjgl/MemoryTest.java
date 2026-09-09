@@ -1,4 +1,4 @@
-package dev.flagon.lwjgl3;
+package dev.flagon.lwjgl;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
