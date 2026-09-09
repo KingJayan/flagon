@@ -107,6 +107,22 @@ public interface AudioDevice {
     /** the model every source's attenuation is read through; sources keep what they were told. */
     void setDistanceModel(DistanceModel model);
 
+    /** scales the doppler shift; 0 switches it off, as OpenAL's AL_DOPPLER_FACTOR does. */
+    void setDopplerFactor(float factor);
+
+    float dopplerFactor();
+
+    /** the speed the shift is measured against, in the same units as the positions. */
+    void setSpeedOfSound(float speed);
+
+    float speedOfSound();
+
+    /**
+      * @return what the source's pitch is multiplied by for the velocities it and the listener
+      *         currently have, 1 when nothing is moving along the line between them
+      */
+    float dopplerShift(int source);
+
     DistanceModel distanceModel();
 
     /** how gain falls off with distance; the same three numbers openal names. */

@@ -19,6 +19,18 @@ for (const backend of BACKENDS) {
       expect(failures).toEqual([]);
     });
 
+    test('shifts a moving source, since web audio has no doppler of its own', async ({ page }) => {
+      await open(page, backend, 'program=audio');
+
+      const log = page.getByTestId('log');
+      await expect(page.getByTestId('state')).toHaveText('exited', { timeout: 30_000 });
+      await expect(log).toContainText('doppler: still 1.0');
+      await expect(log).toContainText('doppler: approaching 1.1');
+      await expect(log).toContainText('doppler: receding 0.91');
+      await expect(log).toContainText('doppler: switched off 1.0');
+      await expect(log).toContainText('doppler: no error');
+    });
+
     test('keeps a source its rolloff when the model stops using it', async ({ page }) => {
       await runDemo(page, backend);
 

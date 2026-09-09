@@ -80,6 +80,7 @@ public final class AL10 {
 
     public static final int AL_DOPPLER_FACTOR = 0xC000;
     public static final int AL_DOPPLER_VELOCITY = 0xC001;
+    public static final int AL_SPEED_OF_SOUND = 0xC003;
 
     public static final int AL_DISTANCE_MODEL = 0xD000;
     public static final int AL_INVERSE_DISTANCE = ALState.INVERSE_DISTANCE;
@@ -298,7 +299,6 @@ public final class AL10 {
                 return;
             case AL_VELOCITY:
                 device.setSourceVelocity(source, x, y, z);
-                state().warnAboutDoppler();
                 return;
             default:
                 unsupportedSourceParameter("alSource3f", parameter);
@@ -493,7 +493,6 @@ public final class AL10 {
                 return;
             case AL_VELOCITY:
                 device().setListenerVelocity(x, y, z);
-                state().warnAboutDoppler();
                 return;
             default:
                 state().fail(AL_INVALID_ENUM);
@@ -524,7 +523,6 @@ public final class AL10 {
                     return;
                 }
                 device().setListenerVelocity(velocity[0], velocity[1], velocity[2]);
-                state().warnAboutDoppler();
                 return;
             }
             default:
@@ -581,18 +579,45 @@ public final class AL10 {
         return 0;
     }
 
-    /**
-     * doppler shift is not emulated, so the only factor that means what it says is zero — which
-     * is what a caller switching it off is asking for.
-     */
     public static void alDopplerFactor(float factor) {
-        if (factor != 0.0f) {
-            state().warnAboutDoppler();
+        if (factor < 0.0f) {
+            state().fail(AL_INVALID_VALUE);
+            return;
         }
+        device().setDopplerFactor(factor);
     }
 
+    /**
+     * al 1.0 scaled the speed of sound by dividing rather than naming it, and al 1.1 replaced it
+     * with alSpeedOfSound. the two describe the same speed, so this is written as one.
+     */
     public static void alDopplerVelocity(float velocity) {
-        state().warnAboutDoppler();
+        if (velocity <= 0.0f) {
+            state().fail(AL_INVALID_VALUE);
+            return;
+        }
+        device().setSpeedOfSound(velocity);
+    }
+
+    public static void alSpeedOfSound(float speed) {
+        if (speed <= 0.0f) {
+            state().fail(AL_INVALID_VALUE);
+            return;
+        }
+        device().setSpeedOfSound(speed);
+    }
+
+    public static float alGetFloat(int parameter) {
+        switch (parameter) {
+            case AL_DOPPLER_FACTOR:
+                return device().dopplerFactor();
+            case AL_DOPPLER_VELOCITY:
+            case AL_SPEED_OF_SOUND:
+                return device().speedOfSound();
+            default:
+                state().fail(AL_INVALID_ENUM);
+                return 0.0f;
+        }
     }
 
     private static int sourceState(SourceState state) {

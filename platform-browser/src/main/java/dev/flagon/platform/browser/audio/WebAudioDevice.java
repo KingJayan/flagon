@@ -4,6 +4,7 @@ import dev.flagon.platform.ConsoleSink;
 import dev.flagon.platform.audio.Audio;
 import dev.flagon.platform.audio.AudioDevice;
 import dev.flagon.platform.audio.DistanceModel;
+import dev.flagon.platform.audio.Doppler;
 import dev.flagon.platform.audio.AudioException;
 import dev.flagon.platform.audio.AudioFormat;
 import dev.flagon.platform.audio.SourceState;
@@ -45,9 +46,11 @@ public final class WebAudioDevice implements AudioDevice {
         boolean looping;
         boolean relative;
         float pitch = 1.0f;
+        float rate = 1.0f;
         float rolloff = 1.0f;
         final float[] position = new float[3];
         final float[] velocity = new float[3];
+        private final float[] world = new float[3];
 
         int generation;
         double offset;
@@ -62,22 +65,53 @@ public final class WebAudioDevice implements AudioDevice {
         }
 
         void place() {
-            float x = position[0];
-            float y = position[1];
-            float z = position[2];
+            world(world);
+            panner.setPosition(world[0], world[1], world[2]);
+            rate();
+        }
+
+        void world(float[] into) {
+            into[0] = position[0];
+            into[1] = position[1];
+            into[2] = position[2];
             if (relative) {
-                x += listenerPosition[0];
-                y += listenerPosition[1];
-                z += listenerPosition[2];
+                into[0] += listenerPosition[0];
+                into[1] += listenerPosition[1];
+                into[2] += listenerPosition[2];
             }
-            panner.setPosition(x, y, z);
+        }
+
+        float shift() {
+            world(world);
+            return Doppler.shift(world, velocity, listenerPosition, listenerVelocity,
+                    dopplerFactor, speedOfSound);
+        }
+
+        /** the rate the graph runs at: the source pitch, shifted by whatever is moving. */
+        void rate() {
+            float wanted = pitch * shift();
+            if (wanted == rate) {
+                return;
+            }
+            // what has played so far played at the old rate, so bank it before the rate changes
+            if (state == SourceState.PLAYING) {
+                offset = elapsed();
+                startedAt = context.getCurrentTime();
+            }
+            rate = wanted;
+            if (node != null) {
+                node.getPlaybackRate().setValue(rate);
+            }
+            for (AudioBufferSourceNode scheduled : playing) {
+                scheduled.getPlaybackRate().setValue(rate);
+            }
         }
 
         double elapsed() {
             if (state != SourceState.PLAYING) {
                 return offset;
             }
-            return offset + (context.getCurrentTime() - startedAt) * pitch;
+            return offset + (context.getCurrentTime() - startedAt) * rate;
         }
 
         void release() {
@@ -106,6 +140,8 @@ public final class WebAudioDevice implements AudioDevice {
     private final Map<Integer, Buffer> buffers = new HashMap<>();
     private final Map<Integer, Source> sources = new HashMap<>();
     private DistanceModel distanceModel = DistanceModel.INVERSE_CLAMPED;
+    private float dopplerFactor = Doppler.DEFAULT_FACTOR;
+    private float speedOfSound = Doppler.DEFAULT_SPEED_OF_SOUND;
     private final float[] listenerPosition = new float[3];
     private final float[] listenerVelocity = new float[3];
     private final float[] listenerOrientation = {0.0f, 0.0f, -1.0f, 0.0f, 1.0f, 0.0f};
@@ -296,7 +332,7 @@ public final class WebAudioDevice implements AudioDevice {
         AudioBuffer audio = audioOf(buffer);
         AudioBufferSourceNode node = context.createBufferSource();
         node.setBuffer(audio);
-        node.getPlaybackRate().setValue(held.pitch);
+        node.getPlaybackRate().setValue(held.rate);
         node.connect(held.gain);
 
         int generation = held.generation;
@@ -312,7 +348,7 @@ public final class WebAudioDevice implements AudioDevice {
 
         node.start(held.tail);
         held.playing.add(node);
-        held.tail += audio.getDuration() / held.pitch;
+        held.tail += audio.getDuration() / held.rate;
     }
 
     private void playQueue(Source held) {
@@ -346,7 +382,7 @@ public final class WebAudioDevice implements AudioDevice {
         AudioBufferSourceNode node = context.createBufferSource();
         node.setBuffer(buffer.audio);
         node.setLoop(held.looping);
-        node.getPlaybackRate().setValue(held.pitch);
+        node.getPlaybackRate().setValue(held.rate);
         node.connect(held.gain);
 
         int generation = held.generation;
@@ -436,9 +472,7 @@ public final class WebAudioDevice implements AudioDevice {
             held.startedAt = context.getCurrentTime();
         }
         held.pitch = pitch;
-        if (held.node != null) {
-            held.node.getPlaybackRate().setValue(pitch);
-        }
+        held.rate();
     }
 
     @Override
@@ -467,7 +501,9 @@ public final class WebAudioDevice implements AudioDevice {
 
     @Override
     public void setSourceVelocity(int source, float x, float y, float z) {
-        set(source(source).velocity, x, y, z);
+        Source held = source(source);
+        set(held.velocity, x, y, z);
+        held.rate();
     }
 
     @Override
@@ -491,6 +527,43 @@ public final class WebAudioDevice implements AudioDevice {
     @Override
     public DistanceModel distanceModel() {
         return distanceModel;
+    }
+
+    @Override
+    public void setDopplerFactor(float factor) {
+        if (factor < 0.0f) {
+            throw new AudioException("doppler factor must not be negative: " + factor);
+        }
+        dopplerFactor = factor;
+        for (Source source : sources.values()) {
+            source.rate();
+        }
+    }
+
+    @Override
+    public float dopplerFactor() {
+        return dopplerFactor;
+    }
+
+    @Override
+    public void setSpeedOfSound(float speed) {
+        if (speed <= 0.0f) {
+            throw new AudioException("speed of sound must be positive: " + speed);
+        }
+        speedOfSound = speed;
+        for (Source source : sources.values()) {
+            source.rate();
+        }
+    }
+
+    @Override
+    public float speedOfSound() {
+        return speedOfSound;
+    }
+
+    @Override
+    public float dopplerShift(int source) {
+        return source(source).shift();
     }
 
     @Override
@@ -548,9 +621,12 @@ public final class WebAudioDevice implements AudioDevice {
     public void setListenerPosition(float x, float y, float z) {
         set(listenerPosition, x, y, z);
         context.getListener().setPosition(x, y, z);
+        // every source moved relative to the listener, which is what the shift is measured along
         for (Source source : sources.values()) {
             if (source.relative) {
                 source.place();
+            } else {
+                source.rate();
             }
         }
     }
@@ -558,6 +634,9 @@ public final class WebAudioDevice implements AudioDevice {
     @Override
     public void setListenerVelocity(float x, float y, float z) {
         set(listenerVelocity, x, y, z);
+        for (Source source : sources.values()) {
+            source.rate();
+        }
     }
 
     @Override

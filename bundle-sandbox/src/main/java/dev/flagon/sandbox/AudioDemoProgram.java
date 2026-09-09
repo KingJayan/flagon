@@ -64,6 +64,7 @@ public final class AudioDemoProgram implements Program {
                     + (AL10.alGetSourcef(source, AL10.AL_ROLLOFF_FACTOR) == 2.0f));
             AL10.alDistanceModel(AL10.AL_INVERSE_DISTANCE_CLAMPED);
 
+            doppler(console, source);
             play(console, source);
             streamed(console);
             wave(console);
@@ -212,6 +213,33 @@ public final class AudioDemoProgram implements Program {
         }
         pcm.flip();
         return pcm;
+    }
+
+    /** the shift a moving source gets, which web audio has no doppler of its own to give it */
+    private void doppler(ConsoleSink console, int source) {
+        AudioDevice device = Platforms.get().audio();
+        AL10.alListener3f(AL10.AL_POSITION, 0.0f, 0.0f, 10.0f);
+        AL10.alSource3f(source, AL10.AL_POSITION, 0.0f, 0.0f, 0.0f);
+        AL10.alSource3f(source, AL10.AL_VELOCITY, 0.0f, 0.0f, 0.0f);
+        console.info("doppler: still " + rounded(device.dopplerShift(source)));
+
+        AL10.alSource3f(source, AL10.AL_VELOCITY, 0.0f, 0.0f, 34.33f);
+        console.info("doppler: approaching " + rounded(device.dopplerShift(source)));
+
+        AL10.alSource3f(source, AL10.AL_VELOCITY, 0.0f, 0.0f, -34.33f);
+        console.info("doppler: receding " + rounded(device.dopplerShift(source)));
+
+        AL10.alDopplerFactor(0.0f);
+        console.info("doppler: switched off " + rounded(device.dopplerShift(source)));
+
+        AL10.alDopplerFactor(1.0f);
+        AL10.alSource3f(source, AL10.AL_VELOCITY, 0.0f, 0.0f, 0.0f);
+        AL10.alListener3f(AL10.AL_POSITION, 0.0f, 0.0f, 0.0f);
+        check(console, "doppler");
+    }
+
+    private static String rounded(float shift) {
+        return String.valueOf(Math.round(shift * 100.0f) / 100.0f);
     }
 
     private void check(ConsoleSink console, String phase) {
