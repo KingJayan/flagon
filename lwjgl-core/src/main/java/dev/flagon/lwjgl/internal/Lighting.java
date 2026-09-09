@@ -1,7 +1,7 @@
 package dev.flagon.lwjgl.internal;
 
 /**
-  fixed-function lighting, material and fog state.
+ * the fixed-function lighting, material and fog state.
  */
 public final class Lighting {
 
@@ -15,6 +15,7 @@ public final class Lighting {
     private final boolean[] lightEnabled = new boolean[LIGHTS];
     private final int[] lightEnabledInts = new int[LIGHTS];
 
+    /** eye space, w = 0 for a directional light; gl transforms it when it is set. */
     private final float[] position = new float[LIGHTS * 4];
     private final float[] ambient = new float[LIGHTS * 4];
     private final float[] diffuse = new float[LIGHTS * 4];
@@ -38,6 +39,7 @@ public final class Lighting {
     private float fogEnd = 1.0f;
 
     public Lighting() {
+        // gl's light 0 is white and the rest are black, and every light points down the -z axis
         for (int light = 0; light < LIGHTS; light++) {
             position[light * 4 + 2] = 1.0f;
             attenuation[light * 3] = 1.0f;

@@ -1,11 +1,15 @@
 package dev.flagon.lwjgl.internal;
 
 /**
- * 4x4 float matrix
+ * 4x4 float matrix in column-major order, matching what gl expects and what the shader is fed.
+ * operations post-multiply, so {@code translate} then {@code rotate} behaves like the gl calls
+ * of the same name issued in that order.
  */
 public final class Matrix4 {
 
     private static final float[] SCRATCH = new float[16];
+    // the matrix each of the operations below builds to post-multiply by. it is never live across
+    // a call, and multiply() reads it before touching SCRATCH, so one is enough for all of them
     private static final float[] OPERAND = new float[16];
 
     private Matrix4() {
@@ -54,6 +58,7 @@ public final class Matrix4 {
         }
     }
 
+    /** rotates by {@code degrees} about the given axis, as {@code glRotatef} does. */
     public static void rotate(float[] target, float degrees, float x, float y, float z) {
         float length = (float) Math.sqrt(x * x + y * y + z * z);
         if (length == 0.0f) {
@@ -118,6 +123,7 @@ public final class Matrix4 {
         return normalMatrix(m, new float[9]);
     }
 
+    /** the same, into a buffer the caller keeps, since a draw wants one every time it lights. */
     public static float[] normalMatrix(float[] m, float[] out) {
         float a = m[0];
         float b = m[1];
