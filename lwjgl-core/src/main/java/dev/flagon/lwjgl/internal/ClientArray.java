@@ -5,11 +5,7 @@ import dev.flagon.platform.graphics.AttributeType;
 import java.nio.Buffer;
 
 /**
- * where one vertex attribute reads from: either a buffer object, or plain client memory.
- *
- * <p>webgl has no client-side arrays, so a client pointer is not a pointer at all here — the
- * buffer is kept and re-read at draw time, because desktop code sets a pointer once and refills
- * the buffer behind it every frame.
+ * loc that a vertex attribute reads from
  */
 public final class ClientArray {
 
@@ -37,12 +33,10 @@ public final class ClientArray {
         enabled = value;
     }
 
-    /** @return true once a pointer has been set; an enabled array without one draws nothing */
     public boolean isBound() {
         return buffer != 0 || client != null;
     }
 
-    /** points the attribute at {@code offset} bytes into buffer object {@code buffer}. */
     public void pointAt(int buffer, int offset, int components, AttributeType type,
                         boolean normalized, int stride) {
         this.buffer = buffer;
@@ -51,7 +45,6 @@ public final class ClientArray {
         describe(components, type, normalized, stride);
     }
 
-    /** points the attribute at client memory, read afresh on every draw. */
     public void pointAt(Buffer client, int components, AttributeType type,
                         boolean normalized, int stride) {
         this.buffer = 0;
@@ -64,7 +57,7 @@ public final class ClientArray {
         this.components = components;
         this.type = type;
         this.normalized = normalized;
-        // gl reads a stride of zero as "tightly packed", which is not the same as a stride of zero
+
         this.stride = stride == 0 ? components * type.sizeInBytes() : stride;
     }
 

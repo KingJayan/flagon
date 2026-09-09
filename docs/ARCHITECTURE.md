@@ -5,7 +5,9 @@
 ```
 application.jar (unmodified)
       ↓  compiled together, ahead of time
-LWJGL compatibility layer      org.lwjgl.* source-compatible classes
+lwjgl2-compat / lwjgl3-compat  org.lwjgl.* source-compatible classes
+      ↓
+lwjgl-core                     the emulation they share, carrying no org.lwjgl class
       ↓
 platform-api                   Platform, Clock, ConsoleSink, RuntimeHost,
                                GraphicsDevice, DisplaySurface, InputSource,
@@ -124,7 +126,7 @@ The compatibility layer rebuilds the parts of OpenGL 1.x that WebGL2 does not pr
 `glUseProgram` switches between the fixed-function and shader pipelines. `GLState` selects the
 active pipeline and restores caller-owned GL state after each draw.
 
-Desktop GLSL is translated into GLSL ES by `GlslTranslator` inside `lwjgl-compat`. Browser-facing
+Desktop GLSL is translated into GLSL ES by `GlslTranslator` inside `lwjgl-core`. Browser-facing
 code deals only in GLSL ES.
 
 None of this depends on browser APIs, so it is covered by JVM unit tests against a recording

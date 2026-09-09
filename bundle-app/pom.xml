@@ -34,7 +34,7 @@
     <!-- supplies org.lwjgl.* in place of the real thing the jar was built against -->
     <dependency>
       <groupId>dev.flagon</groupId>
-      <artifactId>lwjgl-compat</artifactId>
+      <artifactId>lwjgl2-compat</artifactId>
     </dependency>
     <dependency>
       <groupId>dev.flagon</groupId>
