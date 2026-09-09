@@ -33,3 +33,17 @@ for (const backend of BACKENDS) {
     });
   });
 }
+
+for (const backend of BACKENDS) {
+  test.describe(`glsl 150 translation on ${backend}`, () => {
+    test('compiles a core profile shader written against glsl 150', async ({ page }) => {
+      const { failures } = watchForFailures(page);
+      await open(page, backend, 'program=core-profile');
+
+      const log = page.getByTestId('log');
+      await expect(page.getByTestId('state')).toHaveText('exited', { timeout: 30_000 });
+      await expect(log).toContainText('core: glsl 150 compiled and linked');
+      expect(failures).toEqual([]);
+    });
+  });
+}

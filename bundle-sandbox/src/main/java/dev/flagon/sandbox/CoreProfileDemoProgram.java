@@ -29,7 +29,7 @@ public final class CoreProfileDemoProgram implements Program {
     private static final int INSTANCE = 1;
 
     private static final String VERTEX_SHADER = """
-            #version 300 es
+            #version 150 core
             in vec2 in_position;
             in int in_instance;
 
@@ -43,14 +43,13 @@ public final class CoreProfileDemoProgram implements Program {
             """;
 
     private static final String FRAGMENT_SHADER = """
-            #version 300 es
-            precision highp float;
+            #version 150 core
+            uniform sampler2D atlas;
             in vec3 v_tint;
 
-            out vec4 fragColor;
-
             void main() {
-                fragColor = vec4(v_tint, 1.0);
+                vec4 sampled = texture2D(atlas, vec2(0.0));
+                gl_FragColor = vec4(v_tint + sampled.rgb * 0.0, 1.0);
             }
             """;
 
@@ -109,6 +108,7 @@ public final class CoreProfileDemoProgram implements Program {
         }
         console.info("core: drew " + frame + " frames of " + INSTANCES + " instances");
         console.info("core: base vertex is " + refusedBaseVertex());
+        console.info("core: glsl 150 compiled and linked");
 
         GL20.glUseProgram(0);
         GL20.glDeleteProgram(program);
