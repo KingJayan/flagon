@@ -15,9 +15,11 @@ public final class ClientArray {
     private int components;
     private AttributeType type = AttributeType.FLOAT;
     private boolean normalized;
+    private boolean integer;
     private int stride;
     private int buffer;
     private int offset;
+    private int divisor;
     private Buffer client;
 
     ClientArray(int defaultComponents) {
@@ -42,13 +44,25 @@ public final class ClientArray {
         this.buffer = buffer;
         this.client = null;
         this.offset = offset;
+        this.integer = false;
         describe(components, type, normalized, stride);
+    }
+
+    /** points at data a shader reads as int or uint, which gl never normalizes or converts. */
+    public void pointAtIntegers(int buffer, int offset, int components, AttributeType type,
+                                int stride) {
+        this.buffer = buffer;
+        this.client = null;
+        this.offset = offset;
+        this.integer = true;
+        describe(components, type, false, stride);
     }
 
     public void pointAt(Buffer client, int components, AttributeType type,
                         boolean normalized, int stride) {
         this.buffer = 0;
         this.client = client;
+        this.integer = false;
         this.offset = client.position() * Buffers.elementSize(client);
         describe(components, type, normalized, stride);
     }
@@ -85,8 +99,20 @@ public final class ClientArray {
         return normalized;
     }
 
+    public boolean isInteger() {
+        return integer;
+    }
+
     public int stride() {
         return stride;
+    }
+
+    public int divisor() {
+        return divisor;
+    }
+
+    public void setDivisor(int value) {
+        divisor = value;
     }
 
     void reset() {
@@ -97,6 +123,8 @@ public final class ClientArray {
         components = defaultComponents;
         type = AttributeType.FLOAT;
         normalized = false;
+        integer = false;
         stride = 0;
+        divisor = 0;
     }
 }

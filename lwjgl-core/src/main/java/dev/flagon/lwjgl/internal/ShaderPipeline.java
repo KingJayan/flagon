@@ -49,6 +49,32 @@ public final class ShaderPipeline {
         device.drawElements(mode.primitive(), count, indexType, offsetInBytes);
     }
 
+    public void drawArraysInstanced(DrawMode mode, int first, int count, int instances,
+                                    GenericArrays arrays) {
+        if (mode.isIndexed()) {
+            throw new UnsupportedOperationException(
+                    "glDrawArraysInstanced cannot emulate GL_QUADS; the core profile has no quads");
+        }
+        if (count == 0 || instances == 0 || !arrays.canDraw()) {
+            return;
+        }
+        bind(arrays);
+        device.drawArraysInstanced(mode.primitive(), first, count, instances);
+    }
+
+    public void drawElementsInstanced(DrawMode mode, int count, IndexType indexType,
+                                      int offsetInBytes, int instances, GenericArrays arrays) {
+        if (mode.isIndexed()) {
+            throw new UnsupportedOperationException(
+                    "glDrawElementsInstanced cannot emulate GL_QUADS; the core profile has no quads");
+        }
+        if (count == 0 || instances == 0 || !arrays.canDraw()) {
+            return;
+        }
+        bind(arrays);
+        device.drawElementsInstanced(mode.primitive(), count, indexType, offsetInBytes, instances);
+    }
+
     private void bind(GenericArrays arrays) {
         for (int slot = 0; slot < arrays.count(); slot++) {
             ClientArray array = arrays.slot(slot);
@@ -58,6 +84,7 @@ public final class ShaderPipeline {
             }
             device.enableAttribute(slot);
             staging.bind(slot, array);
+            device.attributeDivisor(slot, array.divisor());
         }
     }
 

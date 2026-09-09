@@ -27,8 +27,13 @@ public final class StagingArrays {
             byte[] data = staged(slot, array);
             device.bufferData(BufferTarget.ARRAY, data, data.length, BufferUsage.STREAM);
         }
-        device.attributePointer(slot, array.components(), array.type(), array.isNormalized(),
-                array.stride(), array.offset());
+        if (array.isInteger()) {
+            device.integerAttributePointer(slot, array.components(), array.type(), array.stride(),
+                    array.offset());
+        } else {
+            device.attributePointer(slot, array.components(), array.type(), array.isNormalized(),
+                    array.stride(), array.offset());
+        }
     }
 
     private int buffer(int slot) {
