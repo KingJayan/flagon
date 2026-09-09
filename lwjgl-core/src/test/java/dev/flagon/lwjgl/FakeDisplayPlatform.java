@@ -42,6 +42,10 @@ final class FakeDisplayPlatform implements Platform, Clock, ConsoleSink, Runtime
         return surface.opens;
     }
 
+    FakeInputSource input() {
+        return surface.input;
+    }
+
     void focus(boolean focused) {
         surface.focused = focused;
     }
@@ -139,7 +143,7 @@ final class FakeDisplayPlatform implements Platform, Clock, ConsoleSink, Runtime
     private final class Surface implements DisplaySurface {
 
         private final RecordingGraphicsDevice graphics = new RecordingGraphicsDevice();
-        private final InputSource input = new FakeInputSource();
+        private final FakeInputSource input = new FakeInputSource();
 
         int presents;
         int opens;
