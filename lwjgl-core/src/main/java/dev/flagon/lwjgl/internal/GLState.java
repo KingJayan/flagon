@@ -96,6 +96,7 @@ public final class GLState implements RenderState {
     private int program = GraphicsDevice.NO_PROGRAM;
     private int arrayBuffer;
     private int elementBuffer;
+    private int vertexArray;
 
     private float red = 1.0f;
     private float green = 1.0f;
@@ -343,6 +344,57 @@ public final class GLState implements RenderState {
 
     public int boundBuffer(BufferTarget target) {
         return target == BufferTarget.ELEMENT ? elementBuffer : arrayBuffer;
+    }
+
+    public int createVertexArray() {
+        return device.createVertexArray();
+    }
+
+    public void bindVertexArray(int array) {
+        vertexArray = array;
+        device.bindVertexArray(array);
+    }
+
+    public int boundVertexArray() {
+        return vertexArray;
+    }
+
+    public void deleteVertexArray(int array) {
+        if (array == 0) {
+            return;
+        }
+        if (vertexArray == array) {
+            vertexArray = 0;
+        }
+        device.deleteVertexArray(array);
+    }
+
+    public void drawArraysInstanced(DrawMode mode, int first, int count, int instances) {
+        requireNotBuilding("glDrawArraysInstanced");
+        requireProgram("glDrawArraysInstanced");
+        shaders.drawArraysInstanced(mode, first, count, instances, attributes);
+        restoreBindings();
+    }
+
+    public void drawElementsInstanced(DrawMode mode, int count, IndexType indexType,
+                                      int offsetInBytes, int instances) {
+        requireNotBuilding("glDrawElementsInstanced");
+        requireProgram("glDrawElementsInstanced");
+        if (elementBuffer == GraphicsDevice.NO_BUFFER) {
+            throw new UnsupportedOperationException(
+                    "glDrawElementsInstanced needs indices in a buffer object; bind one with "
+                            + "glBindBuffer first");
+        }
+        shaders.drawElementsInstanced(mode, count, indexType, offsetInBytes, instances, attributes);
+        restoreBindings();
+    }
+
+    private void requireProgram(String call) {
+        if (program == GraphicsDevice.NO_PROGRAM) {
+            throw new UnsupportedOperationException(
+                    call + " draws instances of attributes a program reads; bind one with "
+                            + "glUseProgram first");
+        }
     }
 
     public void drawArrays(DrawMode mode, int first, int count) {

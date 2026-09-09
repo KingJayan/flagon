@@ -188,6 +188,10 @@ public interface GraphicsDevice {
     void attributePointer(int location, int components, AttributeType type, boolean normalized,
                           int strideInBytes, int offsetInBytes);
 
+    /** points an attribute a shader declares as int or uint at its data, without converting. */
+    void integerAttributePointer(int location, int components, AttributeType type,
+                                 int strideInBytes, int offsetInBytes);
+
     void constantAttribute(int location, float x, float y, float z, float w);
 
     int createTexture();
@@ -226,6 +230,15 @@ public interface GraphicsDevice {
     void drawArrays(Primitive primitive, int first, int count);
 
     void drawElements(Primitive primitive, int count, IndexType type, int offsetInBytes);
+
+    /** @param instances how many copies to draw, each seeing the divisor-stepped attributes */
+    void drawArraysInstanced(Primitive primitive, int first, int count, int instances);
+
+    void drawElementsInstanced(Primitive primitive, int count, IndexType type, int offsetInBytes,
+                               int instances);
+
+    /** @param divisor how many instances share one value of the attribute; 0 steps per vertex */
+    void attributeDivisor(int location, int divisor);
 
     /** reads a rectangle of the framebuffer as rgba bytes, the first row being the bottom one. */
     byte[] readPixels(int x, int y, int width, int height);
