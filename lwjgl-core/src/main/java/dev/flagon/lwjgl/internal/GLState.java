@@ -346,6 +346,25 @@ public final class GLState implements RenderState {
         return target == BufferTarget.ELEMENT ? elementBuffer : arrayBuffer;
     }
 
+    public int createFramebuffer() {
+        return device.createFramebuffer();
+    }
+
+    public void bindFramebuffer(int framebuffer) {
+        device.bindFramebuffer(framebuffer);
+    }
+
+    public int boundFramebuffer() {
+        return device.boundFramebuffer();
+    }
+
+    public void deleteFramebuffer(int framebuffer) {
+        if (framebuffer == GraphicsDevice.NO_FRAMEBUFFER) {
+            return;
+        }
+        device.deleteFramebuffer(framebuffer);
+    }
+
     public int createVertexArray() {
         return device.createVertexArray();
     }

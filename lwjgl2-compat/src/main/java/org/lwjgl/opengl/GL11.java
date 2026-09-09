@@ -1440,6 +1440,11 @@ public final class GL11 {
         state().refuseWhileRecording("glTexImage2D");
         requireLevel(level);
         requirePixelType(type, format, "glTexImage2D");
+        // a null buffer reserves the level, which is how a colour attachment is made
+        if (pixels == null) {
+            device().textureStorage(level, width, height);
+            return;
+        }
         int pixelCount = width * height;
         byte[] read = bytes(pixels, pixelCount * components(format, "glTexImage2D"));
         device().textureImage(level, width, height, toRgba(read, pixelCount, format));

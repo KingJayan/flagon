@@ -29,6 +29,7 @@ public final class SandboxMain {
                 .register(new Lwjgl3DemoProgram())
                 .register(new GlfwDemoProgram())
                 .register(new CoreProfileDemoProgram())
+                .register(new FramebufferDemoProgram())
                 .register(new InputDemoProgram())
                 .register(new DisplayDemoProgram())
                 .register(new VertexArrayDemoProgram())

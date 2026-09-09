@@ -538,6 +538,22 @@ both artifacts on the classpath and the AOT compiler drops whatever the applicat
 | `glDrawArraysInstanced`, `glDrawElementsInstanced` | need a program bound with `glUseProgram`, and refuse `GL_QUADS` |
 | `glIsVertexArray` | true only for the array currently bound |
 
+### Framebuffer objects
+
+`GL30` opens framebuffers, renderbuffers and their attachments: `glGenFramebuffers`,
+`glBindFramebuffer`, `glFramebufferTexture2D`, `glFramebufferRenderbuffer`,
+`glCheckFramebufferStatus`, `glRenderbufferStorage` and `glGenerateMipmap`. Rendering into a
+texture and reading it back is verified in the browser by the `framebuffer` demo.
+`glTexImage2D` with a null buffer reserves a level, which is how a colour attachment is made.
+
+| Call | Behaviour |
+|------|-----------|
+| `GL_COLOR_ATTACHMENT1` and above | refused; the page draws to one colour buffer |
+| `glFramebufferTexture2D` with a target other than `GL_TEXTURE_2D` | refused |
+| `glRenderbufferStorage` formats | `GL_RGBA8`, `GL_DEPTH_COMPONENT16/24`, `GL_DEPTH24_STENCIL8`, `GL_STENCIL_INDEX8`; anything else is refused |
+| `glIsFramebuffer` | true only for the framebuffer currently bound |
+| deleting the bound framebuffer | binds the surface back, as gl does |
+
 ### Buffer addresses
 
 LWJGL 2's `org.lwjgl.MemoryUtil.getAddress()` throws `UnsupportedCapabilityException`. Nothing in
