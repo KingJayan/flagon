@@ -848,6 +848,15 @@ public final class WebGLGraphicsDevice implements GraphicsDevice {
                 strideInBytes, offsetInBytes);
     }
 
+    @Override
+    public void integerAttributePointer(int location, int components, AttributeType type,
+                                        int strideInBytes, int offsetInBytes) {
+        requireAligned(type, strideInBytes, "stride");
+        requireAligned(type, offsetInBytes, "offset");
+        gl.vertexAttribIPointer(location, components, attributeType(type), strideInBytes,
+                offsetInBytes);
+    }
+
     /**
      * webgl requires an attribute's offset and stride to be a multiple of its component size,
      * where desktop gl does not. an interleaved format that pads to an odd width is legal on the
@@ -1048,6 +1057,22 @@ public final class WebGLGraphicsDevice implements GraphicsDevice {
     @Override
     public void drawElements(Primitive primitive, int count, IndexType type, int offsetInBytes) {
         gl.drawElements(mode(primitive), count, indexType(type), offsetInBytes);
+    }
+
+    @Override
+    public void drawArraysInstanced(Primitive primitive, int first, int count, int instances) {
+        gl.drawArraysInstanced(mode(primitive), first, count, instances);
+    }
+
+    @Override
+    public void drawElementsInstanced(Primitive primitive, int count, IndexType type,
+                                      int offsetInBytes, int instances) {
+        gl.drawElementsInstanced(mode(primitive), count, indexType(type), offsetInBytes, instances);
+    }
+
+    @Override
+    public void attributeDivisor(int location, int divisor) {
+        gl.vertexAttribDivisor(location, divisor);
     }
 
     private static int indexType(IndexType type) {

@@ -496,6 +496,25 @@ The page owns the window, so some of GLFW's surface is answered rather than obey
 Keys reach callers in GLFW's own numbering, translated from the host scancode; the `scancode`
 argument of the key callback carries the host's number, as GLFW's does.
 
+### GL 3.2 core profile
+
+`GL30`, `GL31`, `GL32` and `GL33` in `lwjgl3-compat` cover what a core-profile client calls:
+vertex array objects, `glGetStringi`, `glVertexAttribIPointer`, the instanced draws and
+`glVertexAttribDivisor`. `GL.createCapabilities()` reports 3.2 with the 3.3 entry points present,
+and carries the extension names the context reports. Verified in the browser by the
+`core-profile` demo.
+
+`GL11` through `GL20` are the same classes for both bindings and ship in `lwjgl2-compat`; put
+both artifacts on the classpath and the AOT compiler drops whatever the application never reaches.
+
+| Call | Behaviour |
+|------|-----------|
+| `glDrawElementsBaseVertex` and its variants | refused; webgl2 reads every index as written, and rewriting the index buffer belongs to the caller |
+| `glBindFragDataLocation` | accepted for colour 0, refused above it; the shader declares its own output location |
+| `glVertexAttribIPointer` | needs a bound `GL_ARRAY_BUFFER`; the core profile has no client-side arrays |
+| `glDrawArraysInstanced`, `glDrawElementsInstanced` | need a program bound with `glUseProgram`, and refuse `GL_QUADS` |
+| `glIsVertexArray` | true only for the array currently bound |
+
 ### Buffer addresses
 
 LWJGL 2's `org.lwjgl.MemoryUtil.getAddress()` throws `UnsupportedCapabilityException`. Nothing in

@@ -266,6 +266,8 @@ public interface WebGL2 extends JSObject {
 
     void vertexAttribPointer(int index, int size, int type, boolean normalized, int stride, int offset);
 
+    void vertexAttribIPointer(int index, int size, int type, int stride, int offset);
+
     void vertexAttrib4f(int index, float x, float y, float z, float w);
 
     JSObject createVertexArray();
@@ -322,6 +324,12 @@ public interface WebGL2 extends JSObject {
     void drawArrays(int mode, int first, int count);
 
     void drawElements(int mode, int count, int type, int offset);
+
+    void drawArraysInstanced(int mode, int first, int count, int instances);
+
+    void drawElementsInstanced(int mode, int count, int type, int offset, int instances);
+
+    void vertexAttribDivisor(int location, int divisor);
 
     int getParameter(int name);
 

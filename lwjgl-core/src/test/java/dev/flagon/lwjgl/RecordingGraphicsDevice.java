@@ -464,6 +464,13 @@ final class RecordingGraphicsDevice implements GraphicsDevice {
     }
 
     @Override
+    public void integerAttributePointer(int location, int components, AttributeType type,
+                                        int strideInBytes, int offsetInBytes) {
+        calls.add("integerAttributePointer " + location + " " + components + " " + type + " "
+                + strideInBytes + " " + offsetInBytes);
+    }
+
+    @Override
     public void constantAttribute(int location, float x, float y, float z, float w) {
         calls.add("constantAttribute " + location + " " + x + " " + y + " " + z + " " + w);
     }
@@ -523,6 +530,23 @@ final class RecordingGraphicsDevice implements GraphicsDevice {
     @Override
     public void drawElements(Primitive primitive, int count, IndexType type, int offsetInBytes) {
         calls.add("drawElements " + primitive + " " + count + " " + type + " " + offsetInBytes);
+    }
+
+    @Override
+    public void drawArraysInstanced(Primitive primitive, int first, int count, int instances) {
+        calls.add("drawArraysInstanced " + primitive + " " + first + " " + count + " " + instances);
+    }
+
+    @Override
+    public void drawElementsInstanced(Primitive primitive, int count, IndexType type,
+                                      int offsetInBytes, int instances) {
+        calls.add("drawElementsInstanced " + primitive + " " + count + " " + type + " "
+                + offsetInBytes + " " + instances);
+    }
+
+    @Override
+    public void attributeDivisor(int location, int divisor) {
+        calls.add("attributeDivisor " + location + " " + divisor);
     }
 
     @Override
