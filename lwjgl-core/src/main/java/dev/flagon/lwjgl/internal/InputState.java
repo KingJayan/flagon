@@ -2,12 +2,6 @@ package dev.flagon.lwjgl.internal;
 
 import dev.flagon.platform.input.InputSource;
 
-/**
- * the surface's input, reachable from lwjgl's static input api.
- *
- * <p>attached when the display opens and detached when it closes, which is the same lifetime
- * lwjgl gives {@code Keyboard} and {@code Mouse}: both refuse to work without a window.
- */
 public final class InputState {
 
     private static InputSource current;

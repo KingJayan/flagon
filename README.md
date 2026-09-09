@@ -18,36 +18,35 @@
 Flagon lets existing desktop Java/LWJGL applications run directly in the browser,
 without modifying application code.
 
-It achieves this by reimplementing the desktop APIs that applications already compile
-against (`Display`, `GL11`, `Keyboard`, `Mouse`, `BufferUtils`, etc.) on top of
+It achieves this by reimplementing desktop APIs
+(`Display`, `GL11`, `Keyboard`, `Mouse`, `BufferUtils`, etc.) on top of
 WebGL2, DOM events, and browser APIs.
 
-Flagon itself is application-agnostic. Work on any particular application lives downstream;
-[flagon-mc](https://github.com/KingJayan/flagon-mc) is one such target.
+Flagon itself is application-agnostic. Work on any specific applications are downstream.
+<!--[flagon-mc](https://github.com/KingJayan/flagon-mc) is one such target. -->
 
 ## Features
 
-- Run existing desktop Java/LWJGL applications directly in the browser
+- Run any desktop Java/LWJGL application directly in the browser
 - No application source modifications required
 - Ahead-of-time Java → WebAssembly GC/JavaScript compilation with TeaVM
-- `GL11` through `GL15`, `GL20`, `GLContext` and `GLU` are reimplemented on WebGL2. 
-See the [compatibility table](docs/COMPATIBILITY.md) for exactly what is emulated and what is refused
+- `GL11` through `GL15`, `GL20`, `GLContext` and `GLU` are reimplemented on WebGL2.
+See the [compatibility table](docs/COMPATIBILITY.md) for exactly what is and isn't emulated.
 - Browser-native implementations of input, filesystem, audio, networking, and platform APIs
-- Application-agnostic architecture for downstream projects
 
 ## How does it compare?
 
 | Repo | Input | Native GL calls | License |
 |---------|-------|-----------------|---------|
 | Flagon | jar | reimplemented on WebGL2 | MIT |
-| TeaVM | jar | not addressed; Flagon is built on it | Apache 2.0 |
+| TeaVM | jar | not addressed; Flagon is built on top | Apache 2.0 |
 | CheerpJ | jar | cannot load natives, LWJGL never starts | proprietary |
 | Eaglercraft | forked source | reimplemented, Minecraft only | contested |
 
 
 ## Documentation
 
-* **[Architecture Guidelines (for contributing)](docs/ARCHITECTURE.md):** Layering rules and system design.
+* **[Architecture Guidelines (for contributing)](docs/ARCHITECTURE.md):** Rules and system design.
 * **[Compatibility Table](docs/COMPATIBILITY.md):** Detailed breakdown of supported and unsupported features.
 * **[Running Existing Applications](docs/DOWNSTREAM.md):** Compiling an application jar to a bundle.
 
@@ -56,23 +55,21 @@ See the [compatibility table](docs/COMPATIBILITY.md) for exactly what is emulate
 Requires **JDK 25+** and **[bun](https://bun.sh)**. Maven is provided via the wrapper.
 
 ```sh
-make # list tasks on the repo -- see Makefile
-make setup   # installs the shell's pckgs and the browser the tests drive
+make # list all tasks (see Makefile)
+make setup   # installs the shell's pckgs and the browser tester
 make build   # compiles java and emits both browser bundles
-make dev     # runs the dev server
+make dev     # runs dev server
 ```
 
 Once running, open <http://localhost:5273>. Select a bundle, a backend, and a program, and run it.
 
 Bundles compile to WebAssembly GC by default; `make bundles-js` emits the same bundles compiled to
 JavaScript, which the shell falls back to on browsers without WebAssembly GC.
-`make build-release` emits both as a hosted build should ship them: optimized and minified, with
-no source maps or debug information beside them.
-The `example` bundle contains [unmodified LWJGL applications](examples/app/): a spinning square, and
-`blocks`, a whole small game with input, textures, sound, a hud and a high score it saves.
-The `sandbox` bundle contains diagnostics and regression programs.
+`make build-release` outputs both; optimized and minified, with no source maps or debug information included.
+The `example` bundle has tester [LWJGL applications](examples/app/).
+The `sandbox` bundle has diagnostics and regression programs.
 
-To try your own jar, put it in `vendor/` (any filename), any libraries it needs beside it, and
+To try your own jar, move it to `vendor/` (any filename), any libraries it needs with it, and
 build:
 
 ```sh

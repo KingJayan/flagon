@@ -731,7 +731,6 @@ public final class GLState implements RenderState {
         device.deleteTexture(texture);
     }
 
-    /** the restore path skips the validation {@link #alphaFunc} does: it was validated on the way in. */
     void restoreAlphaFunc(CompareFunc func, float reference) {
         alphaTestFunc = func;
         alphaTestThreshold = reference;
@@ -789,10 +788,6 @@ public final class GLState implements RenderState {
 
     // queries
 
-    /**
-     * the pipeline normalizes the normal it transforms whatever is asked, so both of these are
-     * already true of every draw. what is kept is the answer glIsEnabled owes the caller.
-     */
     public void setNormalRescaling(int capability, boolean enabled) {
         if (capability == 0x0BA1) {
             normalize = enabled;

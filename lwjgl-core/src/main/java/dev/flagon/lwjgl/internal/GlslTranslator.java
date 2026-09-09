@@ -132,9 +132,6 @@ public final class GlslTranslator {
         return Integer.parseInt(version.substring(0, digits));
     }
 
-    /**
-     * es requires a fragment shader to state a float precision & desktop glsl doesnt
-     */
     private static String withPrecision(String source, String code, ShaderStage stage) {
         if (stage != ShaderStage.FRAGMENT || declaresFloatPrecision(code)) {
             return source;
@@ -170,7 +167,6 @@ public final class GlslTranslator {
         return at;
     }
 
-    /** @return the index of {@code word} where it is not part of a longer identifier */
     private static int indexOfWord(String source, String word, int from) {
         int at = source.indexOf(word, from);
         while (at >= 0) {
