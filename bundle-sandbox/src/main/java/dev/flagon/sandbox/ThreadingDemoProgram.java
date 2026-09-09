@@ -1,0 +1,181 @@
+package dev.flagon.sandbox;
+
+import dev.flagon.platform.ConsoleSink;
+import dev.flagon.platform.Platforms;
+import dev.flagon.runtime.Program;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.locks.ReentrantLock;
+import org.lwjgl.opengl.Display;
+import org.lwjgl.opengl.DisplayMode;
+
+/** the shape a 1.13+ client runs: a render thread draining what worker threads produced. */
+public final class ThreadingDemoProgram implements Program {
+
+    private static final int WIDTH = 640;
+    private static final int HEIGHT = 360;
+    private static final int FRAMES = 30;
+    private static final int CHUNKS = 12;
+
+    private final ConcurrentLinkedQueue<String> ready = new ConcurrentLinkedQueue<>();
+
+    @Override
+    public String id() {
+        return "threading";
+    }
+
+    @Override
+    public String description() {
+        return "runs a render loop while worker threads load chunks behind it";
+    }
+
+    @Override
+    public void run(String[] arguments) throws Exception {
+        ConsoleSink console = Platforms.get().console();
+
+        Display.setDisplayMode(new DisplayMode(WIDTH, HEIGHT));
+        Display.setTitle("Flagon — threading");
+        Display.create();
+
+        threadsRunBesideTheLoop(console);
+        executorsAndFutures(console);
+        completableFutureChains(console);
+        latchesAndLocks(console);
+        chunksArriveWhileTheLoopDraws(console);
+
+        Display.destroy();
+        console.info("threading: done");
+    }
+
+    /** a worker that sleeps must not stop the frame loop */
+    private void threadsRunBesideTheLoop(ConsoleSink console) throws Exception {
+        AtomicInteger ticks = new AtomicInteger();
+        Thread worker = new Thread(() -> {
+            for (int tick = 0; tick < 5; tick++) {
+                try {
+                    Thread.sleep(1L);
+                } catch (InterruptedException stopped) {
+                    return;
+                }
+                ticks.incrementAndGet();
+            }
+        }, "worker");
+        worker.start();
+
+        int frames = 0;
+        while (worker.isAlive() && frames < FRAMES) {
+            Display.update();
+            frames++;
+        }
+        worker.join();
+        console.info("threading: worker ticked " + ticks.get() + " over " + (frames > 0)
+                + " frames drawn beside it");
+    }
+
+    private void executorsAndFutures(ConsoleSink console) throws Exception {
+        ExecutorService pool = Executors.newFixedThreadPool(3);
+        List<Future<Integer>> futures = new ArrayList<>();
+        for (int chunk = 0; chunk < 6; chunk++) {
+            int number = chunk;
+            futures.add(pool.submit(() -> {
+                Thread.sleep(1L);
+                return number * number;
+            }));
+        }
+        int total = 0;
+        for (Future<Integer> future : futures) {
+            total += future.get();
+        }
+        pool.shutdown();
+        console.info("threading: pool summed " + total + ", terminated "
+                + pool.awaitTermination(1L, TimeUnit.SECONDS));
+    }
+
+    /** the shape chunk loading takes: supplyAsync, a map, a compose and a join of many */
+    private void completableFutureChains(ConsoleSink console) throws Exception {
+        CompletableFuture<String> chained = CompletableFuture
+                .supplyAsync(() -> 6)
+                .thenApply(count -> count * 7)
+                .thenCompose(answer -> CompletableFuture.supplyAsync(() -> "chunk " + answer))
+                .thenApply(String::trim);
+        console.info("threading: chain produced " + chained.get(2L, TimeUnit.SECONDS));
+
+        CompletableFuture<Integer> left = CompletableFuture.supplyAsync(() -> 2);
+        CompletableFuture<Integer> right = CompletableFuture.supplyAsync(() -> 3);
+        console.info("threading: combined " + left.thenCombine(right, Integer::sum).get());
+
+        CompletableFuture<?>[] batch = new CompletableFuture<?>[4];
+        AtomicInteger built = new AtomicInteger();
+        for (int chunk = 0; chunk < batch.length; chunk++) {
+            batch[chunk] = CompletableFuture.supplyAsync(built::incrementAndGet);
+        }
+        CompletableFuture.allOf(batch).get(2L, TimeUnit.SECONDS);
+        console.info("threading: allOf waited for " + built.get());
+
+        String recovered = CompletableFuture.<String>supplyAsync(() -> {
+            throw new IllegalStateException("chunk is corrupt");
+        }).exceptionally(thrown -> "recovered").get();
+        console.info("threading: a failed stage " + recovered);
+    }
+
+    private void latchesAndLocks(ConsoleSink console) throws Exception {
+        CountDownLatch latch = new CountDownLatch(3);
+        ReentrantLock lock = new ReentrantLock();
+        int[] guarded = {0};
+        for (int worker = 0; worker < 3; worker++) {
+            new Thread(() -> {
+                lock.lock();
+                try {
+                    guarded[0]++;
+                } finally {
+                    lock.unlock();
+                }
+                latch.countDown();
+            }).start();
+        }
+        boolean opened = latch.await(2L, TimeUnit.SECONDS);
+        console.info("threading: latch opened " + opened + " with " + guarded[0] + " under a lock");
+    }
+
+    /** the handoff itself: workers queue results, the loop drains them a frame at a time */
+    private void chunksArriveWhileTheLoopDraws(ConsoleSink console) throws Exception {
+        ExecutorService workers = Executors.newFixedThreadPool(2);
+        for (int chunk = 0; chunk < CHUNKS; chunk++) {
+            int number = chunk;
+            workers.execute(() -> {
+                try {
+                    Thread.sleep(1L);
+                } catch (InterruptedException stopped) {
+                    return;
+                }
+                ready.offer("chunk-" + number);
+            });
+        }
+
+        int drained = 0;
+        int frames = 0;
+        int emptyFrames = 0;
+        while (drained < CHUNKS && frames < FRAMES) {
+            String chunk = ready.poll();
+            if (chunk == null) {
+                emptyFrames++;
+            } else {
+                drained++;
+            }
+            Display.update();
+            frames++;
+        }
+        workers.shutdown();
+        console.info("threading: drained " + drained + " of " + CHUNKS + " chunks over "
+                + frames + " frames");
+        console.info("threading: the loop kept drawing while empty " + (emptyFrames > 0));
+    }
+}
