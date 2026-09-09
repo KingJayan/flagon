@@ -1,11 +1,7 @@
 package dev.flagon.lwjgl.internal;
 
 /**
- * the numbered vertex attributes a shader program reads, as set by {@code glVertexAttribPointer}.
- *
- * <p>separate from {@link VertexArrays} because they are separate state in gl too: the fixed
- * function arrays feed {@code gl_Vertex} and its neighbours, these feed whatever the program
- * declares. which set a draw reads from is decided by whether a program is bound.
+ #'d vertex attributes a shader program reads, as set by {@code glVertexAttribPointer}
  */
 public final class GenericArrays {
 

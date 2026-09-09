@@ -67,7 +67,7 @@ Your bundle depends on:
 
     <dependency>
         <groupId>dev.flagon</groupId>
-        <artifactId>lwjgl-compat</artifactId>
+        <artifactId>lwjgl2-compat</artifactId>
     </dependency>
 
     <dependency>
@@ -77,7 +77,7 @@ Your bundle depends on:
 </dependencies>
 ```
 
-`lwjgl-compat` provides the `org.lwjgl.*` classes your application was compiled against.
+`lwjgl2-compat` provides the `org.lwjgl.*` classes your application was compiled against.
 
 Add `socket-classlib` too if your application opens a `java.net.Socket`; without it the class is
 absent from the classlib and the bundle will not link.

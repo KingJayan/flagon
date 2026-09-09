@@ -6,7 +6,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * gl's display lists, as recorded commands
+ * gl display lists as commands
  */
 public final class DisplayLists {
 
@@ -19,7 +19,6 @@ public final class DisplayLists {
     private boolean executeWhileRecording;
     private int nextName = 1;
 
-    /** reserves {@code count} consecutive names, as {@code glGenLists} does. */
     public int generate(int count) {
         if (count < 0) {
             throw new IllegalArgumentException("glGenLists: negative count " + count);
@@ -69,9 +68,6 @@ public final class DisplayLists {
         return recording != null;
     }
 
-    /**
-     * @return true when the call was recorded and must not also run now
-     */
     public boolean record(Runnable call) {
         if (recording == null) {
             return false;
@@ -83,7 +79,6 @@ public final class DisplayLists {
     public void call(int name) {
         List<Runnable> list = lists.get(name);
         if (list == null) {
-            // gl ignores a call to a list that was never built
             return;
         }
         for (Runnable command : list) {
@@ -91,7 +86,6 @@ public final class DisplayLists {
         }
     }
 
-    /** deletes {@code count} names from {@code first}, as {@code glDeleteLists} does. */
     public void delete(int first, int count) {
         for (int name = first; name < first + count; name++) {
             lists.remove(name);

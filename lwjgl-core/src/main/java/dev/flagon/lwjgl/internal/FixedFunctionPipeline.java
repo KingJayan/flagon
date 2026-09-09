@@ -141,8 +141,6 @@ public final class FixedFunctionPipeline {
 
             out vec4 out_color;
 
-            // gl combines the units in order, each one taking the result of the last as its
-            // incoming fragment. the modes are GL_MODULATE, GL_REPLACE and GL_ADD.
             vec4 combine(vec4 incoming, vec4 sampled, int mode) {
                 if (mode == 1) {
                     return sampled;
@@ -278,7 +276,6 @@ public final class FixedFunctionPipeline {
         }
     }
 
-    /** uploads and draws {@code vertexCount} vertices of interleaved data. */
     public void drawImmediate(DrawMode mode, float[] vertices, int floatCount, int vertexCount,
                               RenderState render) {
         int drawable = mode.usableVertices(vertexCount);
@@ -315,7 +312,6 @@ public final class FixedFunctionPipeline {
         return array;
     }
 
-    /** draws {@code count} vertices from {@code first}, read through the client arrays. */
     public void drawArrays(DrawMode mode, int first, int count, VertexArrays arrays,
                            RenderState render) {
         int drawable = mode.usableVertices(count);
