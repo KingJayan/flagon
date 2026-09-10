@@ -55,6 +55,8 @@
     <flagon.reflect.constructed></flagon.reflect.constructed>
     <!-- your application and its libraries, and the one jar they are folded into for the build -->
     <flagon.app.dir>${maven.multiModuleProjectDirectory}/vendor</flagon.app.dir>
+    <!-- globs narrowing which vendor classes keep their constructors; empty means all of them -->
+    <flagon.app.reflect></flagon.app.reflect>
     <flagon.app.jar>${maven.multiModuleProjectDirectory}/target/app.jar</flagon.app.jar>
     <!-- where browser bundles are emitted for the web shell to serve. -->
     <flagon.bundleOutput>${maven.multiModuleProjectDirectory}/web/public/flagon</flagon.bundleOutput>

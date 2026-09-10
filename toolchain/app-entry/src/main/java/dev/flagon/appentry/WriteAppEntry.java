@@ -15,6 +15,7 @@ import java.util.Set;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 import java.util.jar.Manifest;
+import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
 /**
@@ -25,9 +26,16 @@ public final class WriteAppEntry {
     private WriteAppEntry() {
     }
 
+    /** naming every class costs compile time and bundle size, so say when the list gets big */
+    private static final int WARN_ABOVE = 10_000;
+
+    /** past this the list is doing more harm than the reflection it enables */
+    private static final int LIMIT = 50_000;
+
     /**
      * {@code args[0]} a jar or a directory of them, {@code args[1]} the source directory to
-     * write into, {@code args[2]} where to list the classes they carry, if anywhere
+     * write into, {@code args[2]} where to list the classes they carry, if anywhere,
+     * {@code args[3]} comma-separated globs narrowing that list, if any
      */
     public static void main(String[] args) throws Exception {
         Path given = Path.of(args[0]);
@@ -43,11 +51,22 @@ public final class WriteAppEntry {
 
         // the build may pass the argument through empty, which asks for no list at all
         if (args.length > 2 && args[2] != null && !args[2].isBlank()) {
-            List<String> classes = classesIn(jars);
+            String narrowing = args.length > 3 && args[3] != null ? args[3] : "";
+            List<String> classes = narrow(classesIn(jars), narrowing);
+            if (classes.size() > LIMIT) {
+                throw new IllegalStateException(classes.size() + " classes is more than the "
+                        + LIMIT + " this will name for reflection. narrow it with"
+                        + " -Dflagon.app.reflect=your.game.**,your.other.pack.**");
+            }
             Path listed = Path.of(args[2]).toAbsolutePath();
             Files.createDirectories(listed.getParent());
             Files.write(listed, classes);
             System.out.println(classes.size() + " classes may be constructed by reflection");
+            if (classes.size() > WARN_ABOVE) {
+                System.out.println("that is a lot to keep constructors for, and it costs compile"
+                        + " time and bundle size. if the game only reflects over its own packages,"
+                        + " say so with -Dflagon.app.reflect=your.game.**");
+            }
         }
     }
 
@@ -67,6 +86,43 @@ public final class WriteAppEntry {
             }
         }
         return classes;
+    }
+
+    /**
+     * keeps the classes a glob names. {@code *} stops at a package boundary and {@code **} does
+     * not, so {@code net.minecraft.*} is one package and {@code net.minecraft.**} is the tree.
+     */
+    private static List<String> narrow(List<String> classes, String globs) {
+        List<Pattern> wanted = new ArrayList<>();
+        for (String glob : globs.split(",")) {
+            String trimmed = glob.trim();
+            if (!trimmed.isEmpty()) {
+                wanted.add(Pattern.compile(regexOf(trimmed)));
+            }
+        }
+        if (wanted.isEmpty()) {
+            return classes;
+        }
+        return classes.stream()
+                .filter(name -> wanted.stream().anyMatch(one -> one.matcher(name).matches()))
+                .toList();
+    }
+
+    private static String regexOf(String glob) {
+        StringBuilder pattern = new StringBuilder();
+        int at = 0;
+        while (at < glob.length()) {
+            char letter = glob.charAt(at);
+            if (letter == '*') {
+                boolean deep = at + 1 < glob.length() && glob.charAt(at + 1) == '*';
+                pattern.append(deep ? ".*" : "[^.]*");
+                at += deep ? 2 : 1;
+            } else {
+                pattern.append(Pattern.quote(String.valueOf(letter)));
+                at++;
+            }
+        }
+        return pattern.toString();
     }
 
     /** the jars to consider, a directory holding an application's libraries beside it */

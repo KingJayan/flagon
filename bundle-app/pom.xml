@@ -94,6 +94,7 @@
                 <argument>${flagon.app.dir}</argument>
                 <argument>${project.build.directory}/generated-sources/app</argument>
                 <argument>${flagon.reflect.constructed}</argument>
+                <argument>${flagon.app.reflect}</argument>
               </arguments>
             </configuration>
           </execution>
