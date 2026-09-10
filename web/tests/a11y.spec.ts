@@ -1,3 +1,4 @@
+// needs a display
 import { test, expect } from '@playwright/test';
 import { open } from './harness';
 
