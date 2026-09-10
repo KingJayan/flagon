@@ -91,6 +91,9 @@ public final class GLState implements RenderState {
     private final GenericArrays attributes;
     private final ShaderPipeline shaders;
     private final Map<Integer, ShaderStage> shaderStages = new HashMap<>();
+    private final Set<Integer> fixedFunctionShaders = new HashSet<>();
+    private final Set<Integer> fixedFunctionPrograms = new HashSet<>();
+    private final Map<Integer, Set<Integer>> attachedShaders = new HashMap<>();
     private int program = GraphicsDevice.NO_PROGRAM;
     private int arrayBuffer;
     private int elementBuffer;
@@ -226,7 +229,8 @@ public final class GLState implements RenderState {
     // immediate mode
 
     public void begin(DrawMode mode) {
-        if (program != GraphicsDevice.NO_PROGRAM && !immediate.isBuilding()) {
+        if (program != GraphicsDevice.NO_PROGRAM && !readsFixedFunction()
+                && !immediate.isBuilding()) {
             throw new UnsupportedOperationException(
                     "glBegin draws through the fixed-function pipeline, which the program bound by "
                             + "glUseProgram has replaced. call glUseProgram(0) first, or feed the "
@@ -265,15 +269,16 @@ public final class GLState implements RenderState {
             float[] captured = immediate.captured();
             DrawMode mode = immediate.mode();
             int count = immediate.vertexCount();
+            int lent = lent();
             if (record(() -> {
-                pipeline.drawImmediate(mode, captured, captured.length, count, this);
+                pipeline.drawImmediate(mode, captured, captured.length, count, this, lent);
                 restoreBindings();
             })) {
                 return;
             }
         }
         pipeline.drawImmediate(immediate.mode(), immediate.vertices(),
-                immediate.floatCount(), immediate.vertexCount(), this);
+                immediate.floatCount(), immediate.vertexCount(), this, lent());
         restoreBindings();
     }
 
@@ -386,12 +391,19 @@ public final class GLState implements RenderState {
 
     public void drawArrays(DrawMode mode, int first, int count) {
         requireNotBuilding("glDrawArrays");
-        if (program != GraphicsDevice.NO_PROGRAM) {
+        if (readsFixedFunction()) {
+            pipeline.drawArrays(mode, first, count, arrays, this, program);
+        } else if (program != GraphicsDevice.NO_PROGRAM) {
             shaders.drawArrays(mode, first, count, attributes);
         } else {
-            pipeline.drawArrays(mode, first, count, arrays, this);
+            pipeline.drawArrays(mode, first, count, arrays, this, GraphicsDevice.NO_PROGRAM);
         }
         restoreBindings();
+    }
+
+    /** a bound program whose shaders were written against gl's fixed-function state */
+    public boolean readsFixedFunction() {
+        return program != GraphicsDevice.NO_PROGRAM && fixedFunctionPrograms.contains(program);
     }
 
     public void drawElements(DrawMode mode, int count, IndexType indexType, int offsetInBytes) {
@@ -401,10 +413,13 @@ public final class GLState implements RenderState {
                     "glDrawElements needs indices in a buffer object; webgl has no client-side "
                             + "index arrays, so bind one with glBindBuffer first");
         }
-        if (program != GraphicsDevice.NO_PROGRAM) {
+        if (readsFixedFunction()) {
+            pipeline.drawElements(mode, count, indexType, offsetInBytes, arrays, this, program);
+        } else if (program != GraphicsDevice.NO_PROGRAM) {
             shaders.drawElements(mode, count, indexType, offsetInBytes, attributes);
         } else {
-            pipeline.drawElements(mode, count, indexType, offsetInBytes, arrays, this);
+            pipeline.drawElements(mode, count, indexType, offsetInBytes, arrays, this,
+                    GraphicsDevice.NO_PROGRAM);
         }
         restoreBindings();
     }
@@ -439,6 +454,50 @@ public final class GLState implements RenderState {
 
     public void forgetShader(int shader) {
         shaderStages.remove(shader);
+        fixedFunctionShaders.remove(shader);
+    }
+
+    /** @return the program the fixed-function pipeline should draw through, if not its own */
+    private int lent() {
+        return readsFixedFunction() ? program : GraphicsDevice.NO_PROGRAM;
+    }
+
+    public void markFixedFunction(int shader, boolean reads) {
+        if (reads) {
+            fixedFunctionShaders.add(shader);
+        } else {
+            fixedFunctionShaders.remove(shader);
+        }
+    }
+
+    public void attachShader(int target, int shader) {
+        attachedShaders.computeIfAbsent(target, any -> new HashSet<>()).add(shader);
+    }
+
+    public void detachShader(int target, int shader) {
+        Set<Integer> attached = attachedShaders.get(target);
+        if (attached != null) {
+            attached.remove(shader);
+        }
+    }
+
+    /** a program reads the fixed-function state when either shader it linked did */
+    public void linkedProgram(int linked) {
+        boolean reads = false;
+        for (int shader : attachedShaders.getOrDefault(linked, Set.of())) {
+            reads |= fixedFunctionShaders.contains(shader);
+        }
+        if (reads) {
+            fixedFunctionPrograms.add(linked);
+        } else {
+            fixedFunctionPrograms.remove(linked);
+        }
+    }
+
+    public void forgetProgram(int deleted) {
+        attachedShaders.remove(deleted);
+        fixedFunctionPrograms.remove(deleted);
+        pipeline.forgetProgram(deleted);
     }
 
     private void requireNotBuilding(String call) {

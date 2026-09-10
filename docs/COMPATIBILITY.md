@@ -225,7 +225,8 @@ fake devices.
 | `GL14` `glPointParameter` fade and distance attenuation | refused |
 | `GL20` shader/program objects, uniforms and generic attributes | works |
 | Desktop GLSL 1.10 to 3.30 | works, translated |
-| GLSL above 3.30, fixed-function GLSL built-ins | refused |
+| GLSL above 3.30 | refused |
+| Fixed-function GLSL built-ins | works, translated, see below |
 | `glBegin`/`glEnd` with a bound program | refused |
 | `AL` / `AL10` buffers, sources and listener | works |
 | `alGetError` latching | works |
@@ -336,9 +337,8 @@ would change application-owned data.
 With a program bound, draws use generic vertex attributes and the application's shader. With no
 program bound, draws use fixed-function client arrays and the built-in compatibility shader.
 
-Immediate mode is refused while a program is bound. Desktop GLSL reads `gl_Vertex` and related
-built-ins that GLSL ES does not provide, so attempting to emulate the combination would silently
-produce incorrect rendering.
+Immediate mode is refused while a program is bound, unless that program's shaders read the
+fixed-function state themselves -- see below.
 
 ### Desktop GLSL
 
@@ -358,9 +358,33 @@ what WebGL2 compiles:
 | `gl_FragData` | refused; the page draws to one colour buffer |
 
 `in` and `out` are already what those versions say, so they are left alone, and an `#extension`
-directive keeps its place ahead of the injected declarations. GLSL above 3.30 and the
-fixed-function built-ins (`gl_Vertex`, `gl_ModelViewProjectionMatrix`, `ftransform()`) are
-refused: they depend on state GL ES does not have.
+directive keeps its place ahead of the injected declarations. GLSL above 3.30 is refused.
+
+### Fixed-function GLSL
+
+GLSL ES has no `gl_Vertex`, no `gl_ModelViewProjectionMatrix` and no `ftransform()`, but the
+fixed-function pipeline here already keeps that state and already feeds it to its own shader. A
+shader naming any of it is promoted to GLSL ES 3.00 and rewritten to read the same attributes and
+uniforms, and the program it links into then draws through that pipeline -- so `glBegin`,
+`glVertexPointer` and `glColor` feed it, exactly as they do on the desktop.
+
+| Written | Read as |
+|---------|---------|
+| `gl_Vertex`, `gl_Color`, `gl_Normal` | the position, colour and normal client arrays |
+| `gl_MultiTexCoord0` to `gl_MultiTexCoord3` | the four texture coordinate arrays |
+| `gl_ModelViewMatrix`, `gl_ProjectionMatrix`, `gl_ModelViewProjectionMatrix`, `gl_NormalMatrix` | the matrices `glLoadMatrix` and friends set |
+| `ftransform()` | the same product, as a declared function |
+| `gl_FrontColor`, `gl_BackColor`, `gl_TexCoord[]`, `gl_FogFragCoord` | varyings the layer declares in both stages |
+| `gl_Fog` | a struct uniform the layer uploads from `glFog*` |
+| `attribute`, `varying` | `in` and `out` |
+
+`gl_LightSource`, `gl_TextureMatrix`, `gl_SecondaryColor` and `gl_ClipPlane` are still refused,
+naming which one was asked for: nothing here feeds them. Lighting still works for the built-in
+pipeline -- it is reading the lights *from a shader of your own* that has no equivalent.
+
+Both stages of such a program are translated together, so the varyings match. A program that
+supplies only one stage and leaves the other to fixed-function is not supported; GL allows it, and
+here the link fails as it would for any program with a stage missing.
 
 ### Vertex attributes
 

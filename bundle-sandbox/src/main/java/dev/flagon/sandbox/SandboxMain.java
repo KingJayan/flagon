@@ -31,6 +31,7 @@ public final class SandboxMain {
                 .register(new DisplayDemoProgram())
                 .register(new VertexArrayDemoProgram())
                 .register(new ShaderDemoProgram())
+                .register(new FixedFunctionShaderProgram())
                 .register(new TextureDemoProgram())
                 .register(new FileSystemDemoProgram())
                 .register(new AudioDemoProgram())

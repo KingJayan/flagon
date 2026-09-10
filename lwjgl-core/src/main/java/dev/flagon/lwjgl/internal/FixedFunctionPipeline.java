@@ -6,6 +6,9 @@ import dev.flagon.platform.graphics.BufferUsage;
 import dev.flagon.platform.graphics.GraphicsDevice;
 import dev.flagon.platform.graphics.IndexType;
 
+import java.util.HashMap;
+import java.util.Map;
+
 /**
  * reproduces gl 1.x fixed-function output with a single shader.
  */
@@ -230,6 +233,10 @@ public final class FixedFunctionPipeline {
     private final int fogStartUniform;
     private final int fogEndUniform;
 
+    /** what a translated fixed-function shader of the application's own reads, per program */
+    private static final int BORROWED_UNIFORMS = 8;
+    private final Map<Integer, int[]> borrowed = new HashMap<>();
+
     public FixedFunctionPipeline(GraphicsDevice device) {
         this.device = device;
         this.program = device.createProgram(VERTEX_SHADER, FRAGMENT_SHADER);
@@ -279,12 +286,12 @@ public final class FixedFunctionPipeline {
     }
 
     public void drawImmediate(DrawMode mode, float[] vertices, int floatCount, int vertexCount,
-                              RenderState render) {
+                              RenderState render, int lent) {
         int drawable = mode.usableVertices(vertexCount);
         if (drawable == 0) {
             return;
         }
-        begin(render);
+        begin(render, lent);
 
         device.bindVertexArray(immediateArray);
         device.bindBuffer(BufferTarget.ARRAY, buffer);
@@ -315,18 +322,18 @@ public final class FixedFunctionPipeline {
     }
 
     public void drawArrays(DrawMode mode, int first, int count, VertexArrays arrays,
-                           RenderState render) {
+                           RenderState render, int lent) {
         int drawable = mode.usableVertices(count);
         if (drawable == 0 || !arrays.canDraw()) {
             return;
         }
-        begin(render);
+        begin(render, lent);
         bindArrays(arrays, render);
         issue(mode, first, drawable);
     }
 
     public void drawElements(DrawMode mode, int count, IndexType indexType, int offsetInBytes,
-                             VertexArrays arrays, RenderState render) {
+                             VertexArrays arrays, RenderState render, int lent) {
         if (count == 0 || !arrays.canDraw()) {
             return;
         }
@@ -336,7 +343,7 @@ public final class FixedFunctionPipeline {
                             + "means rewriting the index buffer, which belongs to the caller. draw "
                             + "the quads with glDrawArrays, or supply triangle indices");
         }
-        begin(render);
+        begin(render, lent);
         bindArrays(arrays, render);
         device.drawElements(mode.primitive(), count, indexType, offsetInBytes);
     }
@@ -352,7 +359,11 @@ public final class FixedFunctionPipeline {
         }
     }
 
-    private void begin(RenderState render) {
+    private void begin(RenderState render, int lent) {
+        if (lent != GraphicsDevice.NO_PROGRAM) {
+            beginLent(render, lent);
+            return;
+        }
         device.useProgram(program);
         device.uniformMatrix4(modelViewUniform, render.modelView());
         device.uniformMatrix4(projectionUniform, render.projection());
@@ -365,6 +376,43 @@ public final class FixedFunctionPipeline {
         device.uniform1f(alphaTestThresholdUniform, render.alphaTestThreshold());
         light(render);
         fog(render.lighting());
+    }
+
+    /**
+     * a shader the application wrote against gl's fixed-function state reads a subset of the
+     * same uniforms; whatever it does not declare comes back as no location and is skipped.
+     */
+    private void beginLent(RenderState render, int lent) {
+        device.useProgram(lent);
+        int[] where = borrowed.computeIfAbsent(lent, this::locateIn);
+        device.uniformMatrix4(where[0], render.modelView());
+        device.uniformMatrix4(where[1], render.projection());
+        device.uniformMatrices(where[2], 3, false,
+                Matrix4.normalMatrix(render.modelView(), normalMatrix), 1);
+        Lighting lighting = render.lighting();
+        uniform4(where[3], lighting.fogColor());
+        device.uniform1f(where[4], lighting.fogDensity());
+        device.uniform1f(where[5], lighting.fogStart());
+        device.uniform1f(where[6], lighting.fogEnd());
+        float span = lighting.fogEnd() - lighting.fogStart();
+        device.uniform1f(where[7], span == 0.0f ? 0.0f : 1.0f / span);
+    }
+
+    private int[] locateIn(int lent) {
+        int[] where = new int[BORROWED_UNIFORMS];
+        where[0] = device.uniformLocation(lent, "u_modelView");
+        where[1] = device.uniformLocation(lent, "u_projection");
+        where[2] = device.uniformLocation(lent, "u_normalMatrix");
+        where[3] = device.uniformLocation(lent, "u_fog.color");
+        where[4] = device.uniformLocation(lent, "u_fog.density");
+        where[5] = device.uniformLocation(lent, "u_fog.start");
+        where[6] = device.uniformLocation(lent, "u_fog.end");
+        where[7] = device.uniformLocation(lent, "u_fog.scale");
+        return where;
+    }
+
+    public void forgetProgram(int deleted) {
+        borrowed.remove(deleted);
     }
 
     private void light(RenderState render) {

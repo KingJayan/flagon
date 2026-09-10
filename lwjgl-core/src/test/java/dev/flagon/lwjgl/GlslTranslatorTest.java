@@ -64,21 +64,85 @@ class GlslTranslatorTest {
     }
 
     @Test
-    void fixedFunctionBuiltinsAreRejectedByName() {
-        UnsupportedOperationException thrown = assertThrows(UnsupportedOperationException.class,
-                () -> GlslTranslator.toGlslEs("""
-                        #version 120
-                        void main() { gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex; }
-                        """, ShaderStage.VERTEX));
+    void fixedFunctionBuiltinsBecomeTheUniformsThePipelineFeeds() {
+        String translated = GlslTranslator.toGlslEs("""
+                #version 120
+                void main() { gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex; }
+                """, ShaderStage.VERTEX);
 
-        assertTrue(thrown.getMessage().contains("gl_ModelViewProjectionMatrix"),
-                thrown.getMessage());
+        assertTrue(translated.startsWith("#version 300 es"), translated);
+        assertTrue(translated.contains("uniform mat4 u_modelView;"), translated);
+        assertTrue(translated.contains("uniform mat4 u_projection;"), translated);
+        assertTrue(translated.contains("layout(location = 0) in vec3 in_position;"), translated);
+        assertTrue(translated.contains("(u_projection * u_modelView) * vec4(in_position, 1.0)"),
+                translated);
+        assertFalse(translated.contains("gl_Vertex"), translated);
     }
 
     @Test
-    void ftransformIsRejected() {
-        assertThrows(UnsupportedOperationException.class, () -> GlslTranslator.toGlslEs(
-                "void main() { gl_Position = ftransform(); }", ShaderStage.VERTEX));
+    void ftransformBecomesAFunctionOverTheSameUniforms() {
+        String translated = GlslTranslator.toGlslEs(
+                "void main() { gl_Position = ftransform(); }", ShaderStage.VERTEX);
+
+        assertTrue(translated.contains("vec4 flagon_ftransform()"), translated);
+        assertTrue(translated.contains(
+                "return u_projection * u_modelView * vec4(in_position, 1.0);"), translated);
+        assertTrue(translated.contains("gl_Position = flagon_ftransform();"), translated);
+    }
+
+    @Test
+    void aShaderIsFixedFunctionOnlyWhenItNamesTheState() {
+        assertTrue(GlslTranslator.readsFixedFunction("void main() { gl_Position = ftransform(); }"));
+        assertFalse(GlslTranslator.readsFixedFunction(
+                "in vec4 a; void main() { gl_Position = a; }"));
+    }
+
+    @Test
+    void stateWithNothingBehindItIsStillRefused() {
+        UnsupportedOperationException thrown = assertThrows(UnsupportedOperationException.class,
+                () -> GlslTranslator.toGlslEs("""
+                        #version 120
+                        void main() { gl_Position = gl_LightSource[0].position; }
+                        """, ShaderStage.VERTEX));
+
+        assertTrue(thrown.getMessage().contains("gl_LightSource"), thrown.getMessage());
+    }
+
+    @Test
+    void aFragmentShaderReadsTheVaryingsTheVertexShaderWrote() {
+        String translated = GlslTranslator.toGlslEs("""
+                #version 120
+                void main() { gl_FragColor = gl_Color * gl_TexCoord[0]; }
+                """, ShaderStage.FRAGMENT);
+
+        assertTrue(translated.contains("in vec4 flagon_frontColor;"), translated);
+        assertTrue(translated.contains("in vec4 flagon_texCoord[4];"), translated);
+        assertTrue(translated.contains("flagon_FragColor = flagon_frontColor * flagon_texCoord[0]"),
+                translated);
+    }
+
+    @Test
+    void fogParametersBecomeAStructTheLayerUploads() {
+        String translated = GlslTranslator.toGlslEs("""
+                #version 120
+                void main() { gl_FragColor = vec4(gl_Fog.color.rgb, gl_Fog.density); }
+                """, ShaderStage.FRAGMENT);
+
+        assertTrue(translated.contains("uniform flagon_FogParameters u_fog;"), translated);
+        assertTrue(translated.contains("u_fog.color.rgb"), translated);
+    }
+
+    @Test
+    void nineteenTwentyKeywordsBecomeInAndOut() {
+        String vertex = GlslTranslator.toGlslEs("""
+                #version 120
+                attribute float extra;
+                varying vec2 uv;
+                void main() { uv = gl_MultiTexCoord0.st; gl_Position = ftransform() * extra; }
+                """, ShaderStage.VERTEX);
+
+        assertTrue(vertex.contains("in float extra;"), vertex);
+        assertTrue(vertex.contains("out vec2 uv;"), vertex);
     }
 
     /** a name that merely contains a built-in is not that built-in. */
@@ -158,11 +222,10 @@ class GlslTranslatorTest {
     /** a division is not the start of a comment */
     @Test
     void aSlashBetweenOperandsIsLeftAlone() {
-        UnsupportedOperationException thrown = assertThrows(UnsupportedOperationException.class,
-                () -> GlslTranslator.toGlslEs(
-                        "void main() { gl_Position = gl_Vertex / 2.0; }", ShaderStage.VERTEX));
+        String translated = GlslTranslator.toGlslEs(
+                "void main() { gl_Position = gl_Vertex / 2.0; }", ShaderStage.VERTEX);
 
-        assertTrue(thrown.getMessage().contains("gl_Vertex"), thrown.getMessage());
+        assertTrue(translated.contains("vec4(in_position, 1.0) / 2.0"), translated);
     }
 
     @Test
