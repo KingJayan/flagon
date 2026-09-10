@@ -110,6 +110,10 @@ and, obfuscated, cannot be globbed. `app-entry` lists its classes to a file name
 `flagon.reflect.constructed`, and each keeps its constructors alone -- enough for the registries
 such a jar builds its world with, and far short of keeping it whole.
 
+That list is measured. Past ten thousand classes the build says what it is costing and how to say
+less; past fifty thousand it stops. A jar that is not obfuscated can narrow it up front with
+`-Dflagon.app.reflect=your.game.**`, where `*` stops at a package boundary and `**` does not.
+
 [COMPATIBILITY.md](COMPATIBILITY.md#reflection-reaches-types-not-members) records what each half
 does, and the `selftest` program asserts both in a real bundle so a teavm upgrade cannot change it
 quietly.
