@@ -13,7 +13,9 @@ import dev.flagon.platform.graphics.Winding;
 import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * the context state gl keeps internally and exposes only through its setters.
@@ -78,16 +80,12 @@ public final class GLState implements RenderState {
     private int scissorWidth;
     private int scissorHeight;
     private final int[] boundTexture = new int[VertexArrays.UNITS];
-    private final java.util.Set<Integer> automaticMipmaps = new java.util.HashSet<>();
+    private final Set<Integer> automaticMipmaps = new HashSet<>();
 
     private final Deque<Attributes> attributeStack = new ArrayDeque<>();
     private final DisplayLists displayLists = new DisplayLists();
 
-    private float[] vertices = new float[FixedFunctionPipeline.VERTEX_FLOATS * 256];
-    private int floatCount;
-    private int vertexCount;
-    private DrawMode primitive;
-    private boolean building;
+    private final ImmediateBuffer immediate = new ImmediateBuffer();
 
     private final VertexArrays arrays = new VertexArrays();
     private final GenericArrays attributes;
@@ -228,19 +226,13 @@ public final class GLState implements RenderState {
     // immediate mode
 
     public void begin(DrawMode mode) {
-        if (building) {
-            throw new IllegalStateException("glBegin called inside glBegin/glEnd");
-        }
-        if (program != GraphicsDevice.NO_PROGRAM) {
+        if (program != GraphicsDevice.NO_PROGRAM && !immediate.isBuilding()) {
             throw new UnsupportedOperationException(
                     "glBegin draws through the fixed-function pipeline, which the program bound by "
                             + "glUseProgram has replaced. call glUseProgram(0) first, or feed the "
                             + "program a vertex buffer of your own");
         }
-        building = true;
-        primitive = mode;
-        floatCount = 0;
-        vertexCount = 0;
+        immediate.begin(mode);
     }
 
     public void color(float r, float g, float b, float a) {
@@ -256,48 +248,23 @@ public final class GLState implements RenderState {
     }
 
     public void vertex(float x, float y, float z) {
-        if (!building) {
-            throw new IllegalStateException("glVertex called outside glBegin/glEnd");
-        }
-        if (floatCount + FixedFunctionPipeline.VERTEX_FLOATS > vertices.length) {
-            float[] grown = new float[vertices.length * 2];
-            System.arraycopy(vertices, 0, grown, 0, floatCount);
-            vertices = grown;
-        }
-        vertices[floatCount++] = x;
-        vertices[floatCount++] = y;
-        vertices[floatCount++] = z;
-        vertices[floatCount++] = red;
-        vertices[floatCount++] = green;
-        vertices[floatCount++] = blue;
-        vertices[floatCount++] = alpha;
-        for (int unit = 0; unit < VertexArrays.UNITS; unit++) {
-            vertices[floatCount++] = s[unit];
-            vertices[floatCount++] = t[unit];
-        }
-        vertices[floatCount++] = normalX;
-        vertices[floatCount++] = normalY;
-        vertices[floatCount++] = normalZ;
-        vertexCount++;
+        immediate.vertex(x, y, z, red, green, blue, alpha, s, t, normalX, normalY, normalZ);
     }
 
     public boolean isBuilding() {
-        return building;
+        return immediate.isBuilding();
     }
 
     public void end() {
-        if (!building) {
-            throw new IllegalStateException("glEnd called without glBegin");
-        }
-        building = false;
-        if (vertexCount == 0) {
+        immediate.end();
+        if (immediate.vertexCount() == 0) {
             return;
         }
         // a list holds the vertices the block built, not the calls that built them
         if (displayLists.isRecording()) {
-            float[] captured = java.util.Arrays.copyOf(vertices, floatCount);
-            DrawMode mode = primitive;
-            int count = vertexCount;
+            float[] captured = immediate.captured();
+            DrawMode mode = immediate.mode();
+            int count = immediate.vertexCount();
             if (record(() -> {
                 pipeline.drawImmediate(mode, captured, captured.length, count, this);
                 restoreBindings();
@@ -305,7 +272,8 @@ public final class GLState implements RenderState {
                 return;
             }
         }
-        pipeline.drawImmediate(primitive, vertices, floatCount, vertexCount, this);
+        pipeline.drawImmediate(immediate.mode(), immediate.vertices(),
+                immediate.floatCount(), immediate.vertexCount(), this);
         restoreBindings();
     }
 
@@ -474,7 +442,7 @@ public final class GLState implements RenderState {
     }
 
     private void requireNotBuilding(String call) {
-        if (building) {
+        if (immediate.isBuilding()) {
             throw new IllegalStateException(call + " called inside glBegin/glEnd");
         }
     }
