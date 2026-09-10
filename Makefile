@@ -14,7 +14,7 @@ APP := $(if $(VENDOR_JARS),-Papp,)
 
 .PHONY: help setup deps browsers browsers-deps browser-chromium browser-served browser-firefox bundles bundles-js app build bundles-release \
         bundles-release-js build-release test browser flake typecheck lint site dev serve \
-        check report merge-reports watch version release publish clean verify-bundles
+        check report merge-reports watch version release publish clean verify-bundles size
 
 help: ## list what this repo can do
 	@grep -hE '^[a-z-]+:.*## ' $(MAKEFILE_LIST) \
@@ -84,6 +84,22 @@ bundles-release-js: ## compile to javascript as a hosted build ships it
 build-release: ## compile both backends as a hosted build ships them
 	@$(MAKE) bundles-release
 	@$(MAKE) bundles-release-js
+
+# only meaningful against a release build; a debug bundle carries names a release one drops
+size: ## weigh the release bundles against toolchain/size-budget.txt
+	@over=0; \
+	printf "%-16s %10s %10s %8s\n" bundle bytes budget left; \
+	while read -r name limit; do \
+		case $$name in \#*|"") continue;; esac; \
+		file=$(BUNDLES)/$$name; \
+		test -f $$file || { echo "$$name was not built"; exit 1; }; \
+		size=$$(wc -c < $$file | tr -d " "); \
+		left=$$(( limit - size )); \
+		printf "%-16s %10s %10s %8s\n" $$name $$size $$limit $$left; \
+		test $$size -le $$limit || over=1; \
+	done < toolchain/size-budget.txt; \
+	test $$over -eq 0 || { echo "a bundle is over budget; make it smaller or raise the number on purpose"; exit 1; }; \
+	echo "bundles are within budget"
 
 test: ## run the jvm unit tests
 	$(MVN) test

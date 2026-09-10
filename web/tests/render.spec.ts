@@ -11,6 +11,9 @@ import {
   type Backend,
 } from './harness';
 
+/** ~12fps: far below anything playable, so only a real regression trips it */
+const FRAME_FLOOR_MS = 80;
+
 async function runDemo(page: Page, backend: Backend): Promise<void> {
   await open(page, backend, 'program=lwjgl');
   await expect(page.getByTestId('state')).toHaveText('running', { timeout: 30_000 });
@@ -115,6 +118,25 @@ for (const backend of BACKENDS) {
     test('reports the frame loop finishing', async ({ page }) => {
       await open(page, backend, 'program=lwjgl');
       await expect(page.getByTestId('log')).toContainText('frame 60', { timeout: 30_000 });
+    });
+
+    // a floor, not a benchmark: a runner is slow and shared, but a layer that started doing
+    // per-frame work it should not would fall through this long before anyone noticed by eye
+    test('presents frames faster than the floor this layer has to clear', async ({ page }) => {
+      await open(page, backend, 'program=lwjgl&arg=--frames&arg=600');
+      await expect(page.getByTestId('state')).toHaveText('running', { timeout: 30_000 });
+
+      const drawn = async (): Promise<number> => page.evaluate(() => window.__flagonFrames ?? 0);
+      await expect.poll(drawn, { timeout: 30_000 }).toBeGreaterThan(0);
+
+      const from = await drawn();
+      const started = Date.now();
+      await page.waitForTimeout(3000);
+      const frames = (await drawn()) - from;
+      const perFrame = (Date.now() - started) / Math.max(frames, 1);
+
+      expect(frames, 'the loop stopped presenting').toBeGreaterThan(0);
+      expect(perFrame, `${perFrame.toFixed(1)}ms a frame`).toBeLessThan(FRAME_FLOOR_MS);
     });
   });
 }
