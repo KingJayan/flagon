@@ -63,7 +63,8 @@ public final class FramebufferDemoProgram implements Program {
         console.info("fbo: status is "
                 + (status == GL30.GL_FRAMEBUFFER_COMPLETE ? "complete" : "0x"
                         + Integer.toHexString(status)));
-        console.info("fbo: bound " + (GL30.glGetInteger(GL30.GL_FRAMEBUFFER_BINDING) == framebuffer));
+        console.info("fbo: bound "
+                + (GL30.glGetInteger(GL30.GL_FRAMEBUFFER_BINDING) == framebuffer));
 
         GL11.glViewport(0, 0, TARGET, TARGET);
         GL11.glClearColor(0.0f, 1.0f, 0.0f, 1.0f);

@@ -43,7 +43,8 @@ class NetworkHttpConnectionTest {
     @Test
     void leavesThePortOutOfTheHostHeaderWhereItIsTheDefault() throws Exception {
         answer("HTTP/1.1 200 OK\r\nContent-Length: 0\r\n\r\n");
-        network.serve("host", 80, request -> record(request, "HTTP/1.1 200 OK\r\nContent-Length: 0\r\n\r\n"));
+        network.serve("host", 80, request -> record(request,
+                "HTTP/1.1 200 OK\r\nContent-Length: 0\r\n\r\n"));
 
         read(open("http://host/"));
 
@@ -52,7 +53,8 @@ class NetworkHttpConnectionTest {
 
     @Test
     void asksForTheRootWhereAUrlHasNoPath() throws Exception {
-        network.serve("host", 80, request -> record(request, "HTTP/1.1 200 OK\r\nContent-Length: 0\r\n\r\n"));
+        network.serve("host", 80, request -> record(request,
+                "HTTP/1.1 200 OK\r\nContent-Length: 0\r\n\r\n"));
 
         read(open("http://host"));
 

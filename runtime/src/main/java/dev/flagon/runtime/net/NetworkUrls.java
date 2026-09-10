@@ -22,7 +22,9 @@ public final class NetworkUrls {
     private NetworkUrls() {
     }
 
-    /** installs the handler once per process; a second call, or a host that has none, does nothing. */
+    /**
+     * installs the handler once per process; a second call, or a host that has none, does nothing.
+     */
     public static void install(Network network, ConsoleSink console) {
         if (installed || network == null || !network.isAvailable()) {
             return;

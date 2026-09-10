@@ -152,7 +152,8 @@ class GL11Test {
         drawQuads(1);
 
         assertArrayEquals(new int[] {0, 1, 2, 0, 2, 3}, device.lastElementData);
-        assertEquals(java.util.List.of("drawElements TRIANGLES 6 UNSIGNED_INT 0"), device.calls("drawElements"));
+        assertEquals(java.util.List.of("drawElements TRIANGLES 6 UNSIGNED_INT 0"),
+                device.calls("drawElements"));
         assertTrue(device.calls("drawArrays").isEmpty());
         // the vertices go up untouched; only the index order changes
         assertEquals(4 * VERTEX_FLOATS, device.lastBufferData.length);
@@ -165,7 +166,8 @@ class GL11Test {
         assertArrayEquals(
                 new int[] {0, 1, 2, 0, 2, 3, 4, 5, 6, 4, 6, 7, 8, 9, 10, 8, 10, 11},
                 device.lastElementData);
-        assertEquals(java.util.List.of("drawElements TRIANGLES 18 UNSIGNED_INT 0"), device.calls("drawElements"));
+        assertEquals(java.util.List.of("drawElements TRIANGLES 18 UNSIGNED_INT 0"),
+                device.calls("drawElements"));
     }
 
     @Test
@@ -188,7 +190,8 @@ class GL11Test {
         }
         GL11.glEnd();
 
-        assertEquals(java.util.List.of("drawElements TRIANGLES 6 UNSIGNED_INT 0"), device.calls("drawElements"));
+        assertEquals(java.util.List.of("drawElements TRIANGLES 6 UNSIGNED_INT 0"),
+                device.calls("drawElements"));
     }
 
     @Test
@@ -394,7 +397,8 @@ class GL11Test {
         GL11.glTexSubImage2D(GL11.GL_TEXTURE_2D, 0, 1, 1, 1, 1,
                 GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, new int[] {0xFF112233});
 
-        assertEquals(java.util.List.of("textureSubImage 0 1,1 1x1"), device.calls("textureSubImage"));
+        assertEquals(java.util.List.of("textureSubImage 0 1,1 1x1"),
+                device.calls("textureSubImage"));
         assertArrayEquals(new byte[] {0x11, 0x22, 0x33, (byte) 0xFF}, device.lastRgba);
     }
 
@@ -406,9 +410,12 @@ class GL11Test {
         GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_LINEAR);
 
         assertEquals(java.util.List.of("textureWrapS REPEAT"), device.calls("textureWrapS"));
-        assertEquals(java.util.List.of("textureWrapT MIRRORED_REPEAT"), device.calls("textureWrapT"));
-        assertEquals(java.util.List.of("textureMinFilter NEAREST"), device.calls("textureMinFilter"));
-        assertEquals(java.util.List.of("textureMagFilter LINEAR"), device.calls("textureMagFilter"));
+        assertEquals(java.util.List.of("textureWrapT MIRRORED_REPEAT"),
+                device.calls("textureWrapT"));
+        assertEquals(java.util.List.of("textureMinFilter NEAREST"),
+                device.calls("textureMinFilter"));
+        assertEquals(java.util.List.of("textureMagFilter LINEAR"),
+                device.calls("textureMagFilter"));
     }
 
     @Test
@@ -721,7 +728,8 @@ class GL11Test {
         GL11.glPolygonOffset(1.0f, 2.0f);
         GL11.glLineWidth(3.0f);
 
-        assertEquals(java.util.List.of("polygonOffsetFill true"), device.calls("polygonOffsetFill"));
+        assertEquals(java.util.List.of("polygonOffsetFill true"),
+                device.calls("polygonOffsetFill"));
         assertEquals(java.util.List.of("polygonOffset 1.0 2.0"), device.calls("polygonOffset"));
         assertEquals(java.util.List.of("lineWidth 3.0"), device.calls("lineWidth"));
         assertThrows(IllegalArgumentException.class, () -> GL11.glLineWidth(0.0f));

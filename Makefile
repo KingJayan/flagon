@@ -13,7 +13,7 @@ VENDOR_JARS := $(wildcard vendor/*.jar)
 APP := $(if $(VENDOR_JARS),-Papp,)
 
 .PHONY: help setup deps browsers browsers-deps browser-chromium browser-served browser-firefox bundles bundles-js app build bundles-release \
-        bundles-release-js build-release test browser flake typecheck site dev serve \
+        bundles-release-js build-release test browser flake typecheck lint site dev serve \
         check report merge-reports watch version release publish clean verify-bundles
 
 help: ## list what this repo can do
@@ -99,6 +99,10 @@ flake: ## rerun the browser tests to shake out a flake (N=3, ARGS='tests/a11y.sp
 typecheck: ## check the shell's types
 	cd $(WEB) && bun run typecheck
 
+lint: ## check both languages for style
+	$(MVN) -q checkstyle:check
+	cd $(WEB) && bun run lint
+
 site: ## build the shell for hosting
 	cd $(WEB) && bun run build
 
@@ -110,6 +114,7 @@ serve: ## serve a built site and its socket proxy together
 
 check: ## everything ci runs
 	@$(MAKE) build
+	@$(MAKE) lint
 	@$(MAKE) typecheck
 	@$(MAKE) browser
 

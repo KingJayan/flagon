@@ -1,12 +1,18 @@
 package dev.flagon.platform.audio;
 
-/** the pcm arithmetic every {@link AudioDevice} needs, in one place because none of it is host-specific. */
+/**
+ * the pcm arithmetic every {@link AudioDevice} needs, in one place because none of it is
+ * host-specific.
+ */
 public final class Audio {
 
     private Audio() {
     }
 
-    /** @throws AudioException if the data is not a whole number of frames, or the rate is not positive */
+    /**
+     * @throws AudioException if the data is not a whole number of frames, or the rate is not
+     * positive
+     */
     public static void requireWholeFrames(AudioFormat format, int length, int sampleRate) {
         if (sampleRate <= 0) {
             throw new AudioException("sample rate must be positive: " + sampleRate);

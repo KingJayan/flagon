@@ -113,7 +113,8 @@ class FlagonRuntimeTest {
     @Test
     void reportsUnknownProgramAsFatalInTheSelectPhase() {
         FakePlatform platform = new FakePlatform("nope");
-        ProgramRegistry registry = new ProgramRegistry().register(program("hello", new ArrayList<>()));
+        ProgramRegistry registry = new ProgramRegistry().register(program("hello",
+                new ArrayList<>()));
 
         assertEquals(-1, FlagonRuntime.boot(platform, registry));
         assertTrue(platform.events.contains("fatal:select"), platform.events.toString());
@@ -149,8 +150,10 @@ class FlagonRuntimeTest {
 
     @Test
     void rejectsDuplicateProgramIds() {
-        ProgramRegistry registry = new ProgramRegistry().register(program("dup", new ArrayList<>()));
-        assertThrows(IllegalStateException.class, () -> registry.register(program("dup", new ArrayList<>())));
+        ProgramRegistry registry = new ProgramRegistry().register(program("dup",
+                new ArrayList<>()));
+        assertThrows(IllegalStateException.class, () -> registry.register(program("dup",
+                new ArrayList<>())));
     }
 
     @Test

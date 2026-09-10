@@ -1,0 +1,21 @@
+{
+  "categories": {
+    "correctness": "error",
+    "suspicious": "error",
+    "perf": "error"
+  },
+  "ignorePatterns": ["dist", "node_modules", "test-results", "blob-report", "playwright-report"],
+  "rules": {
+    "no-underscore-dangle": "off"
+  },
+  "overrides": [
+    {
+      "files": ["tests/**"],
+      "rules": {
+        "no-await-in-loop": "off",
+        "unicorn/prefer-add-event-listener": "off",
+        "unicorn/consistent-function-scoping": "off"
+      }
+    }
+  ]
+}

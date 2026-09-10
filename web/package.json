@@ -9,6 +9,7 @@
     "preview": "vite preview",
     "proxy": "bun proxy-server.ts",
     "typecheck": "tsc --noEmit",
+    "lint": "oxlint",
     "test": "playwright test",
     "test:install": "playwright install chromium"
   },
@@ -16,6 +17,7 @@
     "@playwright/test": "^1.49.1",
     "@types/node": "^22.10.5",
     "@types/ws": "^8.18.1",
+    "oxlint": "^1.82.0",
     "typescript": "^5.7.2",
     "vite": "^6.0.7",
     "ws": "^8.21.1"

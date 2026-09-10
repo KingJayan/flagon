@@ -36,8 +36,8 @@ const host: HostBridge = {
     write(text);
   },
   catalog() {},
-  status(phase, detail) {
-    show('starting', 'Starting', detail ? `${phase}: ${detail}` : phase);
+  status(phase, note) {
+    show('starting', 'Starting', note ? `${phase}: ${note}` : phase);
   },
   ready() {
     hide();

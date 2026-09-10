@@ -202,11 +202,13 @@ public final class WebAudioDevice implements AudioDevice {
     }
 
     @Override
-    public void bufferData(int buffer, AudioFormat format, byte[] data, int length, int sampleRate) {
+    public void bufferData(int buffer, AudioFormat format, byte[] data, int length,
+            int sampleRate) {
         Audio.requireWholeFrames(format, length, sampleRate);
         Buffer held = buffer(buffer);
         int frames = Audio.frames(format, length);
-        AudioBuffer audio = context.createBuffer(format.channels(), Math.max(frames, 1), sampleRate);
+        AudioBuffer audio = context.createBuffer(format.channels(), Math.max(frames, 1),
+                sampleRate);
         for (int channel = 0; channel < format.channels(); channel++) {
             audio.copyToChannel(Audio.channelSamples(format, data, length, channel), channel);
         }

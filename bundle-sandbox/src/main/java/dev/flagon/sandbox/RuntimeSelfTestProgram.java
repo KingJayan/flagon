@@ -63,7 +63,8 @@ public final class RuntimeSelfTestProgram implements Program {
             for (String failure : failures) {
                 console.error("selftest failure: " + failure, null);
             }
-            throw new AssertionError(failures.size() + " of " + checks + " self-test checks failed");
+            throw new AssertionError(failures.size() + " of " + checks
+                    + " self-test checks failed");
         }
     }
 
@@ -89,7 +90,8 @@ public final class RuntimeSelfTestProgram implements Program {
         check("nan is not equal to itself", true, Double.NaN != Double.NaN);
         check("nan detected", true, Double.isNaN(0.0d / 0.0d));
         check("positive infinity", true, Double.isInfinite(1.0d / 0.0d));
-        check("negative zero", true, Double.doubleToLongBits(-0.0d) != Double.doubleToLongBits(0.0d));
+        check("negative zero", true,
+                Double.doubleToLongBits(-0.0d) != Double.doubleToLongBits(0.0d));
         check("sqrt", 4.0d, Math.sqrt(16.0d));
         check("floor of negative", -4.0d, Math.floor(-3.5d));
         check("round half up", 4L, Math.round(3.5d));
@@ -259,7 +261,8 @@ public final class RuntimeSelfTestProgram implements Program {
         check("class name", "dev.flagon.sandbox.RuntimeSelfTestProgram$Square",
                 Square.class.getName());
         check("simple name", "Square", Square.class.getSimpleName());
-        check("name off an instance", Square.class.getName(), new Square(1.0d).getClass().getName());
+        check("name off an instance", Square.class.getName(),
+                new Square(1.0d).getClass().getName());
         check("isInstance", true, Square.class.isInstance(new Square(1.0d)));
         check("isInstance of another type", false, Square.class.isInstance("text"));
         check("isAssignableFrom", true, Shape.class.isAssignableFrom(Square.class));
@@ -333,7 +336,8 @@ public final class RuntimeSelfTestProgram implements Program {
      */
     private void optedInReflection() {
         check("annotated fields survive", 2, Reflected.class.getDeclaredFields().length);
-        check("annotated constructors survive", 2, Reflected.class.getDeclaredConstructors().length);
+        check("annotated constructors survive", 2,
+                Reflected.class.getDeclaredConstructors().length);
 
         try {
             Object made = Reflected.class.getDeclaredConstructor(String.class, int.class)
@@ -356,7 +360,8 @@ public final class RuntimeSelfTestProgram implements Program {
             Object made = named.getDeclaredConstructor().newInstance();
             check("a class named by the build is found", "dev.flagon.sandbox.ReflectedByPattern",
                     named.getName());
-            check("invoking on it", "named by pattern", named.getDeclaredMethod("greet").invoke(made));
+            check("invoking on it", "named by pattern",
+                    named.getDeclaredMethod("greet").invoke(made));
         } catch (ReflectiveOperationException failed) {
             check("a class named by the build reflects", "no failure", "threw " + failed);
         }
@@ -385,7 +390,8 @@ public final class RuntimeSelfTestProgram implements Program {
             check("a class listed for the compiler is constructed", "listed", "threw " + failed);
         }
 
-        Platforms.get().console().info("reflection: " + Reflected.class.getSimpleName() + " reports "
+        Platforms.get().console().info("reflection: " + Reflected.class.getSimpleName()
+                + " reports "
                 + Reflected.class.getDeclaredMethods().length + " methods and "
                 + Reflected.class.getDeclaredFields().length + " fields");
     }
@@ -439,7 +445,8 @@ public final class RuntimeSelfTestProgram implements Program {
         java.util.function.IntUnaryOperator addCaptured = n -> n + captured;
         check("captured local", 15, addCaptured.applyAsInt(5));
 
-        java.util.function.Function<Integer, java.util.function.Function<Integer, Integer>> curried =
+        java.util.function.Function<Integer, java.util.function.Function<Integer,
+                Integer>> curried =
                 a -> b -> a * b;
         check("nested lambda", 12, curried.apply(3).apply(4));
     }

@@ -142,7 +142,8 @@ final class HttpExchange {
         String statusLine = HttpLines.readLine(raw);
         String[] parts = statusLine.split(" ", 3);
         if (parts.length < 2 || !parts[0].startsWith("HTTP/")) {
-            throw new IOException("the server answered with '" + statusLine + "', which is not http");
+            throw new IOException("the server answered with '" + statusLine
+                    + "', which is not http");
         }
         int status = parseStatus(parts[1], statusLine);
         String message = parts.length > 2 ? parts[2] : "";
