@@ -8,7 +8,7 @@ import {
 } from './bundle';
 
 /** only bundles this shell ships may be imported; the name comes from the url. */
-const BUNDLES = ['sandbox', 'example'];
+const BUNDLES = ['sandbox', 'example', 'app'];
 
 /** the same bundle is emitted once per backend, under the extension that backend produces. */
 function bundleUrlOf(bundle: string, backend: string): string | undefined {

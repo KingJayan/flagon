@@ -49,7 +49,9 @@ bundles: ## compile java to webassembly gc
 app: ## compile whatever jar is in vendor/ into a bundle, and say where to open it
 	@test -n "$(VENDOR_JARS)" || { echo "put a jar -- any jar -- in vendor/ first"; exit 1; }
 	@$(MAKE) build
-	@echo "run 'make dev' and open http://localhost:5273/play/"
+	@echo "run 'make dev', then open http://localhost:5273/ and pick the app bundle"
+	@echo "for the console, the program picker and the argument field, or"
+	@echo "http://localhost:5273/play/ to run it fullscreen"
 
 bundles-js: ## compile java to javascript, the fallback backend
 	$(MVN) -Pjs $(APP) -DskipTests package
