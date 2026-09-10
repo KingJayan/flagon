@@ -4,8 +4,9 @@ import type { IncomingMessage } from 'node:http';
 import type { Duplex } from 'node:stream';
 import type { Plugin, PreviewServer, ViteDevServer } from 'vite';
 import { WebSocketServer, type WebSocket } from 'ws';
+import { OPENED, PAUSE, TCP_PROXY_PATH } from './wire';
 
-export const TCP_PROXY_PATH = '/__flagon/tcp';
+export { TCP_PROXY_PATH } from './wire';
 
 export const DEFAULT_ALLOW = ['localhost:*', '127.0.0.1:*', '[::1]:*'];
 
@@ -155,7 +156,7 @@ function open(client: WebSocket, asked: URL, allowed: Rule[]): void {
     }
   };
 
-  socket.on('connect', () => client.send('open'));
+  socket.on('connect', () => client.send(OPENED));
   socket.on('data', (data: Buffer) => {
     if (client.readyState !== client.OPEN) {
       return;
@@ -173,7 +174,7 @@ function open(client: WebSocket, asked: URL, allowed: Rule[]): void {
   // text frames are the page pacing us; everything else is the socket's own bytes
   client.on('message', (data: Buffer, isBinary: boolean) => {
     if (!isBinary) {
-      held = data.toString() === 'pause';
+      held = data.toString() === PAUSE;
       pace();
       return;
     }

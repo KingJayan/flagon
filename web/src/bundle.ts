@@ -1,3 +1,5 @@
+import { installTunnel } from './tunnel';
+
 export interface HostBridge {
   log(level: string, text: string): void;
   catalog(ids: string[], descriptions: string[]): void;
@@ -51,6 +53,7 @@ const WASM_LOADER = '/flagon/wasm-gc-module-runtime.js';
 
 export async function runBundle(url: string, host: HostBridge, args: string[]): Promise<void> {
   window.__flagonHost = host;
+  installTunnel();
   const absolute = new URL(url, location.origin).href;
   if (absolute.endsWith('.wasm')) {
     await runWasmBundle(absolute, args);

@@ -184,6 +184,12 @@ translating OpenAL semantics onto the underlying audio implementation.
 `ProxyNetwork` carries them over a websocket to a proxy; `UnavailableNetwork` refuses every
 connection on hosts without networking.
 
+The page half of that websocket — the receive queue, the pause/resume pacing and the close
+semantics — is `web/src/tunnel.ts`, a typechecked module the shell installs before it starts a
+bundle. `Tunnel` is then only the bindings that reach it, and the words the two sides say live in
+`web/wire.ts`, which the proxy imports as well. A bundle loaded by something other than the shell
+finds no tunnel installed and falls back to `UnavailableNetwork`.
+
 `MemoryNetwork` provides an in-memory implementation for tests.
 
 `NetworkUrls` installs a `URLStreamHandlerFactory` at boot so unmodified `java.net.URL` code
