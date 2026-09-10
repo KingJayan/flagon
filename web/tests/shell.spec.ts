@@ -15,7 +15,7 @@ for (const backend of BACKENDS) {
       await expect(options.first()).toHaveAttribute('value', '');
       await expect(options.nth(1)).toHaveAttribute('value', 'hello');
       await expect(options.nth(1)).toContainText('hello — ');
-      await expect(options).toHaveCount(20);
+      await expect(options).toHaveCount(21);
       expect(failures).toEqual([]);
     });
 
@@ -132,7 +132,7 @@ for (const backend of BACKENDS) {
       await expect(page.locator('#program option').nth(1)).toContainText('spinner — ');
 
       await page.locator('#bundle').selectOption('sandbox');
-      await expect(page.locator('#program option')).toHaveCount(20);
+      await expect(page.locator('#program option')).toHaveCount(21);
       await expect(page.locator('#program option').nth(1)).toContainText('hello — ');
 
       await page.locator('#bundle').selectOption('example');

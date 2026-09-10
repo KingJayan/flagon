@@ -587,6 +587,12 @@ and carries the extension names the context reports. Verified in the browser by 
 `GL11` through `GL20` are the same classes for both bindings and ship in `lwjgl2-compat`; put
 both artifacts on the classpath and the AOT compiler drops whatever the application never reaches.
 
+LWJGL 3 splits each version in two -- `GL11C` holds the core profile, `GL11` extends it and adds
+the fixed-function half -- and modern code imports the `C` classes by name. The same split is here,
+with the same inheritance, so `GL11C.glClear` and `GL11.glClear` are one method and nothing is
+duplicated. `GL11C` through `GL15C`, `GL20C` and `GL30C` through `GL33C` are all present. What sits
+on which side is held by a test: nothing gl 3.2 core removed may appear on a `C` class.
+
 | Call | Behaviour |
 |------|-----------|
 | `glDrawElementsBaseVertex` and its variants | refused; webgl2 reads every index as written, and rewriting the index buffer belongs to the caller |

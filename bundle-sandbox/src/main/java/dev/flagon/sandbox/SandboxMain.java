@@ -25,6 +25,7 @@ public final class SandboxMain {
                 .register(new Lwjgl3DemoProgram())
                 .register(new GlfwDemoProgram())
                 .register(new CoreProfileDemoProgram())
+                .register(new CoreClassesDemoProgram())
                 .register(new FramebufferDemoProgram())
                 .register(new ThreadingDemoProgram())
                 .register(new InputDemoProgram())
