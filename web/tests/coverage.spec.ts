@@ -28,8 +28,8 @@ test.describe('which engine runs which spec', () => {
       }
     }
 
-    const unlisted = [...declared].filter((name) => !ignored.has(name)).sort();
-    const unnecessary = [...ignored].filter((name) => !declared.has(name)).sort();
+    const unlisted = [...declared].filter((name) => !ignored.has(name)).toSorted();
+    const unnecessary = [...ignored].filter((name) => !declared.has(name)).toSorted();
 
     expect(unlisted, 'these open a display; add them to the firefox testIgnore').toEqual([]);
     expect(unnecessary, 'these no longer say they need a display; drop them').toEqual([]);
