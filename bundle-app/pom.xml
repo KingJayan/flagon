@@ -36,6 +36,11 @@
       <groupId>dev.flagon</groupId>
       <artifactId>lwjgl2-compat</artifactId>
     </dependency>
+    <!-- and the lwjgl 3 half of it: glfw, the core-profile GLxxC classes, MemoryStack -->
+    <dependency>
+      <groupId>dev.flagon</groupId>
+      <artifactId>lwjgl3-compat</artifactId>
+    </dependency>
     <dependency>
       <groupId>dev.flagon</groupId>
       <artifactId>socket-classlib</artifactId>
