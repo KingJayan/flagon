@@ -12,12 +12,11 @@ import org.teavm.jso.typedarrays.Int8Array;
 public final class ProxyNetwork implements Network {
 
     private ProxyNetwork() {
-        Tunnel.install();
     }
 
-    /** @return the network, or null when this browser has no websockets */
+    /** @return the network, or null without websockets or without the page half of the tunnel */
     public static ProxyNetwork createIfAvailable() {
-        return Tunnel.isAvailable() ? new ProxyNetwork() : null;
+        return Tunnel.isAvailable() && Tunnel.isInstalled() ? new ProxyNetwork() : null;
     }
 
     @Override
