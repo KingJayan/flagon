@@ -84,7 +84,8 @@ public final class NetDemoProgram implements Program {
 
             int body = response.indexOf("\r\n\r\n");
             if (body < 0) {
-                throw new IllegalStateException("no headers ended in " + response.length() + " bytes");
+                throw new IllegalStateException("no headers ended in " + response.length()
+                        + " bytes");
             }
             console.info("body: " + response.substring(body + 4).trim());
         } finally {
@@ -156,7 +157,8 @@ public final class NetDemoProgram implements Program {
         Proxy socks = new Proxy(Proxy.Type.SOCKS, new InetSocketAddress("localhost", 1080));
         console.info("proxy: " + socks + ", direct: " + Proxy.NO_PROXY.type()
                 + ", same twice: "
-                + socks.equals(new Proxy(Proxy.Type.SOCKS, new InetSocketAddress("localhost", 1080))));
+                + socks.equals(new Proxy(Proxy.Type.SOCKS, new InetSocketAddress("localhost",
+                        1080))));
         try {
             new Proxy(Proxy.Type.DIRECT, new InetSocketAddress("localhost", 1080));
             console.warn("proxy: DIRECT took an address");
@@ -170,7 +172,8 @@ public final class NetDemoProgram implements Program {
         Authenticator.setDefault(new Authenticator() {
             @Override
             protected PasswordAuthentication getPasswordAuthentication() {
-                return new PasswordAuthentication("who", ("for " + getRequestingPrompt()).toCharArray());
+                return new PasswordAuthentication("who", ("for "
+                        + getRequestingPrompt()).toCharArray());
             }
         });
         PasswordAuthentication answer = Authenticator.requestPasswordAuthentication(

@@ -199,25 +199,25 @@ test.describe('a proxy the network can reach', () => {
   });
 });
 
-test.describe('the net fixtures on the server that ships', () => {
-  async function probeOn(probes: boolean, ask: string): Promise<number> {
-    const server = await startProxyServer({
-      host: 'localhost',
-      port: 0,
-      root: '.',
-      allow: ['localhost:*'],
-      origins: [],
-      token: '',
-      hosts: [],
-      probes,
-    });
-    const at = (server.address() as AddressInfo).port;
-    const answer = await fetch(`http://localhost:${at}${ask}`);
-    const status = answer.ok ? (await answer.arrayBuffer()).byteLength : answer.status;
-    await new Promise<void>((closed) => server.close(() => closed()));
-    return status;
-  }
+async function probeOn(probes: boolean, route: string): Promise<number> {
+  const server = await startProxyServer({
+    host: 'localhost',
+    port: 0,
+    root: '.',
+    allow: ['localhost:*'],
+    origins: [],
+    token: '',
+    hosts: [],
+    probes,
+  });
+  const at = (server.address() as AddressInfo).port;
+  const answer = await fetch(`http://localhost:${at}${route}`);
+  const status = answer.ok ? (await answer.arrayBuffer()).byteLength : answer.status;
+  await new Promise<void>((closed) => server.close(() => closed()));
+  return status;
+}
 
+test.describe('the net fixtures on the server that ships', () => {
   test('serves the bulk body only when it was asked to', async () => {
     expect(await probeOn(true, BULK_PROBE)).toBe(BULK_PROBE_SIZE);
     expect(await probeOn(false, BULK_PROBE)).toBe(404);

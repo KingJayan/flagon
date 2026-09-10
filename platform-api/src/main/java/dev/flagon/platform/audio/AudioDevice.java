@@ -49,7 +49,7 @@ public interface AudioDevice {
 
     /**
      * appends buffers to a source's queue, which it plays through in order
-    
+
      * @throws AudioException if any name is not a buffer, or the source holds a single buffer
      */
     void queueBuffers(int source, int[] buffers);
@@ -147,7 +147,9 @@ public interface AudioDevice {
 
     void listenerVelocity(float[] into);
 
-    /** at-vector then up-vector, six floats, as {@code alListener(AL_ORIENTATION, ...)} passes them. */
+    /**
+     * at-vector then up-vector, six floats, as {@code alListener(AL_ORIENTATION, ...)} passes them.
+     */
     void setListenerOrientation(float[] atThenUp);
 
     void listenerOrientation(float[] into);

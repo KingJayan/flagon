@@ -9,24 +9,23 @@ const here = dirname(fileURLToPath(import.meta.url));
 
 type Serving = { middlewares: ViteDevServer['middlewares'] };
 
-/** the fixtures the net demo measures itself against, on the servers the tests point at */
+function attachProbes(server: Serving): void {
+  server.middlewares.use((asked, answer, next) => {
+    if (!answerNetProbe(asked, answer)) {
+      next();
+    }
+  });
+}
+
 function netProbes(): Plugin {
-  const attach = (server: Serving): void => {
-    server.middlewares.use((asked, answer, next) => {
-      if (!answerNetProbe(asked, answer)) {
-        next();
-      }
-    });
-  };
   return {
     name: 'flagon-net-probes',
-    configureServer: attach,
-    configurePreviewServer: attach,
+    configureServer: attachProbes,
+    configurePreviewServer: attachProbes,
   };
 }
 
 export default defineConfig({
-  // the sandbox talks to the dev server itself, and to nothing else
   plugins: [tcpProxy({ allow: ['localhost:*', '127.0.0.1:*'] }), netProbes()],
   server: {
     port: 5273,

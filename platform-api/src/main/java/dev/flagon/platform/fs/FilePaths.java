@@ -11,7 +11,8 @@ public final class FilePaths {
     }
 
     /**
-     @return an absolute path with no empty, {@code .} or {@code ..} segments and no trailing separator
+     @return an absolute path with no empty,
+             {@code .} or {@code ..} segments and no trailing separator
      */
     public static String normalize(String path) {
         if (path == null || path.isEmpty()) {

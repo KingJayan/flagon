@@ -66,7 +66,8 @@ public final class ShaderPipeline {
                                       int offsetInBytes, int instances, GenericArrays arrays) {
         if (mode.isIndexed()) {
             throw new UnsupportedOperationException(
-                    "glDrawElementsInstanced cannot emulate GL_QUADS; the core profile has no quads");
+                    "glDrawElementsInstanced cannot emulate GL_QUADS; the core profile has no"
+                            + " quads");
         }
         if (count == 0 || instances == 0 || !arrays.canDraw()) {
             return;

@@ -281,7 +281,8 @@ public interface WebGL2 extends JSObject {
 
     void disableVertexAttribArray(int index);
 
-    void vertexAttribPointer(int index, int size, int type, boolean normalized, int stride, int offset);
+    void vertexAttribPointer(int index, int size, int type, boolean normalized, int stride,
+            int offset);
 
     void vertexAttribIPointer(int index, int size, int type, int stride, int offset);
 

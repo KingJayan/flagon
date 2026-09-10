@@ -77,7 +77,8 @@ public final class LwjglDemoProgram implements Program {
         Platforms.get().console().info("center pixel " + centerPixel());
 
         Platforms.get().console().info("rendered " + frame + " frames, "
-                + (GL11.glGetError() == GL11.GL_NO_ERROR ? "no gl errors" : "gl errors were raised"));
+                + (GL11.glGetError() == GL11.GL_NO_ERROR
+                        ? "no gl errors" : "gl errors were raised"));
         Display.destroy();
     }
 

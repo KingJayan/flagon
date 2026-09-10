@@ -42,7 +42,7 @@ public final class ProxyNetwork implements Network {
                 Tunnel.open(Tunnel.endpoint(host, port, Tunnel.PATH)));
     }
 
-    
+
     private static final class TunnelConnection implements Connection {
 
         private final String host;

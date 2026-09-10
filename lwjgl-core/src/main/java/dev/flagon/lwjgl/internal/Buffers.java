@@ -29,7 +29,8 @@ public final class Buffers {
         if (buffer instanceof java.nio.LongBuffer || buffer instanceof DoubleBuffer) {
             return 8;
         }
-        throw new IllegalArgumentException("unsupported buffer type " + buffer.getClass().getName());
+        throw new IllegalArgumentException("unsupported buffer type "
+                + buffer.getClass().getName());
     }
 
     public static int readAll(Buffer source, byte[] into) {

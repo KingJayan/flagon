@@ -66,7 +66,8 @@ class GL12And14Test {
     @Test
     void aBackwardsRangeIsRefusedRatherThanDrawn() {
         IllegalArgumentException failure = assertThrows(IllegalArgumentException.class,
-                () -> GL12.glDrawRangeElements(GL11.GL_TRIANGLES, 8, 2, 3, GL11.GL_UNSIGNED_INT, 0L));
+                () -> GL12.glDrawRangeElements(GL11.GL_TRIANGLES, 8, 2, 3, GL11.GL_UNSIGNED_INT,
+                        0L));
         assertTrue(failure.getMessage().contains("below start"), failure.getMessage());
     }
 

@@ -12,13 +12,8 @@ import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 
-/**
- * addresses for buffers that have none: the high half names a slot in this table, the low half a
- * byte offset into it, so address arithmetic still walks the buffer.
- */
 public final class Addresses {
 
-    /** what {@code MemoryUtil.NULL} is, and the one address that names nothing */
     public static final long NULL = 0L;
 
     private static final List<Buffer> SLOTS = new ArrayList<>();
@@ -31,7 +26,8 @@ public final class Addresses {
 
     /** @return the address of the buffer's current position */
     public static long of(Buffer buffer) {
-        return buffer == null ? NULL : base(buffer) + (long) buffer.position() * elementSize(buffer);
+        return buffer == null ? NULL : base(buffer)
+                + (long) buffer.position() * elementSize(buffer);
     }
 
     /** @return the address of {@code index} elements into the buffer, counted from zero */
@@ -39,10 +35,6 @@ public final class Addresses {
         return buffer == null ? NULL : base(buffer) + (long) index * elementSize(buffer);
     }
 
-    /**
-     * ties a typed view to the bytes it was cut from, so its address falls inside the root buffer
-     * and can be read back as bytes.
-     */
     public static <B extends Buffer> B derive(B view, ByteBuffer root, int byteOffset) {
         long handle = base(root) + byteOffset;
         if (HANDLES.put(view, handle) == null) {
@@ -78,7 +70,6 @@ public final class Addresses {
         return window(slot, offset, offset + capacity);
     }
 
-    /** @return the bytes the address names, out to the end of the buffer it falls in */
     public static ByteBuffer bytesToEnd(long address) {
         ByteBuffer slot = byteSlot(address);
         return window(slot, (int) address, slot.capacity());
@@ -107,12 +98,10 @@ public final class Addresses {
         SLOTS_THEN.add(SLOTS.size());
     }
 
-    /** @return a mark to hand back to {@link #reset(int)} */
     public static int mark() {
         return REGISTERED.size();
     }
 
-    /** forgets every buffer registered since the mark, the way popping a stack frame would */
     public static void reset(int mark) {
         int slots = mark == 0 ? 0 : SLOTS_THEN.get(mark - 1);
         while (REGISTERED.size() > mark) {
@@ -125,7 +114,6 @@ public final class Addresses {
         }
     }
 
-    /** whether the address came from this table, so a caller can refuse a number it invented */
     public static boolean isKnown(long address) {
         int slot = (int) (address >>> 32);
         return slot > 0 && slot <= SLOTS.size();
