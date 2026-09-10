@@ -4,8 +4,9 @@ import type { IncomingMessage } from 'node:http';
 import type { Duplex } from 'node:stream';
 import type { Plugin, PreviewServer, ViteDevServer } from 'vite';
 import { WebSocketServer, type WebSocket } from 'ws';
+import { OPENED, PAUSE, TCP_PROXY_PATH } from './wire';
 
-export const TCP_PROXY_PATH = '/__flagon/tcp';
+export { TCP_PROXY_PATH } from './wire';
 
 export const DEFAULT_ALLOW = ['localhost:*', '127.0.0.1:*', '[::1]:*'];
 
@@ -13,23 +14,6 @@ export interface TcpProxyOptions {
   allow?: string[];
   origins?: string[];
   token?: string;
-  hosts?: string[];
-}
-
-const LOOPBACK = ['localhost', '127.0.0.1', '::1'];
-
-export function hostnameOf(header: string): string {
-  const bare = header.toLowerCase().trim();
-  const bracketed = /^\[([^\]]+)\](?::\d+)?$/.exec(bare);
-  if (bracketed) {
-    return bracketed[1];
-  }
-  return bare.replace(/:\d+$/, '');
-}
-
-export function isLoopback(host: string): boolean {
-  const name = hostnameOf(host);
-  return LOOPBACK.includes(name) || name.startsWith('127.');
 }
 
 interface Rule {
@@ -62,7 +46,6 @@ export interface Upgradable {
 export function attachTcpProxy(server: Upgradable, options: TcpProxyOptions = {}): void {
   const allowed = (options.allow ?? DEFAULT_ALLOW).map(ruleOf);
   const origins = (options.origins ?? []).map((one) => one.toLowerCase());
-  const hosts = (options.hosts ?? []).map(hostnameOf);
   const token = options.token ?? '';
   const sockets = new WebSocketServer({ noServer: true });
 
@@ -71,7 +54,7 @@ export function attachTcpProxy(server: Upgradable, options: TcpProxyOptions = {}
     if (asked.pathname !== TCP_PROXY_PATH) {
       return;
     }
-    if (!isOurs(request, hosts) || !isAsked(request, origins) || !isTold(asked, token)) {
+    if (!isAsked(request, origins) || !isTold(asked, token)) {
       socket.write('HTTP/1.1 403 Forbidden\r\nConnection: close\r\n\r\n');
       socket.destroy();
       return;
@@ -97,14 +80,6 @@ export function tcpProxy(options: TcpProxyOptions = {}): Plugin {
   };
 }
 
-function isOurs(request: IncomingMessage, hosts: string[]): boolean {
-  const host = request.headers.host;
-  if (host === undefined) {
-    return false;
-  }
-  return isLoopback(host) || hosts.includes(hostnameOf(host));
-}
-
 function isAsked(request: IncomingMessage, origins: string[]): boolean {
   const origin = request.headers.origin;
   const host = request.headers.host;
@@ -121,6 +96,7 @@ function isAsked(request: IncomingMessage, origins: string[]): boolean {
   }
 }
 
+/** a deployment that set no token asks nothing; one that did wants the exact string */
 function isTold(asked: URL, token: string): boolean {
   if (token === '') {
     return true;
@@ -155,7 +131,7 @@ function open(client: WebSocket, asked: URL, allowed: Rule[]): void {
     }
   };
 
-  socket.on('connect', () => client.send('open'));
+  socket.on('connect', () => client.send(OPENED));
   socket.on('data', (data: Buffer) => {
     if (client.readyState !== client.OPEN) {
       return;
@@ -173,7 +149,7 @@ function open(client: WebSocket, asked: URL, allowed: Rule[]): void {
   // text frames are the page pacing us; everything else is the socket's own bytes
   client.on('message', (data: Buffer, isBinary: boolean) => {
     if (!isBinary) {
-      held = data.toString() === 'pause';
+      held = data.toString() === PAUSE;
       pace();
       return;
     }

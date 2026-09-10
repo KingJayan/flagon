@@ -82,6 +82,49 @@ class WriteAppEntryTest {
     }
 
     @Test
+    void keepsOnlyTheClassesAGlobNames() throws Exception {
+        Path vendor = Files.createDirectories(directory.resolve("vendor"));
+        Files.move(jar("real.Entry", "real.Entry"), vendor.resolve("app.jar"));
+        Files.move(jar("library.Tool", null), vendor.resolve("library.jar"));
+        Path listed = directory.resolve("listed/classes.txt");
+
+        WriteAppEntry.main(new String[] {
+            vendor.toString(), directory.resolve("out").toString(), listed.toString(), "real.**"});
+
+        assertEquals(List.of("real.Entry"), Files.readAllLines(listed));
+    }
+
+    @Test
+    void takesSeveralGlobsAndStopsAPackageGlobAtItsBoundary() throws Exception {
+        Path vendor = Files.createDirectories(directory.resolve("vendor"));
+        Files.move(jar("real.deep.Entry", null), vendor.resolve("app.jar"));
+        Files.move(jar("library.Tool", null), vendor.resolve("library.jar"));
+        Path shallow = directory.resolve("listed/shallow.txt");
+        Path both = directory.resolve("listed/both.txt");
+
+        WriteAppEntry.main(new String[] {
+            vendor.toString(), directory.resolve("out").toString(), shallow.toString(), "real.*"});
+        assertEquals(List.of(), Files.readAllLines(shallow));
+
+        WriteAppEntry.main(new String[] {vendor.toString(), directory.resolve("out").toString(),
+            both.toString(), "real.**, library.*"});
+        assertEquals(List.of("library.Tool", "real.deep.Entry"),
+                Files.readAllLines(both).stream().sorted().toList());
+    }
+
+    @Test
+    void listsEverythingWhenGivenNoGlobs() throws Exception {
+        Path vendor = Files.createDirectories(directory.resolve("vendor"));
+        Files.move(jar("real.Entry", "real.Entry"), vendor.resolve("app.jar"));
+        Path listed = directory.resolve("listed/classes.txt");
+
+        WriteAppEntry.main(new String[] {
+            vendor.toString(), directory.resolve("out").toString(), listed.toString(), "  "});
+
+        assertEquals(List.of("real.Entry"), Files.readAllLines(listed));
+    }
+
+    @Test
     void listsNothingWhenTheBuildAsksForNoList() throws Exception {
         Path jar = jar("real.Entry", "real.Entry");
 
