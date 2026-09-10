@@ -104,10 +104,22 @@ interface Line {
 
 const written: Line[] = [];
 
+const KEPT = 2000;
+
 function append(text: string, kind?: 'warn' | 'error'): void {
   written.push({ text, kind });
   logView.append(render({ text, kind }));
+  trim();
   logView.scrollTop = logView.scrollHeight;
+}
+
+function trim(): void {
+  if (written.length > KEPT) {
+    written.splice(0, written.length - KEPT);
+  }
+  while (logView.childElementCount > KEPT) {
+    logView.firstElementChild?.remove();
+  }
 }
 
 function render(line: Line, past = false): HTMLSpanElement {

@@ -90,7 +90,7 @@ for (const backend of BACKENDS) {
       const log = page.getByTestId('log');
       await expect(log).toContainText('fatal in select');
       await expect(log).toContainText("unknown program 'does-not-exist'");
-      await expect(log).toContainText('available: hello, selftest');
+      await expect(log).toContainText('available: hello, chatty, selftest');
     });
 
     test('still runs when the page installs no host bridge', async ({ page }) => {
