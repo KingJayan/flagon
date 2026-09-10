@@ -43,6 +43,7 @@ export default defineConfig({
         '**/design.spec.ts',
         '**/display.spec.ts',
         '**/example.spec.ts',
+        '**/fixedfunction.spec.ts',
         '**/framebuffer.spec.ts',
         '**/glfw.spec.ts',
         '**/input.spec.ts',

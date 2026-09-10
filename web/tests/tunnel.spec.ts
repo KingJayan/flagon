@@ -35,9 +35,17 @@ class FakeSocket {
   binaryType = '';
   bufferedAmount = 0;
   sent: (string | Int8Array)[] = [];
-  onmessage: ((event: { data: unknown }) => void) | null = null;
-  onclose: (() => void) | null = null;
-  onerror: (() => void) | null = null;
+  private listeners: Record<string, ((event: unknown) => void)[]> = {};
+
+  addEventListener(kind: string, listener: (event: unknown) => void): void {
+    (this.listeners[kind] ??= []).push(listener);
+  }
+
+  private fire(kind: string, event?: unknown): void {
+    for (const listener of this.listeners[kind] ?? []) {
+      listener(event);
+    }
+  }
 
   send(data: string | Int8Array): void {
     this.sent.push(data);
@@ -45,15 +53,15 @@ class FakeSocket {
 
   close(): void {
     this.readyState = 3;
-    this.onclose?.();
+    this.fire('close');
   }
 
   arrive(bytes: number): void {
-    this.onmessage?.({ data: new Int8Array(bytes).buffer });
+    this.fire('message', { data: new Int8Array(bytes).buffer });
   }
 
   say(word: string): void {
-    this.onmessage?.({ data: word });
+    this.fire('message', { data: word });
   }
 }
 

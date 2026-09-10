@@ -7,30 +7,6 @@ import dev.flagon.platform.graphics.ShaderStage;
  */
 public final class GlslTranslator {
 
-    /** compatibility-profile built-ins */
-    private static final String[] FIXED_FUNCTION_BUILTINS = {
-            "gl_ModelViewMatrix",
-            "gl_ProjectionMatrix",
-            "gl_ModelViewProjectionMatrix",
-            "gl_NormalMatrix",
-            "gl_TextureMatrix",
-            "gl_Vertex",
-            "gl_Color",
-            "gl_SecondaryColor",
-            "gl_Normal",
-            "gl_MultiTexCoord0",
-            "gl_MultiTexCoord1",
-            "gl_MultiTexCoord2",
-            "gl_MultiTexCoord3",
-            "gl_TexCoord",
-            "gl_FrontColor",
-            "gl_BackColor",
-            "gl_FogFragCoord",
-            "gl_LightSource",
-            "gl_Fog",
-            "ftransform",
-    };
-
     /** the lowest desktop version written against in/out rather than attribute/varying */
     private static final int LOWEST_CORE = 130;
     private static final int HIGHEST_CORE = 330;
@@ -61,7 +37,11 @@ public final class GlslTranslator {
      * fragment output are what separate them from glsl es 3.00.
      */
     private static String toGlslEs300(String source, int directive, int end, ShaderStage stage) {
-        String body = renameSamplerCalls(source.substring(0, directive) + source.substring(end));
+        return finishGlslEs300(source.substring(0, directive) + source.substring(end), stage);
+    }
+
+    private static String finishGlslEs300(String stripped, ShaderStage stage) {
+        String body = renameSamplerCalls(stripped);
         StringBuilder injected = new StringBuilder();
         if (stage == ShaderStage.FRAGMENT) {
             if (!declaresFloatPrecision(withoutComments(body))) {
@@ -112,7 +92,7 @@ public final class GlslTranslator {
         return "out vec4 " + FRAGMENT_OUT + ";\n";
     }
 
-    private static String replaceWord(String source, String word, String replacement) {
+    static String replaceWord(String source, String word, String replacement) {
         StringBuilder rewritten = new StringBuilder(source);
         int at = indexOfWord(rewritten.toString(), word, 0);
         while (at >= 0) {
@@ -122,22 +102,32 @@ public final class GlslTranslator {
         return rewritten.toString();
     }
 
+    /** @return whether this shader is written against gl's fixed-function state */
+    public static boolean readsFixedFunction(String source) {
+        return source != null && FixedFunctionGlsl.isUsedIn(withoutComments(source));
+    }
+
     public static String toGlslEs(String source, ShaderStage stage) {
         if (source == null) {
             throw new IllegalArgumentException("shader source must not be null");
         }
         String code = withoutComments(source);
-        rejectFixedFunction(code);
+        FixedFunctionGlsl.rejectWhatCannotBeFed(code);
 
         int directive = versionDirective(code);
         if (directive < 0) {
-            return withPrecision(source, code, stage);
+            return FixedFunctionGlsl.isUsedIn(code)
+                    ? toFixedFunction(source, stage)
+                    : withPrecision(source, code, stage);
         }
 
         int end = lineEnd(source, directive);
         String version = source.substring(directive + "#version".length(), end).trim();
         if (isGlslEs(version)) {
             return source;
+        }
+        if (FixedFunctionGlsl.isUsedIn(code)) {
+            return toFixedFunction(source.substring(0, directive) + source.substring(end), stage);
         }
 
         int number = versionNumber(version);
@@ -156,7 +146,7 @@ public final class GlslTranslator {
     }
 
     /** blanks comments out, keeping every index and line break, so scans line up with the source */
-    private static String withoutComments(String source) {
+    static String withoutComments(String source) {
         char[] code = source.toCharArray();
         int at = 0;
         while (at + 1 < code.length) {
@@ -242,15 +232,19 @@ public final class GlslTranslator {
         return false;
     }
 
-    private static void rejectFixedFunction(String source) {
-        for (String builtin : FIXED_FUNCTION_BUILTINS) {
-            if (indexOfWord(source, builtin, 0) >= 0) {
-                throw new UnsupportedOperationException(
-                        "shader uses '" + builtin + "', which belongs to gl's fixed-function state "
-                                + "and does not exist in GLSL ES. pass the matrices and vertex "
-                                + "attributes in as uniforms and attributes of your own");
-            }
-        }
+    /**
+     * a shader written against the fixed-function state reads the same attributes and uniforms
+     * the built-in pipeline does, so it is promoted to es 3.00 whatever version it declared.
+     */
+    private static String toFixedFunction(String stripped, ShaderStage stage) {
+        String modern = asInAndOut(stripped, stage);
+        return finishGlslEs300(FixedFunctionGlsl.rewrite(modern, stage), stage);
+    }
+
+    /** glsl 1.20 says attribute and varying where es 3.00 says in and out */
+    private static String asInAndOut(String source, ShaderStage stage) {
+        String rewritten = replaceWord(source, "attribute", "in");
+        return replaceWord(rewritten, "varying", stage == ShaderStage.VERTEX ? "out" : "in");
     }
 
     private static int versionDirective(String source) {
@@ -258,7 +252,7 @@ public final class GlslTranslator {
         return at;
     }
 
-    private static int indexOfWord(String source, String word, int from) {
+    static int indexOfWord(String source, String word, int from) {
         int at = source.indexOf(word, from);
         while (at >= 0) {
             boolean beforeOk = at == 0 || !isIdentifier(source.charAt(at - 1));
