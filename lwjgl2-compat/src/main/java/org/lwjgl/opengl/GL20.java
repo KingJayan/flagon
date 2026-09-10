@@ -62,9 +62,10 @@ public final class GL20 {
 
     public static void glShaderSource(int shader, CharSequence source) {
         String written = source.toString();
+        String translated = GlslTranslator.toGlslEs(written, state().shaderStage(shader));
         state().markFixedFunction(shader, GlslTranslator.readsFixedFunction(written));
-        device().shaderSource(shader,
-                GlslTranslator.toGlslEs(written, state().shaderStage(shader)));
+        state().sourced(shader, translated);
+        device().shaderSource(shader, translated);
     }
 
     public static void glShaderSource(int shader, CharSequence[] sources) {
@@ -133,6 +134,7 @@ public final class GL20 {
     }
 
     public static void glLinkProgram(int program) {
+        state().completeProgram(program);
         device().linkProgram(program);
         state().linkedProgram(program);
     }

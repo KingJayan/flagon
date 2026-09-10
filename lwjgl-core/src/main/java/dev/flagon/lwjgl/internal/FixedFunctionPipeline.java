@@ -234,8 +234,7 @@ public final class FixedFunctionPipeline {
     private final int fogEndUniform;
 
     /** what a translated fixed-function shader of the application's own reads, per program */
-    private static final int BORROWED_UNIFORMS = 8;
-    private final Map<Integer, int[]> borrowed = new HashMap<>();
+    private final Map<Integer, Borrowed> borrowed = new HashMap<>();
 
     public FixedFunctionPipeline(GraphicsDevice device) {
         this.device = device;
@@ -384,31 +383,80 @@ public final class FixedFunctionPipeline {
      */
     private void beginLent(RenderState render, int lent) {
         device.useProgram(lent);
-        int[] where = borrowed.computeIfAbsent(lent, this::locateIn);
-        device.uniformMatrix4(where[0], render.modelView());
-        device.uniformMatrix4(where[1], render.projection());
-        device.uniformMatrices(where[2], 3, false,
-                Matrix4.normalMatrix(render.modelView(), normalMatrix), 1);
+        Borrowed where = borrowed.computeIfAbsent(lent, this::locateIn);
         Lighting lighting = render.lighting();
-        uniform4(where[3], lighting.fogColor());
-        device.uniform1f(where[4], lighting.fogDensity());
-        device.uniform1f(where[5], lighting.fogStart());
-        device.uniform1f(where[6], lighting.fogEnd());
+        device.uniformMatrix4(where.modelView, render.modelView());
+        device.uniformMatrix4(where.projection, render.projection());
+        device.uniformMatrices(where.normalMatrix, 3, false,
+                Matrix4.normalMatrix(render.modelView(), normalMatrix), 1);
+        uniform4(where.fogStructColor, lighting.fogColor());
+        device.uniform1f(where.fogStructDensity, lighting.fogDensity());
+        device.uniform1f(where.fogStructStart, lighting.fogStart());
+        device.uniform1f(where.fogStructEnd, lighting.fogEnd());
         float span = lighting.fogEnd() - lighting.fogStart();
-        device.uniform1f(where[7], span == 0.0f ? 0.0f : 1.0f / span);
+        device.uniform1f(where.fogStructScale, span == 0.0f ? 0.0f : 1.0f / span);
+
+        for (int unit = 0; unit < VertexArrays.UNITS; unit++) {
+            device.uniform1i(where.textureEnabled[unit], render.isTextureEnabled(unit) ? 1 : 0);
+            device.uniform1i(where.textureEnv[unit], render.textureEnv(unit));
+        }
+        device.uniform1i(where.alphaTestEnabled, render.isAlphaTestEnabled() ? 1 : 0);
+        device.uniform1f(where.alphaTestThreshold, render.alphaTestThreshold());
+        device.uniform1i(where.fogEnabled, lighting.isFogEnabled() ? 1 : 0);
+        device.uniform1i(where.fogMode, lighting.fogMode());
+        uniform4(where.fogColor, lighting.fogColor());
+        device.uniform1f(where.fogDensity, lighting.fogDensity());
+        device.uniform1f(where.fogStart, lighting.fogStart());
+        device.uniform1f(where.fogEnd, lighting.fogEnd());
     }
 
-    private int[] locateIn(int lent) {
-        int[] where = new int[BORROWED_UNIFORMS];
-        where[0] = device.uniformLocation(lent, "u_modelView");
-        where[1] = device.uniformLocation(lent, "u_projection");
-        where[2] = device.uniformLocation(lent, "u_normalMatrix");
-        where[3] = device.uniformLocation(lent, "u_fog.color");
-        where[4] = device.uniformLocation(lent, "u_fog.density");
-        where[5] = device.uniformLocation(lent, "u_fog.start");
-        where[6] = device.uniformLocation(lent, "u_fog.end");
-        where[7] = device.uniformLocation(lent, "u_fog.scale");
+    private Borrowed locateIn(int lent) {
+        Borrowed where = new Borrowed();
+        where.modelView = device.uniformLocation(lent, "u_modelView");
+        where.projection = device.uniformLocation(lent, "u_projection");
+        where.normalMatrix = device.uniformLocation(lent, "u_normalMatrix");
+        where.fogStructColor = device.uniformLocation(lent, "u_fog.color");
+        where.fogStructDensity = device.uniformLocation(lent, "u_fog.density");
+        where.fogStructStart = device.uniformLocation(lent, "u_fog.start");
+        where.fogStructEnd = device.uniformLocation(lent, "u_fog.end");
+        where.fogStructScale = device.uniformLocation(lent, "u_fog.scale");
+        for (int unit = 0; unit < VertexArrays.UNITS; unit++) {
+            where.textureEnabled[unit] =
+                    device.uniformLocation(lent, "u_textureEnabled[" + unit + "]");
+            where.textureEnv[unit] = device.uniformLocation(lent, "u_textureEnv[" + unit + "]");
+            device.uniform1i(device.uniformLocation(lent, "u_texture" + unit), unit);
+        }
+        where.alphaTestEnabled = device.uniformLocation(lent, "u_alphaTestEnabled");
+        where.alphaTestThreshold = device.uniformLocation(lent, "u_alphaTestThreshold");
+        where.fogEnabled = device.uniformLocation(lent, "u_fogEnabled");
+        where.fogMode = device.uniformLocation(lent, "u_fogMode");
+        where.fogColor = device.uniformLocation(lent, "u_fogColor");
+        where.fogDensity = device.uniformLocation(lent, "u_fogDensity");
+        where.fogStart = device.uniformLocation(lent, "u_fogStart");
+        where.fogEnd = device.uniformLocation(lent, "u_fogEnd");
         return where;
+    }
+
+    /** a lent program declares some subset of these; the rest come back as no location */
+    private static final class Borrowed {
+        private int modelView;
+        private int projection;
+        private int normalMatrix;
+        private int fogStructColor;
+        private int fogStructDensity;
+        private int fogStructStart;
+        private int fogStructEnd;
+        private int fogStructScale;
+        private final int[] textureEnabled = new int[VertexArrays.UNITS];
+        private final int[] textureEnv = new int[VertexArrays.UNITS];
+        private int alphaTestEnabled;
+        private int alphaTestThreshold;
+        private int fogEnabled;
+        private int fogMode;
+        private int fogColor;
+        private int fogDensity;
+        private int fogStart;
+        private int fogEnd;
     }
 
     public void forgetProgram(int deleted) {
