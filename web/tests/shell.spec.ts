@@ -14,7 +14,7 @@ for (const backend of BACKENDS) {
       await expect(options.first()).toHaveAttribute('value', '');
       await expect(options.nth(1)).toHaveAttribute('value', 'hello');
       await expect(options.nth(1)).toContainText('hello — ');
-      await expect(options).toHaveCount(17);
+      await expect(options).toHaveCount(18);
       expect(failures).toEqual([]);
     });
 
@@ -131,11 +131,25 @@ for (const backend of BACKENDS) {
       await expect(page.locator('#program option').nth(1)).toContainText('spinner — ');
 
       await page.locator('#bundle').selectOption('sandbox');
-      await expect(page.locator('#program option')).toHaveCount(17);
+      await expect(page.locator('#program option')).toHaveCount(18);
       await expect(page.locator('#program option').nth(1)).toContainText('hello — ');
 
       await page.locator('#bundle').selectOption('example');
       await expect(page.locator('#program option')).toHaveCount(4);
+    });
+
+    test('keeps the log bounded while a program floods it', async ({ page }) => {
+      const { failures } = watchForFailures(page);
+      await open(page, backend, 'program=chatty');
+      await expect(page.getByTestId('state')).toHaveText('exited', { timeout: 60_000 });
+
+      const log = page.getByTestId('log');
+      await expect(log).toContainText('line 2500');
+      const kept = await log.evaluate((node) => node.childElementCount);
+      expect(kept).toBeLessThanOrEqual(2000);
+      const first = await log.evaluate((node) => node.firstElementChild?.textContent ?? '');
+      expect(first.trim()).not.toBe('line 1');
+      expect(failures).toEqual([]);
     });
   });
 }
