@@ -37,7 +37,8 @@ final class FixedFunctionGlsl {
             {"gl_LightSource", "per-light state; glLight* feeds the built-in pipeline, but a "
                     + "shader of your own has to take the lights as uniforms it declares"},
             {"gl_TextureMatrix", "the texture matrix stack, which this layer does not keep"},
-            {"gl_SecondaryColor", "the secondary colour, which gl 1.4 added and nothing here feeds"},
+            {"gl_SecondaryColor", "the secondary colour, which gl 1.4 added and nothing"
+                    + " here feeds"},
             {"gl_ClipPlane", "user clip planes, which webgl has no equivalent for"},
     };
 

@@ -92,7 +92,8 @@ class GlslTranslatorTest {
 
     @Test
     void aShaderIsFixedFunctionOnlyWhenItNamesTheState() {
-        assertTrue(GlslTranslator.readsFixedFunction("void main() { gl_Position = ftransform(); }"));
+        assertTrue(GlslTranslator.readsFixedFunction(
+                "void main() { gl_Position = ftransform(); }"));
         assertFalse(GlslTranslator.readsFixedFunction(
                 "in vec4 a; void main() { gl_Position = a; }"));
     }
