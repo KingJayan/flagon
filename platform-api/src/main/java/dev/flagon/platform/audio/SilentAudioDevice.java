@@ -77,7 +77,8 @@ public final class SilentAudioDevice implements AudioDevice {
     }
 
     @Override
-    public void bufferData(int buffer, AudioFormat format, byte[] data, int length, int sampleRate) {
+    public void bufferData(int buffer, AudioFormat format, byte[] data, int length,
+            int sampleRate) {
         Buffer held = buffer(buffer);
         Audio.requireWholeFrames(format, length, sampleRate);
         held.format = format;

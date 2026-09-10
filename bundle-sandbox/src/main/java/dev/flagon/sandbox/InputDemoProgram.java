@@ -59,7 +59,8 @@ public final class InputDemoProgram implements Program {
         while (Keyboard.next()) {
             String name = Keyboard.getKeyName(Keyboard.getEventKey());
             if (Keyboard.getEventKeyState()) {
-                console.info("key down " + name + " char=" + describe(Keyboard.getEventCharacter()));
+                console.info("key down " + name + " char="
+                        + describe(Keyboard.getEventCharacter()));
             } else {
                 console.info("key up " + name);
             }
@@ -72,7 +73,8 @@ public final class InputDemoProgram implements Program {
             }
             int button = Mouse.getEventButton();
             if (button >= 0) {
-                console.info("button " + button + (Mouse.getEventButtonState() ? " down at " : " up at ")
+                console.info("button " + button
+                        + (Mouse.getEventButtonState() ? " down at " : " up at ")
                         + Mouse.getEventX() + "," + Mouse.getEventY());
             }
         }

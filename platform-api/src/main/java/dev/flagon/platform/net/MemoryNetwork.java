@@ -101,7 +101,8 @@ public final class MemoryNetwork implements Network {
             requireOpen();
             requireRange(data, offset, length);
             if (received != null) {
-                throw new NetworkException("this service has already answered " + host + ":" + port);
+                throw new NetworkException("this service has already answered " + host + ":"
+                        + port);
             }
             byte[] grown = new byte[sent.length + length];
             System.arraycopy(sent, 0, grown, 0, sent.length);

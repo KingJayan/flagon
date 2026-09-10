@@ -19,7 +19,8 @@ class MemoryTest {
     void handsOutAnAddressForAnAllocation() {
         ByteBuffer buffer = MemoryUtil.memAlloc(8);
 
-        assertEquals(buffer.get(0), MemoryUtil.memByteBuffer(MemoryUtil.memAddress(buffer), 8).get(0));
+        assertEquals(buffer.get(0), MemoryUtil.memByteBuffer(MemoryUtil.memAddress(buffer),
+                8).get(0));
         assertNotEquals(MemoryUtil.NULL, MemoryUtil.memAddress(buffer));
     }
 
@@ -43,7 +44,8 @@ class MemoryTest {
         ByteBuffer encoded = MemoryUtil.memUTF8("flagon");
 
         assertEquals("flagon", MemoryUtil.memUTF8(MemoryUtil.memAddress(encoded)));
-        assertEquals("flagon", MemoryUtil.memASCII(MemoryUtil.memAddress(MemoryUtil.memASCII("flagon"))));
+        assertEquals("flagon",
+                MemoryUtil.memASCII(MemoryUtil.memAddress(MemoryUtil.memASCII("flagon"))));
     }
 
     @Test

@@ -455,7 +455,8 @@ public final class GL11 {
         StencilOp onDepthFail = stencilOp(depthFail);
         StencilOp onPass = stencilOp(pass);
         if (recording()
-                && state().record(() -> device().setStencilOp(onStencilFail, onDepthFail, onPass))) {
+                && state().record(() -> device().setStencilOp(onStencilFail, onDepthFail,
+                        onPass))) {
             return;
         }
         device().setStencilOp(onStencilFail, onDepthFail, onPass);
@@ -553,7 +554,9 @@ public final class GL11 {
 
     // reading back
 
-    /** gl reads the framebuffer from the bottom left up, so the first row returned is the lowest. */
+    /**
+     * gl reads the framebuffer from the bottom left up, so the first row returned is the lowest.
+     */
     public static void glReadPixels(int x, int y, int width, int height, int format, int type,
                                     ByteBuffer pixels) {
         requireRgbaBytes(format, type);
@@ -1118,7 +1121,9 @@ public final class GL11 {
         }
     }
 
-    /** gl's flat shading needs a provoking vertex the shader cannot pick, so only smooth is here. */
+    /**
+     * gl's flat shading needs a provoking vertex the shader cannot pick, so only smooth is here.
+     */
     public static void glShadeModel(int model) {
         if (model != GL_SMOOTH) {
             throw new UnsupportedOperationException(
@@ -1243,7 +1248,8 @@ public final class GL11 {
     }
 
     public static void glTexCoordPointer(int size, int stride, FloatBuffer pointer) {
-        state().arrays().texCoord(state().clientActiveTexture()).pointAt(pointer, size, AttributeType.FLOAT, false, stride);
+        state().arrays().texCoord(state().clientActiveTexture()).pointAt(pointer, size,
+                AttributeType.FLOAT, false, stride);
     }
 
     public static void glTexCoordPointer(int size, int type, int stride, long offset) {
@@ -1324,7 +1330,8 @@ public final class GL11 {
             case GL_TEXTURE_MAX_LEVEL -> device().setTextureMaxLevel(requireLevel(value));
             case GL_GENERATE_MIPMAP -> generateMipmap(value != GL_FALSE);
             default -> throw new UnsupportedOperationException(
-                    "glTexParameteri does not yet emulate parameter 0x" + Integer.toHexString(name));
+                    "glTexParameteri does not yet emulate parameter 0x"
+                            + Integer.toHexString(name));
         }
     }
 
@@ -1432,7 +1439,9 @@ public final class GL11 {
         rebuildMipmaps();
     }
 
-    /** the same upload from a buffer of bytes in r, g, b, a order, which is what real lwjgl takes */
+    /**
+     * the same upload from a buffer of bytes in r, g, b, a order, which is what real lwjgl takes
+     */
     public static void glTexImage2D(int target, int level, int internalFormat, int width,
                                     int height, int border, int format, int type,
                                     ByteBuffer pixels) {

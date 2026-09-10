@@ -35,7 +35,8 @@ class GL20Test {
 
     private static int program() {
         int vertex = GL20.glCreateShader(GL20.GL_VERTEX_SHADER);
-        GL20.glShaderSource(vertex, "attribute vec3 a; void main() { gl_Position = vec4(a, 1.0); }");
+        GL20.glShaderSource(vertex,
+                "attribute vec3 a; void main() { gl_Position = vec4(a, 1.0); }");
         GL20.glCompileShader(vertex);
 
         int fragment = GL20.glCreateShader(GL20.GL_FRAGMENT_SHADER);

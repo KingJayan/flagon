@@ -277,7 +277,9 @@ public final class WriteAppEntry {
         }
     }
 
-    /** the simple name, unless two classes share one, in which case the whole name earns its keep */
+    /**
+     * the simple name, unless two classes share one, in which case the whole name earns its keep
+     */
     private static List<String> idsFor(List<String> mains) {
         Set<String> simple = new LinkedHashSet<>();
         boolean clash = false;

@@ -54,7 +54,8 @@ final class FakeInputSource implements InputSource {
 
     void turnWheel(int notches) {
         wheel += notches;
-        mouseEvents.addLast(new MouseEvent(MouseEvent.NO_BUTTON, false, x, y, 0, 0, notches, 5_000L));
+        mouseEvents.addLast(new MouseEvent(MouseEvent.NO_BUTTON, false, x, y, 0, 0, notches,
+                5_000L));
     }
 
     @Override

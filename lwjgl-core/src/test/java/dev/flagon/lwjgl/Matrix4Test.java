@@ -30,7 +30,8 @@ class Matrix4Test {
         float[] m = Matrix4.identity();
         Matrix4.translate(m, 1.0f, 2.0f, 3.0f);
         assertArrayEquals(new float[] {1.0f, 2.0f, 3.0f}, transform(m, 0.0f, 0.0f, 0.0f), EPSILON);
-        assertArrayEquals(new float[] {11.0f, 2.0f, 3.0f}, transform(m, 10.0f, 0.0f, 0.0f), EPSILON);
+        assertArrayEquals(new float[] {11.0f, 2.0f, 3.0f}, transform(m, 10.0f, 0.0f, 0.0f),
+                EPSILON);
     }
 
     @Test

@@ -255,7 +255,8 @@ final class Opfs {
     @JSBody(params = {"path", "done"}, script = "window.__flagonOpfs.read(path, done);")
     private static native void opfsRead(String path, Settled done);
 
-    @JSBody(params = {"path", "data", "done"}, script = "window.__flagonOpfs.write(path, data, done);")
+    @JSBody(params = {"path", "data", "done"},
+            script = "window.__flagonOpfs.write(path, data, done);")
     private static native void opfsWrite(String path, Int8Array data, Settled done);
 
     @JSBody(params = {"path", "directory", "done"},

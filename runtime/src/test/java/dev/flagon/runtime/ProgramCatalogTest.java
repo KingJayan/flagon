@@ -40,7 +40,8 @@ class ProgramCatalogTest {
     void makesTheDirectoryItWritesInto(@TempDir Path directory) throws IOException {
         Path file = directory.resolve("flagon/sandbox.catalog.json");
 
-        ProgramCatalog.writeTo(new ProgramRegistry().register(program("hello", "hi")), file.toString());
+        ProgramCatalog.writeTo(new ProgramRegistry().register(program("hello", "hi")),
+                file.toString());
 
         assertEquals("[{\"id\":\"hello\",\"description\":\"hi\"}]", Files.readString(file));
     }

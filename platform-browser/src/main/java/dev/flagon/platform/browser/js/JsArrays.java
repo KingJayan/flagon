@@ -13,7 +13,8 @@ import org.teavm.jso.typedarrays.Uint32Array;
  *
  * <p>compiled to javascript a java array is already a typed array, so the browser is given a view
  * over the array's own storage and nothing is copied. compiled to wasm gc it lives in the wasm heap
- * where javascript cannot see it, so exactly the elements being passed are copied out — the reason
+ * where javascript cannot see it, so exactly the elements being passed are copied out — the
+ * reason
  * callers say how many they mean rather than passing a whole growable array.
  *
  * <p>the same boundary runs the other way, where the only thing that matters is that it is crossed

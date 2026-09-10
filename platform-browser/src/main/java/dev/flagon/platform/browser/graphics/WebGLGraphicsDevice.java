@@ -417,7 +417,8 @@ public final class WebGLGraphicsDevice implements GraphicsDevice {
             }
             boundArrayBuffer = buffer;
         }
-        gl.bindBuffer(targetConstant(target), buffer == NO_BUFFER ? null : lookup(buffer, "buffer"));
+        gl.bindBuffer(targetConstant(target), buffer == NO_BUFFER ? null : lookup(buffer,
+                "buffer"));
     }
 
     @Override
@@ -657,7 +658,8 @@ public final class WebGLGraphicsDevice implements GraphicsDevice {
     @Override
     public void uniformMatrix4(int location, float[] matrix) {
         if (matrix.length < 16) {
-            throw new IllegalArgumentException("a 4x4 matrix needs 16 floats, got " + matrix.length);
+            throw new IllegalArgumentException("a 4x4 matrix needs 16 floats, got "
+                    + matrix.length);
         }
         uniformMatrices(location, 4, false, matrix, 1);
     }
@@ -934,7 +936,8 @@ public final class WebGLGraphicsDevice implements GraphicsDevice {
                 && (texture == NO_TEXTURE || defaulted.get(texture))) {
             return;
         }
-        gl.bindTexture(WebGL2.TEXTURE_2D, texture == NO_TEXTURE ? null : lookup(texture, "texture"));
+        gl.bindTexture(WebGL2.TEXTURE_2D, texture == NO_TEXTURE ? null : lookup(texture,
+                "texture"));
         if (tracked) {
             boundTexture[unit] = texture;
         }
@@ -1222,7 +1225,8 @@ public final class WebGLGraphicsDevice implements GraphicsDevice {
             case WebGL2.INVALID_ENUM -> GraphicsError.INVALID_ENUM;
             case WebGL2.INVALID_VALUE -> GraphicsError.INVALID_VALUE;
             case WebGL2.INVALID_OPERATION -> GraphicsError.INVALID_OPERATION;
-            case WebGL2.INVALID_FRAMEBUFFER_OPERATION -> GraphicsError.INVALID_FRAMEBUFFER_OPERATION;
+            case WebGL2.INVALID_FRAMEBUFFER_OPERATION ->
+                    GraphicsError.INVALID_FRAMEBUFFER_OPERATION;
             case WebGL2.OUT_OF_MEMORY -> GraphicsError.OUT_OF_MEMORY;
             default -> GraphicsError.CONTEXT_LOST;
         };

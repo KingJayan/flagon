@@ -26,7 +26,8 @@ public final class GL {
     public static GLCapabilities getCapabilities() {
         if (capabilities == null) {
             throw new IllegalStateException(
-                    "no gl capabilities; GL.createCapabilities() has not been called on this thread");
+                    "no gl capabilities; GL.createCapabilities() has not been called on this"
+                            + " thread");
         }
         return capabilities;
     }

@@ -168,7 +168,8 @@ class LightingTest {
     @Test
     void aOneSidedMaterialSaysWhyItCannotBehonored() {
         UnsupportedOperationException failure = assertThrows(UnsupportedOperationException.class,
-                () -> GL11.glMaterial(GL11.GL_FRONT, GL11.GL_AMBIENT, floats(1.0f, 1.0f, 1.0f, 1.0f)));
+                () -> GL11.glMaterial(GL11.GL_FRONT, GL11.GL_AMBIENT, floats(1.0f, 1.0f, 1.0f,
+                        1.0f)));
         assertTrue(failure.getMessage().contains("GL_FRONT_AND_BACK"), failure.getMessage());
     }
 

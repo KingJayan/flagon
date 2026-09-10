@@ -86,7 +86,9 @@ public final class ContextCapabilities {
         return hasAny(extension);
     }
 
-    /** @return the host's extension list, the same string {@code glGetString(GL_EXTENSIONS)} gives */
+    /**
+     * @return the host's extension list, the same string {@code glGetString(GL_EXTENSIONS)} gives
+     */
     public String getExtensions() {
         return reported;
     }

@@ -16,7 +16,8 @@ public final class FixedFunctionPipeline {
     private static final int VERTEX_STRIDE = VERTEX_FLOATS * Float.BYTES;
     private static final int COLOR_OFFSET = 3 * Float.BYTES;
     private static final int TEX_COORD_OFFSET = 7 * Float.BYTES;
-    private static final int NORMAL_OFFSET = TEX_COORD_OFFSET + 2 * VertexArrays.UNITS * Float.BYTES;
+    private static final int NORMAL_OFFSET = TEX_COORD_OFFSET
+            + 2 * VertexArrays.UNITS * Float.BYTES;
 
     private static final String VERTEX_SHADER = """
             #version 300 es
@@ -243,7 +244,8 @@ public final class FixedFunctionPipeline {
         for (int unit = 0; unit < VertexArrays.UNITS; unit++) {
             textureEnabledUniforms[unit] =
                     device.uniformLocation(program, "u_textureEnabled[" + unit + "]");
-            textureEnvUniforms[unit] = device.uniformLocation(program, "u_textureEnv[" + unit + "]");
+            textureEnvUniforms[unit] = device.uniformLocation(program, "u_textureEnv[" + unit
+                    + "]");
         }
         alphaTestEnabledUniform = device.uniformLocation(program, "u_alphaTestEnabled");
         alphaTestThresholdUniform = device.uniformLocation(program, "u_alphaTestThreshold");

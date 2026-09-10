@@ -6,7 +6,7 @@ import dev.flagon.platform.fs.FileStore;
 import dev.flagon.platform.net.Network;
 
 /**
- * services a host must provide for desktop java programs to run
+  prereq services
  */
 public interface Platform {
 
@@ -21,18 +21,22 @@ public interface Platform {
     /** @return the storage {@code java.io} reads and writes through */
     FileStore files();
 
-    /** @return the mixer openal plays through; silent rather than absent where a host has no output */
+    /**
+     * @return the mixer openal plays through; silent rather than absent where a host has no output
+     */
     AudioDevice audio();
 
-    /** @return where outbound connections are opened; refuses every address where there is no way out */
+    /**
+     * @return where outbound connections are opened; refuses every address where there is no way
+     *         out
+     */
     Network network();
 
     /** @return whether this host can open a window at all. */
     boolean hasDisplay();
 
     /**
-     * opens the window, or returns the one already open.
-     *
+     * opens the window or returns current.
      * @throws UnsupportedCapabilityException on a headless host
      */
     DisplaySurface display(int width, int height, String title);

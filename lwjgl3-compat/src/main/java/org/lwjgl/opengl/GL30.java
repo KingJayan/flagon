@@ -135,7 +135,8 @@ public final class GL30 {
     public static void glBindRenderbuffer(int target, int renderbuffer) {
         if (target != GL_RENDERBUFFER) {
             throw new IllegalArgumentException(
-                    "glBindRenderbuffer takes GL_RENDERBUFFER, got 0x" + Integer.toHexString(target));
+                    "glBindRenderbuffer takes GL_RENDERBUFFER, got 0x"
+                            + Integer.toHexString(target));
         }
         GLState.get().device().bindRenderbuffer(renderbuffer);
     }
@@ -279,7 +280,8 @@ public final class GL30 {
     public static void glVertexAttribIPointer(int index, int size, int type, int stride,
                                               long offset) {
         if (offset < 0 || offset > Integer.MAX_VALUE) {
-            throw new IllegalArgumentException("glVertexAttribIPointer: offset out of range: " + offset);
+            throw new IllegalArgumentException("glVertexAttribIPointer: offset out of range: "
+                    + offset);
         }
         GLState state = GLState.get();
         int buffer = state.boundBuffer(BufferTarget.ARRAY);

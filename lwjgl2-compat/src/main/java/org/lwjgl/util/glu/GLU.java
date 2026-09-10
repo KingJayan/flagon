@@ -26,7 +26,8 @@ public final class GLU {
     public static void gluPerspective(float fovy, float aspect, float zNear, float zFar) {
         if (aspect == 0.0f || zNear == zFar) {
             throw new IllegalArgumentException(
-                    "gluPerspective: aspect " + aspect + " and a " + zNear + ".." + zFar + " range");
+                    "gluPerspective: aspect " + aspect + " and a " + zNear + ".." + zFar
+                            + " range");
         }
         float top = (float) (zNear * Math.tan(Math.toRadians(fovy / 2.0f)));
         float right = top * aspect;

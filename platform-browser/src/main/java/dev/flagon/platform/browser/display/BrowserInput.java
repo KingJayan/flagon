@@ -65,7 +65,9 @@ class BrowserInput implements InputSource {
 
     // dom callbacks
 
-    /** @return whether the key was recognised, which is what decides if the default is suppressed */
+    /**
+     * @return whether the key was recognised, which is what decides if the default is suppressed
+     */
     boolean onKey(String code, String key, boolean pressed, boolean repeat) {
         int scancode = KeyCodes.scancode(code);
         if (scancode == Scancode.NONE) {

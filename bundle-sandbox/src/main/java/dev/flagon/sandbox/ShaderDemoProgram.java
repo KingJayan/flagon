@@ -112,7 +112,8 @@ public final class ShaderDemoProgram implements Program {
         GL20.glBindAttribLocation(program, TINT, "in_tint");
         GL20.glLinkProgram(program);
         if (GL20.glGetProgrami(program, GL20.GL_LINK_STATUS) != GL11.GL_TRUE) {
-            throw new IllegalStateException("link failed: " + GL20.glGetProgramInfoLog(program, 512));
+            throw new IllegalStateException("link failed: " + GL20.glGetProgramInfoLog(program,
+                    512));
         }
         GL20.glDetachShader(program, vertex);
         GL20.glDetachShader(program, fragment);
@@ -150,7 +151,8 @@ public final class ShaderDemoProgram implements Program {
         GL15.glBufferData(GL15.GL_ARRAY_BUFFER, vertices, GL15.GL_STATIC_DRAW);
     }
 
-    private static void putVertex(ByteBuffer target, float x, float y, int red, int green, int blue) {
+    private static void putVertex(ByteBuffer target, float x, float y, int red, int green,
+            int blue) {
         target.putFloat(x).putFloat(y);
         target.put((byte) red).put((byte) green).put((byte) blue).put((byte) 255);
     }

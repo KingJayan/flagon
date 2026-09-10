@@ -1,10 +1,5 @@
 package dev.flagon.platform;
 
-/**
- * holds the platform for this process.
- * static because lwjgl's api is static ({@code Display.create()}, {@code GL11.glClear()}) and
- * can't take a platform argument without breaking the source compatibility that's the point.
- */
 public final class Platforms {
 
     private static Platform current;
@@ -12,7 +7,6 @@ public final class Platforms {
     private Platforms() {
     }
 
-    /** called once during boot, before any other thread exists. */
     public static void install(Platform platform) {
         if (platform == null) {
             throw new IllegalArgumentException("platform must not be null");

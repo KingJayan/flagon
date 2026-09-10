@@ -142,7 +142,8 @@ public final class CoreProfileDemoProgram implements Program {
         GL30.glBindFragDataLocation(program, 0, "fragColor");
         GL20.glLinkProgram(program);
         if (GL20.glGetProgrami(program, GL20.GL_LINK_STATUS) != GL11.GL_TRUE) {
-            throw new IllegalStateException("link failed: " + GL20.glGetProgramInfoLog(program, 512));
+            throw new IllegalStateException("link failed: " + GL20.glGetProgramInfoLog(program,
+                    512));
         }
         GL20.glDeleteShader(vertex);
         GL20.glDeleteShader(fragment);
@@ -154,7 +155,8 @@ public final class CoreProfileDemoProgram implements Program {
         GL20.glShaderSource(shader, source);
         GL20.glCompileShader(shader);
         if (GL20.glGetShaderi(shader, GL20.GL_COMPILE_STATUS) != GL11.GL_TRUE) {
-            throw new IllegalStateException("compile failed: " + GL20.glGetShaderInfoLog(shader, 512));
+            throw new IllegalStateException("compile failed: " + GL20.glGetShaderInfoLog(shader,
+                    512));
         }
         return shader;
     }

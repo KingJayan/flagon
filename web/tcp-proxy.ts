@@ -17,7 +17,7 @@ export interface TcpProxyOptions {
   hosts?: string[];
 }
 
-const LOOPBACK = ['localhost', '127.0.0.1', '::1'];
+const LOOPBACK = new Set(['localhost', '127.0.0.1', '::1']);
 
 export function hostnameOf(header: string): string {
   const bare = header.toLowerCase().trim();
@@ -30,7 +30,7 @@ export function hostnameOf(header: string): string {
 
 export function isLoopback(host: string): boolean {
   const name = hostnameOf(host);
-  return LOOPBACK.includes(name) || name.startsWith('127.');
+  return LOOPBACK.has(name) || name.startsWith('127.');
 }
 
 interface Rule {

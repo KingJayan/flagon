@@ -20,6 +20,9 @@ jobs:
       - name: Fetch maven
         run: for attempt in 1 2 3; do ./mvnw -B -v && exit 0; sleep 10; done; exit 1
 
+      - name: Check java style
+        run: ./mvnw -B -q checkstyle:check
+
       - name: Build and unit test both backends
         run: make build
 
@@ -76,6 +79,9 @@ jobs:
 
       - name: Install web dependencies
         run: make deps
+
+      - name: Lint the shell
+        run: cd web && bun run lint
 
       - name: Typecheck and build the shell
         run: make site

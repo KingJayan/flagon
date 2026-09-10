@@ -217,7 +217,9 @@ public interface GraphicsDevice {
 
     void setTextureMaxLevel(int level);
 
-    /** copies a rectangle of the framebuffer into the bound texture, as gl reads it: bottom left up. */
+    /**
+     * copies a rectangle of the framebuffer into the bound texture, as gl reads it: bottom left up.
+     */
     void copyTextureSubImage(int x, int y, int framebufferX, int framebufferY,
                              int width, int height);
 
@@ -284,7 +286,9 @@ public interface GraphicsDevice {
 
     int height();
 
-    /** @return the first error since the last call, {@link GraphicsError#NONE} when there was none */
+    /**
+     * @return the first error since the last call, {@link GraphicsError#NONE} when there was none
+     */
     GraphicsError takeError();
 
     /** @return how the device describes itself, empty when the host will not say */

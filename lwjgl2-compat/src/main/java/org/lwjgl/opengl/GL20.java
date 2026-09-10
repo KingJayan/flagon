@@ -61,7 +61,8 @@ public final class GL20 {
     }
 
     public static void glShaderSource(int shader, CharSequence source) {
-        device().shaderSource(shader, GlslTranslator.toGlslEs(source.toString(), state().shaderStage(shader)));
+        device().shaderSource(shader, GlslTranslator.toGlslEs(source.toString(),
+                state().shaderStage(shader)));
     }
 
     public static void glShaderSource(int shader, CharSequence[] sources) {
@@ -99,7 +100,8 @@ public final class GL20 {
             case GL_SHADER_TYPE -> state().shaderStage(shader) == ShaderStage.VERTEX
                     ? GL_VERTEX_SHADER
                     : GL_FRAGMENT_SHADER;
-            case GL_COMPILE_STATUS -> device().isShaderCompiled(shader) ? GL11.GL_TRUE : GL11.GL_FALSE;
+            case GL_COMPILE_STATUS ->
+                    device().isShaderCompiled(shader) ? GL11.GL_TRUE : GL11.GL_FALSE;
             case GL_DELETE_STATUS -> device().isShader(shader) ? GL11.GL_FALSE : GL11.GL_TRUE;
             // gl counts the terminating null; a caller sizes a buffer from this
             case GL_INFO_LOG_LENGTH -> logLength(device().shaderInfoLog(shader));
@@ -153,7 +155,8 @@ public final class GL20 {
     public static int glGetProgram(int program, int name) {
         return switch (name) {
             case GL_LINK_STATUS -> device().isProgramLinked(program) ? GL11.GL_TRUE : GL11.GL_FALSE;
-            case GL_VALIDATE_STATUS -> device().isProgramValid(program) ? GL11.GL_TRUE : GL11.GL_FALSE;
+            case GL_VALIDATE_STATUS ->
+                    device().isProgramValid(program) ? GL11.GL_TRUE : GL11.GL_FALSE;
             case GL_DELETE_STATUS -> device().isProgram(program) ? GL11.GL_FALSE : GL11.GL_TRUE;
             case GL_INFO_LOG_LENGTH -> logLength(device().programInfoLog(program));
             default -> throw new UnsupportedOperationException(
@@ -327,9 +330,11 @@ public final class GL20 {
                             + "to read from client memory");
         }
         if (offset < 0 || offset > Integer.MAX_VALUE) {
-            throw new IllegalArgumentException("glVertexAttribPointer: offset out of range: " + offset);
+            throw new IllegalArgumentException("glVertexAttribPointer: offset out of range: "
+                    + offset);
         }
-        attribute(index).pointAt(buffer, (int) offset, size, componentType(type), normalized, stride);
+        attribute(index).pointAt(buffer, (int) offset, size, componentType(type), normalized,
+                stride);
     }
 
     private static ClientArray attribute(int index) {

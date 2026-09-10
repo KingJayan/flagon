@@ -71,7 +71,6 @@ public final class BlocksGame {
         new BlocksGame().run(frameLimit(arguments));
     }
 
-    /** {@code --frames N} keeps the demo finite; without it the game runs until it is closed. */
     private static int frameLimit(String[] arguments) {
         for (int at = 0; at + 1 < arguments.length; at++) {
             if (arguments[at].equals("--frames")) {
@@ -133,7 +132,7 @@ public final class BlocksGame {
     }
 
     private void step() {
-        // a window nobody is looking at holds still, the way a desktop game does when it loses focus
+
         boolean watching = Display.isActive() && Display.isVisible();
         if (paused != !watching) {
             paused = !watching;
