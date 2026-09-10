@@ -57,6 +57,51 @@ class GL20Test {
     }
 
     @Test
+    void aProgramWithOnlyAVertexShaderLinksAgainstAWrittenFragmentStage() {
+        int vertex = GL20.glCreateShader(GL20.GL_VERTEX_SHADER);
+        GL20.glShaderSource(vertex, """
+                #version 120
+                void main() { gl_FrontColor = gl_Color; gl_Position = ftransform(); }
+                """);
+        GL20.glCompileShader(vertex);
+
+        int program = GL20.glCreateProgram();
+        GL20.glAttachShader(program, vertex);
+        device.calls.clear();
+        GL20.glLinkProgram(program);
+
+        assertEquals(GL11.GL_TRUE, GL20.glGetProgrami(program, GL20.GL_LINK_STATUS));
+        String written = device.calls.stream()
+                .filter(call -> call.startsWith("createShader FRAGMENT"))
+                .findFirst()
+                .orElseThrow();
+        int shader = Integer.parseInt(written.substring(written.lastIndexOf(' ') + 1));
+        assertTrue(device.calls.contains("attachShader " + program + " " + shader),
+                device.calls.toString());
+        assertTrue(device.sourceOf(shader).contains("in vec4 flagon_frontColor;"),
+                device.sourceOf(shader));
+    }
+
+    @Test
+    void theWrittenStageGoesAwayWithItsProgram() {
+        int fragment = GL20.glCreateShader(GL20.GL_FRAGMENT_SHADER);
+        GL20.glShaderSource(fragment, """
+                #version 120
+                void main() { gl_FragColor = gl_Color; }
+                """);
+        GL20.glCompileShader(fragment);
+
+        int program = GL20.glCreateProgram();
+        GL20.glAttachShader(program, fragment);
+        GL20.glLinkProgram(program);
+        device.calls.clear();
+        GL20.glDeleteProgram(program);
+
+        assertTrue(device.calls.stream().anyMatch(call -> call.startsWith("deleteShader")),
+                device.calls.toString());
+    }
+
+    @Test
     void aShaderIsCompiledThroughItsOwnLifecycle() {
         int shader = GL20.glCreateShader(GL20.GL_VERTEX_SHADER);
         GL20.glShaderSource(shader, "void main() { gl_Position = vec4(0.0); }");

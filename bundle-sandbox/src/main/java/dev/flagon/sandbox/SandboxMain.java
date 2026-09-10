@@ -32,6 +32,7 @@ public final class SandboxMain {
                 .register(new VertexArrayDemoProgram())
                 .register(new ShaderDemoProgram())
                 .register(new FixedFunctionShaderProgram())
+                .register(new HalfShaderProgram())
                 .register(new TextureDemoProgram())
                 .register(new FileSystemDemoProgram())
                 .register(new AudioDemoProgram())

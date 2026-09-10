@@ -45,6 +45,7 @@ export default defineConfig({
         '**/fixedfunction.spec.ts',
         '**/framebuffer.spec.ts',
         '**/glfw.spec.ts',
+        '**/halfshader.spec.ts',
         '**/input.spec.ts',
         '**/play.spec.ts',
         '**/render.spec.ts',
