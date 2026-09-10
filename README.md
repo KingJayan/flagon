@@ -66,6 +66,7 @@ Once running, open <http://localhost:5273>. Select a bundle, a backend, and a pr
 Bundles compile to WebAssembly GC by default; `make bundles-js` emits the same bundles compiled to
 JavaScript, which the shell falls back to on browsers without WebAssembly GC.
 `make build-release` outputs both; optimized and minified, with no source maps or debug information included.
+`make size` weighs what it emitted against `toolchain/size-budget.txt`, which CI enforces.
 The `example` bundle has tester [LWJGL applications](examples/app/).
 The `sandbox` bundle has diagnostics and regression programs.
 
