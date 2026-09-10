@@ -4,16 +4,15 @@ import path from 'node:path';
 import zlib from 'node:zlib';
 import { promisify } from 'node:util';
 import { fileURLToPath } from 'node:url';
-import { attachTcpProxy, DEFAULT_ALLOW, ruleOf, TCP_PROXY_PATH } from './tcp-proxy';
+import {
+  attachTcpProxy,
+  DEFAULT_ALLOW,
+  isLoopback,
+  ruleOf,
+  TCP_PROXY_PATH,
+} from './tcp-proxy';
 import { answerNetProbe } from './net-probes';
 
-/**
- * the proxy a built site needs, with nothing of vite in it.
- *
- * <p>it serves the site as well as the sockets on purpose: the upgrade is only granted to the
- * origin it came from, so a page and its proxy have to be the same origin unless `--origin`
- * names another one.
- */
 
 const TYPES: Record<string, string> = {
   '.html': 'text/html; charset=utf-8',
@@ -36,15 +35,11 @@ export interface Settings {
   allow: string[];
   origins: string[];
   token: string;
+  hosts: string[];
   probes: boolean;
 }
 
-const LOOPBACK = ['localhost', '127.0.0.1', '::1', '[::1]'];
-
-export function isLoopback(host: string): boolean {
-  const bare = host.toLowerCase().replace(/^\[|\]$/g, '');
-  return LOOPBACK.includes(bare) || bare.startsWith('127.');
-}
+export { isLoopback };
 
 export function settingsFrom(argv: string[]): Settings {
   const settings: Settings = {
@@ -54,13 +49,13 @@ export function settingsFrom(argv: string[]): Settings {
     allow: [...DEFAULT_ALLOW],
     origins: [],
     token: '',
+    hosts: [],
     probes: false,
   };
-  const many: Record<string, string[]> = { '--allow': [], '--origin': [] };
+  const many: Record<string, string[]> = { '--allow': [], '--origin': [], '--allowed-host': [] };
 
   for (let at = 0; at < argv.length; at += 2) {
     const name = argv[at];
-    // the fixtures are the one switch that carries no value: they are on or they are not there
     if (name === '--probes') {
       settings.probes = true;
       at -= 1;
@@ -89,6 +84,8 @@ export function settingsFrom(argv: string[]): Settings {
     settings.allow = many['--allow'];
   }
   settings.origins = many['--origin'];
+  const bound = ['0.0.0.0', '::', '[::]'].includes(settings.host) ? [] : [settings.host];
+  settings.hosts = [...many['--allowed-host'], ...bound];
   settings.allow.forEach(ruleOf);
   if (!isLoopback(settings.host) && settings.token === '') {
     throw new Error(
@@ -132,6 +129,28 @@ function encodingFor(request: http.IncomingMessage, file: string): 'br' | 'gzip'
   return /\bgzip\b/.test(accepted) ? 'gzip' : null;
 }
 
+const POLICY = [
+  "default-src 'self'",
+  // teavm's wasm-gc loader evaluates a string, so 'wasm-unsafe-eval' alone is not enough
+  "script-src 'self' 'unsafe-eval' 'wasm-unsafe-eval'",
+  "style-src 'self'",
+  "img-src 'self' data: blob:",
+  "media-src 'self' data: blob:",
+  "connect-src 'self'",
+  "worker-src 'self' blob:",
+  "object-src 'none'",
+  "base-uri 'none'",
+  "form-action 'none'",
+  "frame-ancestors 'none'",
+].join('; ');
+
+const GUARDS: http.OutgoingHttpHeaders = {
+  'content-security-policy': POLICY,
+  'x-content-type-options': 'nosniff',
+  'referrer-policy': 'no-referrer',
+  'cross-origin-opener-policy': 'same-origin',
+};
+
 async function send(
   request: http.IncomingMessage,
   response: http.ServerResponse,
@@ -146,6 +165,7 @@ async function send(
       : 'no-cache',
     etag: tag,
     vary: 'accept-encoding',
+    ...GUARDS,
   };
 
   if (request.headers['if-none-match'] === tag) {
@@ -182,7 +202,7 @@ async function serve(root: string, request: http.IncomingMessage, response: http
 export async function startProxyServer(settings: Settings): Promise<http.Server> {
   const root = path.resolve(settings.root);
   const server = http.createServer((request, response) => {
-    // a reader that hangs up is the client's business, not a reason to take the server down
+
     request.on('error', () => {});
     response.on('error', () => {});
     if (/close/i.test(String(request.headers.connection ?? ''))) {
@@ -198,6 +218,7 @@ export async function startProxyServer(settings: Settings): Promise<http.Server>
     allow: settings.allow,
     origins: settings.origins,
     token: settings.token,
+    hosts: settings.hosts,
   });
   await new Promise<void>((listening) => server.listen(settings.port, settings.host, listening));
   return server;

@@ -439,6 +439,11 @@ the socket only to pages from its own origin, because browsers do not apply the 
 to websockets themselves; `--origin https://site.example.com` names another origin where the site
 is hosted apart from the proxy.
 
+Both `Origin` and `Host` come from whoever is asking, so matching them to each other proves
+nothing on its own: a name an attacker controls that resolves to 127.0.0.1 matches itself, which is
+how DNS rebinding reaches a loopback service. The upgrade is therefore refused unless `Host` names
+loopback, the address the proxy was told to bind, or an explicit `--allowed-host`.
+
 That origin check binds browsers and nothing else: any client speaking raw HTTP sets both headers
 itself, so a proxy anyone can reach is a proxy anyone can open sockets through. It therefore binds
 to loopback unless given a `--token`, which the page must then carry as `?proxytoken=` on its url:
@@ -449,6 +454,10 @@ bun run proxy -- --root dist --host 0.0.0.0 --token "$FLAGON_PROXY_TOKEN" --allo
 
 Keep `--allow` as narrow as the game actually needs. A public proxy left on the loopback default
 tunnels callers into whatever else listens on its own host.
+
+Every file it serves carries a content security policy, `nosniff`, `no-referrer` and
+`frame-ancestors 'none'`. The policy keeps the page to its own origin for scripts, styles, fetches
+and sockets; it has to allow `unsafe-eval` because TeaVM's WebAssembly loader evaluates a string.
 
 `java.net.URL` follows the same path. Flagon installs a `URLStreamHandlerFactory` at boot so
 unmodified HTTP code transparently uses the active `Network` implementation.

@@ -10,7 +10,6 @@ import { BULK_PROBE, BULK_PROBE_SIZE, FLOOD } from '../net-probes';
 
 const VITE = 'ws://localhost:5273/__flagon/tcp?host=localhost&port=5273';
 
-// a page on a port of its own: another origin, still on the loopback the browser will talk to
 let elsewhere: http.Server;
 let elsewhereUrl: string;
 
@@ -80,6 +79,7 @@ test.describe('the proxy a hosted build runs for itself', () => {
       allow: ['localhost:*'],
       origins: [],
       token: '',
+      hosts: [],
       probes: false,
     });
     site = `http://localhost:${portOf(server)}/`;
@@ -155,6 +155,7 @@ test.describe('what the proxy will open a socket to', () => {
       allow: [`localhost:${portOf(elsewhere)}`],
       origins: [],
       token: '',
+      hosts: [],
       probes: false,
     });
     const at = portOf(server);
@@ -183,6 +184,7 @@ test.describe('a proxy the network can reach', () => {
       allow: ['localhost:*'],
       origins: [],
       token: 'hunter2',
+      hosts: [],
       probes: false,
     });
     const at = portOf(server);
@@ -206,6 +208,7 @@ test.describe('the net fixtures on the server that ships', () => {
       allow: ['localhost:*'],
       origins: [],
       token: '',
+      hosts: [],
       probes,
     });
     const at = (server.address() as AddressInfo).port;
@@ -224,5 +227,79 @@ test.describe('the net fixtures on the server that ships', () => {
     expect(await probeOn(false, FLOOD)).toBe(404);
     expect(settingsFrom(['--probes']).probes).toBe(true);
     expect(settingsFrom([]).probes).toBe(false);
+  });
+});
+
+function upgradeAs(at: number, host: string): Promise<number> {
+  return new Promise((resolve) => {
+    const asked = http.request({
+      host: 'localhost',
+      port: at,
+      path: `${'/__flagon/tcp'}?host=localhost&port=${at}`,
+      headers: {
+        host,
+        origin: `http://${host}`,
+        connection: 'Upgrade',
+        upgrade: 'websocket',
+        'sec-websocket-version': '13',
+        'sec-websocket-key': Buffer.alloc(16).toString('base64'),
+      },
+    });
+    asked.on('upgrade', (response, socket) => {
+      socket.destroy();
+      resolve(response.statusCode ?? 101);
+    });
+    asked.on('response', (response) => {
+      response.resume();
+      resolve(response.statusCode ?? 0);
+    });
+    asked.on('error', () => resolve(0));
+    asked.end();
+  });
+}
+
+test.describe('the proxy and the name it was reached by', () => {
+  let server: http.Server;
+
+  test.beforeAll(async () => {
+    server = await startProxyServer({
+      host: 'localhost',
+      port: 0,
+      root: '.',
+      allow: ['localhost:*'],
+      origins: [],
+      token: '',
+      hosts: ['game.example.com'],
+      probes: false,
+    });
+  });
+
+  test.afterAll(async () => {
+    await new Promise<void>((closed) => server.close(() => closed()));
+  });
+
+  test('refuses a name it was never told to answer to', async () => {
+    const at = portOf(server);
+
+    expect(await upgradeAs(at, `attacker.example:${at}`)).toBe(403);
+    expect(await upgradeAs(at, `localhost:${at}`)).toBe(101);
+    expect(await upgradeAs(at, `game.example.com:${at}`)).toBe(101);
+  });
+
+  test('answers the loopback addresses whatever the port', async () => {
+    const at = portOf(server);
+
+    expect(await upgradeAs(at, `127.0.0.1:${at}`)).toBe(101);
+    expect(await upgradeAs(at, `[::1]:${at}`)).toBe(101);
+  });
+
+  test('says what the pages it serves are allowed to reach', async () => {
+    const answered = await fetch(`http://localhost:${portOf(server)}/`).catch(() => null);
+    const policy = answered?.headers.get('content-security-policy') ?? '';
+
+    expect(policy).toContain("default-src 'self'");
+    expect(policy).toContain("object-src 'none'");
+    expect(policy).toContain("frame-ancestors 'none'");
+    expect(answered?.headers.get('x-content-type-options')).toBe('nosniff');
   });
 });
