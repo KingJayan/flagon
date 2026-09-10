@@ -91,9 +91,11 @@ public final class GLState implements RenderState {
     private final GenericArrays attributes;
     private final ShaderPipeline shaders;
     private final Map<Integer, ShaderStage> shaderStages = new HashMap<>();
+    private final Map<Integer, String> shaderSources = new HashMap<>();
     private final Set<Integer> fixedFunctionShaders = new HashSet<>();
     private final Set<Integer> fixedFunctionPrograms = new HashSet<>();
     private final Map<Integer, Set<Integer>> attachedShaders = new HashMap<>();
+    private final Map<Integer, Integer> writtenStages = new HashMap<>();
     private int program = GraphicsDevice.NO_PROGRAM;
     private int arrayBuffer;
     private int elementBuffer;
@@ -454,7 +456,51 @@ public final class GLState implements RenderState {
 
     public void forgetShader(int shader) {
         shaderStages.remove(shader);
+        shaderSources.remove(shader);
         fixedFunctionShaders.remove(shader);
+    }
+
+    public void sourced(int shader, String translated) {
+        shaderSources.put(shader, translated);
+    }
+
+    /**
+     * gl links whichever stages it was given and leaves the rest fixed-function; webgl needs
+     * both, so the missing one is written here from the state the other stage names.
+     */
+    public void completeProgram(int target) {
+        Set<Integer> attached = attachedShaders.getOrDefault(target, Set.of());
+        int supplied = 0;
+        boolean vertex = false;
+        boolean fragment = false;
+        for (int shader : attached) {
+            ShaderStage stage = shaderStages.get(shader);
+            vertex |= stage == ShaderStage.VERTEX;
+            fragment |= stage == ShaderStage.FRAGMENT;
+            supplied = shader;
+        }
+        if (vertex == fragment || attached.size() != 1) {
+            return;
+        }
+        String source = shaderSources.get(supplied);
+        if (source == null) {
+            return;
+        }
+        ShaderStage missing = vertex ? ShaderStage.FRAGMENT : ShaderStage.VERTEX;
+        int written = device.createShader(missing);
+        device.shaderSource(written, FixedFunctionStage.companionFor(source,
+                vertex ? ShaderStage.VERTEX : ShaderStage.FRAGMENT));
+        device.compileShader(written);
+        if (!device.isShaderCompiled(written)) {
+            String why = device.shaderInfoLog(written);
+            device.deleteShader(written);
+            throw new IllegalStateException("the " + missing
+                    + " stage gl would have run itself did not compile: " + why);
+        }
+        trackShader(written, missing);
+        attachShader(target, written);
+        device.attachShader(target, written);
+        writtenStages.put(target, written);
     }
 
     /** @return the program the fixed-function pipeline should draw through, if not its own */
@@ -497,6 +543,11 @@ public final class GLState implements RenderState {
     public void forgetProgram(int deleted) {
         attachedShaders.remove(deleted);
         fixedFunctionPrograms.remove(deleted);
+        Integer written = writtenStages.remove(deleted);
+        if (written != null) {
+            forgetShader(written);
+            device.deleteShader(written);
+        }
         pipeline.forgetProgram(deleted);
     }
 

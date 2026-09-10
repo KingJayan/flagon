@@ -227,7 +227,8 @@ fake devices.
 | Desktop GLSL 1.10 to 3.30 | works, translated |
 | GLSL above 3.30 | refused |
 | Fixed-function GLSL built-ins | works, translated, see below |
-| `glBegin`/`glEnd` with a bound program | refused |
+| `glBegin`/`glEnd` with a bound program | works for a fixed-function shader, else refused |
+| A program supplying one shader stage | works, the other stage is written here |
 | `AL` / `AL10` buffers, sources and listener | works |
 | `alGetError` latching | works |
 | Source gain, pitch, looping, positioning | works |
@@ -382,9 +383,11 @@ uniforms, and the program it links into then draws through that pipeline -- so `
 naming which one was asked for: nothing here feeds them. Lighting still works for the built-in
 pipeline -- it is reading the lights *from a shader of your own* that has no equivalent.
 
-Both stages of such a program are translated together, so the varyings match. A program that
-supplies only one stage and leaves the other to fixed-function is not supported; GL allows it, and
-here the link fails as it would for any program with a stage missing.
+GL links whichever stages a program was given and leaves the rest fixed-function. WebGL needs
+both, so the missing stage is written here over the same varyings, and the program links and draws.
+A fragment shader left alone this way carries fog only when the vertex stage writes
+`gl_FogFragCoord`, because nothing else can supply the distance. A fragment shader that reads a
+varying of its own is refused, naming it: no written vertex stage can know what to put there.
 
 ### Vertex attributes
 
