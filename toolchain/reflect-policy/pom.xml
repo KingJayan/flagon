@@ -30,5 +30,12 @@
       <artifactId>teavm-extension-spi-util</artifactId>
       <version>${teavm.version}</version>
     </dependency>
+    <!-- the compiler already carries this; the plugin only rewrites its instructions -->
+    <dependency>
+      <groupId>org.teavm</groupId>
+      <artifactId>teavm-core</artifactId>
+      <version>${teavm.version}</version>
+      <scope>provided</scope>
+    </dependency>
   </dependencies>
 </project>
