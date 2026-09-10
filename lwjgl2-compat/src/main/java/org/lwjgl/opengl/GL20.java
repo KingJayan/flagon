@@ -61,8 +61,10 @@ public final class GL20 {
     }
 
     public static void glShaderSource(int shader, CharSequence source) {
-        device().shaderSource(shader, GlslTranslator.toGlslEs(source.toString(),
-                state().shaderStage(shader)));
+        String written = source.toString();
+        state().markFixedFunction(shader, GlslTranslator.readsFixedFunction(written));
+        device().shaderSource(shader,
+                GlslTranslator.toGlslEs(written, state().shaderStage(shader)));
     }
 
     public static void glShaderSource(int shader, CharSequence[] sources) {
@@ -121,15 +123,18 @@ public final class GL20 {
     }
 
     public static void glAttachShader(int program, int shader) {
+        state().attachShader(program, shader);
         device().attachShader(program, shader);
     }
 
     public static void glDetachShader(int program, int shader) {
+        state().detachShader(program, shader);
         device().detachShader(program, shader);
     }
 
     public static void glLinkProgram(int program) {
         device().linkProgram(program);
+        state().linkedProgram(program);
     }
 
     public static void glValidateProgram(int program) {
@@ -141,6 +146,7 @@ public final class GL20 {
     }
 
     public static void glDeleteProgram(int program) {
+        state().forgetProgram(program);
         device().deleteProgram(program);
     }
 

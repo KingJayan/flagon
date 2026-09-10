@@ -104,7 +104,7 @@ export function tunnel(): Tunnel {
         opened: done,
         held: false,
       };
-      socket.onmessage = (event: MessageEvent): void => {
+      socket.addEventListener('message', (event: MessageEvent): void => {
         if (typeof event.data === 'string') {
           const open = state.opened;
           if (open !== null && event.data === OPENED) {
@@ -122,8 +122,8 @@ export function tunnel(): Tunnel {
           flow(state);
         }
         deliver(state);
-      };
-      socket.onclose = (): void => {
+      });
+      socket.addEventListener('close', (): void => {
         state.closed = true;
         const open = state.opened;
         if (open !== null) {
@@ -132,10 +132,10 @@ export function tunnel(): Tunnel {
           return;
         }
         deliver(state);
-      };
-      socket.onerror = (): void => {
+      });
+      socket.addEventListener('error', (): void => {
         report(state, state.opened !== null ? missingAt(url) : 'the connection to the proxy failed');
-      };
+      });
     },
     receive(state: Connection, done: Settled): void {
       state.pending = done;
