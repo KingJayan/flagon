@@ -17,6 +17,9 @@ final class Tunnel {
 
     private static final int SEND_LIMIT = 1 << 20;
 
+    /** how long a full browser buffer may stay full before the connection is called lost */
+    private static final long SEND_DEADLINE_MS = 30_000L;
+
     interface Handle extends JSObject {
     }
 
@@ -61,7 +64,14 @@ final class Tunnel {
     }
 
     static void send(Handle handle, Int8Array data) {
+        long waitedFrom = now();
         while (buffered(handle) > SEND_LIMIT && isOpen(handle)) {
+            if (now() - waitedFrom > SEND_DEADLINE_MS) {
+                close(handle);
+                throw new NetworkException("the proxy stopped taking writes for "
+                        + SEND_DEADLINE_MS / 1000 + "s with " + buffered(handle)
+                        + " bytes still buffered");
+            }
             settleBuffer();
         }
         netSend(handle, data);
@@ -86,109 +96,8 @@ final class Tunnel {
         };
     }
 
-    /**
-     * written without {@code async}, {@code await} or arrow functions on purpose
-     */
-    @JSBody(script = """
-            if (window.__flagonNet) { return; }
-            var HOLD_AT = 256 * 1024;
-            var RESUME_AT = 64 * 1024;
-            var flow = function(state) {
-                if (state.socket.readyState !== 1) { return; }
-                if (!state.held && state.queued >= HOLD_AT) {
-                    state.held = true;
-                    state.socket.send('pause');
-                } else if (state.held && state.queued <= RESUME_AT) {
-                    state.held = false;
-                    state.socket.send('resume');
-                }
-            };
-            var deliver = function(state) {
-                if (state.pending === null) { return; }
-                var done = state.pending;
-                if (state.chunks.length > 0) {
-                    state.pending = null;
-                    var chunk = state.chunks.shift();
-                    state.queued -= chunk.length;
-                    flow(state);
-                    done(null, chunk);
-                } else if (state.failure !== null) {
-                    state.pending = null;
-                    done(state.failure, null);
-                } else if (state.closed) {
-                    state.pending = null;
-                    done(null, null);
-                }
-            };
-            var report = function(state, message) {
-                if (state.opened !== null) {
-                    var open = state.opened;
-                    state.opened = null;
-                    open(message, null);
-                    return;
-                }
-                state.failure = message;
-                deliver(state);
-            };
-            window.__flagonNet = {
-                open: function(url, done) {
-                    var missing = 'no flagon tcp proxy answered at ' + url + '; a page reaches'
-                            + ' the network only through one served with it, which a hosted'
-                            + ' build has to run for itself';
-                    var socket = new WebSocket(url);
-                    socket.binaryType = 'arraybuffer';
-                    var state = { socket: socket, chunks: [], queued: 0, pending: null,
-                                  closed: false, failure: null, opened: done, held: false };
-                    socket.onmessage = function(event) {
-                        if (typeof event.data === 'string') {
-                            if (state.opened !== null && event.data === 'open') {
-                                var open = state.opened;
-                                state.opened = null;
-                                open(null, state);
-                            } else {
-                                report(state, event.data);
-                            }
-                            return;
-                        }
-                        var chunk = new Int8Array(event.data);
-                        if (chunk.length > 0) {
-                            state.chunks.push(chunk);
-                            state.queued += chunk.length;
-                            flow(state);
-                        }
-                        deliver(state);
-                    };
-                    socket.onclose = function() {
-                        state.closed = true;
-                        if (state.opened !== null) {
-                            var open = state.opened;
-                            state.opened = null;
-                            open(missing, null);
-                            return;
-                        }
-                        deliver(state);
-                    };
-                    socket.onerror = function() {
-                        report(state, state.opened !== null ? missing
-                                : 'the connection to the proxy failed');
-                    };
-                },
-                receive: function(state, done) {
-                    state.pending = done;
-                    deliver(state);
-                },
-                available: function(state) { return state.queued; },
-                isOpen: function(state) { return !state.closed && state.failure === null; },
-                buffered: function(state) { return state.socket.bufferedAmount; },
-                send: function(state, data) { state.socket.send(data); },
-                close: function(state) {
-                    state.closed = true;
-                    if (state.socket.readyState < 2) { state.socket.close(); }
-                    deliver(state);
-                }
-            };
-            """)
-    static native void install();
+    @JSBody(script = "return typeof window.__flagonNet !== 'undefined';")
+    static native boolean isInstalled();
 
     @JSBody(params = {"url", "done"}, script = "window.__flagonNet.open(url, done);")
     private static native void netOpen(String url, Settled done);
@@ -210,6 +119,13 @@ final class Tunnel {
 
     @JSBody(params = {"done"}, script = "setTimeout(done, 4);")
     private static native void soon(Tick done);
+
+    @JSBody(script = "return Date.now();")
+    private static native double clock();
+
+    private static long now() {
+        return (long) clock();
+    }
 
     @JSBody(params = {"handle"}, script = "window.__flagonNet.close(handle);")
     static native void close(Handle handle);
