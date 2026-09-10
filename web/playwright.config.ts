@@ -31,10 +31,9 @@ export default defineConfig({
     {
       name: 'firefox',
       dependencies: ['bundles'],
-      // the fallback backend is why a second engine is here; wasm gc is chromium's to prove
-      grepInvert: /on wasm/,
+      // firefox ships wasm gc, so it proves both backends, not just the fallback one
       // headless firefox has neither a gpu nor sound on a ci runner, so anything that opens a
-      // display stays chromium's. what firefox is here to prove is the engine under it.
+      // display stays chromium's. coverage.spec.ts checks this list against what the specs say.
       testIgnore: [
         '**/a11y.spec.ts',
         '**/arrays.spec.ts',

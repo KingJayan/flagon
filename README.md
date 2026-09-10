@@ -100,6 +100,10 @@ make browser   # browser tests against the bundles (per backend)
 make check     # both of the above plus the typecheck (ci)
 ```
 
+Chromium runs every spec on both backends. Firefox runs both backends too, minus the specs that
+open a display: a headless runner has no GPU and no sound. A spec that needs one says so on its
+first line, and `coverage.spec.ts` fails if that disagrees with the Firefox project's ignore list.
+
 ## Reporting a problem
 
 Bugs, unsupported calls and questions belong in the

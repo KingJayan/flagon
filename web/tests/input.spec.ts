@@ -1,3 +1,4 @@
+// needs a display
 import { test, expect, type Page } from '@playwright/test';
 import { BACKENDS, open, readPixel, watchForFailures, type Backend } from './harness';
 
