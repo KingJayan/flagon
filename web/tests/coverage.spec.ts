@@ -19,7 +19,9 @@ test.describe('which engine runs which spec', () => {
       [...(listed?.[1] ?? '').matchAll(/\*\*\/([\w.-]+\.spec\.ts)/g)].map((found) => found[1]),
     );
 
-    const names = (await fs.readdir(here)).filter((name) => name.endsWith('.spec.ts'));
+    // readdir gives no order, so sort once and everything below stays reportable
+    // eslint-disable-next-line unicorn/no-array-sort
+    const names = (await fs.readdir(here)).filter((name) => name.endsWith('.spec.ts')).sort();
     const declared = new Set<string>();
     for (const name of names) {
       const source = await fs.readFile(path.join(here, name), 'utf8');
@@ -28,8 +30,8 @@ test.describe('which engine runs which spec', () => {
       }
     }
 
-    const unlisted = [...declared].filter((name) => !ignored.has(name)).toSorted();
-    const unnecessary = [...ignored].filter((name) => !declared.has(name)).toSorted();
+    const unlisted = [...declared].filter((name) => !ignored.has(name));
+    const unnecessary = [...ignored].filter((name) => !declared.has(name));
 
     expect(unlisted, 'these open a display; add them to the firefox testIgnore').toEqual([]);
     expect(unnecessary, 'these no longer say they need a display; drop them').toEqual([]);
