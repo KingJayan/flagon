@@ -13,6 +13,23 @@ export interface TcpProxyOptions {
   allow?: string[];
   origins?: string[];
   token?: string;
+  hosts?: string[];
+}
+
+const LOOPBACK = ['localhost', '127.0.0.1', '::1'];
+
+export function hostnameOf(header: string): string {
+  const bare = header.toLowerCase().trim();
+  const bracketed = /^\[([^\]]+)\](?::\d+)?$/.exec(bare);
+  if (bracketed) {
+    return bracketed[1];
+  }
+  return bare.replace(/:\d+$/, '');
+}
+
+export function isLoopback(host: string): boolean {
+  const name = hostnameOf(host);
+  return LOOPBACK.includes(name) || name.startsWith('127.');
 }
 
 interface Rule {
@@ -45,6 +62,7 @@ export interface Upgradable {
 export function attachTcpProxy(server: Upgradable, options: TcpProxyOptions = {}): void {
   const allowed = (options.allow ?? DEFAULT_ALLOW).map(ruleOf);
   const origins = (options.origins ?? []).map((one) => one.toLowerCase());
+  const hosts = (options.hosts ?? []).map(hostnameOf);
   const token = options.token ?? '';
   const sockets = new WebSocketServer({ noServer: true });
 
@@ -53,7 +71,7 @@ export function attachTcpProxy(server: Upgradable, options: TcpProxyOptions = {}
     if (asked.pathname !== TCP_PROXY_PATH) {
       return;
     }
-    if (!isAsked(request, origins) || !isTold(asked, token)) {
+    if (!isOurs(request, hosts) || !isAsked(request, origins) || !isTold(asked, token)) {
       socket.write('HTTP/1.1 403 Forbidden\r\nConnection: close\r\n\r\n');
       socket.destroy();
       return;
@@ -79,6 +97,14 @@ export function tcpProxy(options: TcpProxyOptions = {}): Plugin {
   };
 }
 
+function isOurs(request: IncomingMessage, hosts: string[]): boolean {
+  const host = request.headers.host;
+  if (host === undefined) {
+    return false;
+  }
+  return isLoopback(host) || hosts.includes(hostnameOf(host));
+}
+
 function isAsked(request: IncomingMessage, origins: string[]): boolean {
   const origin = request.headers.origin;
   const host = request.headers.host;
@@ -95,7 +121,6 @@ function isAsked(request: IncomingMessage, origins: string[]): boolean {
   }
 }
 
-/** a deployment that set no token asks nothing; one that did wants the exact string */
 function isTold(asked: URL, token: string): boolean {
   if (token === '') {
     return true;
