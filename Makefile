@@ -14,7 +14,8 @@ APP := $(if $(VENDOR_JARS),-Papp,)
 
 .PHONY: help setup deps browsers browsers-deps browser-chromium browser-served browser-firefox bundles bundles-js app build bundles-release \
         bundles-release-js build-release test browser flake typecheck lint site dev serve \
-        check report merge-reports watch version release publish clean verify-bundles size
+        check report merge-reports watch version release publish clean verify-bundles size \
+        app-cost app-size
 
 help: ## list what this repo can do
 	@grep -hE '^[a-z-]+:.*## ' $(MAKEFILE_LIST) \
@@ -48,10 +49,19 @@ bundles: ## compile java to webassembly gc
 
 app: ## compile whatever jar is in vendor/ into a bundle, and say where to open it
 	@test -n "$(VENDOR_JARS)" || { echo "put a jar -- any jar -- in vendor/ first"; exit 1; }
-	@$(MAKE) build
+	@$(MAKE) app-cost
+	@started=$$(date +%s); $(MAKE) build && echo "==> built in $$(( $$(date +%s) - started ))s"
+	@$(MAKE) app-size
 	@echo "run 'make dev', then open http://localhost:5273/ and pick the app bundle"
 	@echo "for the console, the program picker and the argument field, or"
 	@echo "http://localhost:5273/play/ to run it fullscreen"
+
+# make 3.81 mangles a long recipe split over continuations, so these stay on one line each
+app-cost: ## say how much work the jars in vendor/ are, before the build starts
+	@classes=$$(for jar in $(VENDOR_JARS); do unzip -l "$$jar" | grep -c "[.]class$$"; done | awk '{ total += $$1 } END { print total + 0 }'); echo "==> $(words $(VENDOR_JARS)) jar(s), $$classes classes, compiled for each backend"
+
+app-size: ## weigh the app bundle that both backends emitted
+	@printf "%-16s %10s\n" bundle bytes; for file in $(BUNDLES)/app.wasm $(BUNDLES)/app.js; do test -f $$file && printf "%-16s %10s\n" $$(basename $$file) $$(wc -c < $$file | tr -d " "); done; true
 
 bundles-js: ## compile java to javascript, the fallback backend
 	$(MVN) -Pjs $(APP) -DskipTests package
@@ -72,7 +82,9 @@ verify-bundles: ## check the emitted bundles are whole
 	done; echo "bundles look whole"
 
 build: ## compile both backends
+	@echo "==> webassembly, backend 1 of 2"
 	@$(MAKE) bundles
+	@echo "==> javascript, backend 2 of 2"
 	@$(MAKE) bundles-js
 
 bundles-release: ## compile to webassembly gc as a hosted build ships it
