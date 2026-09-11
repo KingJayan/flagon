@@ -12,8 +12,8 @@ import java.net.URLStreamHandlerFactory;
  * makes {@code java.net.URL} open http through the platform's network
  *
  * <p>this is the seam an unmodified application already reads through, the way
- * {@code StoreFileSystem} is for {@code java.io}. https is left alone: a browser page cannot
- * speak tls down a raw socket, and pretending otherwise would be worse than not offering it.
+ * {@code StoreFileSystem} is for {@code java.io}. https goes the same way, with the proxy doing
+ * the handshake, because a page cannot speak tls down a socket it does not own.
  */
 public final class NetworkUrls {
 
@@ -52,16 +52,21 @@ public final class NetworkUrls {
 
         @Override
         public URLStreamHandler createURLStreamHandler(String protocol) {
-            return "http".equalsIgnoreCase(protocol) ? new HttpHandler(network) : null;
+            if ("http".equalsIgnoreCase(protocol)) {
+                return new HttpHandler(network, 80);
+            }
+            return "https".equalsIgnoreCase(protocol) ? new HttpHandler(network, 443) : null;
         }
     }
 
     private static final class HttpHandler extends URLStreamHandler {
 
         private final Network network;
+        private final int defaultPort;
 
-        private HttpHandler(Network network) {
+        private HttpHandler(Network network, int defaultPort) {
             this.network = network;
+            this.defaultPort = defaultPort;
         }
 
         @Override
@@ -71,7 +76,7 @@ public final class NetworkUrls {
 
         @Override
         protected int getDefaultPort() {
-            return 80;
+            return defaultPort;
         }
     }
 }

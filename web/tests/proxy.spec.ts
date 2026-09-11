@@ -81,6 +81,7 @@ test.describe('the proxy a hosted build runs for itself', () => {
       token: '',
       hosts: [],
       probes: false,
+      tlsCa: '',
     });
     site = `http://localhost:${portOf(server)}/`;
     target = `ws://localhost:${portOf(server)}/__flagon/tcp?host=localhost&port=${portOf(server)}`;
@@ -157,6 +158,7 @@ test.describe('what the proxy will open a socket to', () => {
       token: '',
       hosts: [],
       probes: false,
+      tlsCa: '',
     });
     const at = portOf(server);
     await page.goto(`http://localhost:${at}/`);
@@ -186,6 +188,7 @@ test.describe('a proxy the network can reach', () => {
       token: 'hunter2',
       hosts: [],
       probes: false,
+      tlsCa: '',
     });
     const at = portOf(server);
     await page.goto(`http://localhost:${at}/`);
@@ -209,6 +212,7 @@ async function probeOn(probes: boolean, route: string): Promise<number> {
     token: '',
     hosts: [],
     probes,
+    tlsCa: '',
   });
   const at = (server.address() as AddressInfo).port;
   const answer = await fetch(`http://localhost:${at}${route}`);
@@ -271,6 +275,7 @@ test.describe('the proxy and the name it was reached by', () => {
       token: '',
       hosts: ['game.example.com'],
       probes: false,
+      tlsCa: '',
     });
   });
 

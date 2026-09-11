@@ -11,6 +11,7 @@ import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -284,6 +285,37 @@ class NetworkHttpConnectionTest {
         connection.connect();
 
         assertEquals("hi", drain(connection.getInputStream()));
+    }
+
+    @Test
+    void asksForTlsOnAnHttpsUrl() throws Exception {
+        network.serve("host", 443, request -> record(request, "HTTP/1.1 200 OK\r\n"
+                + "Content-Length: 2\r\n\r\nhi"));
+
+        assertEquals("hi", read(open("https://host/some/where")));
+
+        assertEquals(List.of("host:443"), network.secured());
+        assertTrue(asked.get().contains("Host: host\r\n"), asked.get());
+    }
+
+    @Test
+    void keepsThePortInTheHostHeaderWhereHttpsIsNotOnItsOwnPort() throws Exception {
+        network.serve("host", 8443, request -> record(request, "HTTP/1.1 200 OK\r\n"
+                + "Content-Length: 0\r\n\r\n"));
+
+        read(open("https://host:8443/"));
+
+        assertEquals(List.of("host:8443"), network.secured());
+        assertTrue(asked.get().contains("Host: host:8443\r\n"), asked.get());
+    }
+
+    @Test
+    void doesNotAskForTlsOnAnHttpUrl() throws Exception {
+        answer("HTTP/1.1 200 OK\r\nContent-Length: 0\r\n\r\n");
+
+        read(open("http://host:7/"));
+
+        assertEquals(List.of(), network.secured());
     }
 
     private HttpURLConnection open(String address) {

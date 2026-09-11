@@ -1,4 +1,5 @@
 import net from 'node:net';
+import tls from 'node:tls';
 import { timingSafeEqual } from 'node:crypto';
 import type { IncomingMessage } from 'node:http';
 import type { Duplex } from 'node:stream';
@@ -15,6 +16,8 @@ export interface TcpProxyOptions {
   origins?: string[];
   token?: string;
   hosts?: string[];
+  /** extra certificate authorities to trust, for a server whose ca the host does not ship */
+  tlsCa?: string;
 }
 
 const LOOPBACK = new Set(['localhost', '127.0.0.1', '::1']);
@@ -65,6 +68,7 @@ export function attachTcpProxy(server: Upgradable, options: TcpProxyOptions = {}
   const origins = (options.origins ?? []).map((one) => one.toLowerCase());
   const hosts = (options.hosts ?? []).map(hostnameOf);
   const token = options.token ?? '';
+  const authorities = options.tlsCa ?? '';
   const sockets = new WebSocketServer({ noServer: true });
 
   server.on('upgrade', (request: IncomingMessage, socket: Duplex, head: Buffer) => {
@@ -77,7 +81,9 @@ export function attachTcpProxy(server: Upgradable, options: TcpProxyOptions = {}
       socket.destroy();
       return;
     }
-    sockets.handleUpgrade(request, socket, head, (client) => open(client, asked, allowed));
+    sockets.handleUpgrade(request, socket, head, (client) =>
+      open(client, asked, allowed, authorities),
+    );
   });
 }
 
@@ -131,9 +137,10 @@ function isTold(asked: URL, token: string): boolean {
   return given.length === wanted.length && timingSafeEqual(given, wanted);
 }
 
-function open(client: WebSocket, asked: URL, allowed: Rule[]): void {
+function open(client: WebSocket, asked: URL, allowed: Rule[], authorities: string): void {
   const host = asked.searchParams.get('host') ?? '';
   const port = Number(asked.searchParams.get('port') ?? '0');
+  const secure = asked.searchParams.get('tls') === '1';
 
   if (!host || !Number.isInteger(port) || port <= 0 || port > 65535) {
     refuse(client, `${host}:${port} is not an address`);
@@ -144,7 +151,14 @@ function open(client: WebSocket, asked: URL, allowed: Rule[]): void {
     return;
   }
 
-  const socket = net.createConnection({ host, port });
+  /*
+   * a page cannot speak tls down a socket it does not own, so the proxy does the handshake and
+   * checks the certificate here. the page gets plaintext, which is only as private as the hop
+   * between the page and this proxy -- same-origin over https in a hosted build, loopback in dev.
+   */
+  const socket = secure
+    ? tls.connect({ host, port, servername: host, ca: authorities || undefined })
+    : net.createConnection({ host, port });
 
   let flushing = false;
   let held = false;
@@ -156,7 +170,7 @@ function open(client: WebSocket, asked: URL, allowed: Rule[]): void {
     }
   };
 
-  socket.on('connect', () => client.send(OPENED));
+  socket.on(secure ? 'secureConnect' : 'connect', () => client.send(OPENED));
   socket.on('data', (data: Buffer) => {
     if (client.readyState !== client.OPEN) {
       return;

@@ -1,6 +1,7 @@
 package dev.flagon.runtime.net;
 
 import dev.flagon.platform.net.Connection;
+import dev.flagon.platform.UnsupportedCapabilityException;
 import dev.flagon.platform.net.Network;
 import dev.flagon.platform.net.NetworkException;
 
@@ -40,11 +41,13 @@ final class HttpExchange {
     static HttpExchange send(Network network, URL url, String method,
                              Map<String, List<String>> requestHeaders, byte[] requestBody)
             throws IOException {
+        boolean secure = "https".equalsIgnoreCase(url.getProtocol());
         String host = url.getHost();
-        int port = url.getPort() < 0 ? 80 : url.getPort();
-        byte[] head = head(url, method, host, port, requestHeaders, requestBody).getBytes(
+        int standard = secure ? 443 : 80;
+        int port = url.getPort() < 0 ? standard : url.getPort();
+        byte[] head = head(url, method, host, port, standard, requestHeaders, requestBody).getBytes(
                 StandardCharsets.ISO_8859_1);
-        Connection connection = open(network, host, port);
+        Connection connection = open(network, host, port, secure);
         try {
             connection.write(head, 0, head.length);
             if (requestBody != null && requestBody.length > 0) {
@@ -77,20 +80,21 @@ final class HttpExchange {
         connection.close();
     }
 
-    private static Connection open(Network network, String host, int port) throws IOException {
+    private static Connection open(Network network, String host, int port, boolean secure)
+            throws IOException {
         try {
-            return network.connect(host, port);
-        } catch (NetworkException refused) {
+            return secure ? network.connectSecure(host, port) : network.connect(host, port);
+        } catch (NetworkException | UnsupportedCapabilityException refused) {
             throw new IOException(refused.getMessage(), refused);
         }
     }
 
-    private static String head(URL url, String method, String host, int port,
+    private static String head(URL url, String method, String host, int port, int standard,
                                Map<String, List<String>> requestHeaders, byte[] requestBody)
             throws IOException {
         StringBuilder head = new StringBuilder();
         head.append(method).append(' ').append(target(url)).append(" HTTP/1.1\r\n");
-        head.append("Host: ").append(port == 80 ? host : host + ":" + port).append("\r\n");
+        head.append("Host: ").append(port == standard ? host : host + ":" + port).append("\r\n");
         for (Map.Entry<String, List<String>> header : requestHeaders.entrySet()) {
             if (isOurs(header.getKey())) {
                 continue;

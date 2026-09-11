@@ -31,6 +31,15 @@ public final class ProxyNetwork implements Network {
 
     @Override
     public Connection connect(String host, int port) {
+        return open(host, port, false);
+    }
+
+    @Override
+    public Connection connectSecure(String host, int port) {
+        return open(host, port, true);
+    }
+
+    private static Connection open(String host, int port, boolean secure) {
         if (host == null || host.isEmpty()) {
             throw new NetworkException("no host to connect to");
         }
@@ -38,7 +47,7 @@ public final class ProxyNetwork implements Network {
             throw new NetworkException("port " + port + " is not a port");
         }
         return new TunnelConnection(host, port,
-                Tunnel.open(Tunnel.endpoint(host, port, Tunnel.PATH)));
+                Tunnel.open(Tunnel.endpoint(host, port, Tunnel.PATH, secure)));
     }
 
 

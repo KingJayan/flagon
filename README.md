@@ -95,7 +95,8 @@ it, and takes any bundle: `/play/?bundle=example&program=blocks`.
 
 Networking goes through `dev.flagon.platform.net`, `java.net.Socket` is supplied on top of it
 for code that opens its own. Requires a proxy served alongside the page, because a browser cannot
-open a socket itself.
+open a socket itself. HTTPS works the same way: the proxy does the TLS handshake, so the hop
+between the page and the proxy carries plaintext and should be loopback or `wss://`.
 The development server runs one; a hosted build runs `make serve`, which serves
 the site and the socket endpoint together. See [COMPATIBILITY.md](docs/COMPATIBILITY.md#networking).
 
