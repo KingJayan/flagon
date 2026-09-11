@@ -49,6 +49,7 @@ export default defineConfig({
         '**/halfshader.spec.ts',
         '**/input.spec.ts',
         '**/play.spec.ts',
+        '**/reflection.spec.ts',
         '**/render.spec.ts',
         '**/shaders.spec.ts',
         '**/shell.spec.ts',
