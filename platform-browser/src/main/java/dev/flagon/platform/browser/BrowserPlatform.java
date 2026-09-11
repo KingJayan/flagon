@@ -4,6 +4,7 @@ import dev.flagon.platform.Clock;
 import dev.flagon.platform.ConsoleSink;
 import dev.flagon.platform.Platform;
 import dev.flagon.platform.RuntimeHost;
+import dev.flagon.platform.ShutdownHooks;
 import dev.flagon.platform.audio.AudioDevice;
 import dev.flagon.platform.audio.SilentAudioDevice;
 import dev.flagon.platform.browser.audio.WebAudioDevice;
@@ -16,6 +17,9 @@ import dev.flagon.platform.fs.FileStore;
 import dev.flagon.platform.fs.MemoryFileStore;
 import dev.flagon.platform.net.Network;
 import dev.flagon.platform.net.UnavailableNetwork;
+import org.teavm.jso.browser.Window;
+import org.teavm.jso.dom.events.Event;
+import org.teavm.jso.dom.events.EventListener;
 
 public final class BrowserPlatform implements Platform {
 
@@ -37,7 +41,6 @@ public final class BrowserPlatform implements Platform {
         this.network = network;
     }
 
-    /** @param arguments the entry point's own arguments, as the page passed them to main */
     public static BrowserPlatform create(String[] arguments) {
         HostBridge bridge = HostBridges.installed();
         BrowserConsole console = new BrowserConsole(bridge);
@@ -49,14 +52,18 @@ public final class BrowserPlatform implements Platform {
         // installed before anything can open a file, because java.io resolves the filesystem once
         StoreFileSystem.install(files);
         Clock clock = new BrowserClock();
+        runHooksWhenThePageGoesAway();
         return new BrowserPlatform(clock, console, host, files, openAudio(console, clock),
                 openNetwork(console));
     }
 
+    private static void runHooksWhenThePageGoesAway() {
+        EventListener<Event> leaving = event -> ShutdownHooks.runAll();
+        Window.current().addEventListener("pagehide", leaving);
+    }
+
     /**
-     * web audio, or a silent mixer that still keeps the books. a host without output is worth
-     * saying out loud once: an application that waits for a sound to finish still needs to hear
-     * that it did.
+     web audio - silent mixer if not
      */
     private static AudioDevice openAudio(ConsoleSink console, Clock clock) {
         WebAudioDevice audio = WebAudioDevice.createIfAvailable(console);
@@ -67,10 +74,6 @@ public final class BrowserPlatform implements Platform {
         return new SilentAudioDevice(clock);
     }
 
-    /**
-     * connections go through a proxy served with the page, or nowhere at all. a browser without
-     * websockets has no way out, and an address refused says so rather than hanging.
-     */
     private static Network openNetwork(ConsoleSink console) {
         ProxyNetwork network = ProxyNetwork.createIfAvailable();
         if (network != null) {
@@ -80,11 +83,6 @@ public final class BrowserPlatform implements Platform {
         return new UnavailableNetwork("this browser has no websockets to reach a proxy through");
     }
 
-    /**
-     * the origin private file system where the browser has one. where it does not, files live in
-     * the heap and are lost on reload — said out loud, because an application that saves its work
-     * would otherwise appear to succeed.
-     */
     private static FileStore openStorage(ConsoleSink console) {
         FileStore opfs = OpfsFileStore.createIfAvailable();
         if (opfs != null) {
@@ -149,7 +147,7 @@ public final class BrowserPlatform implements Platform {
 
     @Override
     public DisplaySurface display(int width, int height, String title) {
-        // destroying a display and opening another is how desktop code changes mode
+
         if (surface == null || surface.isDestroyed()) {
             surface = CanvasSurface.open(width, height, title, clock);
         }

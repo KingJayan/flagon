@@ -59,6 +59,11 @@
       <version>${project.version}</version>
     </dependency>
     <dependency>
+      <groupId>dev.flagon</groupId>
+      <artifactId>jdk-shims</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+    <dependency>
       <groupId>org.teavm</groupId>
       <artifactId>teavm-classlib</artifactId>
       <scope>provided</scope>

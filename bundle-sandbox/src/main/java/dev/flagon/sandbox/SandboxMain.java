@@ -21,6 +21,7 @@ public final class SandboxMain {
                 .register(new HelloProgram())
                 .register(new ChattyProgram())
                 .register(new RuntimeSelfTestProgram())
+                .register(new ShutdownHookProgram())
                 .register(new LwjglDemoProgram())
                 .register(new Lwjgl3DemoProgram())
                 .register(new GlfwDemoProgram())

@@ -659,6 +659,18 @@ The consequence worth planning around: work is interleaved, not parallel. A chun
 stages suspend keeps the frame loop drawing, and one that computes straight through for 40ms costs
 a frame.
 
+### Shutdown hooks
+
+`Runtime.addShutdownHook` has no method in the browser classlib, so `toolchain/jdk-shims` sends it,
+`removeShutdownHook`, `exit` and `halt` to Flagon at compile time. The hooks run when `main`
+returns, when the program stops with an exception, when the program calls `Runtime.exit`, and when
+the page goes away. `halt` skips them, the way it does on a desktop JVM.
+
+They run one after another on the calling thread, in the order they were added, because green
+threads are cooperative and a page that is closing has no more frames to give them. A hook that
+throws is reported and does not stop the rest. Code that expects hooks to run in parallel, or that
+expects a slow hook to finish after the tab closes, does not get that here.
+
 ### Frame timing
 
 `Display.update()` suspends the current green thread and resumes on
