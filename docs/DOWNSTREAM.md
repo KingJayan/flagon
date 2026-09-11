@@ -38,7 +38,9 @@ make app
 
 Nothing is configured and nothing is edited. The jars are folded into one for the compiler, and
 the build asks the one that declares a `Main-Class` what it runs, taking every class with a `main`
-if none does. Each answer becomes a
+if none does. The fold keeps the first copy of a class it meets, which is the one from the jar
+whose filename sorts first, so a library can take the place of an application class of the same
+name. The build lists every such collision. Rename a jar to change which copy wins. Each answer becomes a
 program, an entry point calling it is written, and both backends are compiled to `app.wasm` and
 `app.js`. `/play/` then runs it with the viewport to itself.
 
