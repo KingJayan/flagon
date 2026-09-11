@@ -58,7 +58,7 @@ test('names the bundles it will run when asked for one it will not', async ({ pa
   await page.goto('/play/?bundle=nonesuch');
 
   await expect(page.getByTestId('headline')).toHaveText('Nothing to run');
-  await expect(page.getByTestId('detail')).toContainText('app, sandbox, example');
+  await expect(page.getByTestId('detail')).toContainText('sandbox, example, app');
 });
 
 test('reports a backend that does not exist', async ({ page }) => {
@@ -66,4 +66,28 @@ test('reports a backend that does not exist', async ({ page }) => {
 
   await expect(page.getByTestId('headline')).toHaveText('Nothing to run');
   await expect(page.getByTestId('detail')).toContainText('js, wasm');
+});
+
+test.describe('the two pages read one url', () => {
+  const asked = 'bundle=nope&backend=js';
+
+  test('and refuse an unknown bundle with the same words', async ({ page }) => {
+    await page.goto(`/?${asked}`);
+    await expect(page.getByTestId('log')).toContainText("no bundle named 'nope'");
+
+    await page.goto(`/play/?${asked}`);
+    await expect(page.getByTestId('detail')).toContainText("no bundle named 'nope'");
+  });
+
+  test('and offer the same bundles, so neither can drift from the other', async ({ page }) => {
+    await page.goto('/');
+    const offered = await page.locator('#bundle option').evaluateAll((nodes) =>
+      nodes.map((node) => (node as HTMLOptionElement).value),
+    );
+
+    for (const bundle of offered) {
+      await page.goto(`/play/?bundle=${bundle}&backend=js`);
+      await expect(page.getByTestId('detail')).not.toContainText('no bundle named');
+    }
+  });
 });

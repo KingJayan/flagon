@@ -1,28 +1,12 @@
 import {
-  BACKENDS,
-  defaultBackend,
-  isBackend,
+  BUNDLES,
+  bundleUrlOf,
+  readRequest,
   runBundle,
   supportsWasmGc,
+  whyNot,
   type HostBridge,
 } from './bundle';
-
-/** only bundles this shell ships may be imported; the name comes from the url. */
-const BUNDLES = ['sandbox', 'example', 'app'];
-
-/** the same bundle is emitted once per backend, under the extension that backend produces. */
-function bundleUrlOf(bundle: string, backend: string): string | undefined {
-  if (!BUNDLES.includes(bundle) || !isBackend(backend)) {
-    return undefined;
-  }
-  return `/flagon/${bundle}.${backend === 'wasm' ? 'wasm' : 'js'}`;
-}
-
-function whyNot(bundle: string, backend: string): string {
-  return BUNDLES.includes(bundle)
-    ? `no backend named '${backend}'; try ${BACKENDS.join(', ')}`
-    : `no bundle named '${bundle}'; try ${BUNDLES.join(', ')}`;
-}
 
 const app = document.querySelector<HTMLElement>('#app')!;
 const stateBadge = document.querySelector<HTMLElement>('#state')!;
@@ -161,26 +145,6 @@ function addPhase(phase: string, detail: string): void {
   phaseList.append(item);
 }
 
-interface Request {
-  bundle: string;
-  backend: string;
-  asked: boolean;
-  program: string;
-  args: string[];
-}
-
-function readRequest(): Request {
-  const params = new URLSearchParams(location.search);
-  const asked = params.get('backend');
-  return {
-    bundle: params.get('bundle') ?? 'sandbox',
-    backend: asked ?? defaultBackend(),
-    asked: asked !== null,
-    program: params.get('program') ?? '',
-    args: params.getAll('arg'),
-  };
-}
-
 interface Entry {
   id: string;
   description: string;
@@ -257,12 +221,8 @@ function splitArgs(line: string): string[] {
   );
 }
 
-const request = readRequest();
+const request = readRequest('sandbox');
 
-const proxyToken = new URLSearchParams(location.search).get('proxytoken');
-if (proxyToken) {
-  (window as unknown as { __flagonProxyToken: string }).__flagonProxyToken = proxyToken;
-}
 bundleSelect.value = request.bundle;
 backendSelect.value = request.backend;
 argsInput.value = request.args.join(' ');
