@@ -663,13 +663,16 @@ a frame.
 
 `Runtime.addShutdownHook` has no method in the browser classlib, so `toolchain/jdk-shims` sends it,
 `removeShutdownHook`, `exit` and `halt` to Flagon at compile time. The hooks run when `main`
-returns, when the program stops with an exception, when the program calls `Runtime.exit`, and when
-the page goes away. `halt` skips them, the way it does on a desktop JVM.
+returns, when the program stops with an exception, and when the program calls `Runtime.exit`.
+`halt` skips them, the way it does on a desktop JVM.
 
 They run one after another on the calling thread, in the order they were added, because green
-threads are cooperative and a page that is closing has no more frames to give them. A hook that
-throws is reported and does not stop the rest. Code that expects hooks to run in parallel, or that
-expects a slow hook to finish after the tab closes, does not get that here.
+threads are cooperative. A hook that throws is reported and does not stop the rest.
+
+Closing or reloading the tab does **not** run them. A page being torn down is not a safe place to
+re-enter the runtime -- doing it aborts the navigation on the WebAssembly backend -- and a browser
+gives an unload handler no time it has to honour anyway. So a hook that saves a world on exit runs
+when the program ends, and does not run when the reader closes the tab. Save on a timer as well.
 
 ### Frame timing
 

@@ -4,7 +4,6 @@ import dev.flagon.platform.Clock;
 import dev.flagon.platform.ConsoleSink;
 import dev.flagon.platform.Platform;
 import dev.flagon.platform.RuntimeHost;
-import dev.flagon.platform.ShutdownHooks;
 import dev.flagon.platform.audio.AudioDevice;
 import dev.flagon.platform.audio.SilentAudioDevice;
 import dev.flagon.platform.browser.audio.WebAudioDevice;
@@ -17,9 +16,6 @@ import dev.flagon.platform.fs.FileStore;
 import dev.flagon.platform.fs.MemoryFileStore;
 import dev.flagon.platform.net.Network;
 import dev.flagon.platform.net.UnavailableNetwork;
-import org.teavm.jso.browser.Window;
-import org.teavm.jso.dom.events.Event;
-import org.teavm.jso.dom.events.EventListener;
 
 public final class BrowserPlatform implements Platform {
 
@@ -52,14 +48,8 @@ public final class BrowserPlatform implements Platform {
         // installed before anything can open a file, because java.io resolves the filesystem once
         StoreFileSystem.install(files);
         Clock clock = new BrowserClock();
-        runHooksWhenThePageGoesAway();
         return new BrowserPlatform(clock, console, host, files, openAudio(console, clock),
                 openNetwork(console));
-    }
-
-    private static void runHooksWhenThePageGoesAway() {
-        EventListener<Event> leaving = event -> ShutdownHooks.runAll();
-        Window.current().addEventListener("pagehide", leaving);
     }
 
     /**
