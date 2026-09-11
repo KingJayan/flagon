@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+  <parent>
+    <groupId>dev.flagon</groupId>
+    <artifactId>flagon-parent</artifactId>
+    <version>0.9.3-SNAPSHOT</version>
+    <relativePath>../../pom.xml</relativePath>
+  </parent>
+
+  <artifactId>jdk-shims</artifactId>
+  <name>Flagon :: JDK Shims</name>
+  <description>Sends calls the browser classlib has no method for to a Flagon replacement.</description>
+
+  <dependencies>
+    <dependency>
+      <groupId>org.teavm</groupId>
+      <artifactId>teavm-extension-apis</artifactId>
+      <version>${teavm.version}</version>
+    </dependency>
+
+    <dependency>
+      <groupId>org.teavm</groupId>
+      <artifactId>teavm-extension-spi</artifactId>
+      <version>${teavm.version}</version>
+    </dependency>
+
+    <dependency>
+      <groupId>org.teavm</groupId>
+      <artifactId>teavm-extension-spi-util</artifactId>
+      <version>${teavm.version}</version>
+    </dependency>
+
+    <dependency>
+      <groupId>org.teavm</groupId>
+      <artifactId>teavm-core</artifactId>
+      <version>${teavm.version}</version>
+      <scope>provided</scope>
+    </dependency>
+  </dependencies>
+</project>

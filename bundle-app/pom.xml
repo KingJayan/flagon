@@ -36,7 +36,7 @@
       <groupId>dev.flagon</groupId>
       <artifactId>lwjgl2-compat</artifactId>
     </dependency>
-    <!-- and the lwjgl 3 half of it: glfw, the core-profile GLxxC classes, MemoryStack -->
+
     <dependency>
       <groupId>dev.flagon</groupId>
       <artifactId>lwjgl3-compat</artifactId>
@@ -56,7 +56,12 @@
       <artifactId>reflect-policy</artifactId>
       <version>${project.version}</version>
     </dependency>
-    <!-- reads the jars at build time to write the entry point; never reaches the bundle -->
+    <dependency>
+      <groupId>dev.flagon</groupId>
+      <artifactId>jdk-shims</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+
     <dependency>
       <groupId>dev.flagon</groupId>
       <artifactId>app-entry</artifactId>
@@ -64,7 +69,7 @@
       <scope>provided</scope>
     </dependency>
 
-    <!-- the jar from vendor/, installed by the root pom before this module is built -->
+
     <dependency>
       <groupId>dev.flagon.vendor</groupId>
       <artifactId>app</artifactId>
@@ -80,8 +85,6 @@
 
   <build>
     <plugins>
-      <!-- asks vendor/ what its main class is and writes the call to it. an ordinary call, so
-           the compiler can follow it into the application -->
       <plugin>
         <groupId>org.codehaus.mojo</groupId>
         <artifactId>exec-maven-plugin</artifactId>

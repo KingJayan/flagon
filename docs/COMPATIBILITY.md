@@ -661,6 +661,21 @@ The consequence worth planning around: work is interleaved, not parallel. A chun
 stages suspend keeps the frame loop drawing, and one that computes straight through for 40ms costs
 a frame.
 
+### Shutdown hooks
+
+`Runtime.addShutdownHook` has no method in the browser classlib, so `toolchain/jdk-shims` sends it,
+`removeShutdownHook`, `exit` and `halt` to Flagon at compile time. The hooks run when `main`
+returns, when the program stops with an exception, and when the program calls `Runtime.exit`.
+`halt` skips them, the way it does on a desktop JVM.
+
+They run one after another on the calling thread, in the order they were added, because green
+threads are cooperative. A hook that throws is reported and does not stop the rest.
+
+Closing or reloading the tab does **not** run them. A page being torn down is not a safe place to
+re-enter the runtime -- doing it aborts the navigation on the WebAssembly backend -- and a browser
+gives an unload handler no time it has to honour anyway. So a hook that saves a world on exit runs
+when the program ends, and does not run when the reader closes the tab. Save on a timer as well.
+
 ### Frame timing
 
 `Display.update()` suspends the current green thread and resumes on

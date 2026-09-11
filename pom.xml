@@ -19,6 +19,7 @@
     <module>toolchain/socket-classlib</module>
     <module>toolchain/concurrent-classlib</module>
     <module>toolchain/reflect-policy</module>
+    <module>toolchain/jdk-shims</module>
     <module>toolchain/app-entry</module>
     <module>lwjgl-core</module>
     <module>lwjgl2-compat</module>
@@ -36,29 +37,28 @@
     <junit.version>5.11.4</junit.version>
     <lwjgl.version>2.9.3</lwjgl.version>
     <lwjgl3.version>3.3.3</lwjgl3.version>
-    <!-- comp backend for browser bundles: WEBASSEMBLY_GC or JAVASCRIPT. build with -Pjs for
-         the latter; see docs/ARCHITECTURE.md "Backend selection" -->
+
     <flagon.target>WEBASSEMBLY_GC</flagon.target>
     <flagon.bundle.extension>wasm</flagon.bundle.extension>
     <flagon.optimization>SIMPLE</flagon.optimization>
-    <!-- what -Prelease optimizes at, per backend: see the release profile -->
+
     <flagon.optimization.release>FULL</flagon.optimization.release>
     <flagon.minify>false</flagon.minify>
-    <!-- strict adds null/bounds checks so java exceptions are thrown instead of js TypeErrors -->
+
     <flagon.strict>true</flagon.strict>
     <flagon.sourceMaps>true</flagon.sourceMaps>
-    <!-- glob patterns naming classes whose members survive compilation; see reflect-policy -->
+
     <flagon.reflect.classes></flagon.reflect.classes>
-    <!-- glob patterns naming interfaces java.lang.reflect.Proxy may stand in for -->
+
     <flagon.reflect.proxies></flagon.reflect.proxies>
-    <!-- a file naming classes, one per line, whose constructors survive compilation -->
+
     <flagon.reflect.constructed></flagon.reflect.constructed>
-    <!-- your application and its libraries, and the one jar they are folded into for the build -->
+
     <flagon.app.dir>${maven.multiModuleProjectDirectory}/vendor</flagon.app.dir>
-    <!-- globs narrowing which vendor classes keep their constructors; empty means all of them -->
+
     <flagon.app.reflect></flagon.app.reflect>
     <flagon.app.jar>${maven.multiModuleProjectDirectory}/target/app.jar</flagon.app.jar>
-    <!-- where browser bundles are emitted for the web shell to serve. -->
+
     <flagon.bundleOutput>${maven.multiModuleProjectDirectory}/web/public/flagon</flagon.bundleOutput>
   </properties>
 
@@ -301,9 +301,6 @@
   </build>
 
   <profiles>
-    <!-- your own jar: put any jar in vendor/ and build, its libraries beside it if it has any.
-         the jar names its own main class, so nothing here has to be told anything about it. off
-         unless -Papp asks for it, which the Makefile does when it finds a jar -->
     <profile>
       <id>app</id>
       <modules>
@@ -311,9 +308,6 @@
       </modules>
       <build>
         <plugins>
-          <!-- one artifact can be depended on; a directory of them cannot. so they are folded
-               into one jar first. where two jars carry the same class the first one scanned wins,
-               which is the one whose name sorts first; app-entry reports every such collision -->
           <plugin>
             <groupId>org.apache.maven.plugins</groupId>
             <artifactId>maven-antrun-plugin</artifactId>
@@ -335,8 +329,7 @@
               </execution>
             </executions>
           </plugin>
-          <!-- the jar becomes a real artifact before the module that depends on it is built.
-               it happens here because the root pom is the first thing the reactor builds -->
+
           <plugin>
             <groupId>org.apache.maven.plugins</groupId>
             <artifactId>maven-install-plugin</artifactId>
@@ -367,14 +360,11 @@
       <properties>
         <flagon.target>JAVASCRIPT</flagon.target>
         <flagon.bundle.extension>js</flagon.bundle.extension>
-        <!-- teavm 0.15 miscompiles this backend's async bridges at FULL, and a bundle minified out
-             of SIMPLE is the smaller of the two anyway -->
+
         <flagon.optimization.release>SIMPLE</flagon.optimization.release>
       </properties>
     </profile>
 
-    <!-- what a hosted build ships: optimized and minified, with no maps or debug information
-         beside it. strict stays on, exception semantics being behaviour and not a debugging aid -->
     <profile>
       <id>release</id>
       <properties>

@@ -4,14 +4,14 @@ import dev.flagon.platform.ConsoleSink;
 import dev.flagon.platform.Platform;
 import dev.flagon.platform.Platforms;
 import dev.flagon.platform.RuntimeHost;
+import dev.flagon.platform.ShutdownHooks;
 import dev.flagon.runtime.net.NetworkUrls;
 
 import java.util.Arrays;
 import java.util.List;
 
-/**
- * the boot sequence. each phase is announced before it starts so an embedder can tell
- * "platform never came up" from "program threw". exactly one of exited/fatal is delivered.
+/*
+ boot seq
  */
 public final class FlagonRuntime {
 
@@ -22,9 +22,6 @@ public final class FlagonRuntime {
     private FlagonRuntime() {
     }
 
-    /**
-     * installs the platform, selects a program by the first host argument, runs it
-     */
     public static int boot(Platform platform, ProgramRegistry registry) {
         if (platform == null) {
             throw new IllegalArgumentException("platform must not be null");
@@ -34,6 +31,7 @@ public final class FlagonRuntime {
         }
 
         RuntimeHost host = platform.host();
+        ShutdownHooks.reset();
         String phase = PHASE_PLATFORM;
         try {
             host.status(PHASE_PLATFORM, platform.name());
@@ -42,7 +40,7 @@ public final class FlagonRuntime {
             ConsoleSink console = platform.console();
             ConsoleStreams.install(console);
             console.info("Flagon runtime starting on platform '" + platform.name() + "'");
-            // installed before a program can ask for a url, because java.net resolves handlers once
+
             NetworkUrls.install(platform.network(), console);
 
             phase = PHASE_SELECT;
@@ -62,6 +60,7 @@ public final class FlagonRuntime {
             host.status(PHASE_PROGRAM, program.id());
             host.ready();
             program.run(programArguments);
+            ShutdownHooks.runAll();
 
             console.info("Program '" + program.id() + "' completed");
             host.exited(0);
@@ -70,6 +69,7 @@ public final class FlagonRuntime {
             reportFatal(platform, phase, error);
             return -1;
         } finally {
+            ShutdownHooks.runAll();
             ConsoleStreams.restore();
         }
     }
@@ -105,7 +105,6 @@ public final class FlagonRuntime {
         try {
             platform.console().error("Fatal error during phase '" + phase + "'", error);
         } catch (Throwable ignored) {
-            // a broken console must not replace the error we're trying to report
         }
         platform.host().fatal(phase, error);
     }
