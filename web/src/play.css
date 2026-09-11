@@ -1,6 +1,4 @@
-:root {
-  color-scheme: dark;
-}
+@import './tokens.css';
 
 * {
   box-sizing: border-box;
@@ -11,9 +9,9 @@ body {
   height: 100%;
   margin: 0;
   overflow: hidden;
-  background: #000;
-  color: #e7e7e9;
-  font: 15px/1.5 ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+  background: var(--stage);
+  color: var(--ink);
+  font: var(--detail) / 1.5 var(--sans);
 }
 
 #flagon-canvas {
@@ -21,12 +19,12 @@ body {
   width: 100%;
   height: 100%;
   object-fit: contain;
-  background: #000;
+  background: var(--stage);
   touch-action: none;
 }
 
 #flagon-canvas:focus-visible {
-  outline: 2px solid #6ea8fe;
+  outline: 2px solid var(--accent);
   outline-offset: -2px;
 }
 
@@ -39,7 +37,7 @@ body {
   gap: 0.5rem;
   padding: 2rem;
   text-align: center;
-  background: #000;
+  background: var(--stage);
   transition: opacity 150ms ease-out;
 }
 
@@ -49,19 +47,24 @@ body {
 
 .headline {
   margin: 0;
-  font-size: 1.1rem;
+  font-family: var(--serif);
+  font-size: 1.25rem;
   font-weight: 600;
 }
 
 .detail {
   margin: 0;
   max-width: 46rem;
-  color: #a6a6ad;
+  color: var(--muted);
   white-space: pre-wrap;
 }
 
 .veil[data-kind='failed'] .headline {
-  color: #ff8a8a;
+  color: var(--bad);
+}
+
+.veil[data-kind='exited'] .headline {
+  color: var(--ok);
 }
 
 @media (prefers-reduced-motion: reduce) {

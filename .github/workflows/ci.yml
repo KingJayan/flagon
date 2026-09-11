@@ -23,10 +23,10 @@ jobs:
       - name: Check java style
         run: ./mvnw -B -q checkstyle:check
 
-      - name: Build and unit test both backends
+      - name: Build & unit test backends
         run: make build
 
-      - name: Upload the bundles
+      - name: Upload bundles
         uses: actions/upload-artifact@v5
         with:
           name: bundles
@@ -44,10 +44,10 @@ jobs:
           java-version: '25'
           cache: maven
 
-      - name: Build both backends as a release ships them
+      - name: Build both backends as release
         run: make build-release
 
-      - name: Weigh them against the budget
+      - name: Weigh bundles
         run: |
           set -o pipefail
           echo '```' >> "$GITHUB_STEP_SUMMARY"
@@ -82,7 +82,7 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
-      - name: Download the bundles
+      - name: Download bundles
         uses: actions/download-artifact@v5
         with:
           name: bundles
@@ -92,33 +92,33 @@ jobs:
         with:
           bun-version: latest
 
-      - name: Cache the bun packages
+      - name: Cache bun pckgs
         uses: actions/cache@v5
         with:
           path: ~/.bun/install/cache
           key: bun-${{ runner.os }}-${{ hashFiles('web/bun.lock') }}
 
-      - name: Install web dependencies
+      - name: Install web deps
         run: make deps
 
-      - name: Lint the shell
+      - name: Lint
         run: cd web && bun run lint
 
-      - name: Typecheck and build the shell
+      - name: Typecheck & build
         run: make site
 
-      - name: Resolve the playwright version
+      - name: Resolve playwright
         id: playwright
         run: echo "version=$(cd web && bunx playwright --version | awk '{print $2}')" >> "$GITHUB_OUTPUT"
 
-      - name: Cache the browsers
+      - name: Cache browsers
         uses: actions/cache@v5
         with:
           path: ~/.cache/ms-playwright
           key: playwright-${{ runner.os }}-${{ matrix.project }}-${{ steps.playwright.outputs.version }}
           restore-keys: playwright-${{ runner.os }}-${{ matrix.project }}-
 
-      - name: Install the browser
+      - name: Install browser
         run: make browser-${{ matrix.project }}
 
       - name: Browser tests
@@ -142,23 +142,23 @@ jobs:
         with:
           bun-version: latest
 
-      - name: Cache the bun packages
+      - name: Cache bun pckgs
         uses: actions/cache@v5
         with:
           path: ~/.bun/install/cache
           key: bun-${{ runner.os }}-${{ hashFiles('web/bun.lock') }}
 
-      - name: Install web dependencies
+      - name: Install web deps
         run: make deps
 
-      - name: Download the shard reports
+      - name: Download reports
         uses: actions/download-artifact@v5
         with:
           path: web/blob-report/
           pattern: blob-report-*
           merge-multiple: true
 
-      - name: Merge the shard reports
+      - name: Merge reports
         run: make merge-reports
 
       - uses: actions/upload-artifact@v5

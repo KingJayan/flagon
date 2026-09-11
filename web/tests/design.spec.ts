@@ -75,3 +75,60 @@ test.describe('the shell as a designed page', () => {
     }
   });
 });
+
+/** both pages pull from one token file, so a colour on one is the same colour on the other. */
+test.describe('one design language across both pages', () => {
+  const SHARED = ['--ink', '--muted', '--accent', '--bad', '--ok', '--line', '--serif', '--mono'];
+
+  async function tokensOf(page: import('@playwright/test').Page, url: string) {
+    await page.goto(url);
+    return page.evaluate((names: string[]) => {
+      const read = getComputedStyle(document.documentElement);
+      return Object.fromEntries(names.map((name) => [name, read.getPropertyValue(name).trim()]));
+    }, SHARED);
+  }
+
+  test('resolves every shared token on the shell and on /play/', async ({ page }) => {
+    const shell = await tokensOf(page, '/');
+    const play = await tokensOf(page, '/play/?bundle=nonesuch');
+
+    for (const name of SHARED) {
+      expect(shell[name], `the shell defines ${name}`).not.toBe('');
+      expect(play[name], `/play/ defines ${name}`).not.toBe('');
+    }
+    expect(play['--serif']).toBe(shell['--serif']);
+    expect(play['--mono']).toBe(shell['--mono']);
+  });
+
+  test('gives /play/ the dark end of the same palette, not a palette of its own', async ({
+    page,
+  }) => {
+    await page.emulateMedia({ colorScheme: 'light' });
+    const shell = await tokensOf(page, '/');
+    const play = await tokensOf(page, '/play/?bundle=nonesuch');
+
+    // the shell follows the reader; /play/ presents a program, so it stays dark either way
+    expect(play['--ink']).not.toBe(shell['--ink']);
+
+    await page.emulateMedia({ colorScheme: 'dark' });
+    const shellAtNight = await tokensOf(page, '/');
+    expect(play['--ink']).toBe(shellAtNight['--ink']);
+    expect(play['--accent']).toBe(shellAtNight['--accent']);
+  });
+
+  test('leaves no token defined and never used', async ({ page }) => {
+    await page.goto('/');
+    const unused = await page.evaluate(async () => {
+      const sheets = await Promise.all(
+        [...document.querySelectorAll<HTMLLinkElement>('link[rel=stylesheet]')].map((link) =>
+          fetch(link.href).then((response) => response.text()),
+        ),
+      );
+      const css = sheets.join('\n');
+      const defined = [...css.matchAll(/^\s*(--[\w-]+):/gm)].map((found) => found[1]);
+      return defined.filter((name) => !new RegExp(`var\\(\\s*${name}\\b`).test(css));
+    });
+
+    expect(unused).toEqual([]);
+  });
+});
