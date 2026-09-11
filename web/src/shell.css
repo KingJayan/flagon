@@ -1,38 +1,4 @@
-:root {
-  color-scheme: light dark;
-  --bg: #fbfaf8;
-  --panel: #ffffff;
-  --sunk: #f4f1ec;
-  --ink: #1d1b18;
-  --muted: #6b6660;
-  --line: #e2ded7;
-  --accent: #8a5a2b;
-  --navy: #232a44;
-  --ok: #2f7a3f;
-  --bad: #b3261e;
-  --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
-  --serif: "Iowan Old Style", Georgia, "Times New Roman", serif;
-  --shadow: 0 1px 2px rgb(29 27 24 / 0.06), 0 10px 30px rgb(29 27 24 / 0.07);
-  --small: 0.75rem;
-  --detail: 0.875rem;
-  --body: 1rem;
-  --title: 1.75rem;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #171614;
-    --panel: #201e1b;
-    --sunk: #1c1b18;
-    --ink: #ece8e1;
-    --muted: #9c958a;
-    --line: #322e29;
-    --accent: #d69f68;
-    --ok: #7cc48b;
-    --bad: #f2857c;
-    --shadow: 0 1px 2px rgb(0 0 0 / 0.4), 0 10px 30px rgb(0 0 0 / 0.35);
-  }
-}
+@import './tokens.css';
 
 * {
   box-sizing: border-box;
@@ -43,7 +9,7 @@ body {
   padding: 2rem 1.25rem 4rem;
   background: var(--bg);
   color: var(--ink);
-  font: var(--body) / 1.55 system-ui, -apple-system, "Segoe UI", sans-serif;
+  font: var(--body) / 1.55 var(--sans);
 }
 
 main {
@@ -63,7 +29,7 @@ main {
   width: 44px;
   height: 44px;
   border-radius: 10px;
-  background: var(--navy);
+  background: var(--sunk);
   object-fit: cover;
 }
 

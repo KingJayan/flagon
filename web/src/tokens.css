@@ -1,0 +1,81 @@
+/*
+ * one palette for both pages. the hex values appear once each; the light and dark blocks only
+ * say which of them a role takes. /play/ pins the dark end with data-theme, because a program
+ * is presented on black whatever the reader's system says.
+ */
+:root {
+  --paper: #fbfaf8;
+  --paper-panel: #ffffff;
+  --paper-sunk: #f4f1ec;
+  --paper-ink: #1d1b18;
+  --paper-muted: #6b6660;
+  --paper-line: #e2ded7;
+  --paper-accent: #8a5a2b;
+  --paper-ok: #2f7a3f;
+  --paper-bad: #b3261e;
+  --paper-shadow: 0 1px 2px rgb(29 27 24 / 0.06), 0 10px 30px rgb(29 27 24 / 0.07);
+
+  --night: #171614;
+  --night-panel: #201e1b;
+  --night-sunk: #1c1b18;
+  --night-ink: #ece8e1;
+  --night-muted: #9c958a;
+  --night-line: #322e29;
+  --night-accent: #d69f68;
+  --night-ok: #7cc48b;
+  --night-bad: #f2857c;
+  --night-shadow: 0 1px 2px rgb(0 0 0 / 0.4), 0 10px 30px rgb(0 0 0 / 0.35);
+
+  /* the ground a program is presented on, which is black on either side of the palette */
+  --stage: #000000;
+
+  --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  --serif: "Iowan Old Style", Georgia, "Times New Roman", serif;
+  --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --small: 0.75rem;
+  --detail: 0.875rem;
+  --body: 1rem;
+  --title: 1.75rem;
+
+  color-scheme: light dark;
+  --bg: var(--paper);
+  --panel: var(--paper-panel);
+  --sunk: var(--paper-sunk);
+  --ink: var(--paper-ink);
+  --muted: var(--paper-muted);
+  --line: var(--paper-line);
+  --accent: var(--paper-accent);
+  --ok: var(--paper-ok);
+  --bad: var(--paper-bad);
+  --shadow: var(--paper-shadow);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    color-scheme: dark;
+    --bg: var(--night);
+    --panel: var(--night-panel);
+    --sunk: var(--night-sunk);
+    --ink: var(--night-ink);
+    --muted: var(--night-muted);
+    --line: var(--night-line);
+    --accent: var(--night-accent);
+    --ok: var(--night-ok);
+    --bad: var(--night-bad);
+    --shadow: var(--night-shadow);
+  }
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --bg: var(--night);
+  --panel: var(--night-panel);
+  --sunk: var(--night-sunk);
+  --ink: var(--night-ink);
+  --muted: var(--night-muted);
+  --line: var(--night-line);
+  --accent: var(--night-accent);
+  --ok: var(--night-ok);
+  --bad: var(--night-bad);
+  --shadow: var(--night-shadow);
+}

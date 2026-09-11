@@ -23,10 +23,10 @@ jobs:
       - name: Fetch maven
         run: for attempt in 1 2 3; do ./mvnw -B -v && exit 0; sleep 10; done; exit 1
 
-      - name: Set the version from the tag
+      - name: Set version (from tag)
         run: make version VERSION="${GITHUB_REF_NAME#v}"
 
-      - name: Build and unit test both backends as they ship
+      - name: Build & test as release
         run: make build-release
 
       - name: Upload the bundles
@@ -46,7 +46,7 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
-      - name: Download the bundles
+      - name: Download bundles
         uses: actions/download-artifact@v5
         with:
           name: release-bundles
@@ -56,25 +56,25 @@ jobs:
         with:
           bun-version: latest
 
-      - name: Cache the bun packages
+      - name: Cache bun pckgs
         uses: actions/cache@v5
         with:
           path: ~/.bun/install/cache
           key: bun-${{ runner.os }}-${{ hashFiles('web/bun.lock') }}
 
-      - name: Install web dependencies
+      - name: Install web deps
         run: make deps
 
-      - name: Typecheck and build the shell
+      - name: Typecheck & build
         run: make site
 
-      - name: Cache the browsers
+      - name: Cache browsers
         uses: actions/cache@v5
         with:
           path: ~/.cache/ms-playwright
           key: playwright-${{ runner.os }}-${{ hashFiles('web/bun.lock') }}
 
-      - name: Install the browsers
+      - name: Install browsers
         run: make browsers
 
       - name: Browser tests
@@ -105,13 +105,13 @@ jobs:
       - name: Fetch maven
         run: for attempt in 1 2 3; do ./mvnw -B -v && exit 0; sleep 10; done; exit 1
 
-      - name: Set the version from the tag
+      - name: Set version from tag
         run: make version VERSION="${GITHUB_REF_NAME#v}"
 
-      - name: Build what the tag ships
+      - name: Build
         run: make bundles-release
 
-      - name: Publish to GitHub Packages
+      - name: Publish
         run: make publish
         env:
           MAVEN_USERNAME: ${{ github.actor }}
