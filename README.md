@@ -78,8 +78,12 @@ make app
 ```
 
 Nothing else to configure: the jar that names a main class is the application, the rest are its
-libraries, and every class with a `main` becomes a program. Go to
-<http://localhost:5273/play/> to run it fullscreen, any bundle can be run there: `/play/?bundle=example&program=blocks`.
+libraries, and every class with a `main` becomes a program.
+
+Run `make dev` and open <http://localhost:5273/>, then pick the `app` bundle: the shell gives you
+the console, the program picker, the argument field and the phase list, which is what bringing up a
+new jar needs. <http://localhost:5273/play/> runs the same bundle fullscreen with no chrome around
+it, and takes any bundle: `/play/?bundle=example&program=blocks`.
 
 
 > [!NOTE]

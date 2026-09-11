@@ -55,15 +55,40 @@ export async function runBundle(url: string, host: HostBridge, args: string[]): 
   window.__flagonHost = host;
   installTunnel();
   const absolute = new URL(url, location.origin).href;
-  if (absolute.endsWith('.wasm')) {
-    await runWasmBundle(absolute, args);
-    return;
+  try {
+    if (absolute.endsWith('.wasm')) {
+      await runWasmBundle(absolute, args);
+      return;
+    }
+    const module = (await import(/* @vite-ignore */ absolute)) as JsBundle;
+    if (typeof module.main !== 'function') {
+      throw new Error(`bundle at ${url} does not export main()`);
+    }
+    module.main(args);
+  } catch (failure) {
+    throw (await whyItIsNotThere(absolute)) ?? failure;
   }
-  const module = (await import(/* @vite-ignore */ absolute)) as JsBundle;
-  if (typeof module.main !== 'function') {
-    throw new Error(`bundle at ${url} does not export main()`);
+}
+
+/**
+ * a bundle nobody built fails as an opaque import error, so say what is actually missing. a dev
+ * server answers an unknown path with the page itself, so the type matters as much as the status.
+ */
+async function whyItIsNotThere(absolute: string): Promise<Error | undefined> {
+  try {
+    const response = await fetch(absolute, { method: 'HEAD' });
+    const type = response.headers.get('content-type') ?? '';
+    if (response.ok && !type.includes('text/html')) {
+      return undefined;
+    }
+  } catch {
+    return undefined;
   }
-  module.main(args);
+  return new Error(
+    absolute.includes('/flagon/app.')
+      ? "there is no application bundle yet: put a jar in vendor/ and run 'make app'"
+      : `there is no bundle at ${absolute}: run 'make build'`,
+  );
 }
 
 async function runWasmBundle(absolute: string, args: string[]): Promise<void> {

@@ -154,3 +154,22 @@ for (const backend of BACKENDS) {
     });
   });
 }
+
+test.describe("the shell's own jar bundle", () => {
+  test('is offered in the bundle picker, so a new jar has the console and arguments', async ({
+    page,
+  }) => {
+    await page.goto('/');
+    const options = page.locator('#bundle option');
+
+    await expect(options).toHaveCount(3);
+    await expect(options.nth(2)).toHaveAttribute('value', 'app');
+  });
+
+  test('says what to do when no jar has been built yet', async ({ page }) => {
+    await page.goto('/?bundle=app');
+    await expect(page.getByTestId('state')).toHaveText('failed', { timeout: 30_000 });
+
+    await expect(page.getByTestId('log')).toContainText("put a jar in vendor/ and run 'make app'");
+  });
+});
