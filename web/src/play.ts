@@ -1,6 +1,11 @@
-import { BACKENDS, defaultBackend, isBackend, runBundle, supportsWasmGc, type HostBridge } from './bundle';
-
-const BUNDLES = ['app', 'sandbox', 'example'];
+import {
+  bundleUrlOf,
+  readRequest,
+  runBundle,
+  supportsWasmGc,
+  whyNot,
+  type HostBridge,
+} from './bundle';
 
 const canvas = document.querySelector<HTMLCanvasElement>('#flagon-canvas')!;
 const veil = document.querySelector<HTMLElement>('#veil')!;
@@ -18,17 +23,7 @@ function hide(): void {
   veil.hidden = true;
 }
 
-const params = new URLSearchParams(location.search);
-const bundle = params.get('bundle') ?? 'app';
-const asked = params.get('backend');
-const backend = asked ?? defaultBackend();
-const program = params.get('program') ?? '';
-const args = params.getAll('arg');
-
-const proxyToken = params.get('proxytoken');
-if (proxyToken) {
-  (window as unknown as { __flagonProxyToken: string }).__flagonProxyToken = proxyToken;
-}
+const { bundle, backend, asked, program, args } = readRequest('app');
 
 const host: HostBridge = {
   log(level, text) {
@@ -62,19 +57,6 @@ const host: HostBridge = {
 canvas.tabIndex = 0;
 canvas.addEventListener('contextmenu', (event) => event.preventDefault());
 
-function bundleUrl(): string | undefined {
-  if (!BUNDLES.includes(bundle) || !isBackend(backend)) {
-    return undefined;
-  }
-  return `/flagon/${bundle}.${backend === 'wasm' ? 'wasm' : 'js'}`;
-}
-
-function whyNot(): string {
-  return BUNDLES.includes(bundle)
-    ? `There is no backend named '${backend}'. Try one of: ${BACKENDS.join(', ')}.`
-    : `There is no bundle named '${bundle}'. Try one of: ${BUNDLES.join(', ')}.`;
-}
-
 /** `app` is the one bundle that may legitimately be absent, so say what makes it appear */
 function missing(url: string): string {
   return bundle === 'app'
@@ -84,9 +66,9 @@ function missing(url: string): string {
 }
 
 async function start(): Promise<void> {
-  const url = bundleUrl();
+  const url = bundleUrlOf(bundle, backend);
   if (!url) {
-    show('failed', 'Nothing to run', whyNot());
+    show('failed', 'Nothing to run', whyNot(bundle, backend));
     return;
   }
   if (backend === 'wasm' && !supportsWasmGc()) {

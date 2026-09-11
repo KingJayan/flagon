@@ -17,6 +17,9 @@ declare global {
   }
 }
 
+/** only bundles this site ships may be imported; the name comes from the url. */
+export const BUNDLES = ['sandbox', 'example', 'app'];
+
 export type Backend = 'js' | 'wasm';
 
 export const BACKENDS: readonly Backend[] = ['js', 'wasm'];
@@ -34,6 +37,45 @@ export function supportsWasmGc(): boolean {
 /** wasm gc where the engine has it, javascript everywhere else. */
 export function defaultBackend(): Backend {
   return supportsWasmGc() ? 'wasm' : 'js';
+}
+
+/** what the url asked for. both pages read the same parameters; only the default bundle differs. */
+export interface Request {
+  bundle: string;
+  backend: string;
+  asked: boolean;
+  program: string;
+  args: string[];
+}
+
+export function readRequest(fallback: string): Request {
+  const params = new URLSearchParams(location.search);
+  const asked = params.get('backend');
+  const token = params.get('proxytoken');
+  if (token) {
+    (window as unknown as { __flagonProxyToken: string }).__flagonProxyToken = token;
+  }
+  return {
+    bundle: params.get('bundle') ?? fallback,
+    backend: asked ?? defaultBackend(),
+    asked: asked !== null,
+    program: params.get('program') ?? '',
+    args: params.getAll('arg'),
+  };
+}
+
+/** the same bundle is emitted once per backend, under the extension that backend produces. */
+export function bundleUrlOf(bundle: string, backend: string): string | undefined {
+  if (!BUNDLES.includes(bundle) || !isBackend(backend)) {
+    return undefined;
+  }
+  return `/flagon/${bundle}.${backend === 'wasm' ? 'wasm' : 'js'}`;
+}
+
+export function whyNot(bundle: string, backend: string): string {
+  return BUNDLES.includes(bundle)
+    ? `no backend named '${backend}'; try ${BACKENDS.join(', ')}`
+    : `no bundle named '${bundle}'; try ${BUNDLES.join(', ')}`;
 }
 
 interface JsBundle {
