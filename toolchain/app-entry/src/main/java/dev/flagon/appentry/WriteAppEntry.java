@@ -8,9 +8,12 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Enumeration;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
@@ -32,6 +35,9 @@ public final class WriteAppEntry {
     /** past this the list is doing more harm than the reflection it enables */
     private static final int LIMIT = 50_000;
 
+    /** how many shadowed names are worth printing before the point is made */
+    private static final int SHADOWS_SHOWN = 10;
+
     /**
      * {@code args[0]} a jar or a directory of them, {@code args[1]} the source directory to
      * write into, {@code args[2]} where to list the classes they carry, if anywhere,
@@ -48,6 +54,7 @@ public final class WriteAppEntry {
         System.out.println(mains.isEmpty()
                 ? "nothing runnable in " + given + ", so the app bundle will say so"
                 : "app programs: " + mains);
+        reportShadowing(jars);
 
         // the build may pass the argument through empty, which asks for no list at all
         if (args.length > 2 && args[2] != null && !args[2].isBlank()) {
@@ -74,18 +81,61 @@ public final class WriteAppEntry {
     private static List<String> classesIn(List<Path> jars) throws IOException {
         List<String> classes = new ArrayList<>();
         for (Path jar : jars) {
-            try (JarFile opened = new JarFile(jar.toFile())) {
-                Enumeration<JarEntry> entries = opened.entries();
-                while (entries.hasMoreElements()) {
-                    String name = entries.nextElement().getName();
-                    if (name.endsWith(".class")) {
-                        classes.add(name.substring(0, name.length() - ".class".length())
-                                .replace('/', '.'));
-                    }
+            classes.addAll(classesOf(jar));
+        }
+        return classes;
+    }
+
+    private static List<String> classesOf(Path jar) throws IOException {
+        List<String> classes = new ArrayList<>();
+        try (JarFile opened = new JarFile(jar.toFile())) {
+            Enumeration<JarEntry> entries = opened.entries();
+            while (entries.hasMoreElements()) {
+                String name = entries.nextElement().getName();
+                if (name.endsWith(".class")) {
+                    classes.add(name.substring(0, name.length() - ".class".length())
+                            .replace('/', '.'));
                 }
             }
         }
         return classes;
+    }
+
+    /**
+     * the jars are folded into one, and the fold keeps the first copy of a class it meets. a
+     * library that carries a class of the application's own name therefore replaces it, and
+     * nothing says so, which is why this does.
+     *
+     * @return the shadowed class names, each mapped to the jars that carry it
+     */
+    static Map<String, String> shadowedIn(List<Path> jars) throws IOException {
+        Map<String, String> firstIn = new HashMap<>();
+        Map<String, String> shadowed = new LinkedHashMap<>();
+        for (Path jar : jars) {
+            String name = jar.getFileName().toString();
+            for (String type : classesOf(jar)) {
+                String already = firstIn.putIfAbsent(type, name);
+                if (already != null && !already.equals(name)) {
+                    shadowed.putIfAbsent(type, already + " wins over " + name);
+                }
+            }
+        }
+        return shadowed;
+    }
+
+    private static void reportShadowing(List<Path> jars) throws IOException {
+        Map<String, String> shadowed = shadowedIn(jars);
+        if (shadowed.isEmpty()) {
+            return;
+        }
+        System.out.println(shadowed.size() + " classes are carried by more than one jar. the fold"
+                + " keeps the copy from the jar whose name sorts first and drops the rest, so"
+                + " rename a jar if the wrong copy wins:");
+        shadowed.entrySet().stream().limit(SHADOWS_SHOWN).forEach(
+                entry -> System.out.println("  " + entry.getKey() + ": " + entry.getValue()));
+        if (shadowed.size() > SHADOWS_SHOWN) {
+            System.out.println("  and " + (shadowed.size() - SHADOWS_SHOWN) + " more");
+        }
     }
 
     /**
