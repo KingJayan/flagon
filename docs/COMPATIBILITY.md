@@ -502,10 +502,30 @@ and sockets; it has to allow `unsafe-eval` because TeaVM's WebAssembly loader ev
 `java.net.URL` follows the same path. Flagon installs a `URLStreamHandlerFactory` at boot so
 unmodified HTTP code transparently uses the active `Network` implementation.
 
+#### HTTPS
+
+A page cannot speak TLS down a socket it does not own, so the proxy does the handshake for it.
+`Network.connectSecure()` asks for it, `https://` URLs through `java.net.URL` take it by
+themselves, and the proxy checks the certificate the way any other client would. A server whose
+authority the host does not already ship needs `--tls-ca <file>`.
+
+```
+bun run proxy -- --root dist --allow sessionserver.mojang.com:443 --allow api.mojang.com:443
+```
+
+Know what this does and does not buy. The leg from the far server to the proxy is real TLS with a
+real certificate check. The leg from the proxy to the page is a WebSocket carrying plaintext, so it
+is private only as far as whatever carries it -- `wss://` from a page served over HTTPS, or
+loopback in development. Anyone who can read that hop reads the session token with it. So run the
+proxy yourself, serve it over HTTPS wherever it is not loopback, and keep `--allow` to the hosts
+the game actually needs.
+
+`HttpsURLConnection` itself is not supplied: `url.openConnection()` gives an `HttpURLConnection`
+that happens to be encrypted, so code that casts to the `javax.net.ssl` type, pins a certificate,
+or asks for the cipher suite does not get what it wants.
+
 Three capabilities remain unavailable:
 
-- **HTTPS.** TLS over raw sockets is not implemented. HTTPS URLs fall back to TeaVM's XHR-based
-  handler and remain subject to CORS.
 - **Listening.** Browsers cannot accept inbound socket connections, so `ServerSocket` refuses.
 - **Read timeouts.** A `Connection` read blocks in the host with no way to hand it a deadline, so
   `setSoTimeout` is kept for whoever reads it back and a read waits rather than giving up.

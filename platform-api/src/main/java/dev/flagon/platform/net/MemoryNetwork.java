@@ -1,6 +1,8 @@
 package dev.flagon.platform.net;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -14,9 +16,15 @@ public final class MemoryNetwork implements Network {
     }
 
     private final Map<String, Service> served = new HashMap<>();
+    private final List<String> secured = new ArrayList<>();
 
     public void serve(String host, int port, Service service) {
         served.put(address(host, port), service);
+    }
+
+    /** what the tls handshake was asked for, in the order it was asked */
+    public List<String> secured() {
+        return List.copyOf(secured);
     }
 
     public void refuse(String host, int port) {
@@ -40,6 +48,13 @@ public final class MemoryNetwork implements Network {
             throw new NetworkException("connection refused by " + host + ":" + port);
         }
         return new HeapConnection(host, port, service);
+    }
+
+    /** there is no real handshake to do in the heap, so it records what one was asked for */
+    @Override
+    public Connection connectSecure(String host, int port) {
+        secured.add(address(host, port));
+        return connect(host, port);
     }
 
     private static String address(String host, int port) {

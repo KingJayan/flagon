@@ -37,6 +37,7 @@ export interface Settings {
   token: string;
   hosts: string[];
   probes: boolean;
+  tlsCa: string;
 }
 
 export { isLoopback };
@@ -51,6 +52,7 @@ export function settingsFrom(argv: string[]): Settings {
     token: '',
     hosts: [],
     probes: false,
+    tlsCa: '',
   };
   const many: Record<string, string[]> = { '--allow': [], '--origin': [], '--allowed-host': [] };
 
@@ -73,6 +75,8 @@ export function settingsFrom(argv: string[]): Settings {
       settings.root = value;
     } else if (name === '--token') {
       settings.token = value;
+    } else if (name === '--tls-ca') {
+      settings.tlsCa = value;
     } else if (name in many) {
       many[name].push(...value.split(',').map((one) => one.trim()));
     } else {
@@ -215,6 +219,7 @@ export async function startProxyServer(settings: Settings): Promise<http.Server>
     void serve(root, request, response);
   });
   attachTcpProxy(server, {
+    tlsCa: settings.tlsCa === '' ? '' : await fs.readFile(settings.tlsCa, 'utf8'),
     allow: settings.allow,
     origins: settings.origins,
     token: settings.token,

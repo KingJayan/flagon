@@ -39,14 +39,15 @@ final class Tunnel {
     @JSBody(script = "return typeof WebSocket !== 'undefined' && typeof location !== 'undefined';")
     static native boolean isAvailable();
 
-    @JSBody(params = {"host", "port", "path"}, script =
+    @JSBody(params = {"host", "port", "path", "secure"}, script =
             "var scheme = location.protocol === 'https:' ? 'wss://' : 'ws://';"
             + "var token = window.__flagonProxyToken;"
             + "return scheme + location.host + path"
             + " + '?host=' + encodeURIComponent(host) + '&port=' + port"
+            + " + (secure ? '&tls=1' : '')"
             + " + (typeof token === 'string' && token"
             + " ? '&token=' + encodeURIComponent(token) : '');")
-    static native String endpoint(String host, int port, String path);
+    static native String endpoint(String host, int port, String path, boolean secure);
 
     @Async
     static native Handle open(String url);
