@@ -69,9 +69,10 @@ The compiler ships what it can see being reached, so a class keeps its identity 
 `Class.forName` for a class something already reaches -- and `java.lang.reflect.Array` works.
 
 Members do not survive by default. `getDeclaredFields`, `getDeclaredMethods` and `getConstructors`
-return empty arrays rather than throwing, which is the sharp edge: code that walks the result does
-nothing and reports no error. `Proxy.newProxyInstance` throws `SecurityException` for an interface
-nobody named.
+return empty arrays rather than throwing, so code that walks the result does nothing. The layer
+warns the first time a class answers one of these with nothing, names the class, and says how to
+keep its members, so the failure is visible in the console instead of silent.
+`Proxy.newProxyInstance` throws `SecurityException` for an interface nobody named.
 
 A class can opt out of that, and then reflection over it behaves as it does on a JVM: every
 declared field, method and constructor is listed, `Field.get`/`set` reach private fields,
