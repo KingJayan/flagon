@@ -10,6 +10,18 @@
   <body>
     <canvas id="flagon-canvas" width="854" height="480" aria-label="the running program"></canvas>
 
+    <div id="controls" class="controls" data-testid="controls" aria-label="program controls">
+      <button id="stop" type="button" data-testid="stop" disabled>Stop</button>
+      <button id="fullscreen" type="button" data-testid="fullscreen">Fullscreen</button>
+      <button id="output" type="button" data-testid="output" aria-expanded="false">Output</button>
+      <span id="rate" class="badge" data-testid="rate" role="status" hidden></span>
+      <a class="away" href="/">Shell</a>
+    </div>
+
+    <pre id="log" class="log" data-testid="log" hidden aria-label="program output"></pre>
+
+    <p id="hint" class="hint" data-testid="hint" hidden role="status"></p>
+
     <div id="veil" class="veil" data-testid="veil" role="status">
       <p class="headline" id="headline" data-testid="headline">Starting</p>
       <p class="detail" id="detail" data-testid="detail"></p>

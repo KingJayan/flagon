@@ -13,7 +13,7 @@ for (const backend of BACKENDS) {
       await expect(page.getByTestId('headline')).toHaveText('The program exited', {
         timeout: 30_000,
       });
-      // the program's own output has nowhere on the page to go, so it goes to the console
+      // the output panel keeps a copy, and the console still gets one for devtools
       expect(logged.some((line) => line.includes('Hello, world!'))).toBe(true);
 
       const canvas = page.locator('#flagon-canvas');
@@ -89,5 +89,72 @@ test.describe('the two pages read one url', () => {
       await page.goto(`/play/?bundle=${bundle}&backend=js`);
       await expect(page.getByTestId('detail')).not.toContainText('no bundle named');
     }
+  });
+});
+
+// needs a display
+test.describe('the controls on /play/', () => {
+  const running = '/play/?bundle=sandbox&backend=js&program=lwjgl';
+
+  test('stay out of the way until the reader asks for them', async ({ page }) => {
+    await page.goto(running);
+    const controls = page.getByTestId('controls');
+    await expect(page.getByTestId('stop')).toBeEnabled({ timeout: 30_000 });
+
+    await expect(controls).toHaveCSS('opacity', '1');
+    await page.waitForTimeout(3500);
+    await expect(controls).toHaveCSS('opacity', '0');
+
+    await page.mouse.move(300, 300);
+    await expect(controls).toHaveCSS('opacity', '1');
+  });
+
+  test('show the program output on the page, not only in devtools', async ({ page }) => {
+    await page.goto(running);
+    const log = page.getByTestId('log');
+    await expect(log).toBeHidden();
+
+    await page.getByTestId('output').click();
+    await expect(log).toBeVisible();
+    await expect(log).toContainText('Flagon runtime starting');
+    await expect(page.getByTestId('output')).toHaveAttribute('aria-expanded', 'true');
+  });
+
+  test('report the rate the program is drawing at', async ({ page }) => {
+    await page.goto(running);
+    const rate = page.getByTestId('rate');
+
+    await expect(rate).toHaveText(/[1-9]\d* fps/, { timeout: 30_000 });
+  });
+
+  test('stop a running program', async ({ page }) => {
+    await page.goto(running);
+    const stop = page.getByTestId('stop');
+    await expect(stop).toBeEnabled({ timeout: 30_000 });
+
+    await stop.click();
+    await expect(page.getByTestId('headline')).toHaveText('The program exited', {
+      timeout: 30_000,
+    });
+    await expect(stop).toBeDisabled();
+  });
+
+  test('offer fullscreen, and say so when the browser refuses', async ({ page }) => {
+    await page.goto(running);
+    const button = page.getByTestId('fullscreen');
+    await expect(page.getByTestId('stop')).toBeEnabled({ timeout: 30_000 });
+
+    await button.click();
+    await expect(button).toHaveText('Leave fullscreen');
+    await button.click();
+    await expect(button).toHaveText('Fullscreen');
+  });
+
+  test('lead back to the shell, which is where the console and the arguments are', async ({
+    page,
+  }) => {
+    await page.goto('/play/?bundle=nonesuch');
+
+    await expect(page.locator('.away')).toHaveAttribute('href', '/');
   });
 });
