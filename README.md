@@ -86,8 +86,10 @@ libraries, and every class with a `main` becomes a program.
 
 Run `make dev` and open <http://localhost:5273/>, then pick the `app` bundle: the shell gives you
 the console, the program picker, the argument field and the phase list, which is what bringing up a
-new jar needs. <http://localhost:5273/play/> runs the same bundle fullscreen with no chrome around
-it, and takes any bundle: `/play/?bundle=example&program=blocks`.
+new jar needs. <http://localhost:5273/play/> gives the same bundle the whole viewport, and takes
+any bundle: `/play/?bundle=example&program=blocks`. Its controls -- stop, fullscreen, the frame
+rate and the program output -- hide themselves while the program runs and come back on a pointer
+move or a tap.
 
 
 > [!NOTE]
