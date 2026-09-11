@@ -112,6 +112,18 @@ Applying mixins before the compile is a different question and stays open: merge
 ahead of time they reach the compiler as ordinary classes, and the reflection above already loads
 them. Until such a build step exists, treat the runtime as vanilla-only.
 
+### What a ClassLoader can answer
+
+`ClassLoader.loadClass` and `getResources` have no method in the browser classlib, so
+`toolchain/jdk-shims` sends both to Flagon. `loadClass` asks `Class.forName`, which finds the
+classes the build kept and reports the rest by name -- there is no loading at runtime, so a class
+the compiler never saw is not there to find.
+
+`getResources` finds nothing, and says so once per name. A bundle is one artifact: there is no
+classpath with several copies of a file on it, and no URL to hand back for what is inside. Code
+that scans for every `META-INF/services` entry finds none. `getResourceAsStream` reads a bundled
+file and is the call that works.
+
 ### A jar nobody wrote
 
 A jar you did not write cannot be annotated, and an obfuscated one cannot be globbed either: its

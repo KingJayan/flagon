@@ -1,22 +1,17 @@
 package dev.flagon.shims;
 
-import org.teavm.model.BasicBlock;
 import org.teavm.model.ClassHolder;
 import org.teavm.model.ClassHolderTransformer;
 import org.teavm.model.ClassHolderTransformerContext;
-import org.teavm.model.Instruction;
-import org.teavm.model.MethodHolder;
-import org.teavm.model.MethodReference;
-import org.teavm.model.Program;
-import org.teavm.model.ValueType;
-import org.teavm.model.Variable;
-import org.teavm.model.instructions.InvocationType;
-import org.teavm.model.instructions.InvokeInstruction;
 import org.teavm.vm.spi.TeaVMHost;
 import org.teavm.vm.spi.TeaVMPlugin;
 
 import java.util.Map;
 
+/**
+ * the browser classlib's {@link Runtime} has no shutdown hooks, so calls that want them are
+ * sent to {@code ShutdownHooks}, which keeps the list and runs it when the program ends.
+ */
 public final class SendShutdownHooks implements TeaVMPlugin, ClassHolderTransformer {
 
     private static final String SUBJECT = "java.lang.Runtime";
@@ -28,6 +23,7 @@ public final class SendShutdownHooks implements TeaVMPlugin, ClassHolderTransfor
             "exit", "exit",
             "halt", "halt");
 
+    /** the replacement calls Runtime itself, so rewriting it would only call itself back */
     private static final String[] NOT_OURS = {"org.teavm.", HOOKS};
 
     @Override
@@ -37,48 +33,6 @@ public final class SendShutdownHooks implements TeaVMPlugin, ClassHolderTransfor
 
     @Override
     public void transformClass(ClassHolder type, ClassHolderTransformerContext context) {
-        if (isOurs(type.getName())) {
-            return;
-        }
-        for (MethodHolder method : type.getMethods()) {
-            Program program = method.getProgram();
-            if (program == null) {
-                continue;
-            }
-            for (BasicBlock block : program.getBasicBlocks()) {
-                for (Instruction instruction : block) {
-                    if (instruction instanceof InvokeInstruction invoke) {
-                        send(invoke);
-                    }
-                }
-            }
-        }
-    }
-
-    private static void send(InvokeInstruction invoke) {
-        MethodReference asked = invoke.getMethod();
-        if (!SUBJECT.equals(asked.getClassName()) || invoke.getInstance() == null) {
-            return;
-        }
-        String replacement = SENT.get(asked.getName());
-        if (replacement == null || asked.parameterCount() != 1) {
-            return;
-        }
-        Variable runtime = invoke.getInstance();
-        Variable argument = invoke.getArguments().get(0);
-        invoke.setInstance(null);
-        invoke.setType(InvocationType.SPECIAL);
-        invoke.setMethod(new MethodReference(HOOKS, replacement,
-                ValueType.object(SUBJECT), asked.parameterType(0), asked.getReturnType()));
-        invoke.setArguments(runtime, argument);
-    }
-
-    private static boolean isOurs(String name) {
-        for (String prefix : NOT_OURS) {
-            if (name.startsWith(prefix)) {
-                return true;
-            }
-        }
-        return false;
+        Reroute.apply(type, SUBJECT, HOOKS, SENT, NOT_OURS);
     }
 }
