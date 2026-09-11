@@ -15,6 +15,8 @@ import java.util.jar.JarEntry;
 import java.util.jar.JarOutputStream;
 import java.util.jar.Manifest;
 import javax.tools.JavaCompiler;
+import java.util.Map;
+import java.util.Set;
 import javax.tools.ToolProvider;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -56,6 +58,30 @@ class WriteAppEntryTest {
         String written = entryFor(vendor);
         assertTrue(written.contains("real.Entry.main(arguments)"));
         assertFalse(written.contains("library.Tool"));
+    }
+
+    @Test
+    void namesTheClassesTwoJarsBothCarry() throws Exception {
+        Path vendor = Files.createDirectories(directory.resolve("vendor"));
+        Files.move(jar("shared.Thing", null), vendor.resolve("a-library.jar"));
+        Files.move(jar("shared.Thing", "shared.Thing"), vendor.resolve("z-app.jar"));
+
+        Map<String, String> shadowed = WriteAppEntry.shadowedIn(List.of(
+                vendor.resolve("a-library.jar"), vendor.resolve("z-app.jar")));
+
+        assertEquals(Set.of("shared.Thing"), shadowed.keySet());
+        assertTrue(shadowed.get("shared.Thing").contains("a-library.jar wins over z-app.jar"),
+                shadowed.toString());
+    }
+
+    @Test
+    void saysNothingWhenTheJarsShareNoClass() throws Exception {
+        Path vendor = Files.createDirectories(directory.resolve("vendor"));
+        Files.move(jar("real.Entry", "real.Entry"), vendor.resolve("app.jar"));
+        Files.move(jar("library.Tool", null), vendor.resolve("library.jar"));
+
+        assertEquals(Map.of(), WriteAppEntry.shadowedIn(List.of(
+                vendor.resolve("app.jar"), vendor.resolve("library.jar"))));
     }
 
     @Test
