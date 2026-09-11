@@ -3,7 +3,7 @@ package java.util.concurrent.locks;
 import java.util.concurrent.TimeUnit;
 
 /** a lock one green thread holds while others wait their turn at it. */
-public class ReentrantLock {
+public class ReentrantLock implements Lock {
 
     private final Object monitor = new Object();
 

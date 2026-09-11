@@ -642,7 +642,7 @@ responsiveness, never a second core.
 
 What TeaVM has no classes for at all is the half a modern client is built on: `ExecutorService`,
 `Executors`, `Future`, `CompletableFuture`, `CountDownLatch`, `ReentrantLock`,
-`ConcurrentLinkedQueue`. `toolchain/concurrent-classlib` supplies those over the green threads, the
+`ReentrantReadWriteLock`, `ConcurrentLinkedQueue`. `toolchain/concurrent-classlib` supplies those over the green threads, the
 way `socket-classlib` supplies `java.net`. Depend on it and a render thread draining what worker
 threads produced runs unchanged; the `threading` demo runs exactly that shape in the browser.
 
@@ -652,6 +652,8 @@ threads produced runs unchanged; the `threading` demo runs exactly that shape in
 | `Executors.newCachedThreadPool`, `newWorkStealingPool` | bounded to `availableProcessors()`; more green threads buy nothing |
 | `CompletableFuture` chains (`supplyAsync`, `thenApply`, `thenCompose`, `thenCombine`, `allOf`, `exceptionally`) | work, on the shared pool |
 | `future.get()`, `latch.await()`, `lock.lock()` | suspend the calling green thread, so the frame loop keeps running |
+| `ReentrantReadWriteLock` | many readers or one writer, both reentrant |
+| taking the write lock while holding the read lock | refused by name; the wait it would cost has nothing left to end it |
 | `ForkJoinPool` | absent; ask for an executor instead |
 | a task that never suspends | holds the page until it returns, exactly as it would hold a real thread's core |
 

@@ -14,6 +14,7 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 import org.lwjgl.opengl.Display;
 import org.lwjgl.opengl.DisplayMode;
 
@@ -49,6 +50,7 @@ public final class ThreadingDemoProgram implements Program {
         executorsAndFutures(console);
         completableFutureChains(console);
         latchesAndLocks(console);
+        readersAndAWriter(console);
         chunksArriveWhileTheLoopDraws(console);
 
         Display.destroy();
@@ -143,6 +145,41 @@ public final class ThreadingDemoProgram implements Program {
         }
         boolean opened = latch.await(2L, TimeUnit.SECONDS);
         console.info("threading: latch opened " + opened + " with " + guarded[0] + " under a lock");
+    }
+
+    private void readersAndAWriter(ConsoleSink console) throws Exception {
+        ReentrantReadWriteLock guard = new ReentrantReadWriteLock();
+        int[] value = {0};
+
+        guard.readLock().lock();
+        guard.readLock().lock();
+        console.info("threading: " + guard.getReadLockCount() + " readers hold the lock");
+        guard.readLock().unlock();
+        guard.readLock().unlock();
+
+        CountDownLatch written = new CountDownLatch(1);
+        new Thread(() -> {
+            guard.writeLock().lock();
+            try {
+                value[0] = 7;
+            } finally {
+                guard.writeLock().unlock();
+            }
+            written.countDown();
+        }).start();
+
+        console.info("threading: the writer finished " + written.await(2L, TimeUnit.SECONDS)
+                + " and left " + value[0]);
+
+        guard.readLock().lock();
+        try {
+            guard.writeLock().lock();
+            console.info("threading: a reader took the write lock, which should not happen");
+        } catch (IllegalStateException refused) {
+            console.info("threading: upgrading a read lock is refused rather than hung");
+        } finally {
+            guard.readLock().unlock();
+        }
     }
 
     /** the handoff itself: workers queue results, the loop drains them a frame at a time */

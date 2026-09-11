@@ -42,6 +42,16 @@ for (const backend of BACKENDS) {
       await expect(log).toContainText('threading: latch opened true with 3 under a lock');
     });
 
+    test('lets many threads read and one write, and refuses an upgrade', async ({ page }) => {
+      await open(page, backend, 'program=threading');
+
+      const log = page.getByTestId('log');
+      await expect(page.getByTestId('state')).toHaveText('exited', { timeout: 30_000 });
+      await expect(log).toContainText('threading: 2 readers hold the lock');
+      await expect(log).toContainText('threading: the writer finished true and left 7');
+      await expect(log).toContainText('threading: upgrading a read lock is refused rather than hung');
+    });
+
     test('drains chunks the workers produced without stalling the loop', async ({ page }) => {
       await open(page, backend, 'program=threading');
 
