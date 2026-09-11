@@ -6,6 +6,9 @@ const servedRuns = chosen.length === 0 || chosen.some((arg) => arg.includes('ser
 
 export default defineConfig({
   testDir: './tests',
+  // a program that runs 900 frames on the javascript backend takes most of a minute under a full
+  // parallel run, and several specs already wait 60s for one; the default 30s killed them first
+  timeout: 90_000,
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,
