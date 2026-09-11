@@ -77,6 +77,10 @@ build:
 make app
 ```
 
+The build compiles every class in every jar, once for each backend. It counts the classes before it
+starts, and it reports the elapsed time and the bundle size when it ends. A few hundred classes
+take about a minute. A few thousand take several.
+
 Nothing else to configure: the jar that names a main class is the application, the rest are its
 libraries, and every class with a `main` becomes a program.
 
@@ -108,6 +112,12 @@ make check     # both of the above plus the typecheck (ci)
 Chromium runs every spec on both backends. Firefox runs both backends too, minus the specs that
 open a display: a headless runner has no GPU and no sound. A spec that needs one says so on its
 first line, and `coverage.spec.ts` fails if that disagrees with the Firefox project's ignore list.
+
+## What's next
+
+Drop-in Minecraft, singleplayer and over WebSocket multiplayer. Today the layer covers the GL 1.1
+to 2.0 surface LWJGL 2 exposes, plus the GL 3.2 core profile subset LWJGL 3 code reaches for.
+Anything above GL 3.3 is refused by name rather than approximated.
 
 ## Reporting a problem
 
