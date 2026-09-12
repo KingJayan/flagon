@@ -1,2 +1,5 @@
 dev.flagon.shims.SendShutdownHooks
 dev.flagon.shims.SendClassLoaderCalls
+dev.flagon.shims.SendRuntimeCalls
+dev.flagon.shims.SendClassCalls
+dev.flagon.shims.SendUrlCalls

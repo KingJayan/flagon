@@ -124,6 +124,35 @@ classpath with several copies of a file on it, and no URL to hand back for what 
 that scans for every `META-INF/services` entry finds none. `getResourceAsStream` reads a bundled
 file and is the call that works.
 
+### The rest of the JDK calls the classlib leaves out
+
+`toolchain/jdk-shims` sends these to Flagon the same way, by rewriting the call rather than the
+class behind it.
+
+| Call | Answer |
+|------|--------|
+| `Runtime.maxMemory` | 512MB, what a tab is usually given; nothing in a page can read the real ceiling |
+| `Runtime.exec` | refused; there is no operating system under a page to start a process on |
+| `System.exit` | the same end `Runtime.exit` reaches, so the shutdown hooks run either way |
+| `System.load`, `System.loadLibrary` | refused; a native library would have to be compiled into the bundle |
+| `Class.getGenericSuperclass`, `getGenericInterfaces` | the plain class; generic types are erased by the time a bundle runs |
+| `Class.getSigners` | empty; nothing signs a bundle |
+| `Class.isAnonymousClass` | true for a name ending in a number, which is what the compiler gave it |
+| `URL.openConnection(Proxy)` | the plain connection; the page reaches the network through the proxy it was served from and can pick no other |
+
+`toolchain/jdk-classlib` supplies whole classes the browser classlib has none of:
+`java.sql.Date`, `Time` and `Timestamp`, which code that maps values by type names even when the
+mapping never runs, and `java.lang.management.ManagementFactory`, whose uptime and heap numbers
+come from the moment the bundle started and from `Runtime`, so a crash report prints something
+true.
+
+`java.net.IDN.toASCII` writes a host name in punycode. The browser does this itself for every URL
+it fetches; the class is here for code that asks before it hands a name over.
+`ServerSocket.getLocalPort` answers -1: no constructor here gets as far as a port.
+
+Still missing: `java.util.UUID` has no bits and no `(long, long)` constructor. That needs a
+transformer that builds method bodies, not one that rewrites a call.
+
 ### A jar nobody wrote
 
 A jar you did not write cannot be annotated, and an obfuscated one cannot be globbed either: its

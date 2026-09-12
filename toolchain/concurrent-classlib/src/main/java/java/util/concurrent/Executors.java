@@ -45,6 +45,20 @@ public final class Executors {
         return newFixedThreadPool(parallelism);
     }
 
+    public static Callable<Object> callable(Runnable task) {
+        return callable(task, null);
+    }
+
+    public static <T> Callable<T> callable(Runnable task, T result) {
+        if (task == null) {
+            throw new NullPointerException("there is nothing to call");
+        }
+        return () -> {
+            task.run();
+            return result;
+        };
+    }
+
     public static ThreadFactory defaultThreadFactory() {
         return named("pool-" + POOLS.incrementAndGet());
     }
