@@ -82,3 +82,17 @@ export function expectColor(actual: number[], expected: number[], label: string)
 export function expectColorSoft(actual: number[], expected: number[], label: string): void {
   checkColor(expect.soft, actual, expected, label);
 }
+
+/**
+ * how many options a bundle's picker should have: one for every program the build registered,
+ * plus the empty one at the top. reading the catalog rather than writing a number down keeps
+ * this from going stale every time a program is added.
+ */
+export async function programCount(bundle: string): Promise<number> {
+  const response = await fetch(`http://localhost:5273/flagon/${bundle}.catalog.json`);
+  if (!response.ok) {
+    throw new Error(`no catalog for ${bundle}: run 'make build'`);
+  }
+  const programs = (await response.json()) as unknown[];
+  return programs.length + 1;
+}
