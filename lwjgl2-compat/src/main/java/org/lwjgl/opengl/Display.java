@@ -101,6 +101,15 @@ public final class Display {
         return surface != null && surface.isVisible();
     }
 
+    /**
+     * a tab takes its icon from the page, not from the program, so no icon is used here.
+     *
+     * @return how many of the icons were used, which is none
+     */
+    public static int setIcon(java.nio.ByteBuffer[] icons) {
+        return 0;
+    }
+
     public static void setTitle(String newTitle) {
         title = newTitle;
         if (surface != null) {

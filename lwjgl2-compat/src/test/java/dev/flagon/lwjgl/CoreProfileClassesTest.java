@@ -45,7 +45,8 @@ class CoreProfileClassesTest {
             "glColorMaterial", "glShadeModel", "glFog", "glFogf", "glFogi", "glFogfv",
             "glAlphaFunc", "glTexEnvf", "glTexEnvi", "glVertexPointer", "glColorPointer",
             "glNormalPointer", "glTexCoordPointer", "glEnableClientState",
-            "glDisableClientState", "glClientActiveTexture");
+            "glDisableClientState", "glClientActiveTexture", "glTranslated", "glScaled",
+            "glTexEnv", "glTexGen", "glTexGeni", "glLogicOp");
 
     private RecordingGraphicsDevice device;
 

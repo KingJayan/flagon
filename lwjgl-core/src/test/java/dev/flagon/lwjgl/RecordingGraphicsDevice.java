@@ -469,6 +469,9 @@ final class RecordingGraphicsDevice implements GraphicsDevice {
     private int nextFramebuffer = 1;
     private int nextRenderbuffer = 1;
     private int boundFramebuffer = NO_FRAMEBUFFER;
+
+    /** the pixels the last upload handed over, so a test can read what reached the device. */
+    public byte[] lastTextureBytes = new byte[0];
     FramebufferStatus status = FramebufferStatus.COMPLETE;
 
     @Override
@@ -568,12 +571,14 @@ final class RecordingGraphicsDevice implements GraphicsDevice {
 
     @Override
     public void textureImage(int level, int width, int height, byte[] rgba) {
+        lastTextureBytes = rgba;
         calls.add("textureImage " + level + " " + width + "x" + height);
         lastRgba = rgba;
     }
 
     @Override
     public void textureSubImage(int level, int x, int y, int width, int height, byte[] rgba) {
+        lastTextureBytes = rgba;
         calls.add("textureSubImage " + level + " " + x + "," + y + " " + width + "x" + height);
         lastRgba = rgba;
     }

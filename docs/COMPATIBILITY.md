@@ -287,6 +287,38 @@ extension list, so `GL_EXT_texture_filter_anisotropic` is true only where the br
 `GLContext.useContext(Object)` rereads the list. There is one context here, the one
 `Display.create()` opened, so the argument names it and is otherwise unused.
 
+### The ARB and EXT names
+
+Code written before an extension went into core calls it by its extension name.
+`ARBMultitexture`, `ARBVertexBufferObject`, `ARBShaderObjects`, `ARBVertexShader`,
+`ARBFramebufferObject`, `EXTFramebufferObject` and `EXTBlendFuncSeparate` are here, and each call
+goes to the core call of the same shape. `ARB_shader_objects` holds programs and shaders in one
+handle space, so `glDeleteObjectARB`, `glGetObjectParameteriARB` and `glGetInfoLogARB` ask which
+of the two the handle is first.
+
+`org.lwjgl.util.vector` carries `Vector3f`, `Vector4f` and `Matrix4f`, and `org.lwjgl.util.glu`
+carries `Project` beside `GLU`. The matrix math is the same code the fixed-function pipeline uses.
+
+### What the fixed-function pipeline has no stage for
+
+`glTexGen`, `glTexGeni` and `glLogicOp` throw `UnsupportedOperationException` and say why. WebGL
+generates no texture coordinates, so the coordinate array or `glTexCoord` has to carry them, and
+it combines a fragment with the framebuffer by blending only. `glTexEnv` with a buffer takes
+`GL_TEXTURE_ENV_MODE` and refuses the rest: the compatibility shader has no use for an
+environment colour.
+
+`glPixelStorei` keeps `GL_UNPACK_ROW_LENGTH`, `GL_UNPACK_SKIP_ROWS` and `GL_UNPACK_SKIP_PIXELS`
+and picks that rectangle out of the buffer before the upload reaches the device.
+`GL_UNPACK_SWAP_BYTES` and `GL_UNPACK_LSB_FIRST` are refused: a pixel is read here in the order it
+lies.
+
+`glGetTexImage` attaches the level to a framebuffer of its own and reads it back from there,
+because WebGL reads back from a framebuffer only. It puts the texture and framebuffer that were
+bound back before it returns. `glGetTexLevelParameteri` answers `GL_TEXTURE_WIDTH` and
+`GL_TEXTURE_HEIGHT` from the last upload to that level, and throws if nothing was uploaded yet.
+
+`Display.setIcon` does nothing and answers 0: a tab takes its icon from the page.
+
 ### Lighting, materials and fog
 
 The fixed-function light model is evaluated in the vertex shader, per vertex, the way desktop GL
