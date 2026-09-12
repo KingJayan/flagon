@@ -58,6 +58,11 @@ public final class JdkGapsProgram implements Program {
         Callable<Object> wrapped = Executors.callable(() -> { });
         console.info("jdkgaps: a wrapped runnable answers " + wrapped.call());
 
+        int[][] grid = (int[][]) java.lang.reflect.Array.newInstance(int.class, 2, 3);
+        grid[1][2] = 7;
+        console.info("jdkgaps: an array of arrays is " + grid.length + "x" + grid[0].length
+                + " holding " + grid[1][2]);
+
         URL url = new URL("http://localhost/nothing");
         console.info("jdkgaps: a connection through a named proxy opens "
                 + (url.openConnection(Proxy.NO_PROXY) != null));

@@ -139,6 +139,7 @@ class behind it.
 | `Class.getSigners` | empty; nothing signs a bundle |
 | `Class.isAnonymousClass` | true for a name ending in a number, which is what the compiler gave it |
 | `URL.openConnection(Proxy)` | the plain connection; the page reaches the network through the proxy it was served from and can pick no other |
+| `Array.newInstance(Class, int...)` | an array of arrays, built one level at a time, because the classlib makes only one level at a time |
 
 `toolchain/jdk-classlib` supplies whole classes the browser classlib has none of:
 `java.sql.Date`, `Time` and `Timestamp`, which code that maps values by type names even when the

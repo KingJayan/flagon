@@ -26,6 +26,7 @@ for (const backend of BACKENDS) {
       await expect(log).toContainText('jdkgaps: the sql day is 2026-01-02');
       await expect(log).toContainText('jdkgaps: uptime is at least 0ms true');
       await expect(log).toContainText('jdkgaps: a wrapped runnable answers null');
+      await expect(log).toContainText('jdkgaps: an array of arrays is 2x3 holding 7');
       await expect(log).toContainText('jdkgaps: a connection through a named proxy opens true');
     });
   });
