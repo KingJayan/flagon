@@ -321,6 +321,8 @@
                 </goals>
                 <configuration>
                   <target>
+                    <!-- start from nothing, so an interrupted fold or a removed jar leaves no trace -->
+                    <delete file="${flagon.app.jar}" quiet="true"/>
                     <zip destfile="${flagon.app.jar}" duplicate="preserve" whenempty="create">
                       <zipgroupfileset dir="${flagon.app.dir}" includes="*.jar"/>
                     </zip>
