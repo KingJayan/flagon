@@ -736,7 +736,9 @@ responsiveness, never a second core.
 
 What TeaVM has no classes for at all is the half a modern client is built on: `ExecutorService`,
 `Executors`, `Future`, `CompletableFuture`, `CountDownLatch`, `ReentrantLock`,
-`ReentrantReadWriteLock`, `ConcurrentLinkedQueue`. `toolchain/concurrent-classlib` supplies those over the green threads, the
+`ReentrantReadWriteLock`, `ConcurrentLinkedQueue`, `AbstractExecutorService`, `ThreadPoolExecutor`,
+`ScheduledThreadPoolExecutor`, `FutureTask`, `LinkedBlockingQueue`, `AbstractQueuedSynchronizer`,
+`Condition` and `AtomicReferenceArray`. `toolchain/concurrent-classlib` supplies those over the green threads, the
 way `socket-classlib` supplies `java.net`. Depend on it and a render thread draining what worker
 threads produced runs unchanged; the `threading` demo runs exactly that shape in the browser.
 
@@ -748,6 +750,12 @@ threads produced runs unchanged; the `threading` demo runs exactly that shape in
 | `future.get()`, `latch.await()`, `lock.lock()` | suspend the calling green thread, so the frame loop keeps running |
 | `ReentrantReadWriteLock` | many readers or one writer, both reentrant |
 | taking the write lock while holding the read lock | refused by name; the wait it would cost has nothing left to end it |
+| `ThreadPoolExecutor` | the sizes are kept and answered, but one worker runs at a time |
+| `ScheduledThreadPoolExecutor` | one green thread watches the list and sleeps until the next task is due, so a schedule keeps the frame loop going |
+| a repeating scheduled task | its future never reports done, the way the real one never does; a task that throws is stopped |
+| `Condition` on a `ReentrantLock` or a write lock | a wait gives up every hold and takes them all back; no signal can slip in between, because releasing a lock suspends nothing |
+| `Condition` on a read lock | refused; many threads hold a read lock at once, so there is no one holder to hand it back to |
+| `AbstractQueuedSynchronizer` | the state is guarded by a monitor and a waiting thread sleeps on it, rather than parked and compare-and-swapped |
 | `ForkJoinPool` | absent; ask for an executor instead |
 | a task that never suspends | holds the page until it returns, exactly as it would hold a real thread's core |
 

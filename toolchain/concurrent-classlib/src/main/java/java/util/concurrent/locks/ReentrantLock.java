@@ -102,4 +102,35 @@ public class ReentrantLock implements Lock {
             return owner == Thread.currentThread() ? held : 0;
         }
     }
+
+    public Condition newCondition() {
+        return new GreenCondition(new GreenCondition.Held() {
+            @Override
+            public void requireHeld() {
+                if (!isHeldByCurrentThread()) {
+                    throw new IllegalMonitorStateException(
+                            "a condition belongs to the lock, and this thread does not hold it");
+                }
+            }
+
+            @Override
+            public int releaseFully() {
+                synchronized (monitor) {
+                    int holds = held;
+                    held = 0;
+                    owner = null;
+                    monitor.notifyAll();
+                    return holds;
+                }
+            }
+
+            @Override
+            public void takeBack(int holds) {
+                lock();
+                synchronized (monitor) {
+                    held = holds;
+                }
+            }
+        });
+    }
 }
