@@ -75,7 +75,10 @@ jobs:
             shards: 4
           - project: firefox
             shard: 1
-            shards: 1
+            shards: 2
+          - project: firefox
+            shard: 2
+            shards: 2
           - project: served
             shard: 1
             shards: 1
