@@ -49,6 +49,7 @@ The codebase is organized into strict layers. Higher layers depend solely on imm
 | `lwjgl-core` | Implementation of OpenGL/OpenAL state tracking, fixed-function shaders, immediate mode buffering, and GLSL AST translation. Contains no `org.lwjgl.*` classes. |
 | `lwjgl2-compat` | Emulates LWJGL 2 desktop APIs (`org.lwjgl.opengl.Display`, `GL11`–`GL20`, `Keyboard`, `Mouse`, `OpenAL`). |
 | `lwjgl3-compat` | Emulates LWJGL 3 core-profile APIs (`org.lwjgl.glfw.GLFW`, `GL11C`–`GL33C`, `MemoryUtil`, `MemoryStack`). |
+| `teavm` | Rebuilds `teavm-core` 0.15.0 with compiler fixes, some from later TeaVM commits and some that TeaVM does not have yet. The TeaVM plugin loads it in place of the stock jar. |
 | `toolchain/reflect-policy` | Compiler plugin discovering classes that retain members and constructors during tree-shaking. |
 | `toolchain/socket-classlib` | `--patch-module` library supplying missing `java.net.Socket` and `InetAddress` types for TeaVM. |
 | `toolchain/concurrent-classlib` | Supplies missing `java.util.concurrent` classes (executors, latches, locks) mapped to green threads. |
@@ -68,7 +69,7 @@ Bytecode (.class / .jar)
   ├── [toolchain/reflect-policy]  Apply member retention rules
   │
   ▼
-TeaVM AOT Compiler
+TeaVM AOT Compiler                [teavm] 0.15.0 plus compiler fixes
   │
   ├── Reachability Graph Construction (Tree-shaking dead code)
   ├── Async / Continuation Suspension Transform (Green threading)
