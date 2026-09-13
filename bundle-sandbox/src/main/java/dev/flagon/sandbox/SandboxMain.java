@@ -43,6 +43,7 @@ public final class SandboxMain {
                 .register(new TextureDemoProgram())
                 .register(new FileSystemDemoProgram())
                 .register(new AudioDemoProgram())
-                .register(new NetDemoProgram());
+                .register(new NetDemoProgram())
+                .register(new CompilerShapesProgram());
     }
 }

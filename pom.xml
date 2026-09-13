@@ -13,6 +13,7 @@
   <description>Flagon runs a desktop Java or LWJGL application in a browser.</description>
 
   <modules>
+    <module>teavm</module>
     <module>platform-api</module>
     <module>platform-browser</module>
     <module>runtime</module>
@@ -40,6 +41,7 @@
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <maven.compiler.release>25</maven.compiler.release>
     <teavm.version>0.15.0</teavm.version>
+    <teavm.core.version>0.15.0-flagon</teavm.core.version>
     <junit.version>5.11.4</junit.version>
     <lwjgl.version>2.9.3</lwjgl.version>
     <lwjgl3.version>3.3.3</lwjgl3.version>
@@ -210,6 +212,14 @@
           <groupId>org.teavm</groupId>
           <artifactId>teavm-maven-plugin</artifactId>
           <version>${teavm.version}</version>
+          <dependencies>
+            <!-- teavm/ carries the compiler fixes that 0.15.0 lacks -->
+            <dependency>
+              <groupId>org.teavm</groupId>
+              <artifactId>teavm-core</artifactId>
+              <version>${teavm.core.version}</version>
+            </dependency>
+          </dependencies>
           <executions>
             <execution>
               <id>compile-bundle</id>
