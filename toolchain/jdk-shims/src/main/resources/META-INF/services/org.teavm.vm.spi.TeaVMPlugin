@@ -9,3 +9,4 @@ dev.flagon.shims.SendFieldCalls
 dev.flagon.shims.SendCollectionCalls
 dev.flagon.shims.SendThreadCalls
 dev.flagon.shims.SendFileCalls
+dev.flagon.shims.SendUuidCalls
