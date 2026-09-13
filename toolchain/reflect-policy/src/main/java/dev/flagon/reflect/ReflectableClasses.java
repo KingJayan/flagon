@@ -7,6 +7,7 @@ import org.teavm.extension.spi.reflection.SimpleReflectionPolicy;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
+import java.lang.reflect.Modifier;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -24,6 +25,7 @@ public final class ReflectableClasses extends SimpleReflectionPolicy {
     public static final String PATTERNS = "flagon.reflect.classes";
     public static final String PROXIES = "flagon.reflect.proxies";
     public static final String CONSTRUCTED = "flagon.reflect.constructed";
+    public static final String CONVERTED = "flagon.reflect.converted";
 
     @Override
     protected void setup() {
@@ -38,6 +40,12 @@ public final class ReflectableClasses extends SimpleReflectionPolicy {
                     .proxyable();
         }
 
+        for (String pattern : patterns(CONVERTED)) {
+            selectClasses(present(type -> GlobMatch.match(pattern, type.name())))
+                    .foundByName()
+                    .reflectableMethods(ReflectableClasses::convertsFromText);
+        }
+
         Set<String> constructed = constructed();
         if (!constructed.isEmpty()) {
             selectClasses(present(type -> constructed.contains(type.name())))
@@ -49,6 +57,16 @@ public final class ReflectableClasses extends SimpleReflectionPolicy {
     /** teavm passes null for a class it cannot find, and a missing class keeps nothing */
     private static Predicate<IntrospectClass<?>> present(Predicate<IntrospectClass<?>> test) {
         return type -> type != null && test.test(type);
+    }
+
+    /** valueOf(String) or a (String) constructor, which an option parser calls to read a value */
+    private static boolean convertsFromText(IntrospectMethod method) {
+        if (!Modifier.isPublic(method.modifiers()) || method.parameters().size() != 1
+                || !"java.lang.String".equals(method.parameters().get(0).type().name())) {
+            return false;
+        }
+        return method.isConstructor()
+                || Modifier.isStatic(method.modifiers()) && "valueOf".equals(method.name());
     }
 
     private static void keep(ClassPolicy chosen) {
