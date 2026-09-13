@@ -53,6 +53,11 @@
     </dependency>
     <dependency>
       <groupId>dev.flagon</groupId>
+      <artifactId>nio-classlib</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>dev.flagon</groupId>
       <artifactId>awt-classlib</artifactId>
       <version>${project.version}</version>
     </dependency>
