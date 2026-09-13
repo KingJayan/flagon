@@ -1,13 +1,10 @@
 import { defineConfig, devices } from '@playwright/test';
 
-// building a site and starting its proxy is only worth it for the run that points at them
 const chosen = process.argv.filter((arg) => arg.startsWith('--project'));
 const servedRuns = chosen.length === 0 || chosen.some((arg) => arg.includes('served'));
 
 export default defineConfig({
   testDir: './tests',
-  // a program that runs 900 frames on the javascript backend takes most of a minute under a full
-  // parallel run, and several specs already wait 60s for one; the default 30s killed them first
   timeout: 90_000,
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
@@ -34,9 +31,6 @@ export default defineConfig({
     {
       name: 'firefox',
       dependencies: ['bundles'],
-      // firefox ships wasm gc, so it proves both backends, not just the fallback one
-      // headless firefox has neither a gpu nor sound on a ci runner, so anything that opens a
-      // display stays chromium's. coverage.spec.ts checks this list against what the specs say.
       testIgnore: [
         '**/a11y.spec.ts',
         '**/arrays.spec.ts',
@@ -63,7 +57,6 @@ export default defineConfig({
       use: { ...devices['Desktop Firefox'] },
     },
     {
-      // the sockets again, against the server that ships rather than against vite
       name: 'served',
       dependencies: ['bundles'],
       testMatch: /net\.spec\.ts/,
@@ -80,7 +73,9 @@ export default defineConfig({
     ...(servedRuns
       ? [
           {
-            command: 'bun run build && bun run proxy -- --root dist --port 4273 --probes',
+            command: process.env.CI
+              ? 'bun run proxy -- --root dist --port 4273 --probes'
+              : 'bun run build && bun run proxy -- --root dist --port 4273 --probes',
             url: 'http://localhost:4273',
             reuseExistingServer: !process.env.CI,
             timeout: 180_000,
