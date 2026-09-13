@@ -28,6 +28,7 @@ for (const backend of BACKENDS) {
       await expect(log).toContainText('jdkgaps: a wrapped runnable answers null');
       await expect(log).toContainText('jdkgaps: an array of arrays is 2x3 holding 7');
       await expect(log).toContainText('jdkgaps: a catch for a failed class setup compiles');
+      await expect(log).toContainText('jdkgaps: a catch for a missing class compiles');
       await expect(log).toContainText('jdkgaps: four bytes make an ipv4 address true at 127.0.0.1');
       await expect(log).toContainText('jdkgaps: sixteen bytes make a loopback ipv6 address true');
       await expect(log).toContainText('jdkgaps: a connection through a named proxy opens true');

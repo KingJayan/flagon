@@ -95,6 +95,41 @@
   <build>
     <plugins>
       <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-antrun-plugin</artifactId>
+        <version>3.1.0</version>
+        <executions>
+          <execution>
+            <!-- the bundle must catch a class that no jar supplies, so teavm must not see it -->
+            <id>hide-missing-class</id>
+            <phase>compile</phase>
+            <goals>
+              <goal>run</goal>
+            </goals>
+            <configuration>
+              <target>
+                <move file="${project.build.outputDirectory}/org/example/absent/MissingFromBundle.class"
+                      todir="${project.build.directory}/hidden"/>
+              </target>
+            </configuration>
+          </execution>
+          <execution>
+            <!-- the catalog step loads the classes in a jvm, which needs it -->
+            <id>restore-missing-class</id>
+            <phase>prepare-package</phase>
+            <goals>
+              <goal>run</goal>
+            </goals>
+            <configuration>
+              <target>
+                <move file="${project.build.directory}/hidden/MissingFromBundle.class"
+                      todir="${project.build.outputDirectory}/org/example/absent"/>
+              </target>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+      <plugin>
         <groupId>org.codehaus.mojo</groupId>
         <artifactId>exec-maven-plugin</artifactId>
       </plugin>
