@@ -1,226 +1,166 @@
-# Architecture
+# ArchitectureDesign
 
-## Layers
+This document details Flagon's compilation pipeline, layered architecture, module functinoalities, and system contracts.
+
+---
+
+## Hierarchy
+
+The codebase is organized into strict layers. Higher layers depend solely on immediate lower abstractions.
 
 ```
-application.jar (unmodified)
-      ↓  compiled together, ahead of time
-lwjgl2-compat / lwjgl3-compat  org.lwjgl.* source-compatible classes
-      ↓
-lwjgl-core                     the emulation they share, carrying no org.lwjgl class
-      ↓
-platform-api                   Platform, Clock, ConsoleSink, RuntimeHost,
-                               GraphicsDevice, DisplaySurface, InputSource,
-                               FileStore, AudioDevice, Network
-      ↓
-platform-browser               the only module that may touch browser APIs
-      ↓
-browser
+┌────────────────────────────────────────────────────────┐
+│              Application JAR (Unmodified)              │
+└───────────────────────────┬────────────────────────────┘
+                            │ Ahead-of-Time Compilation
+┌───────────────────────────▼────────────────────────────┐
+│         lwjgl2-compat   │   lwjgl3-compat              │  Source-compatible org.lwjgl.* APIs
+└───────────────────────────┬────────────────────────────┘
+                            │
+┌───────────────────────────▼────────────────────────────┐
+│                      lwjgl-core                        │  Shared state machines, pipeline emulators, GLSL translation
+└───────────────────────────┬────────────────────────────┘
+                            │
+┌───────────────────────────▼────────────────────────────┐
+│                     platform-api                       │  Abstract host contracts (Graphics, Audio, FS, Input, Net)
+└───────────────────────────┬────────────────────────────┘
+                            │
+┌───────────────────────────▼────────────────────────────┐
+│                   platform-browser                     │  Browser implementation (WebGL2, Web Audio, OPFS, DOM)
+└────────────────────────────────────────────────────────┘
+
 ```
 
-The rule that matters: **nothing above `platform-api` may reference a browser API.**
-The LWJGL compatibility layer depends only on `platform-api`, so the same code can run on a
-different host — including a plain JVM, which is what makes most of it unit-testable.
+### Invariant Rules
 
-`runtime` sits beside these layers. It owns startup and shutdown, but knows neither what a browser
-is nor what LWJGL is.
+1. **Host Isolation:** No module above `platform-browser` may import, mention, or reference Web APIs or browser globals (`window`, `document`, WebGL, etc.).
+2. **Deterministic JVM Testability:** `lwjgl-core` and all compat layers target `platform-api` exclusively. They execute identically on a headless desktop JVM using mock or recording devices (`RecordingGraphicsDevice`, `SilentAudioDevice`, `MemoryFileStore`, `MemoryNetwork`).
+3. **Static Access Compatibility:** LWJGL exposes static endpoints (e.g., `Display.create()`, `GL11.glClear()`). To avoid breaking source compatibility, the active `Platform` instance is registered as a static singleton (`Platforms`) during boot.
 
-`toolchain/` holds the two modules that are not ordinary Java compiled into a bundle. Both are
-opt-in: a bundle that depends on one gets what it offers, and one that does not carries none of it.
+---
 
-`toolchain/socket-classlib` declares classes in `java.net`, to supply the `Socket` teavm's classlib
-has none of. It is compiled with `--patch-module` because the jvm owns that package name, and holds
-no behaviour -- `NetworkSocket` in `runtime` does, where a plain jvm can test it.
+## Index
 
-`toolchain/reflect-policy` runs inside the compiler rather than the browser. It is a
-`ReflectionPolicy` found through `META-INF/services`, and it decides which classes keep their
-members through compilation; see [Reflection](#reflection) below.
+| Module | Role & Responsibility |
+| --- | --- |
+| `platform-api` | Defines host contracts: `Platform`, `GraphicsDevice`, `DisplaySurface`, `AudioDevice`, `FileStore`, `InputSource`, `Network`, and `Clock`. |
+| `platform-browser` | Implements `platform-api` using DOM events, WebGL2, Web Audio, OPFS, and WebSocket tunnels. |
+| `runtime` | Application lifecycle, entry-point registration (`ProgramRegistry`), argument passing, and shutdown hook coordination. |
+| `lwjgl-core` | Implementation of OpenGL/OpenAL state tracking, fixed-function shaders, immediate mode buffering, and GLSL AST translation. Contains no `org.lwjgl.*` classes. |
+| `lwjgl2-compat` | Emulates LWJGL 2 desktop APIs (`org.lwjgl.opengl.Display`, `GL11`–`GL20`, `Keyboard`, `Mouse`, `OpenAL`). |
+| `lwjgl3-compat` | Emulates LWJGL 3 core-profile APIs (`org.lwjgl.glfw.GLFW`, `GL11C`–`GL33C`, `MemoryUtil`, `MemoryStack`). |
+| `toolchain/reflect-policy` | Compiler plugin discovering classes that retain members and constructors during tree-shaking. |
+| `toolchain/socket-classlib` | `--patch-module` library supplying missing `java.net.Socket` and `InetAddress` types for TeaVM. |
+| `toolchain/concurrent-classlib` | Supplies missing `java.util.concurrent` classes (executors, latches, locks) mapped to green threads. |
+| `toolchain/jdk-shims` | Bytecode-rewriting shims rerouting unsupported JDK calls (`ManagementFactory`, `Runtime.maxMemory`) to runtime equivalents. |
+| `toolchain/app-entry` | Pre-compilation analyzer generating explicit programmatic entry points from scanned `vendor/*.jar` files. |
 
-`toolchain/app-entry` runs before the compiler. It reads whatever jars were put in `vendor/`, asks
-the application among them what it runs, and writes `bundle-app`s programs from the answer. Writing the calls rather than
-reflecting over them is what lets reachability find the application at all.
+---
 
-## Composition
+## AOT Pipeline
 
-`Platforms` is installed once at boot as a static holder. This is a deliberate exception to
-dependency injection: LWJGL's public API is static (`Display.create()`, `GL11.glClear()`), and
-passing a platform object around would break source compatibility.
+Flagon uses TeaVM to compile Java bytecode ahead of time into a static bundle. There is no JVM, classloader, or JIT at runtime.
 
-Each bundle (`bundle-sandbox`, `bundle-example`) is a composition root. It chooses a platform,
-registers programs, and declares its output. Everything else about compilation lives in the parent
-POM, including downstream bundles in other repositories.
+```
+Bytecode (.class / .jar)
+  │
+  ├── [toolchain/jdk-shims]        Rewrite unsupported JDK intrinsics
+  ├── [toolchain/reflect-policy]  Apply member retention rules
+  │
+  ▼
+TeaVM AOT Compiler
+  │
+  ├── Reachability Graph Construction (Tree-shaking dead code)
+  ├── Async / Continuation Suspension Transform (Green threading)
+  │
+  ├── (Default) ──► WebAssembly GC (.wasm)
+  └── (-Pjs)    ──► Optimized JavaScript (.js)
 
-`System.out` and `System.err` are redirected into the platform console during startup so
-unmodified applications report through the active host automatically.
+```
 
-## Ahead-of-time compilation
+### Backend Targets
 
-TeaVM compiles Java bytecode to JavaScript at build time. There is no JVM and no runtime class
-loading, so two constraints shape the project:
+* **WASM GC (Default):** High-performance execution. Java arrays are in the internal Wasm GC heap. Copy-out barriers (`JsArrays`) stage data when crossing into browser-accessible linear memory or typed array buffers.
+* **JavaScript (`-Pjs`):** Universal fallback. Java arrays map directly to JavaScript typed arrays.
+* **Strict Checks (`flagon.strict`):** Compiler flag inserting explicit null dereference and array bounds verification. Ensures standard JVM `NullPointerException` and `ArrayIndexOutOfBoundsException` catch semantics work reliably.
 
-- **Reachability decides what ships.** Member reflection therefore finds nothing unless a class is
-  named ahead of time, which [Reflection](#reflection) below covers.
-  `ServiceLoader` is avoided; programs are registered explicitly in `ProgramRegistry`.
-- **Application jars are build inputs.** Loading a jar means compiling it, so each application is
-  built as a Maven module with the jar on its classpath. `examples/app` and `examples/bundle`
-  demonstrate the downstream layout described in [DOWNSTREAM.md](DOWNSTREAM.md).
+---
 
-## Backend selection
+## Subsystems
 
-TeaVM targets either WebAssembly GC or JavaScript; `flagon.target` chooses, and `-Pjs` sets it
-along with the file extension bundles are emitted under. WASM GC is the default, and JavaScript is
-the fallback for engines without it: the shell validates a GC module before choosing, so a browser
-that predates the proposal runs the JavaScript bundle instead of failing to instantiate.
+### 1. Graphics (`lwjgl-core`)
 
-The two backends differ in one place that reaches into this codebase: a Java array compiled to
-JavaScript *is* a typed array, so a browser API can be handed a view over its storage, while under
-WASM GC it lives in the WebAssembly heap where JavaScript cannot see it and has to be copied out.
-`JsArrays` is that seam. Its branch is folded away at compile time, so each bundle carries only the
-path its backend needs, and callers say how many elements they mean rather than passing a whole
-growable array.
+Because WebGL2 supports only modern programmable pipelines, legacy desktop OpenGL is emulated in `lwjgl-core`:
 
-A WASM GC bundle is a `.wasm` module rather than an ES module: the shell instantiates it through
-the loader TeaVM ships and calls the same exported `main`, where a JavaScript bundle is entered by
-importing it. The build unpacks that loader from the compiler's own jar next to the bundles, so it
-cannot drift from the toolchain that produced them. Nothing above the shell knows the difference —
-`?backend=wasm` selects one, and a program is handed the same arguments and the same host bridge
-either way.
+* **Pipeline Switcher:** `glUseProgram` toggles between the user shader pipeline and the internal `FixedFunctionPipeline`.
+* **State Management (`GLState`):** Mirrors matrices, lighting configurations, polygon offsets, client array bindings, and viewport states in host-independent memory.
+* **Immediate Mode Emulation:** `glBegin`/`glEnd` batches accumulate vertices, colors, and texture coordinates into a scratch memory staging buffer, uploading them as dynamic vertex buffer objects (VBOs) on draw completion.
+* **GLSL Translation (`GlslTranslator`):** Translates desktop GLSL (1.10 through 3.30) to GLSL ES 1.00 or 3.00 at link time. Replaces fixed-function built-ins (`gl_ModelViewProjectionMatrix`, `gl_Vertex`, `ftransform()`) with internal uniforms and generic vertex attributes.
 
-`strict` mode is always enabled. It inserts Java null and bounds checks so desktop exception
-semantics (`NullPointerException`, etc.) continue to work correctly.
+### 2. Cooperative Concurrency (`toolchain/concurrent-classlib`)
 
-## Reflection
+* **Execution Model:** Applications run on cooperative **green threads** on the browser main thread. Concurrency allows non-blocking asynchronous execution, not multi-core parallelism.
+* **Suspension Semantics:** I/O operations, `Thread.sleep()`, `Object.wait()`, and lock acquisitions suspend the active green thread via TeaVM’s continuation transformation, allowing other green tasks and the browser frame loop to progress.
+* **Page Blocking:** Compute-bound tasks that do not yield or suspend will monopolize the execution thread and drop display frames.
 
-A class keeps its identity through compilation -- its name, its place in the hierarchy, casts and
-`instanceof` -- because those are decided by reachability. Its members are not: nothing reaches
-them, so nothing ships them, and `getDeclaredFields()` answers empty rather than throwing.
+### 3. Filesystem (`platform-browser`)
 
-`toolchain/reflect-policy` is how a class opts out of that. It names classes to the compiler, which
-then keeps every declared field, method and constructor, and lets `Class.forName` find them. A
-class is named either by carrying `@Reflectable`, for source the bundle owns, or by matching a glob
-in the `flagon.reflect.classes` build property, for a jar that cannot be annotated. An interface
-`Proxy.newProxyInstance` may stand in for is named by `flagon.reflect.proxies`, the compiler having
-to write the proxy rather than keep members.
+* **Storage Provider:** `OpfsFileStore` integrates with the browser's Origin Private File System (OPFS).
+* **Bridging:** Replaces TeaVM's in-memory storage with `StoreFileSystem`. Synchronous `java.io` calls suspend the calling green thread while waiting for asynchronous browser OPFS promises to settle.
+* **Write Semantics:** Standard file streams buffer modifications in memory and commit on `flush()` or `close()`. `RandomAccessFile` operations force an immediate write-through.
 
-The cost is paid per class, which is why it is opt-in: keeping a class whole keeps everything it
-can reach whole too. Naming a whole application defeats the point of ahead-of-time compilation.
+### 4. Audio (`platform-browser`)
 
-A jar dropped in `vendor/` is the exception, because there is nobody to ask: it cannot be annotated
-and, obfuscated, cannot be globbed. `app-entry` lists its classes to a file named by
-`flagon.reflect.constructed`, and each keeps its constructors alone -- enough for the registries
-such a jar builds its world with, and far short of keeping it whole.
+* **Engine:** `AudioDevice` maps OpenAL concepts onto the Web Audio API.
+* **Context State:** `ALState` retains context-wide volume, listener orientation, and velocity values.
+* **Doppler & Panning:** Panning and distance attenuation map to `PannerNode`. Doppler shifts are calculated explicitly along the listener-source velocity vector to adjust the source's `playbackRate`.
+* **User Gesture Handling:** The browser `AudioContext` initializes suspended and resumes automatically on the first user mouse click or keystroke.
 
-That list is measured. Past ten thousand classes the build says what it is costing and how to say
-less; past fifty thousand it stops. A jar that is not obfuscated can narrow it up front with
-`-Dflagon.app.reflect=your.game.**`, where `*` stops at a package boundary and `**` does not.
+### 5. Sockets & Proxied Transport
 
-[COMPATIBILITY.md](COMPATIBILITY.md#reflection-reaches-types-not-members) records what each half
-does, and the `selftest` program asserts both in a real bundle so a teavm upgrade cannot change it
-quietly.
+* **WebSocket Tunnel:** `ProxyNetwork` implements `platform-api:Network`. Outbound TCP socket connections are tunneled through an external Node/Bun proxy over WebSockets.
+* **Stream Contract:** `NetworkSocket` wraps raw WebSocket frames into a blocking Java `InputStream`/`OutputStream` pair. Reads suspend the calling green thread until packets arrive.
+* **HTTP / TLS:** Proxies terminate external TLS connections for HTTPS/WSS endpoints. Unmodified `java.net.URL` and `HttpURLConnection` calls route through this tunnel via an installed `URLStreamHandlerFactory`.
 
-## Threads
+### 6. Inputs
 
-Green threads, so one runs at a time and a switch happens where one suspends. `socket-classlib`
-supplies `java.net`; `concurrent-classlib` supplies the executor and future half of
-`java.util.concurrent` on the same footing, because TeaVM ships neither. Both are patched into
-`java.base` at compile time and reach the compiler as ordinary classes.
+* **Polling Architecture:** Inbound DOM input events (`keydown`, `keyup`, `mousemove`, `mousedown`) are buffered in thread-safe, bounded queues rather than dispatched via callbacks.
+* **Synchronization:** Input queues are consumed synchronously during the game loop inside `Frames.awaitNextFrame()`, eliminating concurrency races between DOM events and game logic.
+* **Layout Normalization:** Scancodes are mapped to desktop layout codes via `KeyboardEvent.code`. Y coordinates are inverted to match OpenGL window space conventions.
 
-A render thread draining what workers produced is therefore a supported shape, and the `threading`
-demo runs it. What it is not is parallel: the workers interleave with the frame loop rather than
-running beside it. [COMPATIBILITY.md](COMPATIBILITY.md#threads-executors-and-futures) records what
-each part does.
+---
 
-## Bytecode at runtime
+## Reflection Policy
 
-A mod loader built on Mixin transforms classes as they load: it reads the bytes, rewrites them with
-ASM and hands them to a class loader to define. None of that survives here, and the reason is not a
-missing feature but the shape of the target. There is no bytecode at runtime to rewrite -- the
-program was compiled to JavaScript or WebAssembly before it shipped -- and the class loader the
-runtime does expose has no `defineClass`, so there is nowhere to put a class that arrives late. The
-`selftest` program asserts both, in a real bundle: a class the compile never saw is not found, and
-no class loader can define one from bytes.
+Because TeaVM relies on whole-program reachability analysis, unreferenced members are stripped by default:
 
-That makes runtime transform a no-go, and it puts Fabric and Forge, whose loaders are built on it,
-out of reach at runtime. What is in reach is applying the same transform before the compile: mixins
-merged into the jar ahead of time reach TeaVM as ordinary classes, and the reflection above is
-already enough to load them. Until such a build step exists, this is a vanilla-only runtime.
+```
+Reflection Target            Retention Mechanism                       Metadata / Cost
+Class Identity / Types       Automatic (always retained)               Preserves getClass(), isInstance(), cast()
+Class Members                @Reflectable or flagon.reflect.classes     Retains fields, methods, constructors
+Dynamic Proxy Interfaces     flagon.reflect.proxies                    Synthesizes proxy class at compile time
+vendor/ Constructors         flagon.reflect.constructed                Retains constructors only for registries
 
-## Graphics
+```
 
-The compatibility layer rebuilds the parts of OpenGL 1.x that WebGL2 does not provide:
+* **Dynamic Bytecode Refusal:** Bytecode rewriting frameworks (`defineClass`, runtime ASM/Mixins, runtime Forge/Fabric loaders) cannot function because no JVM bytecode representation exists in the browser. Transforms must be applied to target JARs prior to compilation.
 
-- `Matrix4` and `GLState` maintain fixed-function state.
-- `glBegin`/`glEnd` collect vertices and submit a single draw.
-- Client arrays are staged into buffer objects when necessary.
-- `FixedFunctionPipeline` emulates fixed-function rendering with one configurable shader.
+---
 
-`glUseProgram` switches between the fixed-function and shader pipelines. `GLState` selects the
-active pipeline and restores caller-owned GL state after each draw.
+## Browser Host Policy (`window.__flagonHost`)
 
-Desktop GLSL is translated into GLSL ES by `GlslTranslator` inside `lwjgl-core`. Browser-facing
-code deals only in GLSL ES.
+The browser shell coordinates with running bundles via a minimalist JavaScript bridge on `window.__flagonHost`:
 
-None of this depends on browser APIs, so it is covered by JVM unit tests against a recording
-`GraphicsDevice`.
+```typescript
+interface FlagonHost {
+  log(level: string, message: string): void;
+  catalog(programsJson: string): void;
+  status(phase: string, message: string): void;
+  ready(): void;
+  exited(exitCode: number): void;
+  fatal(error: string, stackTrace?: string): void;
+}
 
-## Files
+```
 
-`FileStore` is the host-agnostic filesystem abstraction. `MemoryFileStore` keeps everything in the
-heap; `OpfsFileStore` persists it in the browser's Origin Private File System.
-
-`StoreFileSystem` connects TeaVM's `VirtualFileSystem` to the active `FileStore`, allowing
-unmodified `java.io` code to work without modification.
-
-Asynchrony stops at the store boundary: browser storage operations suspend the current green thread
-so everything above continues to behave as blocking I/O.
-
-## Sound
-
-`AudioDevice` is a host-agnostic mixer exposing buffers, sources and a listener. `SilentAudioDevice`
-implements the same contract without producing sound, making playback logic testable on the JVM.
-
-`ALState` keeps the OpenAL state that belongs to the context rather than individual sources,
-translating OpenAL semantics onto the underlying audio implementation.
-
-## Network
-
-`Network` exposes blocking `Connection`s rather than sockets. In the browser,
-`ProxyNetwork` carries them over a websocket to a proxy; `UnavailableNetwork` refuses every
-connection on hosts without networking.
-
-The page half of that websocket — the receive queue, the pause/resume pacing and the close
-semantics — is `web/src/tunnel.ts`, a typechecked module the shell installs before it starts a
-bundle. `Tunnel` is then only the bindings that reach it, and the words the two sides say live in
-`web/wire.ts`, which the proxy imports as well. A bundle loaded by something other than the shell
-finds no tunnel installed and falls back to `UnavailableNetwork`.
-
-`MemoryNetwork` provides an in-memory implementation for tests.
-
-`NetworkUrls` installs a `URLStreamHandlerFactory` at boot so unmodified `java.net.URL` code
-uses the active `Network` implementation transparently.
-
-## Input
-
-`InputSource` belongs to a `DisplaySurface`, because input belongs to a window. Events are queued
-and polled rather than delivered through callbacks, matching desktop application structure.
-
-`platform-api` defines the scancode numbering. Each host maps onto that numbering so applications
-see consistent input regardless of platform.
-
-The browser implementation needs no locking: DOM events only execute while the game loop is
-suspended in `Frames.awaitNextFrame()`, so the queues are never modified while being drained.
-
-## Host contract
-
-A page drives a bundle through `window.__flagonHost`, a six-method interface:
-
-- `log`
-- `catalog`
-- `status`
-- `ready`
-- `exited`
-- `fatal`
-
-Keeping the host contract this small means embedding pages and test harnesses need know nothing
-about how a bundle was built. Without a host bridge, bundles still run and report through the
-console.
+If a bundle is embedded in an environment lacking `window.__flagonHost`, platform services automatically fall back to standard `console.*` output without breaking execution.
