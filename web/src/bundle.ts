@@ -12,6 +12,7 @@ export interface HostBridge {
 declare global {
   interface Window {
     __flagonHost?: HostBridge;
+    __flagonResources?: ArrayBuffer;
     __flagonCloseRequested?: boolean;
     __flagonFrames?: number;
   }
@@ -93,10 +94,33 @@ interface WasmLoader {
 // teavm's own loader, unpacked beside the bundles by the wasm build
 const WASM_LOADER = '/flagon/wasm-gc-module-runtime.js';
 
+/** the files the bundle's jar carried. a bundle with no resources ships no pack. */
+export function packUrlOf(bundleUrl: string): string {
+  return bundleUrl.replace(/\.(js|wasm)$/, '.pack');
+}
+
+async function fetchPack(bundleUrl: string): Promise<void> {
+  delete window.__flagonResources;
+  try {
+    const response = await fetch(packUrlOf(bundleUrl));
+    const type = response.headers.get('content-type') ?? '';
+    if (!response.ok || type.includes('text/html')) {
+      return;
+    }
+    const pack = await response.arrayBuffer();
+    if (pack.byteLength > 0) {
+      window.__flagonResources = pack;
+    }
+  } catch {
+    // a page with no pack reads no resources, which the bundle says for itself
+  }
+}
+
 export async function runBundle(url: string, host: HostBridge, args: string[]): Promise<void> {
   window.__flagonHost = host;
   installTunnel();
   const absolute = new URL(url, location.origin).href;
+  await fetchPack(absolute);
   try {
     if (absolute.endsWith('.wasm')) {
       await runWasmBundle(absolute, args);

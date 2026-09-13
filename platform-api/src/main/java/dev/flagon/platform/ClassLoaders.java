@@ -1,5 +1,6 @@
 package dev.flagon.platform;
 
+import java.io.InputStream;
 import java.net.URL;
 import java.util.Collections;
 import java.util.Enumeration;
@@ -23,6 +24,10 @@ public final class ClassLoaders {
                     + " it in flagon.reflect.classes to keep it. see docs/COMPATIBILITY.md",
                     missing);
         }
+    }
+
+    public static InputStream getResourceAsStream(ClassLoader loader, String name) {
+        return Resources.open(name);
     }
 
     public static Enumeration<URL> getResources(ClassLoader loader, String name) {

@@ -59,6 +59,12 @@
       <artifactId>teavm-classlib</artifactId>
       <scope>provided</scope>
     </dependency>
+    <dependency>
+      <groupId>dev.flagon</groupId>
+      <artifactId>resource-pack</artifactId>
+      <version>${project.version}</version>
+      <scope>provided</scope>
+    </dependency>
   </dependencies>
 
   <build>

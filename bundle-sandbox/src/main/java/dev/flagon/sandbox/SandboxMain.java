@@ -23,6 +23,7 @@ public final class SandboxMain {
                 .register(new RuntimeSelfTestProgram())
                 .register(new ShutdownHookProgram())
                 .register(new ClassLoaderProgram())
+                .register(new ResourceProgram())
                 .register(new JdkGapsProgram())
                 .register(new ImageProgram())
                 .register(new CryptoProgram())

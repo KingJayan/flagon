@@ -26,6 +26,7 @@
     <module>toolchain/reflect-policy</module>
     <module>toolchain/jdk-shims</module>
     <module>toolchain/app-entry</module>
+    <module>toolchain/resource-pack</module>
     <module>lwjgl-core</module>
     <module>lwjgl2-compat</module>
     <module>lwjgl3-compat</module>
@@ -64,6 +65,7 @@
     <flagon.app.reflect></flagon.app.reflect>
     <flagon.app.jar>${maven.multiModuleProjectDirectory}/target/app.jar</flagon.app.jar>
 
+    <flagon.resources.from>${project.build.outputDirectory}</flagon.resources.from>
     <flagon.bundleOutput>${maven.multiModuleProjectDirectory}/web/public/flagon</flagon.bundleOutput>
   </properties>
 
@@ -184,6 +186,21 @@
                 <mainClass>${flagon.bundle.catalogClass}</mainClass>
                 <arguments>
                   <argument>${flagon.bundleOutput}/${flagon.bundle.name}.catalog.json</argument>
+                </arguments>
+              </configuration>
+            </execution>
+            <execution>
+              <id>write-resource-pack</id>
+              <phase>prepare-package</phase>
+              <goals>
+                <goal>java</goal>
+              </goals>
+              <configuration>
+                <mainClass>dev.flagon.pack.WriteResourcePack</mainClass>
+                <classpathScope>compile</classpathScope>
+                <arguments>
+                  <argument>${flagon.resources.from}</argument>
+                  <argument>${flagon.bundleOutput}/${flagon.bundle.name}.pack</argument>
                 </arguments>
               </configuration>
             </execution>
