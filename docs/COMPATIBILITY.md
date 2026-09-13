@@ -594,6 +594,39 @@ Three capabilities remain unavailable:
   `setSoTimeout` is kept for whoever reads it back and a read waits rather than giving up.
 - **UDP.** The proxy transports streams only.
 
+### Crypto
+
+`toolchain/crypto-classlib` supplies `java.security` and `javax.crypto`, written out in Java. The
+browser hashes and encrypts too, but only through calls that wait, and code that asks for bytes
+straight back cannot wait. Every algorithm here is checked against the numbers its own standard
+publishes; the `crypto` demo runs those checks in the browser.
+
+| Written | Behaviour |
+|---------|-----------|
+| `MessageDigest` | md5, sha-1 and sha-256, from RFC 1321 and FIPS 180-4 |
+| `KeyPairGenerator` | rsa, sized when asked and 1024 bits until then |
+| `KeyFactory`, `X509EncodedKeySpec`, `PKCS8EncodedKeySpec` | an rsa key read out of and written back into its standard form |
+| `Cipher` `RSA/ECB/PKCS1Padding` | the handshake a game opens an online session with |
+| `Cipher` `AES/CFB8/NoPadding` | the stream it uses afterwards, from FIPS 197 |
+| `KeyGenerator`, `SecretKeySpec`, `IvParameterSpec` | an aes key and the block a stream starts from |
+| `Signature` | `SHA1withRSA` and `SHA256withRSA`, signing and checking |
+| any other algorithm or transform | refused by name rather than approximated |
+
+The random behind a key is `SecureRandom`, which is the browsers own. How good a key is here is
+how good that is.
+
+### What a page cannot do at all
+
+| Written | Behaviour |
+|---------|-----------|
+| `DatagramSocket`, `MulticastSocket` | refused; the proxy carries a stream and nothing carries a packet, so there is no lan discovery |
+| `ObjectInputStream`, `ObjectOutputStream` | refused; reading an object back needs a class named at runtime and private fields written from outside, and a bundle has neither |
+| `ServerSocket` | refused; nothing can connect in to a page |
+
+For the object streams, write the fields you want with `DataOutputStream`, or use a format with a
+schema. A `DatagramPacket` still builds, because code builds one before it finds out it cannot
+send it.
+
 ### Input
 
 Input belongs to a `DisplaySurface`, so `InputSource` hangs from it. Events are queued and polled
