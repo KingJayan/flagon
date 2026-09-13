@@ -62,7 +62,8 @@ Ahead-of-time (AOT) tree-shaking strips unreferenced class members by default. `
 ### ClassLoader & Resource Lookup
 
 * `ClassLoader.getResources`: Returns an empty enumeration. Multi-jar classpath scanning (such as `META-INF/services`) is unsupported in single-file bundles.
-* `getResourceAsStream`: Returns `null`. Assets must be embedded into source files or loaded asynchronously via the network at startup.
+* `getResourceAsStream`: Reads the resource pack. The build packs every file a jar carries beside its classes into `<bundle>.pack`, and the page fetches that pack before the bundle runs. `Class.getResourceAsStream` resolves a relative name beside the class, the way the JDK does.
+* `ClassLoader.getResource`, `Class.getResource`: Return `null`. A bundle has no URL for a file it carries; read the file with `getResourceAsStream` instead.
 
 ### JDK Shims Reference
 

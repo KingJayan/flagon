@@ -1,5 +1,6 @@
 package dev.flagon.platform;
 
+import java.io.InputStream;
 import java.lang.reflect.Type;
 import java.net.URL;
 
@@ -24,6 +25,20 @@ public final class Classes {
 
     public static URL getResource(Class<?> type, String name) {
         return ClassLoaders.getResource(null, name);
+    }
+
+    public static InputStream getResourceAsStream(Class<?> type, String name) {
+        return Resources.open(beside(type, name));
+    }
+
+    /** a name with no leading slash is read beside the class, the way the jdk reads it. */
+    private static String beside(Class<?> type, String name) {
+        if (name == null || name.startsWith("/")) {
+            return name;
+        }
+        String owner = type.getName();
+        int marker = owner.lastIndexOf('.');
+        return marker < 0 ? name : owner.substring(0, marker).replace('.', '/') + "/" + name;
     }
 
     public static boolean isAnonymousClass(Class<?> type) {

@@ -44,8 +44,8 @@ public final class BrowserPlatform implements Platform {
             console.warn("no window.__flagonHost installed; reporting to the console only");
         }
         RuntimeHost host = new BrowserRuntimeHost(bridge, console, copyOf(arguments));
+        ResourcePack.install(console);
         FileStore files = openStorage(console);
-        // installed before anything can open a file, because java.io resolves the filesystem once
         StoreFileSystem.install(files);
         Clock clock = new BrowserClock();
         return new BrowserPlatform(clock, console, host, files, openAudio(console, clock),
