@@ -1,19 +1,46 @@
 <div align="center">
-  <img src="docs/images/flagon-banner-nobg.png" alt="Flagon Banner" width="75%" height="auto" />
+  <br />
+  <img src="docs/images/flagon-icon.png" alt="Flagon" width="135" />
 
   <h1>Flagon</h1>
 
-  <p><strong>Run unmodified desktop Java and LWJGL applications directly in the browser.</strong></p>
+  <p><strong>Run unmodified desktop Java & LWJGL applications directly in the browser.</strong></p>
 
-  <a href="https://teavm.org"><img src="https://img.shields.io/badge/Compiled_with-TeaVM-blue?style=flat-square" alt="TeaVM"></a>
-  <a href="https://bun.sh"><img src="https://img.shields.io/badge/Powered_by-Bun-black?style=flat-square" alt="Bun"></a>
-  <a href="https://openjdk.org/"><img src="https://img.shields.io/badge/Java-25+-orange?style=flat-square" alt="Java 25+"></a>
-  <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-green?style=flat-square" alt="License"></a>
+  <p>
+    <a href="#quickstart">Quickstart</a> &nbsp;•&nbsp;
+    <a href="docs/COMPATIBILITY.md">Compatibility</a> &nbsp;•&nbsp;
+    <a href="docs/DOWNSTREAM.md">Packaging</a> &nbsp;•&nbsp;
+    <a href="docs/ARCHITECTURE.md">Architecture</a>
+  </p>
+
+  <svg height="3" width="320" style="display: block; margin: 12px 0 18px 0;">
+    <defs>
+      <linearGradient id="flagonGlow" x1="0%" y1="0%" x2="100%" y2="0%">
+        <stop offset="0%" stop-color="#4c566a" stop-opacity="0" />
+        <stop offset="30%" stop-color="#d08770" />
+        <stop offset="50%" stop-color="#ebcb8b" />
+        <stop offset="70%" stop-color="#d08770" />
+        <stop offset="100%" stop-color="#4c566a" stop-opacity="0" />
+      </linearGradient>
+    </defs>
+    <rect width="320" height="3" rx="1.5" fill="url(#flagonGlow)" />
+  </svg>
+
+  <p>
+    <a href="https://teavm.org"><img src="https://img.shields.io/badge/AOT-TeaVM-434c5e?style=flat-square&logo=webassembly&logoColor=eceff4" alt="TeaVM" /></a>
+    <a href="https://bun.sh"><img src="https://img.shields.io/badge/Toolchain-Bun-2e3440?style=flat-square&logo=bun&logoColor=eceff4" alt="Bun" /></a>
+    <a href="https://openjdk.org/"><img src="https://img.shields.io/badge/Java-25+-d08770?style=flat-square&logo=openjdk&logoColor=2e3440" alt="Java 25+" /></a>
+    <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-4c566a?style=flat-square" alt="License" /></a>
+  </p>
 </div>
 
 <br />
 
-Flagon compiles existing desktop Java bytecode into browser-native WebAssembly GC and JavaScript using TeaVM, reimplementing LWJGL 2 & 3, OpenGL, OpenAL, OPFS filesystem persistence, and socket networking over browser APIs.
+Flagon compiles desktop Java bytecode into browser-native WebAssembly GC and JavaScript using TeaVM, reimplementing LWJGL 2 & 3, OpenGL, OpenAL, OPFS filesystem persistence, and socket networking over browser APIs.
+
+<br />
+
+Flagon compiles desktop Java bytecode into browser-native WebAssembly GC and JavaScript using TeaVM, reimplementing LWJGL 2 & 3, OpenGL, OpenAL, OPFS filesystem persistence, and socket networking over browser APIs.
 
 ## Documentation
 

@@ -5,6 +5,9 @@ on:
     branches: [main]
   pull_request:
 
+env:
+  BUN_VERSION: 1.4.0
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -33,6 +36,137 @@ jobs:
           path: web/public/flagon/
           retention-days: 1
 
+  # builds the site and the engines once, for every shard, beside the java build
+  web:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+
+      - name: Cache bun pckgs
+        uses: actions/cache@v5
+        with:
+          path: ~/.bun/install/cache
+          key: bun-${{ runner.os }}-${{ hashFiles('web/bun.lock') }}
+
+      - name: Install web deps
+        run: make deps
+
+      - name: Lint
+        run: cd web && bun run lint
+
+      - name: Typecheck
+        run: make typecheck
+
+      - name: Build site
+        run: make site
+
+      - name: Upload site
+        uses: actions/upload-artifact@v5
+        with:
+          name: site
+          path: web/dist/
+          retention-days: 1
+
+      - name: Cache browsers
+        uses: actions/cache@v5
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('web/bun.lock') }}
+          restore-keys: playwright-${{ runner.os }}-
+
+      - name: Install browsers
+        run: cd web && bunx playwright install chromium firefox
+
+  browser:
+    needs: [build, web]
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - project: chromium
+            shard: 1
+            shards: 6
+          - project: chromium
+            shard: 2
+            shards: 6
+          - project: chromium
+            shard: 3
+            shards: 6
+          - project: chromium
+            shard: 4
+            shards: 6
+          - project: chromium
+            shard: 5
+            shards: 6
+          - project: chromium
+            shard: 6
+            shards: 6
+          - project: firefox
+            shard: 1
+            shards: 2
+          - project: firefox
+            shard: 2
+            shards: 2
+          - project: served
+            shard: 1
+            shards: 1
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Download bundles
+        uses: actions/download-artifact@v5
+        with:
+          name: bundles
+          path: web/public/flagon/
+
+      - name: Download site
+        uses: actions/download-artifact@v5
+        with:
+          name: site
+          path: web/dist/
+
+      # the site is built beside the java build, so the bundles go in afterwards
+      - name: Put the bundles in the site
+        run: mkdir -p web/dist/flagon && cp -R web/public/flagon/. web/dist/flagon/
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+
+      - name: Cache bun pckgs
+        uses: actions/cache@v5
+        with:
+          path: ~/.bun/install/cache
+          key: bun-${{ runner.os }}-${{ hashFiles('web/bun.lock') }}
+
+      - name: Install web deps
+        run: make deps
+
+      - name: Cache browsers
+        uses: actions/cache@v5
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('web/bun.lock') }}
+          restore-keys: playwright-${{ runner.os }}-
+
+      - name: Install browser
+        run: make browser-${{ matrix.project }}
+
+      - name: Browser tests
+        run: make browser ARGS="--project=${{ matrix.project }} --shard=${{ matrix.shard }}/${{ matrix.shards }}"
+
+      - uses: actions/upload-artifact@v5
+        if: failure()
+        with:
+          name: blob-report-${{ matrix.project }}-${{ matrix.shard }}
+          path: web/blob-report/
+          retention-days: 7
+
   size:
     runs-on: ubuntu-latest
     steps:
@@ -54,86 +188,6 @@ jobs:
           make size | tee -a "$GITHUB_STEP_SUMMARY"
           echo '```' >> "$GITHUB_STEP_SUMMARY"
 
-  browser:
-    needs: build
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - project: chromium
-            shard: 1
-            shards: 4
-          - project: chromium
-            shard: 2
-            shards: 4
-          - project: chromium
-            shard: 3
-            shards: 4
-          - project: chromium
-            shard: 4
-            shards: 4
-          - project: firefox
-            shard: 1
-            shards: 2
-          - project: firefox
-            shard: 2
-            shards: 2
-          - project: served
-            shard: 1
-            shards: 1
-    steps:
-      - uses: actions/checkout@v5
-
-      - name: Download bundles
-        uses: actions/download-artifact@v5
-        with:
-          name: bundles
-          path: web/public/flagon/
-
-      - uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: latest
-
-      - name: Cache bun pckgs
-        uses: actions/cache@v5
-        with:
-          path: ~/.bun/install/cache
-          key: bun-${{ runner.os }}-${{ hashFiles('web/bun.lock') }}
-
-      - name: Install web deps
-        run: make deps
-
-      - name: Lint
-        run: cd web && bun run lint
-
-      - name: Typecheck & build
-        run: make site
-
-      - name: Resolve playwright
-        id: playwright
-        run: echo "version=$(cd web && bunx playwright --version | awk '{print $2}')" >> "$GITHUB_OUTPUT"
-
-      - name: Cache browsers
-        uses: actions/cache@v5
-        with:
-          path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ matrix.project }}-${{ steps.playwright.outputs.version }}
-          restore-keys: playwright-${{ runner.os }}-${{ matrix.project }}-
-
-      - name: Install browser
-        run: make browser-${{ matrix.project }}
-
-      - name: Browser tests
-        run: make browser ARGS="--project=${{ matrix.project }} --shard=${{ matrix.shard }}/${{ matrix.shards }}"
-
-      - uses: actions/upload-artifact@v5
-        if: failure()
-        with:
-          name: blob-report-${{ matrix.project }}-${{ matrix.shard }}
-          path: web/blob-report/
-          retention-days: 7
-
   report:
     needs: browser
     if: failure()
@@ -143,7 +197,7 @@ jobs:
 
       - uses: oven-sh/setup-bun@v2
         with:
-          bun-version: latest
+          bun-version: ${{ env.BUN_VERSION }}
 
       - name: Cache bun pckgs
         uses: actions/cache@v5

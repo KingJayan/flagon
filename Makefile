@@ -1,6 +1,6 @@
 .DEFAULT_GOAL := help
 
-MVN := ./mvnw -B
+MVN := ./mvnw -B -T 1C
 WEB := web
 BUNDLES := $(WEB)/public/flagon
 ARGS ?=
