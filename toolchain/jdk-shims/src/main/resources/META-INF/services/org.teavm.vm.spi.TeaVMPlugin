@@ -12,3 +12,4 @@ dev.flagon.shims.SendFileCalls
 dev.flagon.shims.SendUuidCalls
 dev.flagon.shims.SendResourceCalls
 dev.flagon.shims.WriteAbsentCode
+dev.flagon.shims.SendLoggerCalls
