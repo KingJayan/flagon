@@ -18,6 +18,7 @@
     <module>runtime</module>
     <module>toolchain/socket-classlib</module>
     <module>toolchain/jdk-classlib</module>
+    <module>toolchain/nio-classlib</module>
     <module>toolchain/awt-classlib</module>
     <module>toolchain/crypto-classlib</module>
     <module>toolchain/concurrent-classlib</module>
