@@ -11,12 +11,10 @@ import org.teavm.model.Variable;
 import org.teavm.model.instructions.InvocationType;
 import org.teavm.model.instructions.InvokeInstruction;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 
-/**
- * sends a one-argument call on a classlib type to a static Flagon method that takes the
- * receiver first. the shims all have this shape, so they all share this.
- */
 final class Reroute {
 
     private Reroute() {
@@ -45,20 +43,33 @@ final class Reroute {
     private static void send(InvokeInstruction invoke, String subject, String target,
                              Map<String, String> methods) {
         MethodReference asked = invoke.getMethod();
-        if (!subject.equals(asked.getClassName()) || invoke.getInstance() == null) {
+        if (!subject.equals(asked.getClassName())) {
             return;
         }
-        String replacement = methods.get(asked.getName());
-        if (replacement == null || asked.parameterCount() != 1) {
+        String replacement = methods.get(asked.getName() + ":" + asked.parameterCount());
+        if (replacement == null) {
+            replacement = methods.get(asked.getName());
+        }
+        if (replacement == null) {
             return;
         }
         Variable receiver = invoke.getInstance();
-        Variable argument = invoke.getArguments().get(0);
+        List<Variable> arguments = new ArrayList<>(invoke.getArguments());
+        List<ValueType> signature = new ArrayList<>();
+        if (receiver != null) {
+            arguments.add(0, receiver);
+            signature.add(ValueType.object(subject));
+        }
+        for (int at = 0; at < asked.parameterCount(); at++) {
+            signature.add(asked.parameterType(at));
+        }
+        signature.add(asked.getReturnType());
+
         invoke.setInstance(null);
         invoke.setType(InvocationType.SPECIAL);
         invoke.setMethod(new MethodReference(target, replacement,
-                ValueType.object(subject), asked.parameterType(0), asked.getReturnType()));
-        invoke.setArguments(receiver, argument);
+                signature.toArray(new ValueType[0])));
+        invoke.setArguments(arguments.toArray(new Variable[0]));
     }
 
     private static boolean isOurs(String name, String[] notOurs) {

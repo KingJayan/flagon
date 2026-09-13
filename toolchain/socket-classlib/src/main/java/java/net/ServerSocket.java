@@ -23,6 +23,22 @@ public class ServerSocket implements java.io.Closeable {
         refuse();
     }
 
+    public int getLocalPort() {
+        return -1;
+    }
+
+    public InetAddress getInetAddress() {
+        return null;
+    }
+
+    public boolean isClosed() {
+        return true;
+    }
+
+    public boolean isBound() {
+        return false;
+    }
+
     public Socket accept() throws IOException {
         return refuse();
     }

@@ -1,6 +1,6 @@
 // needs a display
 import { test, expect } from '@playwright/test';
-import { BACKENDS, open, watchForFailures } from './harness';
+import { BACKENDS, open, programCount, watchForFailures } from './harness';
 
 for (const backend of BACKENDS) {
   test.describe(`the shell's program picker on ${backend}`, () => {
@@ -15,7 +15,7 @@ for (const backend of BACKENDS) {
       await expect(options.first()).toHaveAttribute('value', '');
       await expect(options.nth(1)).toHaveAttribute('value', 'hello');
       await expect(options.nth(1)).toContainText('hello — ');
-      await expect(options).toHaveCount(23);
+      await expect(options).toHaveCount(await programCount('sandbox'));
       expect(failures).toEqual([]);
     });
 
@@ -26,7 +26,7 @@ for (const backend of BACKENDS) {
 
       await page.locator('#bundle').selectOption('example');
       await expect(page.locator('#program')).toHaveValue('');
-      await expect(page.locator('#program option')).toHaveCount(4);
+      await expect(page.locator('#program option')).toHaveCount(await programCount('example'));
 
       await page.locator('#run').click();
       await expect(page.getByTestId('phases').locator('li')).toHaveText(
@@ -128,15 +128,15 @@ for (const backend of BACKENDS) {
 
     test('offers a bundle its programs without having run it', async ({ page }) => {
       await open(page, backend, 'bundle=example');
-      await expect(page.locator('#program option')).toHaveCount(4);
+      await expect(page.locator('#program option')).toHaveCount(await programCount('example'));
       await expect(page.locator('#program option').nth(1)).toContainText('spinner — ');
 
       await page.locator('#bundle').selectOption('sandbox');
-      await expect(page.locator('#program option')).toHaveCount(23);
+      await expect(page.locator('#program option')).toHaveCount(await programCount('sandbox'));
       await expect(page.locator('#program option').nth(1)).toContainText('hello — ');
 
       await page.locator('#bundle').selectOption('example');
-      await expect(page.locator('#program option')).toHaveCount(4);
+      await expect(page.locator('#program option')).toHaveCount(await programCount('example'));
     });
 
     test('keeps the log bounded while a program floods it', async ({ page }) => {
