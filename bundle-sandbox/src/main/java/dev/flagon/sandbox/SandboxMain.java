@@ -25,6 +25,7 @@ public final class SandboxMain {
                 .register(new ClassLoaderProgram())
                 .register(new JdkGapsProgram())
                 .register(new ImageProgram())
+                .register(new CryptoProgram())
                 .register(new LwjglDemoProgram())
                 .register(new Lwjgl3DemoProgram())
                 .register(new GlfwDemoProgram())
