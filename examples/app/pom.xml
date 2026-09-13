@@ -13,8 +13,8 @@
   <artifactId>example-app</artifactId>
   <name>Flagon :: Example Application</name>
   <description>
-    A desktop LWJGL application, compiled against the real org.lwjgl.lwjgl:lwjgl artifact and
-    depending on nothing in dev.flagon. It stands in for an application jar built elsewhere.
+    This module builds a desktop LWJGL application against the real LWJGL. It depends on nothing
+    in dev.flagon, so it stands in for a jar that somebody else built.
   </description>
 
   <properties>

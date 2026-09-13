@@ -13,7 +13,7 @@
 
   <artifactId>sound-classlib</artifactId>
   <name>Flagon sound classlib</name>
-  <description>javax.sound.midi for the browser, which has no midi device.</description>
+  <description>This module supplies javax.sound. A browser has no midi device, so midi refuses by name.</description>
 
   <properties>
     <maven.compiler.release></maven.compiler.release>

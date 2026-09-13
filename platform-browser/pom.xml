@@ -11,7 +11,7 @@
 
   <artifactId>platform-browser</artifactId>
   <name>Flagon :: Browser Platform</name>
-  <description>Browser implementation of the platform API. The only module allowed to touch the DOM.</description>
+  <description>This module supplies the platform interfaces with the DOM. No other module touches the DOM.</description>
 
   <dependencies>
     <dependency>

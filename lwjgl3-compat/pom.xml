@@ -11,7 +11,7 @@
 
   <artifactId>lwjgl3-compat</artifactId>
   <name>Flagon :: LWJGL 3 Compatibility</name>
-  <description>Source-compatible LWJGL 3 classes: GLFW windowing, the memory utilities and GL 3.2 core.</description>
+  <description>This module supplies the LWJGL 3 classes: GLFW windows, the memory utilities, and GL 3.2 core.</description>
 
   <dependencies>
     <dependency>

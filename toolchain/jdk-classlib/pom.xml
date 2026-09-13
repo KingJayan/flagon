@@ -13,7 +13,7 @@
 
   <artifactId>jdk-classlib</artifactId>
   <name>Flagon JDK classlib</name>
-  <description>java.sql and java.lang.management for the browser, supplied where TeaVM has none.</description>
+  <description>This module supplies java.sql and java.lang.management, which TeaVM does not have.</description>
 
   <properties>
     <maven.compiler.release></maven.compiler.release>

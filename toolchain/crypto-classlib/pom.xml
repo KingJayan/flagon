@@ -13,7 +13,7 @@
 
   <artifactId>crypto-classlib</artifactId>
   <name>Flagon crypto classlib</name>
-  <description>java.security and javax.crypto for the browser, supplied where TeaVM has none.</description>
+  <description>This module supplies java.security and javax.crypto, which TeaVM does not have.</description>
 
   <properties>
     <maven.compiler.release></maven.compiler.release>
