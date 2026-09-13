@@ -19,6 +19,7 @@
     <module>toolchain/socket-classlib</module>
     <module>toolchain/jdk-classlib</module>
     <module>toolchain/awt-classlib</module>
+    <module>toolchain/sound-classlib</module>
     <module>toolchain/crypto-classlib</module>
     <module>toolchain/concurrent-classlib</module>
     <module>toolchain/reflect-policy</module>
