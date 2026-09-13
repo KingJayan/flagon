@@ -6,6 +6,7 @@ import dev.flagon.runtime.Program;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.URL;
 import java.nio.charset.StandardCharsets;
 
 public final class ResourceProgram implements Program {
@@ -20,7 +21,7 @@ public final class ResourceProgram implements Program {
 
     @Override
     public String description() {
-        return "reads a packed file with getResourceAsStream";
+        return "reads a packed file as a stream and as a url";
     }
 
     @Override
@@ -34,6 +35,16 @@ public final class ResourceProgram implements Program {
                 .getResourceAsStream(ABSOLUTE.substring(1))));
         console.info("resources: a file nobody packed reads "
                 + read(getClass().getResourceAsStream("/nothing-here.txt")));
+        console.info("resources: the url beside the class opens "
+                + read(open(getClass().getResource(BESIDE))));
+        console.info("resources: the loader's url opens "
+                + read(open(getClass().getClassLoader().getResource(ABSOLUTE.substring(1)))));
+        console.info("resources: a file nobody packed has the url "
+                + getClass().getResource("/nothing-here.txt"));
+    }
+
+    private static InputStream open(URL url) throws IOException {
+        return url == null ? null : url.openStream();
     }
 
     private static String read(InputStream stream) throws IOException {

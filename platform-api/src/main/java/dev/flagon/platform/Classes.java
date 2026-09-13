@@ -24,7 +24,7 @@ public final class Classes {
     }
 
     public static URL getResource(Class<?> type, String name) {
-        return ClassLoaders.getResource(null, name);
+        return ClassLoaders.getResource(null, beside(type, name));
     }
 
     public static InputStream getResourceAsStream(Class<?> type, String name) {
