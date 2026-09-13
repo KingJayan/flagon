@@ -20,7 +20,7 @@ for (const backend of BACKENDS) {
       await expect(page.getByTestId('state')).toHaveText('exited', { timeout: 30_000 });
       const log = page.getByTestId('log');
       await expect(log).toContainText('classloader: scanning found any resource false');
-      await expect(log).toContainText('a bundle is one artifact with no classpath to scan');
+      await expect(log).toContainText('this bundle packs no such file');
     });
   });
 }

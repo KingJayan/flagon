@@ -5,6 +5,7 @@ import java.net.URL;
 import java.util.Collections;
 import java.util.Enumeration;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 public final class ClassLoaders {
@@ -31,19 +32,17 @@ public final class ClassLoaders {
     }
 
     public static Enumeration<URL> getResources(ClassLoader loader, String name) {
-        if (TOLD.add(name)) {
-            say("nothing answers getResources(\"" + name + "\"): a bundle is one artifact with no"
-                    + " classpath to scan. read the file with getResourceAsStream instead.");
-        }
-        return Collections.emptyEnumeration();
+        URL found = getResource(loader, name);
+        return found == null ? Collections.emptyEnumeration()
+                : Collections.enumeration(List.of(found));
     }
 
     public static URL getResource(ClassLoader loader, String name) {
-        if (TOLD.add(name)) {
-            say("nothing answers getResource(\"" + name + "\"): a bundle has no url for a file it"
-                    + " carries. read the file with getResourceAsStream instead.");
+        URL found = ResourceUrls.of(name);
+        if (found == null && TOLD.add(name)) {
+            say("nothing answers getResource(\"" + name + "\"): this bundle packs no such file.");
         }
-        return null;
+        return found;
     }
 
     private static void say(String warning) {

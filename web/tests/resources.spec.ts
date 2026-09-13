@@ -21,12 +21,30 @@ for (const backend of BACKENDS) {
       expect(failures).toEqual([]);
     });
 
+    test('opens the same file through the url getResource hands back', async ({ page }) => {
+      const { failures } = watchForFailures(page);
+      await open(page, backend, 'program=resources');
+
+      await expect(page.getByTestId('state')).toHaveText('exited', { timeout: 30_000 });
+      const log = page.getByTestId('log');
+      await expect(log).toContainText(
+        'resources: the url beside the class opens this file should get packed into the bundle',
+      );
+      await expect(log).toContainText(
+        "resources: the loader's url opens this file should get packed into the bundle",
+      );
+      expect(failures).toEqual([]);
+    });
+
     test('reads nothing for a file the build packed none of', async ({ page }) => {
       await open(page, backend, 'program=resources');
 
       await expect(page.getByTestId('state')).toHaveText('exited', { timeout: 30_000 });
       await expect(page.getByTestId('log')).toContainText(
         'resources: a file nobody packed reads nothing',
+      );
+      await expect(page.getByTestId('log')).toContainText(
+        'resources: a file nobody packed has the url null',
       );
     });
   });

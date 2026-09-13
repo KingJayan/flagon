@@ -56,7 +56,12 @@ public final class Resources {
         return at == null ? null : new ByteArrayInputStream(pack, at[0], at[1]);
     }
 
-    private static String clean(String name) {
+    public static int sizeOf(String name) {
+        int[] at = index.get(clean(name));
+        return at == null ? -1 : at[1];
+    }
+
+    static String clean(String name) {
         if (name == null) {
             return "";
         }
