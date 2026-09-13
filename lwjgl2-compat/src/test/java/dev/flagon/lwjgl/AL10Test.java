@@ -205,6 +205,30 @@ class AL10Test {
     }
 
     @Test
+    void theBufferFormSetsTheSameVectorTheScalarFormDoes() {
+        int source = AL10.alGenSources();
+        FloatBuffer position = BufferUtils.createFloatBuffer(3);
+        position.put(new float[] {4.0f, 5.0f, 6.0f}).flip();
+
+        AL10.alSource(source, AL10.AL_POSITION, position);
+
+        FloatBuffer read = BufferUtils.createFloatBuffer(3);
+        AL10.alGetSource(source, AL10.AL_POSITION, read);
+        assertEquals(4.0f, read.get(0));
+        assertEquals(5.0f, read.get(1));
+        assertEquals(6.0f, read.get(2));
+    }
+
+    @Test
+    void theBufferFormRefusesABufferWithNoVectorInIt() {
+        int source = AL10.alGenSources();
+
+        AL10.alSource(source, AL10.AL_POSITION, BufferUtils.createFloatBuffer(2));
+
+        assertEquals(AL10.AL_INVALID_VALUE, AL10.alGetError());
+    }
+
+    @Test
     void aNegativeGainIsAnInvalidValue() {
         int source = AL10.alGenSources();
 
