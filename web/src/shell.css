@@ -1,8 +1,4 @@
-@import './tokens.css';
-
-* {
-  box-sizing: border-box;
-}
+@import './base.css';
 
 body {
   margin: 0;
@@ -133,22 +129,14 @@ button:disabled {
   opacity: 0.5;
 }
 
-:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
-}
-
 #display:not(:has(canvas[data-flagon-open])) {
   display: none;
 }
 
 .badge {
-  font-family: var(--mono);
-  font-size: var(--small);
   padding: 0.2rem 0.55rem;
   border-radius: 999px;
   border: 1px solid var(--line);
-  color: var(--muted);
   transition:
     color 0.25s ease,
     border-color 0.25s ease,
@@ -274,43 +262,22 @@ button:disabled {
   }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    animation: none !important;
-    transition: none !important;
-  }
-}
-
 canvas {
-  display: block;
   width: 100%;
   max-width: 40rem;
   height: auto;
   border-radius: 6px;
-  background: #000;
   image-rendering: pixelated;
-  touch-action: none;
 }
 
 canvas:focus {
   outline: none;
 }
 
-canvas:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
-}
-
 .log {
-  margin: 0;
   max-height: 26rem;
   overflow: auto;
-  font-family: var(--mono);
   font-size: var(--detail);
-  line-height: 1.5;
-  white-space: pre-wrap;
   word-break: break-word;
 }
 
@@ -321,12 +288,4 @@ canvas:focus-visible {
 
 .log .past {
   opacity: 0.5;
-}
-
-.log .warn {
-  color: var(--accent);
-}
-
-.log .error {
-  color: var(--bad);
 }
