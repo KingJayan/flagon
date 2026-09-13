@@ -4,7 +4,6 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.nio.channels.FileChannel;
 
-/** a page has no file handle behind a stream, so there is no channel to hand back */
 public final class Files {
 
     private Files() {
