@@ -2,6 +2,7 @@ package dev.flagon.shims;
 
 import org.teavm.asm.ClassReader;
 import org.teavm.asm.ClassVisitor;
+import org.teavm.asm.Label;
 import org.teavm.asm.MethodVisitor;
 import org.teavm.asm.Opcodes;
 import org.teavm.model.AccessLevel;
@@ -16,6 +17,7 @@ import org.teavm.model.MethodDescriptor;
 import org.teavm.model.MethodHolder;
 import org.teavm.model.MethodReference;
 import org.teavm.model.Program;
+import org.teavm.model.TryCatchBlock;
 import org.teavm.model.ValueType;
 import org.teavm.model.Variable;
 import org.teavm.model.instructions.CastInstruction;
@@ -61,6 +63,7 @@ public final class WriteAbsentCode implements TeaVMPlugin, ClassHolderTransforme
 
     private final Map<String, Map<String, Member>> reached = new HashMap<>();
     private final Set<String> defined = new HashSet<>();
+    private final Set<String> caught = new HashSet<>();
     private final Set<String> written = new HashSet<>();
     private ClassLoader loader;
     private boolean read;
@@ -89,6 +92,11 @@ public final class WriteAbsentCode implements TeaVMPlugin, ClassHolderTransforme
             for (BasicBlock block : program.getBasicBlocks()) {
                 for (Instruction instruction : block) {
                     read(instruction, context);
+                }
+                for (TryCatchBlock handler : block.getTryCatchBlocks()) {
+                    if (handler.getExceptionType() != null) {
+                        standIn(handler.getExceptionType(), context);
+                    }
                 }
             }
         }
@@ -128,7 +136,7 @@ public final class WriteAbsentCode implements TeaVMPlugin, ClassHolderTransforme
         written.add(name);
         ClassHolder stand = new ClassHolder(name);
         stand.setLevel(AccessLevel.PUBLIC);
-        stand.setParent("java.lang.Object");
+        stand.setParent(caught.contains(name) ? "java.lang.RuntimeException" : "java.lang.Object");
         stand.addMethod(method(name, new Member("<init>", "()V", false)));
         for (Member member : reached.getOrDefault(name, Map.of()).values()) {
             if (member.name().equals("<init>") && member.descriptor().equals("()V")) {
@@ -238,6 +246,14 @@ public final class WriteAbsentCode implements TeaVMPlugin, ClassHolderTransforme
         public MethodVisitor visitMethod(int access, String name, String descriptor,
                                          String signature, String[] thrown) {
             return new MethodVisitor(Opcodes.ASM9) {
+                @Override
+                public void visitTryCatchBlock(Label start, Label end, Label handler,
+                                               String type) {
+                    if (type != null) {
+                        caught.add(type.replace('/', '.'));
+                    }
+                }
+
                 @Override
                 public void visitMethodInsn(int opcode, String owner, String called,
                                             String asked, boolean isInterface) {
