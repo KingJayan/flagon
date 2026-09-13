@@ -121,8 +121,9 @@ the compiler never saw is not there to find.
 
 `getResources` finds nothing, and says so once per name. A bundle is one artifact: there is no
 classpath with several copies of a file on it, and no URL to hand back for what is inside. Code
-that scans for every `META-INF/services` entry finds none. `getResourceAsStream` reads a bundled
-file and is the call that works.
+that scans for every `META-INF/services` entry finds none. `getResourceAsStream` answers `null`
+too: TeaVM puts no resources in the bundle at all. Carry a data file as generated Java source, or
+fetch it over the network at startup. See issue #260.
 
 ### The rest of the JDK calls the classlib leaves out
 
@@ -711,6 +712,37 @@ texture and reading it back is verified in the browser by the `framebuffer` demo
 | `glRenderbufferStorage` formats | `GL_RGBA8`, `GL_DEPTH_COMPONENT16/24`, `GL_DEPTH24_STENCIL8`, `GL_STENCIL_INDEX8`; anything else is refused |
 | `glIsFramebuffer` | true only for the framebuffer currently bound |
 | deleting the bound framebuffer | binds the surface back, as gl does |
+
+### Images
+
+`toolchain/awt-classlib` supplies `java.awt.image.BufferedImage`, the rasters under it, and
+`javax.imageio.ImageIO`. A game builds a texture atlas and writes a screenshot with these, and both
+work here.
+
+| Written | Behaviour |
+|---------|-----------|
+| `new BufferedImage(w, h, type)` | one int a pixel in `0xAARRGGBB`, whatever type was asked for; `getType` still answers what was asked |
+| `getRGB`, `setRGB`, the rect forms | the pixels themselves, and `getRaster().getDataBuffer()` hands the array over |
+| `ImageIO.read`, `ImageIO.write` | png only, read and written here rather than by the browser |
+| a png of 8 bits a channel | greyscale, rgb, palette, grey+alpha and rgba, every row filter |
+| an interlaced png, or 16 bits a channel | refused by name; nothing writes either any more |
+| `ImageIO.write` with any format but png | answers `false`, the way the real one does for a format it has no writer for |
+| `Graphics.drawImage` | copies one image into another, scaled by nearest neighbour |
+| `Graphics.drawString`, `fillRect` | refused; a bundle carries no font and no rasteriser |
+
+The browser decodes png itself, but only into a canvas and only after a wait, and a call that asks
+for pixels straight back cannot wait. So the format is read out in Java, over the `Inflater` TeaVM
+already has.
+
+### The clipboard
+
+`Toolkit.getDefaultToolkit().getSystemClipboard()` answers the pages own clipboard, not the
+machines. Copy and paste inside the program work. Text copied from another window does not
+arrive: the browser hands the system clipboard over only after the user allows it and only to a
+call that waits, and nothing in a bundle can wait.
+
+`GraphicsEnvironment.isHeadless()` answers false -- a page has a screen -- but there is no AWT
+screen device behind it. `org.lwjgl.opengl.Display` opens the canvas.
 
 ### Buffer addresses
 
