@@ -62,6 +62,8 @@
 
     <flagon.reflect.constructed></flagon.reflect.constructed>
 
+    <flagon.reflect.converted></flagon.reflect.converted>
+
     <flagon.app.dir>${maven.multiModuleProjectDirectory}/vendor</flagon.app.dir>
 
     <flagon.app.reflect></flagon.app.reflect>
@@ -242,6 +244,7 @@
                   <flagon.reflect.classes>${flagon.reflect.classes}</flagon.reflect.classes>
                   <flagon.reflect.proxies>${flagon.reflect.proxies}</flagon.reflect.proxies>
                   <flagon.reflect.constructed>${flagon.reflect.constructed}</flagon.reflect.constructed>
+                  <flagon.reflect.converted>${flagon.reflect.converted}</flagon.reflect.converted>
                 </properties>
               </configuration>
             </execution>

@@ -390,6 +390,17 @@ public final class RuntimeSelfTestProgram implements Program {
             check("a class listed for the compiler is constructed", "listed", "threw " + failed);
         }
 
+        try {
+            check("a converted type keeps valueOf(String)", 42,
+                    Integer.class.getDeclaredMethod("valueOf", String.class).invoke(null, "42"));
+            check("a converted type keeps its (String) constructor", 7,
+                    Integer.class.getConstructor(String.class).newInstance("7"));
+            check("a converted type keeps nothing else", false,
+                    declares(Integer.class, "divideUnsigned"));
+        } catch (ReflectiveOperationException failed) {
+            check("a converted type reflects", "no failure", "threw " + failed);
+        }
+
         Platforms.get().console().info("reflection: " + Reflected.class.getSimpleName()
                 + " reports "
                 + Reflected.class.getDeclaredMethods().length + " methods and "
@@ -505,6 +516,15 @@ public final class RuntimeSelfTestProgram implements Program {
             refused = true;
         }
         check("buffer addresses are refused", true, refused);
+    }
+
+    private static boolean declares(Class<?> type, String name) {
+        for (java.lang.reflect.Method method : type.getDeclaredMethods()) {
+            if (method.getName().equals(name)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private void check(String name, Object expected, Object actual) {

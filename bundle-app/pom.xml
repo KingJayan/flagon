@@ -20,6 +20,8 @@
     <flagon.bundle.catalogClass>dev.flagon.app.AppCatalog</flagon.bundle.catalogClass>
     <flagon.bundle.name>app</flagon.bundle.name>
     <flagon.reflect.constructed>${project.build.directory}/app-classes.txt</flagon.reflect.constructed>
+    <flagon.reflect.converted>java.lang.Boolean, java.lang.Byte, java.lang.Short, java.lang.Integer,
+      java.lang.Long, java.lang.Float, java.lang.Double, java.lang.String, java.io.File</flagon.reflect.converted>
     <flagon.resources.from>${flagon.app.dir}</flagon.resources.from>
   </properties>
 

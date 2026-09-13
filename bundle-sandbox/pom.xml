@@ -23,6 +23,7 @@
     <flagon.reflect.classes>dev.flagon.sandbox.ReflectedBy*</flagon.reflect.classes>
     <flagon.reflect.proxies>dev.flagon.sandbox.Proxied</flagon.reflect.proxies>
     <flagon.reflect.constructed>${project.basedir}/src/main/reflect/constructed.txt</flagon.reflect.constructed>
+    <flagon.reflect.converted>java.lang.Integer</flagon.reflect.converted>
   </properties>
 
   <dependencies>

@@ -57,6 +57,9 @@ Ahead-of-time (AOT) tree-shaking strips unreferenced class members by default. `
 <!-- Retain constructors for unannotated/obfuscated jars -->
 <flagon.reflect.constructed>target/app-classes.txt</flagon.reflect.constructed>
 
+<!-- Retain valueOf(String) and the (String) constructor, which option parsers call -->
+<flagon.reflect.converted>java.lang.Integer, java.io.File</flagon.reflect.converted>
+
 ```
 
 ### ClassLoader & Resource Lookup
