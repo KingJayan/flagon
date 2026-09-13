@@ -80,6 +80,8 @@ public final class GLState implements RenderState {
     private int scissorWidth;
     private int scissorHeight;
     private final int[] boundTexture = new int[VertexArrays.UNITS];
+    private final Map<Integer, int[]> levelSizes = new HashMap<>();
+    private final Map<Integer, Integer> pixelStore = new HashMap<>();
     private final Set<Integer> automaticMipmaps = new HashSet<>();
 
     private final Deque<Attributes> attributeStack = new ArrayDeque<>();
@@ -877,7 +879,26 @@ public final class GLState implements RenderState {
             }
         }
         automaticMipmaps.remove(texture);
+        levelSizes.keySet().removeIf(level -> level >> 8 == texture);
         device.deleteTexture(texture);
+    }
+
+    /** gl answers glGetTexLevelParameter from the last upload, so the size is remembered here. */
+    public void recordLevelSize(int level, int width, int height) {
+        levelSizes.put((boundTexture() << 8) | (level & 0xFF), new int[] {width, height});
+    }
+
+    /** @return the width and height of the level, or zeroes if nothing was uploaded to it */
+    public int[] levelSize(int level) {
+        return levelSizes.getOrDefault((boundTexture() << 8) | (level & 0xFF), new int[] {0, 0});
+    }
+
+    public void setPixelStore(int name, int value) {
+        pixelStore.put(name, value);
+    }
+
+    public int pixelStore(int name, int fallback) {
+        return pixelStore.getOrDefault(name, fallback);
     }
 
     void restoreAlphaFunc(CompareFunc func, float reference) {

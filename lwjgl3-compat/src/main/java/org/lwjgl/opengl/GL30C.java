@@ -1,11 +1,10 @@
 package org.lwjgl.opengl;
 
+import dev.flagon.lwjgl.internal.Framebuffers;
 import dev.flagon.lwjgl.internal.GLEnums;
 import dev.flagon.lwjgl.internal.GLState;
 import dev.flagon.platform.graphics.AttributeType;
 import dev.flagon.platform.graphics.BufferTarget;
-import dev.flagon.platform.graphics.FramebufferAttachment;
-import dev.flagon.platform.graphics.RenderbufferFormat;
 import dev.flagon.platform.graphics.GraphicsDevice;
 import dev.flagon.platform.graphics.GraphicsInfo;
 
@@ -55,99 +54,53 @@ public class GL30C {
     public static final int GL_RG8 = 0x822B;
     public static final int GL_HALF_FLOAT = 0x140B;
     public static int glGenFramebuffers() {
-        return GLState.get().createFramebuffer();
+        return Framebuffers.create();
     }
     public static void glGenFramebuffers(IntBuffer framebuffers) {
-        for (int i = framebuffers.position(); i < framebuffers.limit(); i++) {
-            framebuffers.put(i, glGenFramebuffers());
-        }
+        Framebuffers.createInto(framebuffers);
     }
     public static void glBindFramebuffer(int target, int framebuffer) {
-        requireFramebufferTarget(target, "glBindFramebuffer");
-        GLState.get().bindFramebuffer(framebuffer);
+        Framebuffers.bind(target, framebuffer, "glBindFramebuffer");
     }
     public static void glDeleteFramebuffers(int framebuffer) {
-        GLState.get().deleteFramebuffer(framebuffer);
+        Framebuffers.delete(framebuffer);
     }
     public static void glDeleteFramebuffers(IntBuffer framebuffers) {
-        for (int i = framebuffers.position(); i < framebuffers.limit(); i++) {
-            glDeleteFramebuffers(framebuffers.get(i));
-        }
+        Framebuffers.deleteAll(framebuffers);
     }
     public static boolean glIsFramebuffer(int framebuffer) {
-        return framebuffer != 0 && GLState.get().boundFramebuffer() == framebuffer;
+        return Framebuffers.isFramebuffer(framebuffer);
     }
     public static void glFramebufferTexture2D(int target, int attachment, int textureTarget,
                                               int texture, int level) {
-        requireFramebufferTarget(target, "glFramebufferTexture2D");
-        if (textureTarget != GL_TEXTURE_2D) {
-            throw new UnsupportedOperationException(
-                    "glFramebufferTexture2D attaches a GL_TEXTURE_2D here, got 0x"
-                            + Integer.toHexString(textureTarget));
-        }
-        GLState.get().device().framebufferTexture(attachmentOf(attachment), texture, level);
+        Framebuffers.attachTexture(target, attachment, textureTarget, texture, level,
+                "glFramebufferTexture2D");
     }
     public static void glFramebufferRenderbuffer(int target, int attachment, int renderbufferTarget,
                                                  int renderbuffer) {
-        requireFramebufferTarget(target, "glFramebufferRenderbuffer");
-        if (renderbufferTarget != GL_RENDERBUFFER) {
-            throw new IllegalArgumentException(
-                    "glFramebufferRenderbuffer takes GL_RENDERBUFFER, got 0x"
-                            + Integer.toHexString(renderbufferTarget));
-        }
-        GLState.get().device()
-                .framebufferRenderbuffer(attachmentOf(attachment), renderbuffer);
+        Framebuffers.attachRenderbuffer(target, attachment, renderbufferTarget, renderbuffer,
+                "glFramebufferRenderbuffer");
     }
     public static int glCheckFramebufferStatus(int target) {
-        requireFramebufferTarget(target, "glCheckFramebufferStatus");
-        return switch (GLState.get().device().framebufferStatus()) {
-            case COMPLETE -> GL_FRAMEBUFFER_COMPLETE;
-            case INCOMPLETE_ATTACHMENT -> GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT;
-            case INCOMPLETE_MISSING_ATTACHMENT -> GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT;
-            case INCOMPLETE_DIMENSIONS -> GL_FRAMEBUFFER_INCOMPLETE_DIMENSIONS;
-            case UNSUPPORTED, UNKNOWN -> GL_FRAMEBUFFER_UNSUPPORTED;
-        };
+        return Framebuffers.status(target, "glCheckFramebufferStatus");
     }
     public static int glGenRenderbuffers() {
-        return GLState.get().device().createRenderbuffer();
+        return Framebuffers.createRenderbuffer();
     }
     public static void glGenRenderbuffers(IntBuffer renderbuffers) {
-        for (int i = renderbuffers.position(); i < renderbuffers.limit(); i++) {
-            renderbuffers.put(i, glGenRenderbuffers());
-        }
+        Framebuffers.createRenderbuffersInto(renderbuffers);
     }
     public static void glBindRenderbuffer(int target, int renderbuffer) {
-        if (target != GL_RENDERBUFFER) {
-            throw new IllegalArgumentException(
-                    "glBindRenderbuffer takes GL_RENDERBUFFER, got 0x"
-                            + Integer.toHexString(target));
-        }
-        GLState.get().device().bindRenderbuffer(renderbuffer);
+        Framebuffers.bindRenderbuffer(target, renderbuffer, "glBindRenderbuffer");
     }
     public static void glDeleteRenderbuffers(int renderbuffer) {
-        GLState.get().device().deleteRenderbuffer(renderbuffer);
+        Framebuffers.deleteRenderbuffer(renderbuffer);
     }
     public static void glDeleteRenderbuffers(IntBuffer renderbuffers) {
-        for (int i = renderbuffers.position(); i < renderbuffers.limit(); i++) {
-            glDeleteRenderbuffers(renderbuffers.get(i));
-        }
+        Framebuffers.deleteRenderbuffers(renderbuffers);
     }
     public static void glRenderbufferStorage(int target, int format, int width, int height) {
-        if (target != GL_RENDERBUFFER) {
-            throw new IllegalArgumentException(
-                    "glRenderbufferStorage takes GL_RENDERBUFFER, got 0x"
-                            + Integer.toHexString(target));
-        }
-        GLState.get().device().renderbufferStorage(switch (format) {
-            case GL_RGBA8 -> RenderbufferFormat.RGBA8;
-            case GL_DEPTH_COMPONENT16 -> RenderbufferFormat.DEPTH16;
-            case GL_DEPTH_COMPONENT, GL_DEPTH_COMPONENT24 -> RenderbufferFormat.DEPTH24;
-            case GL_DEPTH24_STENCIL8, GL_DEPTH_STENCIL -> RenderbufferFormat.DEPTH24_STENCIL8;
-            case GL_STENCIL_INDEX8 -> RenderbufferFormat.STENCIL8;
-            default -> throw new UnsupportedOperationException(
-                    "glRenderbufferStorage does not emulate format 0x"
-                            + Integer.toHexString(format));
-        }, width, height);
+        Framebuffers.renderbufferStorage(target, format, width, height, "glRenderbufferStorage");
     }
     public static void glGenerateMipmap(int target) {
         if (target != GL_TEXTURE_2D) {
@@ -156,31 +109,6 @@ public class GL30C {
                             + Integer.toHexString(target));
         }
         GLState.get().device().generateMipmap();
-    }
-    static FramebufferAttachment attachmentOf(int attachment) {
-        if (attachment == GL_DEPTH_ATTACHMENT) {
-            return FramebufferAttachment.DEPTH;
-        }
-        if (attachment == GL_STENCIL_ATTACHMENT) {
-            return FramebufferAttachment.STENCIL;
-        }
-        if (attachment == GL_DEPTH_STENCIL_ATTACHMENT) {
-            return FramebufferAttachment.DEPTH_STENCIL;
-        }
-        if (attachment == GL_COLOR_ATTACHMENT0) {
-            return FramebufferAttachment.COLOR;
-        }
-        throw new UnsupportedOperationException(
-                "attachment 0x" + Integer.toHexString(attachment) + " is not emulated; the page "
-                        + "draws to one colour buffer, so GL_COLOR_ATTACHMENT0 is the only colour "
-                        + "attachment");
-    }
-    static void requireFramebufferTarget(int target, String call) {
-        if (target != GL_FRAMEBUFFER && target != GL_DRAW_FRAMEBUFFER
-                && target != GL_READ_FRAMEBUFFER) {
-            throw new IllegalArgumentException(
-                    call + " takes a framebuffer target, got 0x" + Integer.toHexString(target));
-        }
     }
     public static int glGenVertexArrays() {
         return GLState.get().createVertexArray();

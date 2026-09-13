@@ -20,6 +20,30 @@ public final class GL11 extends GL11C {
     public static final int GL_PROJECTION = 0x1701;
     public static final int GL_TEXTURE_ENV = 0x2300;
     public static final int GL_TEXTURE_ENV_MODE = 0x2200;
+    public static final int GL_TEXTURE_ENV_COLOR = 0x2201;
+    public static final int GL_TEXTURE_GEN_S = 0x0C60;
+    public static final int GL_TEXTURE_GEN_T = 0x0C61;
+    public static final int GL_TEXTURE_GEN_R = 0x0C62;
+    public static final int GL_TEXTURE_GEN_Q = 0x0C63;
+    public static final int GL_TEXTURE_GEN_MODE = 0x2500;
+    public static final int GL_OBJECT_LINEAR = 0x2401;
+    public static final int GL_OBJECT_PLANE = 0x2501;
+    public static final int GL_EYE_LINEAR = 0x2400;
+    public static final int GL_EYE_PLANE = 0x2502;
+    public static final int GL_SPHERE_MAP = 0x2402;
+    public static final int GL_S = 0x2000;
+    public static final int GL_T = 0x2001;
+    public static final int GL_R = 0x2002;
+    public static final int GL_Q = 0x2003;
+    public static final int GL_COLOR_LOGIC_OP = 0x0BF2;
+    public static final int GL_CLEAR = 0x1500;
+    public static final int GL_AND = 0x1501;
+    public static final int GL_COPY = 0x1503;
+    public static final int GL_XOR = 0x1506;
+    public static final int GL_OR = 0x1507;
+    public static final int GL_INVERT = 0x150A;
+    public static final int GL_OR_REVERSE = 0x150B;
+    public static final int GL_SET = 0x150F;
     public static final int GL_MODULATE = 0x2100;
     public static final int GL_ADD = 0x0104;
     public static final int GL_DECAL = 0x2101;
@@ -110,6 +134,12 @@ public final class GL11 extends GL11C {
             return;
         }
         state().rotate(degrees, x, y, z);
+    }
+    public static void glTranslated(double x, double y, double z) {
+        glTranslatef((float) x, (float) y, (float) z);
+    }
+    public static void glScaled(double x, double y, double z) {
+        glScalef((float) x, (float) y, (float) z);
     }
     public static void glScalef(float x, float y, float z) {
         if (recording() && state().record(() -> state().scale(x, y, z))) {
@@ -332,6 +362,10 @@ public final class GL11 extends GL11C {
     public static void glVertexPointer(int size, int stride, FloatBuffer pointer) {
         state().arrays().position().pointAt(pointer, size, AttributeType.FLOAT, false, stride);
     }
+    public static void glVertexPointer(int size, int type, int stride, ByteBuffer pointer) {
+        state().arrays().position().pointAt(pointer, size,
+                componentType(type, "glVertexPointer"), false, stride);
+    }
     public static void glVertexPointer(int size, int type, int stride, long offset) {
         pointIntoBuffer(state().arrays().position(), size, componentType(type, "glVertexPointer"),
                 false, stride, offset, "glVertexPointer");
@@ -344,6 +378,11 @@ public final class GL11 extends GL11C {
         AttributeType type = unsigned ? AttributeType.UNSIGNED_BYTE : AttributeType.BYTE;
         state().arrays().color().pointAt(pointer, size, type, true, stride);
     }
+    public static void glColorPointer(int size, int type, int stride, ByteBuffer pointer) {
+        AttributeType component = componentType(type, "glColorPointer");
+        state().arrays().color().pointAt(pointer, size, component,
+                component != AttributeType.FLOAT, stride);
+    }
     public static void glColorPointer(int size, int type, int stride, long offset) {
         AttributeType component = componentType(type, "glColorPointer");
         pointIntoBuffer(state().arrays().color(), size, component,
@@ -352,6 +391,10 @@ public final class GL11 extends GL11C {
     public static void glNormalPointer(int stride, FloatBuffer pointer) {
         state().arrays().normal().pointAt(pointer, 3, AttributeType.FLOAT, false, stride);
     }
+    public static void glNormalPointer(int type, int stride, ByteBuffer pointer) {
+        state().arrays().normal().pointAt(pointer, 3,
+                componentType(type, "glNormalPointer"), false, stride);
+    }
     public static void glNormalPointer(int type, int stride, long offset) {
         pointIntoBuffer(state().arrays().normal(), 3, componentType(type, "glNormalPointer"),
                 false, stride, offset, "glNormalPointer");
@@ -359,6 +402,10 @@ public final class GL11 extends GL11C {
     public static void glTexCoordPointer(int size, int stride, FloatBuffer pointer) {
         state().arrays().texCoord(state().clientActiveTexture()).pointAt(pointer, size,
                 AttributeType.FLOAT, false, stride);
+    }
+    public static void glTexCoordPointer(int size, int type, int stride, ByteBuffer pointer) {
+        state().arrays().texCoord(state().clientActiveTexture()).pointAt(pointer, size,
+                componentType(type, "glTexCoordPointer"), false, stride);
     }
     public static void glTexCoordPointer(int size, int type, int stride, long offset) {
         pointIntoBuffer(state().arrays().texCoord(state().clientActiveTexture()), size,
@@ -405,6 +452,35 @@ public final class GL11 extends GL11C {
     }
     public static void glTexEnvf(int target, int name, float value) {
         glTexEnvi(target, name, (int) value);
+    }
+    /** the buffer form carries a colour for GL_TEXTURE_ENV_COLOR, which the shader ignores. */
+    public static void glTexEnv(int target, int name, FloatBuffer values) {
+        if (name == GL_TEXTURE_ENV_MODE) {
+            glTexEnvi(target, name, (int) values.get(values.position()));
+            return;
+        }
+        throw new UnsupportedOperationException(
+                "glTexEnv does not emulate parameter 0x" + Integer.toHexString(name)
+                        + "; the compatibility shader combines a sample with GL_TEXTURE_ENV_MODE "
+                        + "alone");
+    }
+    /**
+     * coordinate generation has no shader behind it: every texture coordinate here comes from the
+     * coordinate array or glTexCoord.
+     */
+    public static void glTexGeni(int coordinate, int name, int value) {
+        throw new UnsupportedOperationException(
+                "glTexGeni is not emulated: webgl generates no texture coordinates, so the "
+                        + "coordinate array or glTexCoord has to carry them");
+    }
+    public static void glTexGen(int coordinate, int name, FloatBuffer values) {
+        glTexGeni(coordinate, name, 0);
+    }
+    /** webgl has no logic op stage; blending is the only way it combines with the framebuffer. */
+    public static void glLogicOp(int operation) {
+        throw new UnsupportedOperationException(
+                "glLogicOp is not emulated: webgl combines a fragment with the framebuffer by "
+                        + "blending only");
     }
     /** builds every level below the base from it. */
     public static void glGenerateMipmap(int target) {

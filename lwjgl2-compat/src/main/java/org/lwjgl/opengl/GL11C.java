@@ -11,6 +11,7 @@ import dev.flagon.platform.graphics.BlendFactor;
 import dev.flagon.platform.graphics.BufferTarget;
 import dev.flagon.platform.graphics.CompareFunc;
 import dev.flagon.platform.graphics.CullFace;
+import dev.flagon.platform.graphics.FramebufferAttachment;
 import dev.flagon.platform.graphics.GraphicsDevice;
 import dev.flagon.platform.graphics.GraphicsError;
 import dev.flagon.platform.graphics.GraphicsInfo;
@@ -93,6 +94,22 @@ public class GL11C {
     public static final int GL_TEXTURE_BASE_LEVEL = 0x813C;
     public static final int GL_TEXTURE_MAX_LEVEL = 0x813D;
     public static final int GL_GENERATE_MIPMAP = 0x8191;
+    public static final int GL_TEXTURE_WIDTH = 0x1000;
+    public static final int GL_TEXTURE_HEIGHT = 0x1001;
+    public static final int GL_TEXTURE_INTERNAL_FORMAT = 0x1003;
+    public static final int GL_TEXTURE_BORDER = 0x1005;
+    public static final int GL_UNPACK_SWAP_BYTES = 0x0CF0;
+    public static final int GL_UNPACK_LSB_FIRST = 0x0CF1;
+    public static final int GL_UNPACK_ROW_LENGTH = 0x0CF2;
+    public static final int GL_UNPACK_SKIP_ROWS = 0x0CF3;
+    public static final int GL_UNPACK_SKIP_PIXELS = 0x0CF4;
+    public static final int GL_UNPACK_ALIGNMENT = 0x0CF5;
+    public static final int GL_PACK_SWAP_BYTES = 0x0D00;
+    public static final int GL_PACK_LSB_FIRST = 0x0D01;
+    public static final int GL_PACK_ROW_LENGTH = 0x0D02;
+    public static final int GL_PACK_SKIP_ROWS = 0x0D03;
+    public static final int GL_PACK_SKIP_PIXELS = 0x0D04;
+    public static final int GL_PACK_ALIGNMENT = 0x0D05;
     public static final int GL_RGBA = 0x1908;
     public static final int GL_RGB = 0x1907;
     public static final int GL_ALPHA = 0x1906;
@@ -818,6 +835,99 @@ public class GL11C {
                             + Integer.toHexString(name));
         }
     }
+    public static void glTexParameterf(int target, int name, float value) {
+        glTexParameteri(target, name, (int) value);
+    }
+    /**
+     * the rows an upload reads from. gl walks the caller's memory with these; here they pick the
+     * rectangle out of the buffer before it reaches the device, which comes to the same picture.
+     */
+    public static void glPixelStorei(int name, int value) {
+        state().refuseWhileRecording("glPixelStorei");
+        switch (name) {
+            case GL_UNPACK_ROW_LENGTH, GL_UNPACK_SKIP_ROWS, GL_UNPACK_SKIP_PIXELS,
+                 GL_PACK_ROW_LENGTH, GL_PACK_SKIP_ROWS, GL_PACK_SKIP_PIXELS -> {
+                if (value < 0) {
+                    throw new IllegalArgumentException(
+                            "glPixelStorei takes no negative count, got " + value);
+                }
+                state().setPixelStore(name, value);
+            }
+            case GL_UNPACK_ALIGNMENT, GL_PACK_ALIGNMENT -> {
+                if (value != 1 && value != 2 && value != 4 && value != 8) {
+                    throw new IllegalArgumentException(
+                            "a pixel row aligns to 1, 2, 4 or 8 bytes, got " + value);
+                }
+                state().setPixelStore(name, value);
+            }
+            case GL_UNPACK_SWAP_BYTES, GL_UNPACK_LSB_FIRST, GL_PACK_SWAP_BYTES,
+                 GL_PACK_LSB_FIRST -> {
+                if (value != GL_FALSE) {
+                    throw new UnsupportedOperationException(
+                            "glPixelStorei does not emulate 0x" + Integer.toHexString(name)
+                                    + ": a pixel is read here in the order it lies");
+                }
+            }
+            default -> throw new UnsupportedOperationException(
+                    "glPixelStorei does not emulate parameter 0x" + Integer.toHexString(name));
+        }
+    }
+    /** @return what the last upload to the level said, which is where gl reads it from too */
+    public static int glGetTexLevelParameteri(int target, int level, int name) {
+        requireTexture2D(target, "glGetTexLevelParameteri");
+        state().refuseWhileRecording("glGetTexLevelParameteri");
+        requireLevel(level);
+        int[] size = state().levelSize(level);
+        return switch (name) {
+            case GL_TEXTURE_WIDTH -> size[0];
+            case GL_TEXTURE_HEIGHT -> size[1];
+            case GL_TEXTURE_INTERNAL_FORMAT -> GL_RGBA;
+            case GL_TEXTURE_BORDER -> 0;
+            default -> throw new UnsupportedOperationException(
+                    "glGetTexLevelParameteri does not emulate parameter 0x"
+                            + Integer.toHexString(name));
+        };
+    }
+    /**
+     * webgl reads back from a framebuffer only, so the level is attached to one and read from
+     * there. the texture and framebuffer that were bound are put back before this returns.
+     */
+    public static void glGetTexImage(int target, int level, int format, int type,
+                                     IntBuffer pixels) {
+        requireTexture2D(target, "glGetTexImage");
+        state().refuseWhileRecording("glGetTexImage");
+        requireLevel(level);
+        requireRgbaBytes(format, type);
+        int[] size = state().levelSize(level);
+        if (size[0] == 0 || size[1] == 0) {
+            throw new IllegalStateException(
+                    "glGetTexImage: nothing was uploaded to level " + level + " of the bound "
+                            + "texture, so there is no size to read back");
+        }
+        int count = size[0] * size[1];
+        if (pixels.remaining() < count) {
+            throw new IllegalArgumentException("glGetTexImage needs room for " + count
+                    + " pixels, got " + pixels.remaining());
+        }
+        int texture = state().boundTexture();
+        int was = device().boundFramebuffer();
+        int reader = device().createFramebuffer();
+        byte[] read;
+        try {
+            device().bindFramebuffer(reader);
+            device().framebufferTexture(FramebufferAttachment.COLOR, texture, level);
+            read = device().readPixels(0, 0, size[0], size[1]);
+        } finally {
+            device().bindFramebuffer(was);
+            device().deleteFramebuffer(reader);
+        }
+        int at = pixels.position();
+        for (int pixel = 0; pixel < count; pixel++) {
+            int from = pixel * 4;
+            pixels.put(at + pixel, (read[from + 3] & 0xFF) << 24 | (read[from] & 0xFF) << 16
+                    | (read[from + 1] & 0xFF) << 8 | (read[from + 2] & 0xFF));
+        }
+    }
     static TextureFilter filter(int value, String parameter) {
         return switch (value) {
             case GL_NEAREST -> TextureFilter.NEAREST;
@@ -874,6 +984,7 @@ public class GL11C {
         state().refuseWhileRecording("glTexImage2D");
         requireLevel(level);
         requireRgbaBytes(format, type);
+        state().recordLevelSize(level, width, height);
         device().textureImage(level, width, height, spread(pixels, width * height));
         rebuildMipmaps();
     }
@@ -888,6 +999,7 @@ public class GL11C {
         requireLevel(level);
         requirePixelType(type, format, "glTexImage2D");
         // a null buffer reserves the level, which is how a colour attachment is made
+        state().recordLevelSize(level, width, height);
         if (pixels == null) {
             device().textureStorage(level, width, height);
             return;
@@ -904,9 +1016,9 @@ public class GL11C {
         state().refuseWhileRecording("glTexImage2D");
         requireLevel(level);
         requireRgbaBytes(format, type);
-        int[] copied = new int[width * height];
-        pixels.duplicate().get(copied);
-        device().textureImage(level, width, height, spread(copied, width * height));
+        state().recordLevelSize(level, width, height);
+        device().textureImage(level, width, height,
+                spread(unpack(pixels, width, height), width * height));
         rebuildMipmaps();
     }
     public static void glTexSubImage2D(int target, int level, int x, int y, int width, int height,
@@ -918,6 +1030,16 @@ public class GL11C {
         int pixelCount = width * height;
         byte[] read = bytes(pixels, pixelCount * components(format, "glTexSubImage2D"));
         device().textureSubImage(level, x, y, width, height, toRgba(read, pixelCount, format));
+        rebuildMipmaps();
+    }
+    public static void glTexSubImage2D(int target, int level, int x, int y, int width, int height,
+                                       int format, int type, IntBuffer pixels) {
+        requireTexture2D(target, "glTexSubImage2D");
+        state().refuseWhileRecording("glTexSubImage2D");
+        requireLevel(level);
+        requireRgbaBytes(format, type);
+        device().textureSubImage(level, x, y, width, height,
+                spread(unpack(pixels, width, height), width * height));
         rebuildMipmaps();
     }
     public static void glTexSubImage2D(int target, int level, int x, int y, int width, int height,
@@ -939,6 +1061,23 @@ public class GL11C {
         byte[] rgba = new byte[count];
         pixels.duplicate().get(rgba);
         return rgba;
+    }
+    /**
+     * @return the rectangle glPixelStorei points at, copied out of the buffer row by row
+     */
+    static int[] unpack(IntBuffer pixels, int width, int height) {
+        int rowLength = state().pixelStore(GL_UNPACK_ROW_LENGTH, 0);
+        int stride = rowLength == 0 ? width : rowLength;
+        int skipRows = state().pixelStore(GL_UNPACK_SKIP_ROWS, 0);
+        int skipPixels = state().pixelStore(GL_UNPACK_SKIP_PIXELS, 0);
+        IntBuffer source = pixels.duplicate();
+        int at = source.position() + skipRows * stride + skipPixels;
+        int[] copied = new int[width * height];
+        for (int row = 0; row < height; row++) {
+            source.position(at + row * stride);
+            source.get(copied, row * width, width);
+        }
+        return copied;
     }
     /** @return 0xAARRGGBB ints laid back out as the r, g, b, a bytes a texture takes */
     static byte[] spread(int[] pixels, int count) {
