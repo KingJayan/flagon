@@ -12,5 +12,5 @@
 
   <artifactId>resource-pack</artifactId>
   <name>Flagon :: Resource Pack</name>
-  <description>Packs the files a jar carries beside its classes into one file the page fetches.</description>
+  <description>This module packs the files that a jar carries beside its classes into one file the page fetches.</description>
 </project>

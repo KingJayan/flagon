@@ -12,7 +12,7 @@
 
   <artifactId>jdk-shims</artifactId>
   <name>Flagon :: JDK Shims</name>
-  <description>Sends calls the browser classlib has no method for to a Flagon replacement.</description>
+  <description>This module sends a call that the browser classlib cannot answer to a Flagon replacement.</description>
 
   <dependencies>
     <dependency>

@@ -11,7 +11,7 @@
 
   <artifactId>bundle-sandbox</artifactId>
   <name>Flagon :: Sandbox Bundle</name>
-  <description>Compiles the runtime plus diagnostic programs to a browser bundle.</description>
+  <description>This module compiles the runtime and the diagnostic programs into a browser bundle.</description>
 
   <properties>
     <!-- a bundle is an artifact of this repository, not something downstream consumes -->

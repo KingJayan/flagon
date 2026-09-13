@@ -10,7 +10,7 @@
   <packaging>pom</packaging>
 
   <name>Flagon</name>
-  <description>A desktop Java/LWJGL compatibility environment for the browser.</description>
+  <description>Flagon runs a desktop Java or LWJGL application in a browser.</description>
 
   <modules>
     <module>platform-api</module>

@@ -13,7 +13,7 @@
 
   <artifactId>concurrent-classlib</artifactId>
   <name>Flagon concurrent classlib</name>
-  <description>The executor and future half of java.util.concurrent, supplied where TeaVM has none.</description>
+  <description>This module supplies the executors and the futures in java.util.concurrent, which TeaVM does not have.</description>
 
   <properties>
     <maven.compiler.release></maven.compiler.release>

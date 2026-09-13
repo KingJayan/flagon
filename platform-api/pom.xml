@@ -11,5 +11,5 @@
 
   <artifactId>platform-api</artifactId>
   <name>Flagon :: Platform API</name>
-  <description>Host-agnostic service contracts. No dependencies by design.</description>
+  <description>This module gives the service interfaces that a host must supply. It uses no other module.</description>
 </project>

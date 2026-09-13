@@ -12,7 +12,7 @@
 
   <artifactId>bundle-example</artifactId>
   <name>Flagon :: Example Bundle</name>
-  <description>Compiles the example application jar to a browser bundle. The template a downstream bundle copies.</description>
+  <description>This module compiles the example application into a browser bundle. Copy it to start your own.</description>
 
   <properties>
     <!-- a bundle is an artifact of this repository, not something downstream consumes -->

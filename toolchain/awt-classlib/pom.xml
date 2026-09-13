@@ -13,7 +13,7 @@
 
   <artifactId>awt-classlib</artifactId>
   <name>Flagon AWT classlib</name>
-  <description>java.awt images, the clipboard and ImageIO for the browser.</description>
+  <description>This module supplies java.awt images, the clipboard, and ImageIO, which TeaVM does not have.</description>
 
   <properties>
     <maven.compiler.release></maven.compiler.release>

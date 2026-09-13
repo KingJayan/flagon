@@ -12,5 +12,5 @@
 
   <artifactId>app-entry</artifactId>
   <name>Flagon :: App Entry Point</name>
-  <description>Writes the entry point for the jar in vendor/, from what the jar says about itself.</description>
+  <description>This module writes the entry point for the jar in vendor/, from what the jar says about itself.</description>
 </project>

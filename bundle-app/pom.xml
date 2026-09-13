@@ -12,7 +12,7 @@
 
   <artifactId>bundle-app</artifactId>
   <name>Flagon :: Your Application</name>
-  <description>Compiles the jar in vendor/ to a browser bundle.</description>
+  <description>This module compiles the jar in vendor/ into a browser bundle.</description>
 
   <properties>
     <maven.deploy.skip>true</maven.deploy.skip>
