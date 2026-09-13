@@ -17,9 +17,11 @@ public final class SendClassCalls implements TeaVMPlugin, ClassHolderTransformer
             "getGenericSuperclass", "getGenericSuperclass",
             "getGenericInterfaces", "getGenericInterfaces",
             "getSigners", "getSigners",
-            "isAnonymousClass", "isAnonymousClass");
+            "isAnonymousClass", "isAnonymousClass",
+            "getResource", "getResource");
 
-    private static final String[] NOT_OURS = {"org.teavm.", CLASSES};
+    private static final String[] NOT_OURS = {"org.teavm.", CLASSES,
+        "dev.flagon.platform.ClassLoaders"};
 
     @Override
     public void install(TeaVMHost host) {
