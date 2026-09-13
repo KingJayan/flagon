@@ -27,8 +27,8 @@
   </svg>
 
   <p>
-    <a href="https://teavm.org"><img src="https://img.shields.io/badge/AOT-TeaVM-434c5e?style=flat-square&logo=webassembly&logoColor=eceff4" alt="TeaVM" /></a>
-    <a href="https://bun.sh"><img src="https://img.shields.io/badge/Toolchain-Bun-2e3440?style=flat-square&logo=bun&logoColor=eceff4" alt="Bun" /></a>
+    <a href="https://teavm.org"><img src="https://img.shields.io/badge/TeaVM-434c5e?style=flat-square&logo=webassembly&logoColor=eceff4" alt="TeaVM" /></a>
+    <a href="https://bun.sh"><img src="https://img.shields.io/badge/Bun-2e3440?style=flat-square&logo=bun&logoColor=eceff4" alt="Bun" /></a>
     <a href="https://openjdk.org/"><img src="https://img.shields.io/badge/Java-25+-d08770?style=flat-square&logo=openjdk&logoColor=2e3440" alt="Java 25+" /></a>
     <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-4c566a?style=flat-square" alt="License" /></a>
   </p>

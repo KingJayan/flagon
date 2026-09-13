@@ -3,7 +3,14 @@ name: ci
 on:
   push:
     branches: [main]
+    paths-ignore: ['**.md', 'docs/**', 'LICENSE']
   pull_request:
+    paths-ignore: ['**.md', 'docs/**', 'LICENSE']
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 env:
   BUN_VERSION: 1.4.0
@@ -11,6 +18,7 @@ env:
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v5
 
@@ -20,13 +28,23 @@ jobs:
           java-version: '25'
           cache: maven
 
+      - name: Cache bundles
+        id: bundles
+        uses: actions/cache@v5
+        with:
+          path: web/public/flagon
+          key: bundles-${{ hashFiles('**/pom.xml', '**/src/main/**', 'vendor/*.jar', 'Makefile') }}
+
       - name: Fetch maven
+        if: steps.bundles.outputs.cache-hit != 'true'
         run: for attempt in 1 2 3; do ./mvnw -B -v && exit 0; sleep 10; done; exit 1
 
       - name: Check java style
+        if: steps.bundles.outputs.cache-hit != 'true'
         run: ./mvnw -B -q checkstyle:check
 
       - name: Build & unit test backends
+        if: steps.bundles.outputs.cache-hit != 'true'
         run: make build
 
       - name: Upload bundles
@@ -36,9 +54,9 @@ jobs:
           path: web/public/flagon/
           retention-days: 1
 
-  # builds the site and the engines once, for every shard, beside the java build
   web:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v5
 
@@ -84,34 +102,23 @@ jobs:
   browser:
     needs: [build, web]
     runs-on: ubuntu-latest
+    timeout-minutes: 25
     strategy:
       fail-fast: false
       matrix:
         include:
           - project: chromium
             shard: 1
-            shards: 6
+            shards: 3
           - project: chromium
             shard: 2
-            shards: 6
+            shards: 3
           - project: chromium
             shard: 3
-            shards: 6
-          - project: chromium
-            shard: 4
-            shards: 6
-          - project: chromium
-            shard: 5
-            shards: 6
-          - project: chromium
-            shard: 6
-            shards: 6
+            shards: 3
           - project: firefox
             shard: 1
-            shards: 2
-          - project: firefox
-            shard: 2
-            shards: 2
+            shards: 1
           - project: served
             shard: 1
             shards: 1
@@ -130,7 +137,6 @@ jobs:
           name: site
           path: web/dist/
 
-      # the site is built beside the java build, so the bundles go in afterwards
       - name: Put the bundles in the site
         run: mkdir -p web/dist/flagon && cp -R web/public/flagon/. web/dist/flagon/
 
@@ -168,7 +174,9 @@ jobs:
           retention-days: 7
 
   size:
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v5
 
@@ -192,6 +200,7 @@ jobs:
     needs: browser
     if: failure()
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v5
 
@@ -205,15 +214,15 @@ jobs:
           path: ~/.bun/install/cache
           key: bun-${{ runner.os }}-${{ hashFiles('web/bun.lock') }}
 
-      - name: Install web deps
-        run: make deps
-
       - name: Download reports
         uses: actions/download-artifact@v5
         with:
           path: web/blob-report/
           pattern: blob-report-*
           merge-multiple: true
+
+      - name: Install web deps
+        run: make deps
 
       - name: Merge reports
         run: make merge-reports
