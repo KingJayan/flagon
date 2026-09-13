@@ -305,6 +305,16 @@ public final class AL10 {
         }
     }
 
+    /** the buffer form openal has for the vector parameters, read from the buffer's position. */
+    public static void alSource(int source, int parameter, FloatBuffer values) {
+        if (values == null || values.remaining() < 3) {
+            state().fail(AL_INVALID_VALUE);
+            return;
+        }
+        int at = values.position();
+        alSource3f(source, parameter, values.get(at), values.get(at + 1), values.get(at + 2));
+    }
+
     public static int alGetSourcei(int source, int parameter) {
         AudioDevice device = device();
         if (!device.isSource(source)) {
