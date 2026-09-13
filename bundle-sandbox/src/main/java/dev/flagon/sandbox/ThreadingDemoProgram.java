@@ -13,6 +13,13 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.FutureTask;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.ScheduledThreadPoolExecutor;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.atomic.AtomicReferenceArray;
+import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import org.lwjgl.opengl.Display;
@@ -51,10 +58,62 @@ public final class ThreadingDemoProgram implements Program {
         completableFutureChains(console);
         latchesAndLocks(console);
         readersAndAWriter(console);
+        conditionsAndPools(console);
         chunksArriveWhileTheLoopDraws(console);
 
         Display.destroy();
         console.info("threading: done");
+    }
+
+    /** a condition hands a lock back and forth, and the pool classes run work the same way */
+    private void conditionsAndPools(ConsoleSink console) throws Exception {
+        ReentrantLock lock = new ReentrantLock();
+        Condition ready = lock.newCondition();
+        boolean[] signalled = {false};
+
+        Thread waiter = new Thread(() -> {
+            lock.lock();
+            try {
+                while (!signalled[0]) {
+                    ready.await();
+                }
+            } catch (InterruptedException stopped) {
+                Thread.currentThread().interrupt();
+            } finally {
+                lock.unlock();
+            }
+        });
+        waiter.start();
+        Thread.sleep(5L);
+
+        lock.lock();
+        try {
+            signalled[0] = true;
+            ready.signalAll();
+        } finally {
+            lock.unlock();
+        }
+        waiter.join(1000L);
+        console.info("threading: a condition woke the waiter " + !waiter.isAlive());
+
+        ThreadPoolExecutor pool = new ThreadPoolExecutor(2, 2, 0L, TimeUnit.MILLISECONDS,
+                new LinkedBlockingQueue<>());
+        FutureTask<String> task = new FutureTask<>(() -> "from a future task");
+        pool.execute(task);
+        console.info("threading: a future task answers " + task.get());
+        pool.shutdown();
+
+        ScheduledThreadPoolExecutor clock = new ScheduledThreadPoolExecutor(1);
+        ScheduledFuture<String> later =
+                clock.schedule(() -> "after a delay", 10L, TimeUnit.MILLISECONDS);
+        console.info("threading: a scheduled task answers " + later.get());
+        clock.shutdown();
+
+        AtomicReferenceArray<String> slots = new AtomicReferenceArray<>(2);
+        slots.set(0, "first");
+        console.info("threading: a slot swaps only from what it held "
+                + slots.compareAndSet(0, "first", "second") + " "
+                + slots.compareAndSet(1, "first", "third") + " " + slots.get(0));
     }
 
     /** a worker that sleeps must not stop the frame loop */

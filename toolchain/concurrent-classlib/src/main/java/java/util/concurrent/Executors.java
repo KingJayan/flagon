@@ -45,6 +45,44 @@ public final class Executors {
         return newFixedThreadPool(parallelism);
     }
 
+    public static ScheduledExecutorService newScheduledThreadPool(int size) {
+        return new ScheduledThreadPoolExecutor(size,
+                named("scheduled-" + POOLS.incrementAndGet()));
+    }
+
+    public static ScheduledExecutorService newScheduledThreadPool(int size,
+                                                                  ThreadFactory factory) {
+        return new ScheduledThreadPoolExecutor(size, factory);
+    }
+
+    public static ScheduledExecutorService newSingleThreadScheduledExecutor() {
+        return newScheduledThreadPool(1);
+    }
+
+    public static ScheduledExecutorService newSingleThreadScheduledExecutor(
+            ThreadFactory factory) {
+        return new ScheduledThreadPoolExecutor(1, factory);
+    }
+
+    /**
+     * the real one hides the pool settings behind a wrapper. nothing here reconfigures a pool
+     * once it is running, so the executor is its own unconfigurable form.
+     */
+    public static ExecutorService unconfigurableExecutorService(ExecutorService executor) {
+        if (executor == null) {
+            throw new NullPointerException("there is no executor to wrap");
+        }
+        return executor;
+    }
+
+    public static ScheduledExecutorService unconfigurableScheduledExecutorService(
+            ScheduledExecutorService executor) {
+        if (executor == null) {
+            throw new NullPointerException("there is no executor to wrap");
+        }
+        return executor;
+    }
+
     public static Callable<Object> callable(Runnable task) {
         return callable(task, null);
     }

@@ -42,6 +42,17 @@ for (const backend of BACKENDS) {
       await expect(log).toContainText('threading: latch opened true with 3 under a lock');
     });
 
+    test('hands a lock back and forth on a condition, and runs the pool classes', async ({ page }) => {
+      await open(page, backend, 'program=threading');
+
+      await expect(page.getByTestId('state')).toHaveText('exited', { timeout: 30_000 });
+      const log = page.getByTestId('log');
+      await expect(log).toContainText('threading: a condition woke the waiter true');
+      await expect(log).toContainText('threading: a future task answers from a future task');
+      await expect(log).toContainText('threading: a scheduled task answers after a delay');
+      await expect(log).toContainText('threading: a slot swaps only from what it held true false second');
+    });
+
     test('lets many threads read and one write, and refuses an upgrade', async ({ page }) => {
       await open(page, backend, 'program=threading');
 

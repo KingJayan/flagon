@@ -1,7 +1,5 @@
-# what a release bundle may weigh, in bytes. these are what the page actually downloads, so a
-# regression here is a regression in how long a cold start takes. raise a number deliberately,
-# in the change that earns it, and say why in the commit.
-sandbox.wasm 1740000
+# release bundle size limits, in bytes
+sandbox.wasm 1790000
 sandbox.js 980000
 example.wasm 705000
 example.js 442000

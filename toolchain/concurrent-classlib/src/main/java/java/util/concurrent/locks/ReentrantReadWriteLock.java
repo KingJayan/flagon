@@ -11,7 +11,7 @@ import java.util.concurrent.TimeUnit;
  * cooperative, so the same wait would hold the page forever with nothing left to release it.
  * this refuses the upgrade by name instead.
  */
-public class ReentrantReadWriteLock {
+public class ReentrantReadWriteLock implements ReadWriteLock {
 
     private final Object monitor = new Object();
     private final Map<Thread, Integer> readers = new HashMap<>();
@@ -137,6 +137,16 @@ public class ReentrantReadWriteLock {
                 }
             }
         }
+
+        /**
+         * a reader cannot wait on a condition: many threads hold the read lock at once, so
+         * there is no one holder for a signal to hand it back to. the real one refuses too.
+         */
+        @Override
+        public Condition newCondition() {
+            throw new UnsupportedOperationException(
+                    "the read lock has no condition: it is held by many threads at once");
+        }
     }
 
     public class WriteLock implements Lock {
@@ -241,6 +251,39 @@ public class ReentrantReadWriteLock {
                     monitor.notifyAll();
                 }
             }
+        }
+
+        @Override
+        public Condition newCondition() {
+            return new GreenCondition(new GreenCondition.Held() {
+                @Override
+                public void requireHeld() {
+                    if (!isWriteLockedByCurrentThread()) {
+                        throw new IllegalMonitorStateException(
+                                "a condition belongs to the write lock, and this thread does "
+                                        + "not hold it");
+                    }
+                }
+
+                @Override
+                public int releaseFully() {
+                    synchronized (monitor) {
+                        int holds = writeHolds;
+                        writeHolds = 0;
+                        writer = null;
+                        monitor.notifyAll();
+                        return holds;
+                    }
+                }
+
+                @Override
+                public void takeBack(int holds) {
+                    lock();
+                    synchronized (monitor) {
+                        writeHolds = holds;
+                    }
+                }
+            });
         }
     }
 }
