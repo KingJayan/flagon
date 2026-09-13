@@ -11,7 +11,7 @@
 
   <artifactId>lwjgl-core</artifactId>
   <name>Flagon :: LWJGL Core</name>
-  <description>The emulation the org.lwjgl bindings sit on. Carries no org.lwjgl class of its own.</description>
+  <description>This module does the work that the org.lwjgl bindings call. It carries no org.lwjgl class.</description>
 
   <dependencies>
     <dependency>

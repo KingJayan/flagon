@@ -12,7 +12,7 @@
 
   <artifactId>reflect-policy</artifactId>
   <name>Flagon :: Reflection Policy</name>
-  <description>Keeps the members of named classes reflectable through ahead-of-time compilation.</description>
+  <description>This module keeps the members of the named classes reflectable through the ahead-of-time build.</description>
 
   <dependencies>
     <dependency>

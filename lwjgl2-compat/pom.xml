@@ -11,7 +11,7 @@
 
   <artifactId>lwjgl2-compat</artifactId>
   <name>Flagon :: LWJGL 2 Compatibility</name>
-  <description>Source-compatible LWJGL 2 classes: Display, Keyboard, Mouse, GL11-GL20 and OpenAL.</description>
+  <description>This module supplies the LWJGL 2 classes: Display, Keyboard, Mouse, GL11 to GL20, and OpenAL.</description>
 
   <dependencies>
     <dependency>

@@ -13,7 +13,7 @@
 
   <artifactId>socket-classlib</artifactId>
   <name>Flagon socket classlib</name>
-  <description>java.net.Socket for the browser, supplied where TeaVM's classlib has none.</description>
+  <description>This module supplies java.net.Socket, which TeaVM does not have.</description>
 
   <properties>
     <maven.compiler.release></maven.compiler.release>

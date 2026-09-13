@@ -11,7 +11,7 @@
 
   <artifactId>runtime</artifactId>
   <name>Flagon :: Runtime</name>
-  <description>Host-agnostic boot sequence. Knows nothing about browsers.</description>
+  <description>This module starts an application. It knows nothing about browsers.</description>
 
   <dependencies>
     <dependency>
