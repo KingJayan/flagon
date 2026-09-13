@@ -25,11 +25,13 @@ public class InetAddress {
     }
 
     public static InetAddress getByAddress(byte[] address) throws UnknownHostException {
-        StringBuilder host = new StringBuilder();
-        for (byte part : address) {
-            host.append(host.isEmpty() ? "" : ".").append(part & 0xff);
+        if (address != null && address.length == 4) {
+            return new Inet4Address(address);
         }
-        return new InetAddress(host.toString());
+        if (address != null && address.length == 16) {
+            return new Inet6Address(address);
+        }
+        throw new UnknownHostException("an address has 4 or 16 bytes");
     }
 
     public static InetAddress getLocalHost() throws UnknownHostException {
