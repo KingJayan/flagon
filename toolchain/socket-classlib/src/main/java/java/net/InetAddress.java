@@ -24,6 +24,14 @@ public class InetAddress {
         return new InetAddress[] {getByName(host)};
     }
 
+    public static InetAddress getByAddress(byte[] address) throws UnknownHostException {
+        StringBuilder host = new StringBuilder();
+        for (byte part : address) {
+            host.append(host.isEmpty() ? "" : ".").append(part & 0xff);
+        }
+        return new InetAddress(host.toString());
+    }
+
     public static InetAddress getLocalHost() throws UnknownHostException {
         return new InetAddress("localhost");
     }
@@ -47,6 +55,10 @@ public class InetAddress {
 
     public byte[] getAddress() {
         return new byte[4];
+    }
+
+    public boolean isAnyLocalAddress() {
+        return "0.0.0.0".equals(host) || "::".equals(host);
     }
 
     public boolean isLoopbackAddress() {

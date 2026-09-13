@@ -18,4 +18,8 @@ public final class Systems {
     public static void load(String path) {
         loadLibrary(path);
     }
+
+    public static String mapLibraryName(String name) {
+        return name;
+    }
 }

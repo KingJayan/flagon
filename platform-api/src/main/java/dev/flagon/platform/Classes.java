@@ -1,6 +1,7 @@
 package dev.flagon.platform;
 
 import java.lang.reflect.Type;
+import java.net.URL;
 
 public final class Classes {
 
@@ -19,6 +20,10 @@ public final class Classes {
 
     public static Object[] getSigners(Class<?> type) {
         return NO_SIGNERS.clone();
+    }
+
+    public static URL getResource(Class<?> type, String name) {
+        return ClassLoaders.getResource(null, name);
     }
 
     public static boolean isAnonymousClass(Class<?> type) {

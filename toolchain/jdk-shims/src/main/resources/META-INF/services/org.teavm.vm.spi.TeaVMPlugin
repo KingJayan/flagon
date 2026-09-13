@@ -4,3 +4,8 @@ dev.flagon.shims.SendRuntimeCalls
 dev.flagon.shims.SendClassCalls
 dev.flagon.shims.SendUrlCalls
 dev.flagon.shims.SendArrayCalls
+dev.flagon.shims.SendPackageCalls
+dev.flagon.shims.SendFieldCalls
+dev.flagon.shims.SendCollectionCalls
+dev.flagon.shims.SendThreadCalls
+dev.flagon.shims.SendFileCalls

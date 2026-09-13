@@ -1,7 +1,6 @@
 package java.nio.channels.spi;
 
 import java.io.IOException;
-import java.nio.channels.Selector;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
 
@@ -17,5 +16,5 @@ public abstract class SelectorProvider {
 
     public abstract ServerSocketChannel openServerSocketChannel() throws IOException;
 
-    public abstract Selector openSelector() throws IOException;
+    public abstract AbstractSelector openSelector() throws IOException;
 }
