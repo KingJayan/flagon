@@ -22,7 +22,8 @@ public final class SendRuntimeCalls implements TeaVMPlugin, ClassHolderTransform
     private static final Map<String, String> FROM_SYSTEM = Map.of(
             "exit", "exit",
             "loadLibrary", "loadLibrary",
-            "load", "load");
+            "load", "load",
+            "mapLibraryName", "mapLibraryName");
 
     private static final String[] NOT_OURS = {"org.teavm.", RUNTIMES, SYSTEMS,
         "dev.flagon.platform.ShutdownHooks"};

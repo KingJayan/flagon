@@ -31,6 +31,24 @@ public class ServerSocket implements java.io.Closeable {
         return null;
     }
 
+    public void setReuseAddress(boolean on) {
+    }
+
+    public void setReceiveBufferSize(int size) {
+    }
+
+    public int getReceiveBufferSize() {
+        return 0;
+    }
+
+    public SocketAddress getLocalSocketAddress() {
+        return null;
+    }
+
+    public boolean getReuseAddress() {
+        return true;
+    }
+
     public boolean isClosed() {
         return true;
     }
@@ -41,6 +59,10 @@ public class ServerSocket implements java.io.Closeable {
 
     public Socket accept() throws IOException {
         return refuse();
+    }
+
+    public void bind(SocketAddress endpoint, int backlog) throws IOException {
+        bind(endpoint);
     }
 
     public void bind(SocketAddress endpoint) throws IOException {

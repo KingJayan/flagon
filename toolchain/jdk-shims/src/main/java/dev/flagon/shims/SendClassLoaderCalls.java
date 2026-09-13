@@ -8,10 +8,6 @@ import org.teavm.vm.spi.TeaVMPlugin;
 
 import java.util.Map;
 
-/**
- * the browser classlib's {@link ClassLoader} has neither loadClass nor getResources, so a jar
- * that scans its own classpath does not link. both are sent to {@code ClassLoaders}.
- */
 public final class SendClassLoaderCalls implements TeaVMPlugin, ClassHolderTransformer {
 
     private static final String SUBJECT = "java.lang.ClassLoader";
@@ -19,7 +15,8 @@ public final class SendClassLoaderCalls implements TeaVMPlugin, ClassHolderTrans
 
     private static final Map<String, String> SENT = Map.of(
             "loadClass", "loadClass",
-            "getResources", "getResources");
+            "getResources", "getResources",
+            "getResource", "getResource");
 
     private static final String[] NOT_OURS = {"org.teavm.", LOADERS};
 
