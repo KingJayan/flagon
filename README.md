@@ -31,7 +31,7 @@ Flagon itself is application-agnostic. Work on any specific applications are dow
 - No application source modifications required
 - Ahead-of-time Java → WebAssembly GC/JavaScript compilation with TeaVM
 - `GL11` through `GL15`, `GL20`, `GLContext` and `GLU` are reimplemented on WebGL2.
-See the [compatibility table](docs/COMPATIBILITY.md) for exactly what is and isn't emulated.
+See the [compatibility reference](docs/COMPATIBILITY.md) for exactly what is and isn't emulated.
 - Browser-native implementations of input, filesystem, audio, networking, and platform APIs
 
 ## How does it compare?
@@ -47,7 +47,7 @@ See the [compatibility table](docs/COMPATIBILITY.md) for exactly what is and isn
 ## Documentation
 
 * **[Architecture Guidelines (for contributing)](docs/ARCHITECTURE.md):** Rules and system design.
-* **[Compatibility Table](docs/COMPATIBILITY.md):** Detailed breakdown of supported and unsupported features.
+* **[Compatibility Reference](docs/COMPATIBILITY.md):** Detailed breakdown of supported and unsupported features.
 * **[Running Existing Applications](docs/DOWNSTREAM.md):** Compiling an application jar to a bundle.
 
 ## Quickstart
