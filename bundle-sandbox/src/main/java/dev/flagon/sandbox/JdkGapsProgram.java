@@ -3,6 +3,7 @@ package dev.flagon.sandbox;
 import dev.flagon.platform.ConsoleSink;
 import dev.flagon.platform.Platforms;
 import dev.flagon.runtime.Program;
+import org.example.absent.MissingFromBundle;
 
 import java.lang.management.ManagementFactory;
 import java.net.IDN;
@@ -81,6 +82,14 @@ public final class JdkGapsProgram implements Program {
             console.info("jdkgaps: a refusal became a failed class setup");
         } catch (IllegalStateException refused) {
             console.info("jdkgaps: a catch for a failed class setup compiles");
+        }
+
+        try {
+            refuse();
+        } catch (MissingFromBundle missing) {
+            console.info("jdkgaps: a missing class caught the refusal");
+        } catch (IllegalStateException refused) {
+            console.info("jdkgaps: a catch for a missing class compiles");
         }
 
         URL url = new URL("http://localhost/nothing");
