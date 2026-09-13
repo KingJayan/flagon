@@ -75,9 +75,21 @@ public final class JdkGapsProgram implements Program {
         console.info("jdkgaps: sixteen bytes make a loopback ipv6 address "
                 + describe(LOOPBACK6));
 
+        try {
+            refuse();
+        } catch (ExceptionInInitializerError failed) {
+            console.info("jdkgaps: a refusal became a failed class setup");
+        } catch (IllegalStateException refused) {
+            console.info("jdkgaps: a catch for a failed class setup compiles");
+        }
+
         URL url = new URL("http://localhost/nothing");
         console.info("jdkgaps: a connection through a named proxy opens "
                 + (url.openConnection(Proxy.NO_PROXY) != null));
+    }
+
+    private static void refuse() {
+        throw new IllegalStateException("refused");
     }
 
     private static Inet6Address loopback6() {
