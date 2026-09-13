@@ -1,8 +1,4 @@
-@import './tokens.css';
-
-* {
-  box-sizing: border-box;
-}
+@import './base.css';
 
 html,
 body {
@@ -15,12 +11,9 @@ body {
 }
 
 #flagon-canvas {
-  display: block;
   width: 100%;
   height: 100%;
   object-fit: contain;
-  background: var(--stage);
-  touch-action: none;
 }
 
 #flagon-canvas:focus-visible {
@@ -65,12 +58,6 @@ body {
 
 .veil[data-kind='exited'] .headline {
   color: var(--ok);
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .veil {
-    transition: none;
-  }
 }
 
 /*
@@ -131,15 +118,7 @@ body {
 }
 
 .badge {
-  font-family: var(--mono);
-  font-size: var(--small);
-  color: var(--muted);
   padding: 0 0.2rem;
-}
-
-:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
 }
 
 /* the program wrote it, so it reads like the shell's console: monospace, newest at the bottom */
@@ -148,24 +127,12 @@ body {
   inset: auto 0 0 0;
   z-index: 2;
   max-height: 40vh;
-  margin: 0;
   padding: 0.75rem 1rem;
   overflow-y: auto;
-  font-family: var(--mono);
   font-size: var(--small);
-  line-height: 1.5;
-  white-space: pre-wrap;
   color: var(--ink);
   background: color-mix(in srgb, var(--panel) 98%, transparent);
   border-top: 1px solid var(--line);
-}
-
-.log .warn {
-  color: var(--accent);
-}
-
-.log .error {
-  color: var(--bad);
 }
 
 .hint {
@@ -180,10 +147,4 @@ body {
   font-size: var(--small);
   color: var(--muted);
   background: color-mix(in srgb, var(--panel) 88%, transparent);
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .controls {
-    transition: none;
-  }
 }

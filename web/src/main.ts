@@ -7,6 +7,8 @@ import {
   whyNot,
   type HostBridge,
 } from './bundle';
+import { watchFrames, type Frames } from './frames';
+import { kindOf, Log, type Line } from './log';
 import { installStop } from './stopping';
 
 const app = document.querySelector<HTMLElement>('#app')!;
@@ -22,6 +24,8 @@ const stopButton = document.querySelector<HTMLButtonElement>('#stop')!;
 const rateBadge = document.querySelector<HTMLElement>('#rate')!;
 const progress = document.querySelector<HTMLElement>('#progress')!;
 
+let frames: Frames | undefined;
+
 type State = 'loading' | 'booting' | 'running' | 'exited' | 'failed';
 
 function setState(state: State): void {
@@ -34,40 +38,13 @@ function setState(state: State): void {
   }
   progress.hidden = state !== 'loading' && state !== 'booting';
   if (state === 'running') {
-    watchFrames();
+    frames ??= watchFrames(rateBadge, 'no frames yet');
   } else {
-    stopWatchingFrames();
+    frames?.stop();
+    frames = undefined;
   }
 }
 
-let ticker: number | undefined;
-
-/**
- * 'running' alone cannot tell a program that is drawing from one that is wedged, so while a
- * program runs the shell reports the rate the runtime is actually presenting frames at.
- */
-function watchFrames(): void {
-  if (ticker !== undefined) {
-    return;
-  }
-  let last = window.__flagonFrames ?? 0;
-  rateBadge.hidden = false;
-  rateBadge.textContent = 'no frames yet';
-  ticker = window.setInterval(() => {
-    const total = window.__flagonFrames ?? 0;
-    const drawn = total - last;
-    last = total;
-    rateBadge.textContent = drawn > 0 ? `${drawn} fps` : total > 0 ? 'not drawing' : 'no frames yet';
-  }, 1000);
-}
-
-function stopWatchingFrames(): void {
-  if (ticker !== undefined) {
-    clearInterval(ticker);
-    ticker = undefined;
-  }
-  rateBadge.hidden = true;
-}
 
 function announceDownload(url: string): void {
   const name = url.slice(url.lastIndexOf('/') + 1);
@@ -82,37 +59,10 @@ function announceDownload(url: string): void {
     .catch(() => {});
 }
 
-interface Line {
-  text: string;
-  kind?: 'warn' | 'error';
-}
 
-const written: Line[] = [];
+const log = new Log(logView);
 
-const KEPT = 2000;
-
-function append(text: string, kind?: 'warn' | 'error'): void {
-  written.push({ text, kind });
-  logView.append(render({ text, kind }));
-  trim();
-  logView.scrollTop = logView.scrollHeight;
-}
-
-function trim(): void {
-  if (written.length > KEPT) {
-    written.splice(0, written.length - KEPT);
-  }
-  while (logView.childElementCount > KEPT) {
-    logView.firstElementChild?.remove();
-  }
-}
-
-function render(line: Line, past = false): HTMLSpanElement {
-  const span = document.createElement('span');
-  span.className = [line.kind, past ? 'past' : ''].filter(Boolean).join(' ');
-  span.textContent = `${line.text}\n`;
-  return span;
-}
+const append = log.append.bind(log);
 
 function restorePreviousRun(): void {
   let lines: Line[] = [];
@@ -126,14 +76,14 @@ function restorePreviousRun(): void {
     return;
   }
   for (const line of lines) {
-    logView.append(render(line, true));
+    log.past(line);
   }
-  logView.append(render({ text: '— previous run above —' }, true));
+  log.past({ text: '— previous run above —' });
 }
 
 addEventListener('pagehide', () => {
   try {
-    sessionStorage.setItem('flagon:log', JSON.stringify(written.slice(-500)));
+    sessionStorage.setItem('flagon:log', JSON.stringify(log.recent(500)));
   } catch {
 
   }
@@ -254,8 +204,7 @@ const { relent } = installStop({
 
 const host: HostBridge = {
   log(level, text) {
-    const kind = level === 'ERROR' ? 'error' : level === 'WARN' ? 'warn' : undefined;
-    append(text, kind);
+    append(text, kindOf(level));
   },
   catalog(ids, descriptions) {
     const entries = ids.map((id, index) => ({ id, description: descriptions[index] ?? id }));

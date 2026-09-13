@@ -1,0 +1,46 @@
+@import './tokens.css';
+
+* {
+  box-sizing: border-box;
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+canvas {
+  display: block;
+  background: var(--stage);
+  touch-action: none;
+}
+
+.badge {
+  font-family: var(--mono);
+  font-size: var(--small);
+  color: var(--muted);
+}
+
+.log {
+  margin: 0;
+  font-family: var(--mono);
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
+
+.log .warn {
+  color: var(--accent);
+}
+
+.log .error {
+  color: var(--bad);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}
