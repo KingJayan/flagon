@@ -8,10 +8,6 @@ import org.teavm.vm.spi.TeaVMPlugin;
 
 import java.util.Map;
 
-/**
- * the browser classlib's {@link Runtime} has no shutdown hooks, so calls that want them are
- * sent to {@code ShutdownHooks}, which keeps the list and runs it when the program ends.
- */
 public final class SendShutdownHooks implements TeaVMPlugin, ClassHolderTransformer {
 
     private static final String SUBJECT = "java.lang.Runtime";
@@ -23,7 +19,6 @@ public final class SendShutdownHooks implements TeaVMPlugin, ClassHolderTransfor
             "exit", "exit",
             "halt", "halt");
 
-    /** the replacement calls Runtime itself, so rewriting it would only call itself back */
     private static final String[] NOT_OURS = {"org.teavm.", HOOKS};
 
     @Override
