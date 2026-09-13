@@ -8,10 +8,6 @@ import org.teavm.vm.spi.TeaVMPlugin;
 
 import java.util.Map;
 
-/**
- * the browser classlib's file streams have no channel behind them, so a jar that asks for one
- * does not link. the ask is sent to {@code Files}, which says why there is none.
- */
 public final class SendFileCalls implements TeaVMPlugin, ClassHolderTransformer {
 
     private static final String INPUT = "java.io.FileInputStream";
