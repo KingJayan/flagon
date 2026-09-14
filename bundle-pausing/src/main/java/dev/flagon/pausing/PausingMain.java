@@ -28,5 +28,20 @@ public final class PausingMain {
         String second = "BB";
         System.out.println("pausing: the bundle loaded, and two names with one hash stay apart "
                 + (first.hashCode() == second.hashCode() && first != second.intern()));
+        try {
+            System.out.println("pausing: a deep pause comes back with " + deepPause(16)
+                    + " frames");
+        } catch (InterruptedException interrupted) {
+            Thread.currentThread().interrupt();
+        }
+    }
+
+    private static int deepPause(int depth) throws InterruptedException {
+        Object[] kept = {"frame"};
+        if (depth == 0) {
+            Thread.sleep(1);
+            return kept.length;
+        }
+        return deepPause(depth - 1) + kept.length;
     }
 }

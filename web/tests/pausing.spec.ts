@@ -32,5 +32,10 @@ test('loads a bundle whose string setup can pause', async ({ page }) => {
       timeout: 30_000,
     })
     .toBe(true);
+  await expect
+    .poll(() => lines.some((line) => line.includes('a deep pause comes back with 17 frames')), {
+      timeout: 30_000,
+    })
+    .toBe(true);
   expect(crashes).toEqual([]);
 });
