@@ -23,6 +23,7 @@ for (const backend of BACKENDS) {
       await expect(log).toContainText('jdkgaps: the superclass of a string is class java.lang.Object');
       await expect(log).toContainText('jdkgaps: a string is anonymous false');
       await expect(log).toContainText('jdkgaps: punycode writes a name as xn--mnchen-3ya.de');
+      await expect(log).toContainText('jdkgaps: a replacement with an unmatched group gives %s and %2$s');
       await expect(log).toContainText('jdkgaps: the sql day is 2026-01-02');
       await expect(log).toContainText('jdkgaps: uptime is at least 0ms true');
       await expect(log).toContainText('jdkgaps: a wrapped runnable answers null');
