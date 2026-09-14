@@ -33,6 +33,18 @@ final class GlNames {
         return reused;
     }
 
+    void put(int name, JSObject object) {
+        if (name <= 0) {
+            throw new IllegalArgumentException("not a gl name: " + name);
+        }
+        while (objects.size() <= name) {
+            free.add(objects.size());
+            objects.add(null);
+        }
+        free.remove(name);
+        objects.set(name, object);
+    }
+
     /** @return what a name stands for, or null if it stands for nothing live */
     JSObject get(int name) {
         return name > 0 && name < objects.size() ? objects.get(name) : null;

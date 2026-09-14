@@ -119,6 +119,16 @@ public final class WebGLGraphicsDevice implements GraphicsDevice {
         return object;
     }
 
+    // gl makes a new texture when a program binds a deleted or unused name
+    private JSObject liveTexture(int name) {
+        JSObject texture = handles.get(name);
+        if (texture == null) {
+            texture = gl.createTexture();
+            handles.put(name, texture);
+        }
+        return texture;
+    }
+
     @Override
     public void viewport(int x, int y, int width, int height) {
         gl.viewport(x, y, width, height);
@@ -936,8 +946,7 @@ public final class WebGLGraphicsDevice implements GraphicsDevice {
                 && (texture == NO_TEXTURE || defaulted.get(texture))) {
             return;
         }
-        gl.bindTexture(WebGL2.TEXTURE_2D, texture == NO_TEXTURE ? null : lookup(texture,
-                "texture"));
+        gl.bindTexture(WebGL2.TEXTURE_2D, texture == NO_TEXTURE ? null : liveTexture(texture));
         if (tracked) {
             boundTexture[unit] = texture;
         }

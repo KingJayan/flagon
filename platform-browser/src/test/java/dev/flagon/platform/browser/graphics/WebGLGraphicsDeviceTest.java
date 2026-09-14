@@ -378,4 +378,22 @@ class WebGLGraphicsDeviceTest {
 
         assertTrue(context.called("activeTexture(33987)"), context.calls().toString());
     }
+
+    @Test
+    void makesANewTextureWhenADeletedNameIsBound() {
+        int texture = device.createTexture();
+        device.deleteTexture(texture);
+
+        device.bindTexture(0, texture);
+
+        assertEquals(2, context.count("createTexture"));
+    }
+
+    @Test
+    void makesATextureForANameItNeverHandedOut() {
+        device.bindTexture(0, 7);
+
+        assertEquals(1, context.count("createTexture"));
+        assertNotEquals(7, device.createTexture());
+    }
 }
