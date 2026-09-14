@@ -15,6 +15,7 @@ import java.net.URL;
 import java.net.UnknownHostException;
 import java.util.concurrent.Callable;
 import java.util.concurrent.Executors;
+import java.util.regex.Pattern;
 
 /** shows the jdk calls the browser classlib leaves out, which the build sends to Flagon. */
 public final class JdkGapsProgram implements Program {
@@ -57,6 +58,9 @@ public final class JdkGapsProgram implements Program {
         console.info("jdkgaps: a string is anonymous " + String.class.isAnonymousClass());
 
         console.info("jdkgaps: punycode writes a name as " + IDN.toASCII("münchen.de"));
+        console.info("jdkgaps: a replacement with an unmatched group gives "
+                + Pattern.compile("%(\\d+\\$)?[\\d\\.]*[df]")
+                        .matcher("%d and %2$d").replaceAll("%$1s"));
 
         console.info("jdkgaps: the sql day is " + java.sql.Date.valueOf("2026-01-02"));
         console.info("jdkgaps: uptime is at least 0ms "
