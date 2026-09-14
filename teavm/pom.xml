@@ -87,7 +87,7 @@
                   <artifactId>teavm-core</artifactId>
                   <version>${teavm.version}</version>
                   <outputDirectory>${project.build.outputDirectory}</outputDirectory>
-                  <excludes>META-INF/**,org/teavm/backend/wasm/model/instruction/WasmTypeInference*.class,org/teavm/backend/wasm/transformation/CoroutineTransformation*.class,org/teavm/backend/javascript/intrinsics/reflection/ClassInfoGenerator.class,org/teavm/backend/javascript/codegen/DefaultAliasProvider.class,org/teavm/backend/javascript/intrinsics/reflection/ClassReflectionInfoGenerator*.class,org/teavm/backend/wasm/generate/methods/WasmGCInstructionGenerationVisitor*.class,org/teavm/backend/wasm/intrinsics/reflection/ReflectionMetadataGenerator*.class</excludes>
+                  <excludes>META-INF/**,org/teavm/backend/wasm/model/instruction/WasmTypeInference*.class,org/teavm/backend/wasm/transformation/CoroutineTransformation*.class,org/teavm/backend/javascript/intrinsics/reflection/ClassInfoGenerator.class,org/teavm/backend/javascript/codegen/DefaultAliasProvider.class,org/teavm/backend/javascript/intrinsics/reflection/ClassReflectionInfoGenerator*.class,org/teavm/backend/wasm/generate/methods/WasmGCInstructionGenerationVisitor*.class,org/teavm/backend/wasm/intrinsics/reflection/ReflectionMetadataGenerator*.class,org/teavm/runtime/Fiber*.class,org/teavm/backend/wasm/transformation/CoroutineFunctions*.class,org/teavm/backend/wasm/dependencies/WasmGCDependencies*.class</excludes>
                 </artifactItem>
               </artifactItems>
             </configuration>
