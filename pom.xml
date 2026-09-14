@@ -32,6 +32,7 @@
     <module>lwjgl2-compat</module>
     <module>lwjgl3-compat</module>
     <module>bundle-sandbox</module>
+    <module>bundle-pausing</module>
     <module>examples/app</module>
     <module>examples/thirdparty</module>
     <module>examples/bundle</module>
@@ -137,7 +138,7 @@
       <dependency>
         <groupId>org.teavm</groupId>
         <artifactId>teavm-core</artifactId>
-        <version>${teavm.version}</version>
+        <version>${teavm.core.version}</version>
       </dependency>
       <dependency>
         <groupId>org.junit</groupId>
