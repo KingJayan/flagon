@@ -13,7 +13,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-// flagon: code that can pause asks these checks, and no fiber exists while the bundle loads
+// flagon: the checks allow a missing fiber, and saved objects grow without code that can pause
 package org.teavm.runtime;
 
 import java.util.Arrays;
@@ -93,7 +93,9 @@ public class Fiber {
         if (objectValues == null) {
             objectValues = new Object[4];
         } else if (objectTop + 1 == objectValues.length) {
-            objectValues = Arrays.copyOf(objectValues, objectValues.length * 3 / 2);
+            var grown = new Object[objectValues.length * 3 / 2];
+            System.arraycopy(objectValues, 0, grown, 0, objectValues.length);
+            objectValues = grown;
         }
         objectValues[objectTop++] = value;
     }
