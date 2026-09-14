@@ -73,7 +73,7 @@ verify-bundles: ## check the emitted bundles are whole
 	@for bundle in $(BUNDLES)/*.js $(BUNDLES)/*.wasm; do \
 		case $$bundle in *wasm-gc-module-runtime.js) continue;; esac; \
 		size=$$(wc -c < $$bundle | tr -d " "); \
-		test $$size -ge 250000 || { echo "$$bundle is only $$size bytes; run 'make clean'"; exit 1; }; \
+		test $$size -ge 100000 || { echo "$$bundle is only $$size bytes; run 'make clean'"; exit 1; }; \
 		grep -q "Unresolved compilation problem" $$bundle \
 			&& { echo "$$bundle carries uncompiled classes; run 'make clean'"; exit 1; }; \
 	done; \

@@ -3,3 +3,4 @@ sandbox.wasm 2000000
 sandbox.js 1150000
 example.wasm 705000
 example.js 442000
+pausing.wasm 165000
