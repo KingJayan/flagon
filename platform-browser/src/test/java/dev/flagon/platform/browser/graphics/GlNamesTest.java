@@ -60,6 +60,33 @@ class GlNamesTest {
         assertEquals(first, names.add(new Thing("b")));
     }
 
+    @Test
+    void givesAnObjectToANameItNeverHandedOut() {
+        Thing thing = new Thing("a");
+
+        names.put(7, thing);
+
+        assertSame(thing, names.get(7));
+    }
+
+    @Test
+    void handsOutTheNamesBelowAPutName() {
+        names.put(3, new Thing("a"));
+
+        assertEquals(1, names.add(new Thing("b")));
+        assertEquals(2, names.add(new Thing("c")));
+        assertEquals(4, names.add(new Thing("d")));
+    }
+
+    @Test
+    void doesNotHandOutAFreedNameThatWasPutAgain() {
+        int first = names.add(new Thing("a"));
+        names.remove(first);
+        names.put(first, new Thing("b"));
+
+        assertNotEquals(first, names.add(new Thing("c")));
+    }
+
     /** the leak this table exists to not have: a session that churns objects at a steady count */
     @Test
     void doesNotGrowWhileTheLiveCountHolds() {
