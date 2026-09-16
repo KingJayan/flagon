@@ -1,12 +1,11 @@
 package dev.flagon.platform.graphics;
 
 /**
- a modern, host-agnostic rendering surface: roughly gl es 3.0, addressed by int names
+host-agnostic rendering surface: roughly gl es 3.0
  */
 public interface GraphicsDevice {
 
     int NO_BUFFER = 0;
-    /** the array the device starts on, which every draw that does not want one of its own uses */
     int NO_VERTEX_ARRAY = 0;
     int NO_TEXTURE = 0;
     int NO_PROGRAM = 0;
@@ -14,7 +13,6 @@ public interface GraphicsDevice {
     int NO_RENDERBUFFER = 0;
     int NO_SHADER = 0;
 
-    /** a uniform the shader does not use */
     int NO_UNIFORM = -1;
 
     void viewport(int x, int y, int width, int height);
@@ -35,7 +33,7 @@ public interface GraphicsDevice {
 
     void setBlendFunc(BlendFactor source, BlendFactor destination);
 
-    /** the color and alpha channels blend by their own factors. */
+    /** color and alpha blend */
     void setBlendFuncSeparate(BlendFactor sourceColor, BlendFactor destinationColor,
                               BlendFactor sourceAlpha, BlendFactor destinationAlpha);
 
@@ -43,7 +41,6 @@ public interface GraphicsDevice {
 
     void setBlendEquationSeparate(BlendEquation color, BlendEquation alpha);
 
-    /** the constant the {@code CONSTANT_} blend factors read. */
     void setBlendColor(float red, float green, float blue, float alpha);
 
     void setCullFace(boolean enabled);
@@ -54,7 +51,6 @@ public interface GraphicsDevice {
 
     void setScissorTest(boolean enabled);
 
-    /** the scissor rectangle, in pixels from the framebuffer's bottom left as gl measures it. */
     void setScissor(int x, int y, int width, int height);
 
     void setColorMask(boolean red, boolean green, boolean blue, boolean alpha);
@@ -93,21 +89,18 @@ public interface GraphicsDevice {
     /** uploads {@code length} ints from {@code data}, replacing the bound buffer's contents. */
     void bufferData(BufferTarget target, int[] data, int length, BufferUsage usage);
 
-    /** overwrites {@code length} bytes at {@code offsetInBytes}, leaving the rest in place. */
     void bufferSubData(BufferTarget target, int offsetInBytes, byte[] data, int length);
 
     int createProgram(String vertexSource, String fragmentSource);
 
     int createShader(ShaderStage stage);
 
-    /** the source must be glsl es; a host is free to reject anything else. */
     void shaderSource(int shader, String source);
 
     void compileShader(int shader);
 
     boolean isShaderCompiled(int shader);
 
-    /** @return the compiler's diagnostics, empty when there were none */
     String shaderInfoLog(int shader);
 
     void deleteShader(int shader);
@@ -120,7 +113,6 @@ public interface GraphicsDevice {
 
     void detachShader(int program, int shader);
 
-    /** binds {@code name} to an attribute location; only takes effect on the next link. */
     void bindAttributeLocation(int program, int location, String name);
 
     void linkProgram(int program);
@@ -139,7 +131,6 @@ public interface GraphicsDevice {
 
     void useProgram(int program);
 
-    /** @return the uniform's location, or {@link #NO_UNIFORM} when the shader does not use it */
     int uniformLocation(int program, String name);
 
     void uniformMatrix4(int location, float[] matrix);
@@ -173,10 +164,7 @@ public interface GraphicsDevice {
 
     int maxAttributes();
 
-    /**
-      * @return a vertex array remembering an attribute layout, so a draw that always uses the same
-      *         one can bind it instead of describing every slot again
-      */
+
     int createVertexArray();
 
     void bindVertexArray(int array);
@@ -190,7 +178,6 @@ public interface GraphicsDevice {
     void attributePointer(int location, int components, AttributeType type, boolean normalized,
                           int strideInBytes, int offsetInBytes);
 
-    /** points an attribute a shader declares as int or uint at its data, without converting. */
     void integerAttributePointer(int location, int components, AttributeType type,
                                  int strideInBytes, int offsetInBytes);
 
@@ -200,26 +187,24 @@ public interface GraphicsDevice {
 
     void deleteTexture(int texture);
 
-    /** which unit the texture calls below act on, as {@code glActiveTexture} selects it. */
     void activeTexture(int unit);
 
     void bindTexture(int unit, int texture);
 
-    /** uploads one mipmap level; level 0 is the base image. */
     void textureImage(int level, int width, int height, byte[] rgba);
 
     void textureSubImage(int level, int x, int y, int width, int height, byte[] rgba);
 
-    /** derives every level below the base from it, as {@code glGenerateMipmap} does. */
     void generateMipmap();
 
     void setTextureBaseLevel(int level);
 
     void setTextureMaxLevel(int level);
 
-    /**
-     * copies a rectangle of the framebuffer into the bound texture, as gl reads it: bottom left up.
-     */
+    void setTextureMinLod(float lod);
+
+    void setTextureMaxLod(float lod);
+
     void copyTextureSubImage(int x, int y, int framebufferX, int framebufferY,
                              int width, int height);
 
@@ -244,18 +229,12 @@ public interface GraphicsDevice {
     /** @param divisor how many instances share one value of the attribute; 0 steps per vertex */
     void attributeDivisor(int location, int divisor);
 
-    /**
-      * @return a framebuffer to render into instead of the surface, empty until something is
-      *         attached to it
-      */
     int createFramebuffer();
 
-    /** {@link #NO_FRAMEBUFFER} binds the surface back. */
     void bindFramebuffer(int framebuffer);
 
     void deleteFramebuffer(int framebuffer);
 
-    /** attaches a level of a texture, so a later draw writes into it. */
     void framebufferTexture(FramebufferAttachment attachment, int texture, int level);
 
     void framebufferRenderbuffer(FramebufferAttachment attachment, int renderbuffer);
@@ -272,10 +251,8 @@ public interface GraphicsDevice {
 
     void renderbufferStorage(RenderbufferFormat format, int width, int height);
 
-    /** allocates a level of the bound texture without filling it, for use as an attachment. */
     void textureStorage(int level, int width, int height);
 
-    /** reads a rectangle of the framebuffer as rgba bytes, the first row being the bottom one. */
     byte[] readPixels(int x, int y, int width, int height);
 
     void finish();
@@ -286,12 +263,8 @@ public interface GraphicsDevice {
 
     int height();
 
-    /**
-     * @return the first error since the last call, {@link GraphicsError#NONE} when there was none
-     */
     GraphicsError takeError();
 
-    /** @return how the device describes itself, empty when the host will not say */
     String information(GraphicsInfo information);
 
     int limit(GraphicsLimit limit);

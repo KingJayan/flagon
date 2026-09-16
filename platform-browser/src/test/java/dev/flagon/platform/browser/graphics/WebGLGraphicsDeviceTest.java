@@ -380,6 +380,15 @@ class WebGLGraphicsDeviceTest {
     }
 
     @Test
+    void setsTheLevelRangeWithFloatParameters() {
+        device.setTextureMinLod(0.5f);
+        device.setTextureMaxLod(4f);
+
+        assertTrue(context.called("texParameterf(3553, 33082, 0.5)"), context.calls().toString());
+        assertTrue(context.called("texParameterf(3553, 33083, 4.0)"), context.calls().toString());
+    }
+
+    @Test
     void makesANewTextureWhenADeletedNameIsBound() {
         int texture = device.createTexture();
         device.deleteTexture(texture);

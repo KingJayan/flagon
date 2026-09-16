@@ -14,6 +14,8 @@ public class GL14C {
     protected GL14C() {
     }
 
+    public static final int GL_TEXTURE_LOD_BIAS = 0x8501;
+
     public static final int GL_CONSTANT_COLOR = 0x8001;
     public static final int GL_ONE_MINUS_CONSTANT_COLOR = 0x8002;
     public static final int GL_CONSTANT_ALPHA = 0x8003;

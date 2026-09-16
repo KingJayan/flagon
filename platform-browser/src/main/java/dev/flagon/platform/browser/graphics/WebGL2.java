@@ -118,6 +118,8 @@ public interface WebGL2 extends JSObject {
     int LINEAR_MIPMAP_LINEAR = 0x2703;
     int TEXTURE_BASE_LEVEL = 0x813C;
     int TEXTURE_MAX_LEVEL = 0x813D;
+    int TEXTURE_MIN_LOD = 0x813A;
+    int TEXTURE_MAX_LOD = 0x813B;
     int TEXTURE0 = 0x84C0;
 
     int ARRAY_BUFFER = 0x8892;
@@ -309,6 +311,8 @@ public interface WebGL2 extends JSObject {
                        int format, int type, Uint8Array pixels);
 
     void texParameteri(int target, int name, int value);
+
+    void texParameterf(int target, int name, float value);
 
     void stencilFunc(int func, int reference, int mask);
 
