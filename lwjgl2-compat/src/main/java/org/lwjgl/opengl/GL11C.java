@@ -93,6 +93,9 @@ public class GL11C {
     public static final int GL_MIRRORED_REPEAT = 0x8370;
     public static final int GL_TEXTURE_BASE_LEVEL = 0x813C;
     public static final int GL_TEXTURE_MAX_LEVEL = 0x813D;
+    public static final int GL_TEXTURE_MIN_LOD = 0x813A;
+    public static final int GL_TEXTURE_MAX_LOD = 0x813B;
+    public static final int GL_TEXTURE_LOD_BIAS = 0x8501;
     public static final int GL_GENERATE_MIPMAP = 0x8191;
     public static final int GL_TEXTURE_WIDTH = 0x1000;
     public static final int GL_TEXTURE_HEIGHT = 0x1001;
@@ -829,6 +832,10 @@ public class GL11C {
             case GL_TEXTURE_WRAP_T -> device().setTextureWrapT(wrap(value));
             case GL_TEXTURE_BASE_LEVEL -> device().setTextureBaseLevel(requireLevel(value));
             case GL_TEXTURE_MAX_LEVEL -> device().setTextureMaxLevel(requireLevel(value));
+            case GL_TEXTURE_MIN_LOD -> device().setTextureMinLod(value);
+            case GL_TEXTURE_MAX_LOD -> device().setTextureMaxLod(value);
+            // webgl has no level bias, and a bias only changes which mipmap level a texture uses
+            case GL_TEXTURE_LOD_BIAS -> { }
             case GL_GENERATE_MIPMAP -> generateMipmap(value != GL_FALSE);
             default -> throw new UnsupportedOperationException(
                     "glTexParameteri does not yet emulate parameter 0x"
@@ -836,7 +843,17 @@ public class GL11C {
         }
     }
     public static void glTexParameterf(int target, int name, float value) {
-        glTexParameteri(target, name, (int) value);
+        if (name != GL_TEXTURE_MIN_LOD && name != GL_TEXTURE_MAX_LOD) {
+            glTexParameteri(target, name, (int) value);
+            return;
+        }
+        requireTexture2D(target, "glTexParameterf");
+        state().refuseWhileRecording("glTexParameterf");
+        if (name == GL_TEXTURE_MIN_LOD) {
+            device().setTextureMinLod(value);
+        } else {
+            device().setTextureMaxLod(value);
+        }
     }
     /**
      * the rows an upload reads from. gl walks the caller's memory with these; here they pick the

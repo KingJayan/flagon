@@ -1133,6 +1133,16 @@ public final class WebGLGraphicsDevice implements GraphicsDevice {
     }
 
     @Override
+    public void setTextureMinLod(float lod) {
+        gl.texParameterf(WebGL2.TEXTURE_2D, WebGL2.TEXTURE_MIN_LOD, lod);
+    }
+
+    @Override
+    public void setTextureMaxLod(float lod) {
+        gl.texParameterf(WebGL2.TEXTURE_2D, WebGL2.TEXTURE_MAX_LOD, lod);
+    }
+
+    @Override
     public void setTextureMinFilter(TextureFilter filter) {
         gl.texParameteri(WebGL2.TEXTURE_2D, WebGL2.TEXTURE_MIN_FILTER, filter(filter));
     }

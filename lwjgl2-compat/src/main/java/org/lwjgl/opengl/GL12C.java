@@ -10,6 +10,8 @@ public class GL12C {
 
     public static final int GL_TEXTURE_BASE_LEVEL = 0x813C;
     public static final int GL_TEXTURE_MAX_LEVEL = 0x813D;
+    public static final int GL_TEXTURE_MIN_LOD = 0x813A;
+    public static final int GL_TEXTURE_MAX_LOD = 0x813B;
     public static final int GL_CLAMP_TO_EDGE = 0x812F;
     public static final int GL_MAX_ELEMENTS_VERTICES = 0x80E8;
     public static final int GL_MAX_ELEMENTS_INDICES = 0x80E9;

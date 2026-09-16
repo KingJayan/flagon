@@ -759,6 +759,16 @@ final class RecordingGraphicsDevice implements GraphicsDevice {
     }
 
     @Override
+    public void setTextureMinLod(float lod) {
+        calls.add("textureMinLod " + lod);
+    }
+
+    @Override
+    public void setTextureMaxLod(float lod) {
+        calls.add("textureMaxLod " + lod);
+    }
+
+    @Override
     public void activeTexture(int unit) {
         calls.add("activeTexture " + unit);
     }
