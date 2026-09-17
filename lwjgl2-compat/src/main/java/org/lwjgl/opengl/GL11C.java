@@ -77,6 +77,7 @@ public class GL11C {
     public static final int GL_ALPHA_TEST = 0x0BC0;
     public static final int GL_BLEND = 0x0BE2;
     public static final int GL_TEXTURE_2D = 0x0DE1;
+    public static final int GL_PROXY_TEXTURE_2D = 0x8064;
     public static final int GL_NEAREST = 0x2600;
     public static final int GL_LINEAR = 0x2601;
     public static final int GL_NEAREST_MIPMAP_NEAREST = 0x2700;
@@ -891,10 +892,13 @@ public class GL11C {
     }
     /** @return what the last upload to the level said, which is where gl reads it from too */
     public static int glGetTexLevelParameteri(int target, int level, int name) {
-        requireTexture2D(target, "glGetTexLevelParameteri");
+        boolean proxy = target == GL_PROXY_TEXTURE_2D;
+        if (!proxy) {
+            requireTexture2D(target, "glGetTexLevelParameteri");
+        }
         state().refuseWhileRecording("glGetTexLevelParameteri");
         requireLevel(level);
-        int[] size = state().levelSize(level);
+        int[] size = proxy ? state().proxySize() : state().levelSize(level);
         return switch (name) {
             case GL_TEXTURE_WIDTH -> size[0];
             case GL_TEXTURE_HEIGHT -> size[1];
@@ -997,6 +1001,9 @@ public class GL11C {
     /** uploads rgba pixels, one int per pixel in 0xAARRGGBB order. */
     public static void glTexImage2D(int target, int level, int internalFormat, int width,
                                     int height, int border, int format, int type, int[] pixels) {
+        if (proxied(target, level, width, height)) {
+            return;
+        }
         requireTexture2D(target, "glTexImage2D");
         state().refuseWhileRecording("glTexImage2D");
         requireLevel(level);
@@ -1011,6 +1018,9 @@ public class GL11C {
     public static void glTexImage2D(int target, int level, int internalFormat, int width,
                                     int height, int border, int format, int type,
                                     ByteBuffer pixels) {
+        if (proxied(target, level, width, height)) {
+            return;
+        }
         requireTexture2D(target, "glTexImage2D");
         state().refuseWhileRecording("glTexImage2D");
         requireLevel(level);
@@ -1029,6 +1039,9 @@ public class GL11C {
     public static void glTexImage2D(int target, int level, int internalFormat, int width,
                                     int height, int border, int format, int type,
                                     IntBuffer pixels) {
+        if (proxied(target, level, width, height)) {
+            return;
+        }
         requireTexture2D(target, "glTexImage2D");
         state().refuseWhileRecording("glTexImage2D");
         requireLevel(level);
@@ -1204,6 +1217,18 @@ public class GL11C {
         }
         return rgba;
     }
+    /** webgl has no proxy target, so the largest texture the device takes gives the answer */
+    private static boolean proxied(int target, int level, int width, int height) {
+        if (target != GL_PROXY_TEXTURE_2D) {
+            return false;
+        }
+        requireLevel(level);
+        int largest = device().limit(GraphicsLimit.MAX_TEXTURE_SIZE);
+        boolean fits = width <= largest && height <= largest;
+        state().recordProxySize(fits ? width : 0, fits ? height : 0);
+        return true;
+    }
+
     static void requireTexture2D(int target, String call) {
         if (target != GL_TEXTURE_2D) {
             throw new UnsupportedOperationException(
