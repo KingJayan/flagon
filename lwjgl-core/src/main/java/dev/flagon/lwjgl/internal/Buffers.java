@@ -35,7 +35,8 @@ public final class Buffers {
 
     public static int readAll(Buffer source, byte[] into) {
         ByteBuffer target = ByteBuffer.wrap(into).order(ByteOrder.nativeOrder());
-        int elements = source.capacity();
+        // read only the part the program filled
+        int elements = source.limit();
         if (source instanceof ByteBuffer bytes) {
             for (int i = 0; i < elements; i++) {
                 target.put(bytes.get(i));
