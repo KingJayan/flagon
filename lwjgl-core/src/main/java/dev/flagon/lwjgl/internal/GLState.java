@@ -81,6 +81,7 @@ public final class GLState implements RenderState {
     private int scissorHeight;
     private final int[] boundTexture = new int[VertexArrays.UNITS];
     private final Map<Integer, int[]> levelSizes = new HashMap<>();
+    private int[] proxySize = new int[] {0, 0};
     private final Map<Integer, Integer> pixelStore = new HashMap<>();
     private final Set<Integer> automaticMipmaps = new HashSet<>();
 
@@ -886,6 +887,16 @@ public final class GLState implements RenderState {
     /** gl answers glGetTexLevelParameter from the last upload, so the size is remembered here. */
     public void recordLevelSize(int level, int width, int height) {
         levelSizes.put((boundTexture() << 8) | (level & 0xFF), new int[] {width, height});
+    }
+
+    /** a proxy request does not change the texture that is bound, so its size is kept here */
+    public void recordProxySize(int width, int height) {
+        proxySize = new int[] {width, height};
+    }
+
+    /** @return the size of the last proxy request, or zeroes if the device does not take it */
+    public int[] proxySize() {
+        return proxySize;
     }
 
     /** @return the width and height of the level, or zeroes if nothing was uploaded to it */

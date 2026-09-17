@@ -288,6 +288,27 @@ class GL11Test {
     }
 
     @Test
+    void reportsThatALargeProxyTextureDoesNotFit() {
+        GL11.glTexImage2D(GL11.GL_PROXY_TEXTURE_2D, 0, GL11.GL_RGBA, 8192, 8192, 0,
+                GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, (java.nio.ByteBuffer) null);
+
+        assertEquals(0, GL11.glGetTexLevelParameteri(GL11.GL_PROXY_TEXTURE_2D, 0,
+                GL11.GL_TEXTURE_WIDTH));
+        assertEquals(java.util.List.of(), device.calls("textureStorage"));
+    }
+
+    @Test
+    void reportsTheSizeOfAProxyTextureThatFits() {
+        GL11.glTexImage2D(GL11.GL_PROXY_TEXTURE_2D, 0, GL11.GL_RGBA, 4096, 2048, 0,
+                GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, (java.nio.ByteBuffer) null);
+
+        assertEquals(4096, GL11.glGetTexLevelParameteri(GL11.GL_PROXY_TEXTURE_2D, 0,
+                GL11.GL_TEXTURE_WIDTH));
+        assertEquals(2048, GL11.glGetTexLevelParameteri(GL11.GL_PROXY_TEXTURE_2D, 0,
+                GL11.GL_TEXTURE_HEIGHT));
+    }
+
+    @Test
     void reservesALevelForANullIntBuffer() {
         GL11.glTexImage2D(GL11.GL_TEXTURE_2D, 0, GL12.GL_BGRA, 4, 2, 0,
                 GL12.GL_BGRA, GL12.GL_UNSIGNED_INT_8_8_8_8_REV, (java.nio.IntBuffer) null);
