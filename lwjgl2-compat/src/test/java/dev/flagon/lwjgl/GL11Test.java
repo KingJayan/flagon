@@ -288,6 +288,14 @@ class GL11Test {
     }
 
     @Test
+    void reservesALevelForANullIntBuffer() {
+        GL11.glTexImage2D(GL11.GL_TEXTURE_2D, 0, GL12.GL_BGRA, 4, 2, 0,
+                GL12.GL_BGRA, GL12.GL_UNSIGNED_INT_8_8_8_8_REV, (java.nio.IntBuffer) null);
+
+        assertEquals(java.util.List.of("textureStorage 0 4x2"), device.calls("textureStorage"));
+    }
+
+    @Test
     void takesThePackedTypeFromIntsToo() {
         GL11.glTexImage2D(GL11.GL_TEXTURE_2D, 0, GL12.GL_BGRA, 1, 1, 0,
                 GL12.GL_BGRA, GL12.GL_UNSIGNED_INT_8_8_8_8_REV, new int[] {0x40102030});

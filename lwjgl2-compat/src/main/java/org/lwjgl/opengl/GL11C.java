@@ -1034,6 +1034,10 @@ public class GL11C {
         requireLevel(level);
         requireRgbaBytes(format, type);
         state().recordLevelSize(level, width, height);
+        if (pixels == null) {
+            device().textureStorage(level, width, height);
+            return;
+        }
         device().textureImage(level, width, height,
                 spread(unpack(pixels, width, height), width * height));
         rebuildMipmaps();
