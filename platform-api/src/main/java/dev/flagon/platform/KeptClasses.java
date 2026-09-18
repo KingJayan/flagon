@@ -15,7 +15,7 @@ public final class KeptClasses {
     private KeptClasses() {
     }
 
-    // the build rewrites this with the names it kept
+    // the build writes the kept names here
     static String names() {
         return "";
     }

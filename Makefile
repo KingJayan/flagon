@@ -12,7 +12,7 @@ N ?= 3
 VENDOR_JARS := $(wildcard vendor/*.jar)
 APP := $(if $(VENDOR_JARS),-Papp,)
 
-# name the packages a library scans in vendor/preserve.txt, one glob for each line
+# name the packages a library scans, one glob for each line
 PRESERVE_FILE := vendor/preserve.txt
 PRESERVE := $(if $(wildcard $(PRESERVE_FILE)),-Dflagon.preserve='$(shell grep -v '^\#' $(PRESERVE_FILE) | paste -sd, -)',)
 

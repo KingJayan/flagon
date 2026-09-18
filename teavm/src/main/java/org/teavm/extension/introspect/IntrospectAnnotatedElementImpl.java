@@ -81,7 +81,7 @@ public abstract class IntrospectAnnotatedElementImpl implements IntrospectAnnota
             if (underlyingAnnotations == null) {
                 allAnnotations = Collections.emptyList();
             } else {
-                // a jvm skips an annotation whose type it cannot load
+                // a jvm skips an annotation with an unknown type
                 allAnnotations = StreamSupport.stream(annotationContainer().all().spliterator(), false)
                         .map(annotation -> new IntrospectAnnotationImpl<>(introspection, annotation))
                         .filter(annotation -> annotation.type() != null)
