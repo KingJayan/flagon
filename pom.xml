@@ -48,11 +48,9 @@
     <lwjgl.version>2.9.3</lwjgl.version>
     <lwjgl3.version>3.3.3</lwjgl3.version>
 
-    <flagon.target>WEBASSEMBLY_GC</flagon.target>
-    <flagon.bundle.extension>wasm</flagon.bundle.extension>
-    <flagon.optimization>SIMPLE</flagon.optimization>
+    <flagon.optimization.wasm>SIMPLE</flagon.optimization.wasm>
+    <flagon.optimization.js>SIMPLE</flagon.optimization.js>
 
-    <flagon.optimization.release>FULL</flagon.optimization.release>
     <flagon.minify>false</flagon.minify>
 
     <flagon.strict>true</flagon.strict>
@@ -229,17 +227,43 @@
           </dependencies>
           <executions>
             <execution>
-              <id>compile-bundle</id>
+              <id>compile-wasm</id>
               <goals>
                 <goal>compile</goal>
               </goals>
               <configuration>
                 <mainClass>${flagon.bundle.mainClass}</mainClass>
-                <targetType>${flagon.target}</targetType>
+                <targetType>WEBASSEMBLY_GC</targetType>
                 <targetDirectory>${flagon.bundleOutput}</targetDirectory>
-                <targetFileName>${flagon.bundle.name}.${flagon.bundle.extension}</targetFileName>
+                <targetFileName>${flagon.bundle.name}.wasm</targetFileName>
+                <optimizationLevel>${flagon.optimization.wasm}</optimizationLevel>
                 <jsModuleType>ES2015</jsModuleType>
-                <optimizationLevel>${flagon.optimization}</optimizationLevel>
+                <minifying>${flagon.minify}</minifying>
+                <sourceMapsGenerated>${flagon.sourceMaps}</sourceMapsGenerated>
+                <debugInformationGenerated>${flagon.sourceMaps}</debugInformationGenerated>
+                <stopOnErrors>true</stopOnErrors>
+                <strict>${flagon.strict}</strict>
+                <properties>
+                  <flagon.reflect.classes>${flagon.reflect.classes}</flagon.reflect.classes>
+                  <flagon.reflect.proxies>${flagon.reflect.proxies}</flagon.reflect.proxies>
+                  <flagon.reflect.constructed>${flagon.reflect.constructed}</flagon.reflect.constructed>
+                  <flagon.reflect.converted>${flagon.reflect.converted}</flagon.reflect.converted>
+                  <flagon.preserve>${flagon.preserve}</flagon.preserve>
+                </properties>
+              </configuration>
+            </execution>
+            <execution>
+              <id>compile-js</id>
+              <goals>
+                <goal>compile</goal>
+              </goals>
+              <configuration>
+                <mainClass>${flagon.bundle.mainClass}</mainClass>
+                <targetType>JAVASCRIPT</targetType>
+                <targetDirectory>${flagon.bundleOutput}</targetDirectory>
+                <targetFileName>${flagon.bundle.name}.js</targetFileName>
+                <optimizationLevel>${flagon.optimization.js}</optimizationLevel>
+                <jsModuleType>ES2015</jsModuleType>
                 <minifying>${flagon.minify}</minifying>
                 <sourceMapsGenerated>${flagon.sourceMaps}</sourceMapsGenerated>
                 <debugInformationGenerated>${flagon.sourceMaps}</debugInformationGenerated>
@@ -391,19 +415,9 @@
     </profile>
 
     <profile>
-      <id>js</id>
-      <properties>
-        <flagon.target>JAVASCRIPT</flagon.target>
-        <flagon.bundle.extension>js</flagon.bundle.extension>
-
-        <flagon.optimization.release>SIMPLE</flagon.optimization.release>
-      </properties>
-    </profile>
-
-    <profile>
       <id>release</id>
       <properties>
-        <flagon.optimization>${flagon.optimization.release}</flagon.optimization>
+        <flagon.optimization.wasm>FULL</flagon.optimization.wasm>
         <flagon.minify>true</flagon.minify>
         <flagon.sourceMaps>false</flagon.sourceMaps>
       </properties>
