@@ -4,10 +4,12 @@ General reference guide for Flagon.
 
 ## Targets & Build Flags
 
-| Target | Build Flag | Execution |
-| --- | --- | --- |
-| **WASM GC** | *(Default)* | Preferred in supported browsers. |
-| **JavaScript** | `-Pjs` | Fallback bundle when WASM GC is unsupported. |
+| Target | Execution |
+| --- | --- |
+| **WASM GC** | Preferred in supported browsers. |
+| **JavaScript** | Fallback bundle when WASM GC is unsupported. |
+
+Every build emits both.
 
 CI executes all self-tests across both backends in Chromium and Firefox.
 

@@ -75,15 +75,15 @@ TeaVM AOT Compiler                [teavm] 0.15.0 plus compiler fixes
   ├── Reachability Graph Construction (Tree-shaking dead code)
   ├── Async / Continuation Suspension Transform (Green threading)
   │
-  ├── (Default) ──► WebAssembly GC (.wasm)
-  └── (-Pjs)    ──► Optimized JavaScript (.js)
+  ├──► WebAssembly GC (.wasm)
+  └──► Optimized JavaScript (.js)
 
 ```
 
 ### Backend Targets
 
-* **WASM GC (Default):** High-performance execution. Java arrays are in the internal Wasm GC heap. Copy-out barriers (`JsArrays`) stage data when crossing into browser-accessible linear memory or typed array buffers.
-* **JavaScript (`-Pjs`):** Universal fallback. Java arrays map directly to JavaScript typed arrays.
+* **WASM GC:** High-performance execution. Java arrays are in the internal Wasm GC heap. Copy-out barriers (`JsArrays`) stage data when crossing into browser-accessible linear memory or typed array buffers.
+* **JavaScript:** Universal fallback. Java arrays map directly to JavaScript typed arrays.
 * **Strict Checks (`flagon.strict`):** Compiler flag inserting explicit null dereference and array bounds verification. Ensures standard JVM `NullPointerException` and `ArrayIndexOutOfBoundsException` catch semantics work reliably.
 
 ---

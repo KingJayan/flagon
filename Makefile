@@ -5,7 +5,6 @@ WEB := web
 BUNDLES := $(WEB)/public/flagon
 ARGS ?=
 N ?= 3
-EXT ?=
 
 # drop any jar in vendor/ and it is built into the `app` bundle, which /play/ runs, its libraries
 # beside it if it needs any. the jar names its own main class, so nothing here needs to be told
@@ -17,8 +16,8 @@ APP := $(if $(VENDOR_JARS),-Papp,)
 PRESERVE_FILE := vendor/preserve.txt
 PRESERVE := $(if $(wildcard $(PRESERVE_FILE)),-Dflagon.preserve='$(shell grep -v '^\#' $(PRESERVE_FILE) | paste -sd, -)',)
 
-.PHONY: help setup deps browsers browsers-deps browser-chromium browser-served browser-firefox bundles bundles-js app build bundles-release \
-        bundles-release-js build-release test browser flake typecheck lint site dev serve \
+.PHONY: help setup deps browsers browsers-deps browser-chromium browser-served browser-firefox bundles app build bundles-release \
+        build-release test browser flake typecheck lint site dev serve \
         check report merge-reports watch version release publish clean verify-bundles size \
         app-cost app-size
 
@@ -48,7 +47,7 @@ browser-served: browser-chromium ## the served run drives chromium too
 browser-firefox: ## install just firefox, and the libraries it wants
 	cd $(WEB) && bunx playwright install-deps firefox && bunx playwright install firefox
 
-bundles: ## compile java to webassembly gc
+bundles: ## compile java to webassembly gc and to javascript
 	$(MVN) $(APP) $(PRESERVE) package
 	@$(MAKE) verify-bundles
 
@@ -68,10 +67,6 @@ app-cost: ## say how much work the jars in vendor/ are, before the build starts
 app-size: ## weigh the app bundle that both backends emitted
 	@printf "%-16s %10s\n" bundle bytes; for file in $(BUNDLES)/app.wasm $(BUNDLES)/app.js; do test -f $$file && printf "%-16s %10s\n" $$(basename $$file) $$(wc -c < $$file | tr -d " "); done; true
 
-bundles-js: ## compile java to javascript, the fallback backend
-	$(MVN) -Pjs $(APP) $(PRESERVE) -DskipTests package
-	@$(MAKE) verify-bundles
-
 # a bundle compiled from class files that never compiled is small and throws at boot, and the
 # build that emitted it reports success. see issue #106
 verify-bundles: ## check the emitted bundles are whole
@@ -87,32 +82,22 @@ verify-bundles: ## check the emitted bundles are whole
 	done; echo "bundles look whole"
 
 build: ## compile both backends
-	@echo "==> webassembly, backend 1 of 2"
 	@$(MAKE) bundles
-	@echo "==> javascript, backend 2 of 2"
-	@$(MAKE) bundles-js
 
-bundles-release: ## compile to webassembly gc as a hosted build ships it
+bundles-release: ## compile both backends as a hosted build ships them
 	$(MVN) -Prelease $(PRESERVE) package
 	@$(MAKE) verify-bundles
-	@$(MAKE) size EXT=wasm
-
-bundles-release-js: ## compile to javascript as a hosted build ships it
-	$(MVN) -Pjs -Prelease $(PRESERVE) -DskipTests package
-	@$(MAKE) verify-bundles
-	@$(MAKE) size EXT=js
+	@$(MAKE) size
 
 build-release: ## compile both backends as a hosted build ships them
 	@$(MAKE) bundles-release
-	@$(MAKE) bundles-release-js
 
 # only meaningful against a release build; a debug bundle carries names a release one drops
-size: ## weigh the release bundles against toolchain/size-budget.txt (EXT=wasm for one backend)
+size: ## weigh the release bundles against toolchain/size-budget.txt
 	@over=0; \
 	printf "%-16s %10s %10s %8s\n" bundle bytes budget left; \
 	while read -r name limit; do \
 		case $$name in \#*|"") continue;; esac; \
-		test -z "$(EXT)" || case $$name in *.$(EXT)) ;; *) continue;; esac; \
 		file=$(BUNDLES)/$$name; \
 		test -f $$file || { echo "$$name was not built"; exit 1; }; \
 		size=$$(wc -c < $$file | tr -d " "); \

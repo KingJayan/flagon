@@ -140,23 +140,14 @@ If inheriting from `flagon-parent`, declare these properties in `bundle-browser/
 
 ### 4. Compile
 
-Compile the WebAssembly GC bundle (default):
+Compile the bundles:
 
 ```bash
 ./mvnw package
 
 ```
 
-*Outputs: `app.wasm` and bootstrap loader scripts.*
-
-Compile the JavaScript fallback bundle:
-
-```bash
-./mvnw package -Pjs
-
-```
-
-*Outputs: `app.js`.*
+*Outputs: `app.wasm`, `app.js` and bootstrap loader scripts. One build emits both backends.*
 
 Ship both artifacts for complete browser support. Flagon's web shell automatically handles feature detection and runs WASM GC when available.
 
