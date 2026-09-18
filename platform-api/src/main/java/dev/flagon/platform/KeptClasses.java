@@ -6,7 +6,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-/** lists the classes that flagon.preserve kept, so a classpath scan can find them */
 public final class KeptClasses {
 
     static final String ROOT = "/flagon/classes";
@@ -16,12 +15,11 @@ public final class KeptClasses {
     private KeptClasses() {
     }
 
-    /** the build writes the kept names here, separated by commas */
+    // the build rewrites this with the names it kept
     static String names() {
         return "";
     }
 
-    /** tells if the package holds a kept class */
     static boolean holds(String path) {
         String prefix = path.replace('/', '.') + ".";
         for (String name : names().split(",")) {
@@ -32,7 +30,7 @@ public final class KeptClasses {
         return false;
     }
 
-    /** writes the package out as empty files, and gives back the directory to read */
+    // a scan reads a directory, so give it one
     static File layOut(String path) {
         File directory = new File(ROOT + "/" + path);
         if (LAID_OUT.contains(path)) {

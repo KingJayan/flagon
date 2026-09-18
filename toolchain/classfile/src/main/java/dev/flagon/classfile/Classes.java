@@ -1,9 +1,9 @@
 package dev.flagon.classfile;
 
-/** gives class files to a {@link Loadable} */
 public interface Classes {
 
     byte[] read(String name);
 
+    // true for a class teavm supplies, which no file on the classpath carries
     boolean has(String name);
 }
