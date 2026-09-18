@@ -160,6 +160,44 @@ class WriteAppEntryTest {
         assertFalse(Files.exists(directory.resolve("listed")));
     }
 
+    @Test
+    void loadsAClassThatOnlyAResourceNames() throws Exception {
+        Path jar = jarNaming("real.Entry", "LoggerFactory = real.Entry\n");
+
+        String written = entryFor(jar);
+        assertTrue(written.contains("Class.forName(\"real.Entry\");"), written);
+        assertTrue(written.contains("loadNamedClasses();"), written);
+    }
+
+    @Test
+    void ignoresANameNoJarCarries() throws Exception {
+        Path jar = jarNaming("real.Entry", "LoggerFactory = other.Missing\n");
+
+        assertEquals(List.of(), WriteAppEntry.namedByResources(List.of(jar)));
+    }
+
+    @Test
+    void loadsNothingWhenNoResourceNamesAClass() throws Exception {
+        Path jar = jar("real.Entry", "real.Entry");
+
+        assertFalse(entryFor(jar).contains("loadNamedClasses"));
+    }
+
+    private Path jarNaming(String type, String resource) throws Exception {
+        Path classes = compile(type);
+        Path jar = directory.resolve("naming.jar");
+        try (JarOutputStream out = new JarOutputStream(Files.newOutputStream(jar))) {
+            String name = type.replace('.', '/') + ".class";
+            out.putNextEntry(new JarEntry(name));
+            Files.copy(classes.resolve(name), (OutputStream) out);
+            out.closeEntry();
+            out.putNextEntry(new JarEntry("META-INF/provider.properties"));
+            out.write(resource.getBytes(StandardCharsets.UTF_8));
+            out.closeEntry();
+        }
+        return jar;
+    }
+
     private String entryFor(Path jar) throws Exception {
         Path into = Files.createDirectories(directory.resolve("out"));
         WriteAppEntry.main(new String[] {jar.toString(), into.toString()});

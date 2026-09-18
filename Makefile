@@ -12,6 +12,10 @@ N ?= 3
 VENDOR_JARS := $(wildcard vendor/*.jar)
 APP := $(if $(VENDOR_JARS),-Papp,)
 
+# name the packages a library scans in vendor/preserve.txt, one glob for each line
+PRESERVE_FILE := vendor/preserve.txt
+PRESERVE := $(if $(wildcard $(PRESERVE_FILE)),-Dflagon.preserve='$(shell grep -v '^\#' $(PRESERVE_FILE) | paste -sd, -)',)
+
 .PHONY: help setup deps browsers browsers-deps browser-chromium browser-served browser-firefox bundles bundles-js app build bundles-release \
         bundles-release-js build-release test browser flake typecheck lint site dev serve \
         check report merge-reports watch version release publish clean verify-bundles size \
@@ -44,7 +48,7 @@ browser-firefox: ## install just firefox, and the libraries it wants
 	cd $(WEB) && bunx playwright install-deps firefox && bunx playwright install firefox
 
 bundles: ## compile java to webassembly gc
-	$(MVN) $(APP) package
+	$(MVN) $(APP) $(PRESERVE) package
 	@$(MAKE) verify-bundles
 
 app: ## compile whatever jar is in vendor/ into a bundle, and say where to open it
@@ -64,7 +68,7 @@ app-size: ## weigh the app bundle that both backends emitted
 	@printf "%-16s %10s\n" bundle bytes; for file in $(BUNDLES)/app.wasm $(BUNDLES)/app.js; do test -f $$file && printf "%-16s %10s\n" $$(basename $$file) $$(wc -c < $$file | tr -d " "); done; true
 
 bundles-js: ## compile java to javascript, the fallback backend
-	$(MVN) -Pjs $(APP) -DskipTests package
+	$(MVN) -Pjs $(APP) $(PRESERVE) -DskipTests package
 	@$(MAKE) verify-bundles
 
 # a bundle compiled from class files that never compiled is small and throws at boot, and the
@@ -88,11 +92,11 @@ build: ## compile both backends
 	@$(MAKE) bundles-js
 
 bundles-release: ## compile to webassembly gc as a hosted build ships it
-	$(MVN) -Prelease package
+	$(MVN) -Prelease $(PRESERVE) package
 	@$(MAKE) verify-bundles
 
 bundles-release-js: ## compile to javascript as a hosted build ships it
-	$(MVN) -Pjs -Prelease -DskipTests package
+	$(MVN) -Pjs -Prelease $(PRESERVE) -DskipTests package
 	@$(MAKE) verify-bundles
 
 build-release: ## compile both backends as a hosted build ships them

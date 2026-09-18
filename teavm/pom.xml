@@ -14,7 +14,7 @@
   <artifactId>teavm-core</artifactId>
   <version>0.15.0-flagon</version>
   <name>Flagon :: TeaVM Core</name>
-  <description>This module rebuilds teavm-core 0.15.0 with the compiler and classlib fixes that Flagon needs.</description>
+  <description>This module rebuilds teavm-core 0.15.0 with required compiler and classlib fixes for Flagon.</description>
 
   <properties>
     <checkstyle.skip>true</checkstyle.skip>
@@ -35,7 +35,6 @@
       <groupId>org.teavm</groupId>
       <artifactId>teavm-extension-apis</artifactId>
       <version>${teavm.version}</version>
-      <scope>runtime</scope>
     </dependency>
     <dependency>
       <groupId>org.teavm</groupId>
@@ -101,7 +100,7 @@
                   <outputDirectory>${project.build.outputDirectory}</outputDirectory>
                   <!-- unpack every build, because a later build can lose these classes -->
                   <overWrite>true</overWrite>
-                  <excludes>META-INF/**,org/teavm/backend/wasm/model/instruction/WasmTypeInference*.class,org/teavm/backend/wasm/transformation/CoroutineTransformation*.class,org/teavm/backend/javascript/intrinsics/reflection/ClassInfoGenerator.class,org/teavm/backend/javascript/codegen/DefaultAliasProvider.class,org/teavm/backend/javascript/intrinsics/reflection/ClassReflectionInfoGenerator*.class,org/teavm/backend/wasm/generate/methods/WasmGCInstructionGenerationVisitor*.class,org/teavm/backend/wasm/intrinsics/reflection/ReflectionMetadataGenerator*.class,org/teavm/runtime/Fiber*.class,org/teavm/backend/wasm/transformation/CoroutineFunctions*.class,org/teavm/backend/wasm/dependencies/WasmGCDependencies*.class</excludes>
+                  <excludes>META-INF/**,org/teavm/extension/introspect/IntrospectAnnotatedElementImpl.class,org/teavm/backend/wasm/model/instruction/WasmTypeInference*.class,org/teavm/backend/wasm/transformation/CoroutineTransformation*.class,org/teavm/backend/javascript/intrinsics/reflection/ClassInfoGenerator.class,org/teavm/backend/javascript/codegen/DefaultAliasProvider.class,org/teavm/backend/javascript/intrinsics/reflection/ClassReflectionInfoGenerator*.class,org/teavm/backend/wasm/generate/methods/WasmGCInstructionGenerationVisitor*.class,org/teavm/backend/wasm/intrinsics/reflection/ReflectionMetadataGenerator*.class,org/teavm/runtime/Fiber*.class,org/teavm/backend/wasm/transformation/CoroutineFunctions*.class,org/teavm/backend/wasm/dependencies/WasmGCDependencies*.class</excludes>
                 </artifactItem>
               </artifactItems>
             </configuration>

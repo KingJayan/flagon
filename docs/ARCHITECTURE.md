@@ -55,6 +55,7 @@ The codebase is organized into strict layers. Higher layers depend solely on imm
 | `toolchain/concurrent-classlib` | Supplies missing `java.util.concurrent` classes (executors, latches, locks) mapped to green threads. |
 | `toolchain/jdk-shims` | Bytecode-rewriting shims rerouting unsupported JDK calls (`ManagementFactory`, `Runtime.maxMemory`) to runtime equivalents. |
 | `toolchain/app-entry` | Pre-compilation analyzer generating explicit programmatic entry points from scanned `vendor/*.jar` files. |
+| `toolchain/classfile` | Constant-pool reader deciding whether a classpath carries every class and method a class names. |
 
 ---
 
@@ -141,6 +142,7 @@ Class Identity / Types       Automatic (always retained)               Preserves
 Class Members                @Reflectable or flagon.reflect.classes     Retains fields, methods, constructors
 Dynamic Proxy Interfaces     flagon.reflect.proxies                    Synthesizes proxy class at compile time
 vendor/ Constructors         flagon.reflect.constructed                Retains constructors only for registries
+Classpath Scan Targets       flagon.preserve (vendor/preserve.txt)     Retains classes that only a scan names
 
 ```
 

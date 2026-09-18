@@ -3,6 +3,7 @@ package dev.flagon.platform;
 import java.io.InputStream;
 import java.lang.reflect.Type;
 import java.net.URL;
+import java.security.ProtectionDomain;
 
 public final class Classes {
 
@@ -23,6 +24,10 @@ public final class Classes {
         return NO_SIGNERS.clone();
     }
 
+    public static ProtectionDomain getProtectionDomain(Class<?> type) {
+        return new ProtectionDomain(null, null);
+    }
+
     public static URL getResource(Class<?> type, String name) {
         return ClassLoaders.getResource(null, beside(type, name));
     }
@@ -31,7 +36,6 @@ public final class Classes {
         return Resources.open(beside(type, name));
     }
 
-    /** a name with no leading slash is read beside the class, the way the jdk reads it. */
     private static String beside(Class<?> type, String name) {
         if (name == null || name.startsWith("/")) {
             return name;

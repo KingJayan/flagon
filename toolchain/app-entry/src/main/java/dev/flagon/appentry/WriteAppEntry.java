@@ -1,9 +1,12 @@
 package dev.flagon.appentry;
 
+import dev.flagon.classfile.Loadable;
+
 import java.io.BufferedInputStream;
 import java.io.DataInputStream;
 import java.io.IOException;
 import java.lang.reflect.Modifier;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -18,6 +21,7 @@ import java.util.Set;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 import java.util.jar.Manifest;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
@@ -38,6 +42,11 @@ public final class WriteAppEntry {
     /** how many shadowed names are worth printing before the point is made */
     private static final int SHADOWS_SHOWN = 10;
 
+    private static final int RESOURCE_LIMIT = 1 << 20;
+
+    private static final Pattern TYPE_NAME = Pattern.compile(
+            "[A-Za-z_$][A-Za-z0-9_$]*(?:\\.[A-Za-z_$][A-Za-z0-9_$]*)+");
+
     /**
      * {@code args[0]} a jar or a directory of them, {@code args[1]} the source directory to
      * write into, {@code args[2]} where to list the classes they carry, if anywhere,
@@ -50,7 +59,12 @@ public final class WriteAppEntry {
 
         List<Path> jars = jarsIn(given);
         List<String> mains = runnableIn(jars);
-        Files.writeString(into.resolve("AppEntry.java"), source(mains));
+        List<String> named = namedByResources(jars);
+        Files.writeString(into.resolve("AppEntry.java"), source(mains, named));
+        if (!named.isEmpty()) {
+            System.out.println("loading " + named.size()
+                    + " classes that only a resource names: " + named);
+        }
         System.out.println(mains.isEmpty()
                 ? "nothing runnable in " + given + ", so the app bundle will say so"
                 : "app programs: " + mains);
@@ -74,6 +88,65 @@ public final class WriteAppEntry {
                         + " time and bundle size. if the game only reflects over its own packages,"
                         + " say so with -Dflagon.app.reflect=your.game.**");
             }
+        }
+    }
+
+    static List<String> namedByResources(List<Path> jars) throws IOException {
+        Map<String, JarClasses.Where> carriers = carriersIn(jars);
+        Set<String> carried = carriers.keySet();
+        Set<String> named = new LinkedHashSet<>();
+        for (Path jar : jars) {
+            try (JarFile opened = new JarFile(jar.toFile())) {
+                Enumeration<JarEntry> entries = opened.entries();
+                while (entries.hasMoreElements()) {
+                    JarEntry entry = entries.nextElement();
+                    if (!describes(entry)) {
+                        continue;
+                    }
+                    Matcher found = TYPE_NAME.matcher(textOf(opened, entry));
+                    while (found.find()) {
+                        if (carried.contains(found.group())) {
+                            named.add(found.group());
+                        }
+                    }
+                }
+            }
+        }
+        Loadable loadable = new Loadable(new JarClasses(carriers));
+        return named.stream().sorted().filter(loadable::test).toList();
+    }
+
+    private static Map<String, JarClasses.Where> carriersIn(List<Path> jars) throws IOException {
+        Map<String, JarClasses.Where> carriers = new LinkedHashMap<>();
+        for (Path jar : jars) {
+            try (JarFile opened = new JarFile(jar.toFile())) {
+                Enumeration<JarEntry> entries = opened.entries();
+                while (entries.hasMoreElements()) {
+                    String entry = entries.nextElement().getName();
+                    if (entry.endsWith(".class")) {
+                        carriers.putIfAbsent(
+                                entry.substring(0, entry.length() - ".class".length())
+                                        .replace('/', '.'),
+                                new JarClasses.Where(jar, entry));
+                    }
+                }
+            }
+        }
+        return carriers;
+    }
+
+    private static boolean describes(JarEntry entry) {
+        String name = entry.getName();
+        return !entry.isDirectory() && name.startsWith("META-INF/")
+                && !name.equals("META-INF/MANIFEST.MF")
+                && !name.startsWith("META-INF/maven/")
+                && entry.getSize() <= RESOURCE_LIMIT;
+    }
+
+    // latin-1 accepts any byte
+    private static String textOf(JarFile opened, JarEntry entry) throws IOException {
+        try (var in = opened.getInputStream(entry)) {
+            return new String(in.readAllBytes(), StandardCharsets.ISO_8859_1);
         }
     }
 
@@ -348,7 +421,24 @@ public final class WriteAppEntry {
         return (dot < 0 ? type : type.substring(dot + 1)).toLowerCase(Locale.ROOT);
     }
 
-    private static String source(List<String> mains) {
+    private static String loads(List<String> named) {
+        if (named.isEmpty()) {
+            return "";
+        }
+        StringBuilder lookups = new StringBuilder();
+        for (String type : named) {
+            lookups.append("                Class.forName(\"").append(type).append("\");\n");
+        }
+        return "\n    // no code calls these, so load them or the compiler drops them\n"
+                + "    private static void loadNamedClasses() {\n"
+                + "        try {\n" + lookups
+                + "        } catch (ClassNotFoundException absent) {\n"
+                + "            // the jars changed after the build\n"
+                + "        }\n"
+                + "    }\n";
+    }
+
+    private static String source(List<String> mains, List<String> named) {
         List<String> ids = idsFor(mains);
         StringBuilder registrations = new StringBuilder();
         StringBuilder calls = new StringBuilder();
@@ -395,12 +485,13 @@ public final class WriteAppEntry {
 
                     private AppEntry() {
                     }
-
+                %s
                     static ProgramRegistry registry() {
-                        return new ProgramRegistry()
+                %s        return new ProgramRegistry()
                 %s                ;
                     }
                 %s}
-                """.formatted(registrations, calls);
+                """.formatted(loads(named), named.isEmpty() ? "" : "        loadNamedClasses();\n",
+                registrations, calls);
     }
 }

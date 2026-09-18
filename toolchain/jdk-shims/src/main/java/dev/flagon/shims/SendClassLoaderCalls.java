@@ -16,6 +16,7 @@ public final class SendClassLoaderCalls implements TeaVMPlugin, ClassHolderTrans
     private static final Map<String, String> SENT = Map.of(
             "loadClass", "loadClass",
             "getResources", "getResources",
+            "getSystemResource", "getSystemResource",
             "getResource", "getResource");
 
     private static final String[] NOT_OURS = {"org.teavm.", LOADERS};
