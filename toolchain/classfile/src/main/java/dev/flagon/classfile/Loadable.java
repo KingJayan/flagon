@@ -8,7 +8,6 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
-/** tells if a classpath can run a class */
 public final class Loadable {
 
     private final Classes source;

@@ -7,7 +7,6 @@ import org.teavm.model.ClassReaderSource;
 import java.io.IOException;
 import java.io.InputStream;
 
-/** reads the classes on the compiler classpath */
 final class CompiledClasses implements Classes {
 
     private final ClassLoader loader;

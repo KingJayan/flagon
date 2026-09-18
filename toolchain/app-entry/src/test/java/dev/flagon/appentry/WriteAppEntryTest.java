@@ -183,7 +183,6 @@ class WriteAppEntryTest {
         assertFalse(entryFor(jar).contains("loadNamedClasses"));
     }
 
-    /** builds a jar with one class and a META-INF resource */
     private Path jarNaming(String type, String resource) throws Exception {
         Path classes = compile(type);
         Path jar = directory.resolve("naming.jar");

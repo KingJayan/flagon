@@ -83,7 +83,6 @@ public record Bytes(Set<String> classes, List<String[]> calls, Set<String> membe
         return new Bytes(classes, calls, members, parents.toArray(new String[0]));
     }
 
-    /** reads the item type of an array, and skips a primitive array */
     private static void named(String raw, Set<String> into) {
         String name = raw;
         while (name.startsWith("[")) {

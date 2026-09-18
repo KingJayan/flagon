@@ -8,7 +8,6 @@ import java.util.Map;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 
-/** reads the classes that the jars carry, and the jdk classes beside them */
 final class JarClasses implements Classes {
 
     record Where(Path jar, String entry) {

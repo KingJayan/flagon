@@ -50,7 +50,6 @@ public final class ClassLoaders {
         return found;
     }
 
-    /** finds the directory that holds a package, for a scan to read */
     private static URL packageAt(String name) {
         String path = Resources.clean(name);
         if (path.isEmpty() || path.endsWith("/") || !KeptClasses.holds(path)) {

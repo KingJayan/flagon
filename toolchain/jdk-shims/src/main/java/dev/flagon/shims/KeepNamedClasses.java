@@ -33,7 +33,6 @@ import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 import java.util.stream.Stream;
 
-/** keeps the classes that flagon.preserve names, because no code calls them */
 public final class KeepNamedClasses implements TeaVMPlugin, DependencyListener,
         ClassHolderTransformer {
 
@@ -125,7 +124,7 @@ public final class KeepNamedClasses implements TeaVMPlugin, DependencyListener,
     public void complete() {
     }
 
-    /** turns the globs into patterns, where {@code *} stops at a package boundary */
+    // * stops at a package boundary, ** does not
     private static List<Pattern> patterns(String globs) {
         List<Pattern> wanted = new ArrayList<>();
         for (String glob : globs.split("[,\\s]+")) {

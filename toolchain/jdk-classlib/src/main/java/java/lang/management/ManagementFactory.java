@@ -44,7 +44,6 @@ public final class ManagementFactory {
         };
     }
 
-    /** makes an mbean server that keeps the objects in the page */
     public static MBeanServer getPlatformMBeanServer() {
         return SERVER;
     }
