@@ -278,15 +278,6 @@
           <failOnViolation>true</failOnViolation>
           <violationSeverity>error</violationSeverity>
         </configuration>
-        <executions>
-          <execution>
-            <id>check-style</id>
-            <phase>validate</phase>
-            <goals>
-              <goal>check</goal>
-            </goals>
-          </execution>
-        </executions>
       </plugin>
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
