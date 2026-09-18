@@ -5,6 +5,7 @@ WEB := web
 BUNDLES := $(WEB)/public/flagon
 ARGS ?=
 N ?= 3
+EXT ?=
 
 # drop any jar in vendor/ and it is built into the `app` bundle, which /play/ runs, its libraries
 # beside it if it needs any. the jar names its own main class, so nothing here needs to be told
@@ -94,21 +95,24 @@ build: ## compile both backends
 bundles-release: ## compile to webassembly gc as a hosted build ships it
 	$(MVN) -Prelease $(PRESERVE) package
 	@$(MAKE) verify-bundles
+	@$(MAKE) size EXT=wasm
 
 bundles-release-js: ## compile to javascript as a hosted build ships it
 	$(MVN) -Pjs -Prelease $(PRESERVE) -DskipTests package
 	@$(MAKE) verify-bundles
+	@$(MAKE) size EXT=js
 
 build-release: ## compile both backends as a hosted build ships them
 	@$(MAKE) bundles-release
 	@$(MAKE) bundles-release-js
 
 # only meaningful against a release build; a debug bundle carries names a release one drops
-size: ## weigh the release bundles against toolchain/size-budget.txt
+size: ## weigh the release bundles against toolchain/size-budget.txt (EXT=wasm for one backend)
 	@over=0; \
 	printf "%-16s %10s %10s %8s\n" bundle bytes budget left; \
 	while read -r name limit; do \
 		case $$name in \#*|"") continue;; esac; \
+		test -z "$(EXT)" || case $$name in *.$(EXT)) ;; *) continue;; esac; \
 		file=$(BUNDLES)/$$name; \
 		test -f $$file || { echo "$$name was not built"; exit 1; }; \
 		size=$$(wc -c < $$file | tr -d " "); \
