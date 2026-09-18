@@ -13,3 +13,6 @@ dev.flagon.shims.SendUuidCalls
 dev.flagon.shims.SendResourceCalls
 dev.flagon.shims.WriteAbsentCode
 dev.flagon.shims.SendLoggerCalls
+dev.flagon.shims.WriteClassContext
+dev.flagon.shims.SendCharsetCalls
+dev.flagon.shims.KeepNamedClasses

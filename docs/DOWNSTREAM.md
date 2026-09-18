@@ -25,6 +25,8 @@ cd web
 bun dev # local vite on localhost:5174
 ```
 
+If a library finds its parts by scanning the classpath, list the packages it scans in `vendor/preserve.txt`, one glob per line (`*` stops at a package boundary, `**` does not). The build keeps every class those globs name that the classpath can actually run, and answers the scan with a readable package directory. Log4j 2 finds its pattern converters this way.
+
 The build resolves collisions by sorting filenames alphabetically (the first occurrence of a duplicate class takes priority), identifies the entry point via the JAR's `Main-Class` manifest header (or classes with a `main` method), generates a direct bootstrap entry point, and compiles both `app.wasm` and `app.js`.
 
 ---
