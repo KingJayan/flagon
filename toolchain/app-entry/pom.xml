@@ -13,4 +13,12 @@
   <artifactId>app-entry</artifactId>
   <name>Flagon :: App Entry Point</name>
   <description>This module writes the entry point for the jar in vendor/, from what the jar says about itself.</description>
+
+  <dependencies>
+    <dependency>
+      <groupId>dev.flagon</groupId>
+      <artifactId>classfile</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+  </dependencies>
 </project>

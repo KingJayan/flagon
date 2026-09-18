@@ -24,6 +24,7 @@
     <module>toolchain/sound-classlib</module>
     <module>toolchain/crypto-classlib</module>
     <module>toolchain/concurrent-classlib</module>
+    <module>toolchain/classfile</module>
     <module>toolchain/reflect-policy</module>
     <module>toolchain/jdk-shims</module>
     <module>toolchain/app-entry</module>
@@ -64,6 +65,9 @@
     <flagon.reflect.constructed></flagon.reflect.constructed>
 
     <flagon.reflect.converted></flagon.reflect.converted>
+
+    <!-- see vendor/preserve.txt -->
+    <flagon.preserve></flagon.preserve>
 
     <flagon.app.dir>${maven.multiModuleProjectDirectory}/vendor</flagon.app.dir>
 
@@ -246,6 +250,7 @@
                   <flagon.reflect.proxies>${flagon.reflect.proxies}</flagon.reflect.proxies>
                   <flagon.reflect.constructed>${flagon.reflect.constructed}</flagon.reflect.constructed>
                   <flagon.reflect.converted>${flagon.reflect.converted}</flagon.reflect.converted>
+                  <flagon.preserve>${flagon.preserve}</flagon.preserve>
                 </properties>
               </configuration>
             </execution>

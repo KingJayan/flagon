@@ -18,6 +18,7 @@ public final class SendClassCalls implements TeaVMPlugin, ClassHolderTransformer
             "getGenericInterfaces", "getGenericInterfaces",
             "getSigners", "getSigners",
             "isAnonymousClass", "isAnonymousClass",
+            "getProtectionDomain", "getProtectionDomain",
             "getResource", "getResource");
 
     private static final String[] NOT_OURS = {"org.teavm.", CLASSES,

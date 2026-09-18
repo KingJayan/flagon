@@ -16,6 +16,11 @@
 
   <dependencies>
     <dependency>
+      <groupId>dev.flagon</groupId>
+      <artifactId>classfile</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+    <dependency>
       <groupId>org.teavm</groupId>
       <artifactId>teavm-extension-apis</artifactId>
       <version>${teavm.version}</version>
