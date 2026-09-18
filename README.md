@@ -26,11 +26,11 @@ make build   # Compile Java and emit WASM GC / JS bundles
 make dev     # Start development server at http://localhost:5273
 ```
 
-To test a standalone JAR immediately without setup, drop it into `vendor/` and run `make app` (see [Running an Existing JAR](https://www.google.com/search?q=docs/DOWNSTREAM.md%23quick-test-no-project-setup)).
+To test a standalone JAR without setup, drop it into `vendor/` and run `make app` (see [Running an Existing JAR](DOWNSTREAM.md#quickstart-no-setup)).
 
-* **Developer Shell (`/`):** Console, runtime diagnostics, and program picker.
+* **Dev Shell (`/`):** Console, runtime diagnostics, and program picker.
 * **Fullscreen View (`/play/?bundle=app`):** Edge-to-edge canvas execution.
-* **Networking (`make serve`):** Hosts the static build alongside the required WebSocket-to-TCP bridge (see [Networking Details](https://www.google.com/search?q=docs/COMPATIBILITY.md%23networking-javanet)).
+* **Networking (`make serve`):** Hosts the static build alongside the required WebSocket-to-TCP bridge (see [Networking Details](COMPATIBILITY.md)).
 
 ## Testing
 
@@ -51,4 +51,4 @@ make check     # Full CI verification suite
 
 ## License
 
-Licensed under the MIT License. See [LICENSE](https://www.google.com/search?q=LICENSE) for details.
+Licensed under [MIT](https://github.com/KingJayan/flagon/blob/main/LICENSE).
