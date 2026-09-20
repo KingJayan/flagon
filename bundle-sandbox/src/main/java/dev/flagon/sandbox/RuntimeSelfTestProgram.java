@@ -133,10 +133,16 @@ public final class RuntimeSelfTestProgram implements Program {
         } catch (ArrayIndexOutOfBoundsException expected) {
             check("out of bounds throws", true, true);
         }
+
+        try {
+            int ignored = numbers[9];
+            check("constant out of bounds throws", true, ignored == 0);
+        } catch (ArrayIndexOutOfBoundsException expected) {
+            check("constant out of bounds throws", true, true);
+        }
     }
 
-    // an index the compiler cannot fold: a constant one past the end is not bounds checked by the
-    // wasm gc backend and traps where no catch block can see it, see COMPATIBILITY.md
+    // an index the compiler cannot fold
     private int beyond(int[] array) {
         return array.length + checks + 4;
     }
