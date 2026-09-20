@@ -210,10 +210,6 @@ Desktop shaders that depend on built-in fixed-function variables are transpiled 
 
 ## Known Edge Cases
 
-### WASM GC Out-of-Bounds Trapping
-
-Under WASM GC, out-of-bounds array access where the index is a compiler constant may fold directly into a WebAssembly `array.get` instruction. This causes a browser engine trap (`RuntimeError`) rather than an interceptable `ArrayIndexOutOfBoundsException`. Variable-indexed bounds checks work as expected.
-
 ### Null Pointer Exceptions
 
 TeaVM requires `strict` mode to insert null checks on field and method dereferences under JavaScript. If disabled, dereferencing null surfaces as an uncatchable JavaScript `TypeError` instead of a `NullPointerException`.
