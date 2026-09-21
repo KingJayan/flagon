@@ -15,12 +15,18 @@ import org.teavm.jso.typedarrays.ArrayBuffer;
 import org.teavm.jso.typedarrays.Int8Array;
 
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.List;
 
 /**
  * the origin private file system
  */
 final class Opfs {
+
+    private static final Map<String, Directory> directories = new HashMap<>();
+
+    private static Directory root;
 
     /** what a stat call returns; absent files answer with {@code exists} false rather than null. */
     interface Entry extends JSObject {
@@ -146,9 +152,17 @@ final class Opfs {
 
     /** the parent directory, or null when it is absent */
     private static Directory above(String[] names) {
-        Directory at = settled(storage().getDirectory());
+        Directory at = root();
         for (int name = 0; at != null && name < names.length - 1; name++) {
-            at = orNull(at.getDirectoryHandle(names[name]));
+            String key = key(names, name + 1);
+            Directory known = directories.get(key);
+            if (known == null) {
+                known = orNull(at.getDirectoryHandle(names[name]));
+                if (known != null) {
+                    directories.put(key, known);
+                }
+            }
+            at = known;
         }
         return at;
     }
@@ -185,12 +199,16 @@ final class Opfs {
 
     static JSObject delete(String path) {
         At at = walk(path);
-        return settled(at.directory().removeEntry(at.name()));
+        JSObject done = settled(at.directory().removeEntry(at.name()));
+        forget(path);
+        return done;
     }
 
     static JSObject move(String from, String to) {
         At source = walk(from);
         At target = walk(to);
+        forget(from);
+        forget(to);
         Handle handle = settled(source.directory().getFileHandle(source.name()));
         if (movesItself(handle)) {
             return settled(handle.move(target.directory(), target.name()));
@@ -214,12 +232,40 @@ final class Opfs {
                 : new At(descend(names, names.length - 1), names[names.length - 1]);
     }
 
+    // each path resolves once and its handle is kept
     private static Directory descend(String[] names, int count) {
-        Directory at = settled(storage().getDirectory());
+        Directory at = root();
         for (int name = 0; name < count; name++) {
-            at = settled(at.getDirectoryHandle(names[name]));
+            String key = key(names, name + 1);
+            Directory known = directories.get(key);
+            if (known == null) {
+                known = settled(at.getDirectoryHandle(names[name]));
+                directories.put(key, known);
+            }
+            at = known;
         }
         return at;
+    }
+
+    private static Directory root() {
+        if (root == null) {
+            root = settled(storage().getDirectory());
+        }
+        return root;
+    }
+
+    private static String key(String[] names, int count) {
+        StringBuilder key = new StringBuilder();
+        for (int name = 0; name < count; name++) {
+            key.append(names[name]).append('/');
+        }
+        return key.toString();
+    }
+
+    /** drops every cached handle below a path */
+    private static void forget(String path) {
+        String gone = key(parts(path), parts(path).length);
+        directories.keySet().removeIf(held -> held.equals(gone) || held.startsWith(gone));
     }
 
     private static String[] parts(String path) {

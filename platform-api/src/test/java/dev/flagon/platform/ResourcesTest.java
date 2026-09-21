@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Test;
 
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
+import java.util.zip.DeflaterOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
@@ -14,6 +15,7 @@ import java.util.Map;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotSame;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -141,6 +143,49 @@ class ResourcesTest {
             out.writeInt(content.length);
             out.writeByte(0);
             out.write(content);
+        }
+        out.flush();
+        return bytes.toByteArray();
+    }
+
+    @Test
+    void inflatesAPackedFile() throws IOException {
+        Resources.install(deflated(Map.of("a/one.txt", "one", "b/two.txt", "two")));
+
+        assertArrayEquals("one".getBytes(StandardCharsets.UTF_8), Resources.read("a/one.txt"));
+        assertArrayEquals("two".getBytes(StandardCharsets.UTF_8), Resources.read("b/two.txt"));
+    }
+
+    @Test
+    void handsEveryReaderItsOwnCopy() throws IOException {
+        Resources.install(deflated(Map.of("a/one.txt", "one")));
+
+        byte[] first = Resources.read("a/one.txt");
+        assertNotSame(first, Resources.read("a/one.txt"));
+
+        first[0] = 'X';
+        assertArrayEquals("one".getBytes(StandardCharsets.UTF_8), Resources.read("a/one.txt"));
+    }
+
+    private static byte[] deflated(Map<String, String> files) throws IOException {
+        ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+        DataOutputStream out = new DataOutputStream(bytes);
+        out.write("FLGNPK02".getBytes(StandardCharsets.US_ASCII));
+        out.writeInt(files.size());
+        for (Map.Entry<String, String> file : files.entrySet()) {
+            byte[] name = file.getKey().getBytes(StandardCharsets.UTF_8);
+            byte[] content = file.getValue().getBytes(StandardCharsets.UTF_8);
+            ByteArrayOutputStream packed = new ByteArrayOutputStream();
+            try (DeflaterOutputStream deflating = new DeflaterOutputStream(packed)) {
+                deflating.write(content);
+            }
+            byte[] stored = packed.toByteArray();
+            out.writeInt(name.length);
+            out.write(name);
+            out.writeInt(content.length);
+            out.writeInt(stored.length);
+            out.writeByte(1);
+            out.write(stored);
         }
         out.flush();
         return bytes.toByteArray();

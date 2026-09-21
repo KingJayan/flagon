@@ -4,6 +4,7 @@ import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.Collections;
+import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Set;
@@ -21,13 +22,23 @@ public final class Resources {
     private record At(int offset, int stored, int raw, int packing) {
     }
 
+    /** how many inflated bytes to keep */
+    private static final int CACHE_BYTES = 4 * 1024 * 1024;
+
+    private static final Inflater INFLATER = new Inflater();
+    private static final LinkedHashMap<String, byte[]> inflated =
+            new LinkedHashMap<>(16, 0.75f, true);
+
     private static byte[] pack = new byte[0];
     private static Map<String, At> index = Map.of();
+    private static int cached;
 
     private Resources() {
     }
 
     public static void install(byte[] bytes) {
+        inflated.clear();
+        cached = 0;
         if (bytes == null || bytes.length == 0) {
             pack = new byte[0];
             index = Map.of();
@@ -51,25 +62,43 @@ public final class Resources {
     }
 
     public static byte[] read(String name) {
-        At at = index.get(clean(name));
+        String clean = clean(name);
+        At at = index.get(clean);
         if (at == null) {
             return null;
         }
-        byte[] bytes = new byte[at.raw()];
         if (at.packing() == STORED) {
+            byte[] bytes = new byte[at.raw()];
             System.arraycopy(pack, at.offset(), bytes, 0, at.raw());
             return bytes;
         }
-        Inflater inflater = new Inflater();
-        try {
-            inflater.setInput(pack, at.offset(), at.stored());
-            inflater.inflate(bytes);
-        } catch (DataFormatException broken) {
-            throw new IllegalStateException("the pack cannot unpack " + name, broken);
-        } finally {
-            inflater.end();
+        byte[] known = inflated.get(clean);
+        if (known == null) {
+            known = new byte[at.raw()];
+            INFLATER.reset();
+            INFLATER.setInput(pack, at.offset(), at.stored());
+            try {
+                INFLATER.inflate(known);
+            } catch (DataFormatException broken) {
+                throw new IllegalStateException("the pack cannot unpack " + name, broken);
+            }
+            remember(clean, known);
         }
-        return bytes;
+        // every reader gets its own copy
+        return known.clone();
+    }
+
+    private static void remember(String name, byte[] bytes) {
+        if (bytes.length > CACHE_BYTES) {
+            return;
+        }
+        byte[] was = inflated.put(name, bytes);
+        cached += bytes.length - (was == null ? 0 : was.length);
+        Iterator<Map.Entry<String, byte[]>> eldest = inflated.entrySet().iterator();
+        while (cached > CACHE_BYTES && eldest.hasNext()) {
+            cached -= eldest.next().getValue().length;
+            eldest.remove();
+        }
     }
 
     public static InputStream open(String name) {

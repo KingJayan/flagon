@@ -5,6 +5,8 @@ import dev.flagon.platform.graphics.BufferUsage;
 import dev.flagon.platform.graphics.GraphicsDevice;
 
 import java.nio.Buffer;
+import java.nio.ByteBuffer;
+import java.nio.FloatBuffer;
 
 /**
  * points attribute slots at their data, uploading anything that lives in client memory
@@ -17,13 +19,13 @@ public final class StagingArrays {
     private final GraphicsDevice device;
     private final int[] buffers;
     private final int[] sizes;
-    private final byte[][] bytes;
+    private final Object[] scratch;
 
     public StagingArrays(GraphicsDevice device, int slots) {
         this.device = device;
         this.buffers = new int[slots];
         this.sizes = new int[slots];
-        this.bytes = new byte[slots][];
+        this.scratch = new Object[slots];
     }
 
     /**
@@ -76,18 +78,35 @@ public final class StagingArrays {
         if (toElement <= fromElement) {
             return;
         }
-        byte[] data = scratch(slot, (toElement - fromElement) * elementSize);
-        int wrote = Buffers.copy(client, fromElement, toElement, data);
-        device.bufferSubData(BufferTarget.ARRAY, fromElement * elementSize, data, wrote);
+        // each element type goes straight to the device without a byte copy
+        int elements = toElement - fromElement;
+        int offset = fromElement * elementSize;
+        if (client instanceof FloatBuffer floats) {
+            float[] data = floats(slot, elements);
+            floats.duplicate().position(fromElement).get(data, 0, elements);
+            device.bufferSubData(BufferTarget.ARRAY, offset, data, elements);
+        } else if (client instanceof ByteBuffer raw) {
+            byte[] data = bytes(slot, elements);
+            raw.duplicate().position(fromElement).get(data, 0, elements);
+            device.bufferSubData(BufferTarget.ARRAY, offset, data, elements);
+        } else {
+            throw new IllegalArgumentException(
+                    "unsupported buffer type " + client.getClass().getName());
+        }
     }
 
-    private byte[] scratch(int slot, int needed) {
-        byte[] data = bytes[slot];
-        if (data == null || data.length < needed) {
-            data = new byte[needed];
-            bytes[slot] = data;
+    private float[] floats(int slot, int needed) {
+        if (!(scratch[slot] instanceof float[] held) || held.length < needed) {
+            scratch[slot] = new float[needed];
         }
-        return data;
+        return (float[]) scratch[slot];
+    }
+
+    private byte[] bytes(int slot, int needed) {
+        if (!(scratch[slot] instanceof byte[] held) || held.length < needed) {
+            scratch[slot] = new byte[needed];
+        }
+        return (byte[]) scratch[slot];
     }
 
     public void dispose() {
@@ -97,7 +116,7 @@ public final class StagingArrays {
                 buffers[slot] = GraphicsDevice.NO_BUFFER;
             }
             sizes[slot] = 0;
-            bytes[slot] = null;
+            scratch[slot] = null;
         }
     }
 }
