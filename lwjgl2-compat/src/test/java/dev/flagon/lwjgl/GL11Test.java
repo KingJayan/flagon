@@ -16,8 +16,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class GL11Test {
 
-    private static final int VERTEX_FLOATS =
-            dev.flagon.lwjgl.internal.FixedFunctionPipeline.VERTEX_FLOATS;
 
     private RecordingGraphicsDevice device;
 
@@ -39,20 +37,33 @@ class GL11Test {
         assertEquals(java.util.List.of("clear true true false"), device.calls("clear"));
     }
 
+    /** a block that sets nothing of its own uploads a position and reads the rest as constants */
     @Test
-    void immediateModeBuildsInterleavedVertices() {
+    void immediateModeUploadsOnlyWhatTheBlockSets() {
         GL11.glColor4f(1.0f, 0.5f, 0.25f, 1.0f);
         GL11.glTexCoord2f(0.5f, 0.75f);
         GL11.glBegin(GL11.GL_TRIANGLES);
         GL11.glVertex3f(1.0f, 2.0f, 3.0f);
         GL11.glEnd();
 
-        assertArrayEquals(
-                new float[] {1.0f, 2.0f, 3.0f, 1.0f, 0.5f, 0.25f, 1.0f,
-                        0.5f, 0.75f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f,
-                        0.0f, 0.0f, 1.0f},
-                device.lastBufferData, 1.0e-6f);
+        assertArrayEquals(new float[] {1.0f, 2.0f, 3.0f}, device.lastBufferData, 1.0e-6f);
+        assertTrue(device.calls("constantAttribute").contains(
+                "constantAttribute 1 1.0 0.5 0.25 1.0"));
+        assertTrue(device.calls("constantAttribute").contains(
+                "constantAttribute 2 0.5 0.75 0.0 1.0"));
         assertEquals(java.util.List.of("drawArrays TRIANGLES 0 1"), device.calls("drawArrays"));
+    }
+
+    /** the block sets a colour of its own, so every vertex carries one */
+    @Test
+    void immediateModeInterleavesAnAttributeTheBlockSets() {
+        GL11.glBegin(GL11.GL_TRIANGLES);
+        GL11.glColor4f(1.0f, 0.5f, 0.25f, 1.0f);
+        GL11.glVertex3f(1.0f, 2.0f, 3.0f);
+        GL11.glEnd();
+
+        assertArrayEquals(new float[] {1.0f, 2.0f, 3.0f, 1.0f, 0.5f, 0.25f, 1.0f},
+                device.lastBufferData, 1.0e-6f);
     }
 
     @Test
@@ -64,10 +75,11 @@ class GL11Test {
         GL11.glVertex2f(1.0f, 1.0f);
         GL11.glEnd();
 
+        int stride = 7;
         assertEquals(1.0f, device.lastBufferData[3], 1.0e-6f);
         assertEquals(0.0f, device.lastBufferData[4], 1.0e-6f);
-        assertEquals(0.0f, device.lastBufferData[VERTEX_FLOATS + 3], 1.0e-6f);
-        assertEquals(1.0f, device.lastBufferData[VERTEX_FLOATS + 4], 1.0e-6f);
+        assertEquals(0.0f, device.lastBufferData[stride + 3], 1.0e-6f);
+        assertEquals(1.0f, device.lastBufferData[stride + 4], 1.0e-6f);
     }
 
     @Test
@@ -79,8 +91,44 @@ class GL11Test {
         GL11.glEnd();
 
         assertEquals(java.util.List.of("drawArrays POINTS 0 5000"), device.calls("drawArrays"));
-        assertEquals(5000 * VERTEX_FLOATS, device.lastBufferData.length);
-        assertEquals(4999.0f, device.lastBufferData[4999 * VERTEX_FLOATS], 1.0e-6f);
+        assertEquals(5000 * 3, device.lastBufferData.length);
+        assertEquals(4999.0f, device.lastBufferData[4999 * 3], 1.0e-6f);
+    }
+
+    /** the store is reserved once and written into, not built again for every block */
+    @Test
+    void immediateBlocksWriteIntoOneStore() {
+        for (int block = 0; block < 3; block++) {
+            GL11.glBegin(GL11.GL_TRIANGLES);
+            GL11.glVertex3f(1.0f, 2.0f, 3.0f);
+            GL11.glEnd();
+        }
+
+        assertEquals(1, device.calls("reserveARRAY").size());
+        assertEquals(3, device.calls("bufferSubData").size());
+        assertTrue(device.calls("bufferData").isEmpty());
+    }
+
+    /** the uniforms stand from one draw to the next, so an unchanged state writes none */
+    @Test
+    void aDrawWritesNoUniformsWhenNothingChanged() {
+        triangle();
+        int written = device.calls("uniformMatrix4").size();
+
+        triangle();
+        assertEquals(written, device.calls("uniformMatrix4").size());
+
+        GL11.glTranslatef(1.0f, 0.0f, 0.0f);
+        triangle();
+        assertTrue(device.calls("uniformMatrix4").size() > written);
+    }
+
+    private void triangle() {
+        GL11.glBegin(GL11.GL_TRIANGLES);
+        GL11.glVertex3f(0.0f, 0.0f, 0.0f);
+        GL11.glVertex3f(1.0f, 0.0f, 0.0f);
+        GL11.glVertex3f(0.0f, 1.0f, 0.0f);
+        GL11.glEnd();
     }
 
     @Test
@@ -157,7 +205,7 @@ class GL11Test {
                 device.calls("drawElements"));
         assertTrue(device.calls("drawArrays").isEmpty());
         // the vertices go up untouched; only the index order changes
-        assertEquals(4 * VERTEX_FLOATS, device.lastBufferData.length);
+        assertEquals(4 * 3, device.lastBufferData.length);
     }
 
     @Test
@@ -595,6 +643,35 @@ class GL11Test {
         assertEquals(java.util.List.of("clearColor 0.25 0.5 0.75 1.0"), device.calls("clearColor"));
     }
 
+    /** the vertices go up once, when the list is built, and every replay draws from there */
+    @Test
+    void aDisplayListUploadsItsVerticesOnlyOnce() {
+        int list = GL11.glGenLists(1);
+        GL11.glNewList(list, GL11.GL_COMPILE);
+        triangle();
+        GL11.glEndList();
+        int uploads = device.calls("bufferData").size();
+        assertEquals(1, uploads);
+
+        GL11.glCallList(list);
+        GL11.glCallList(list);
+
+        assertEquals(uploads, device.calls("bufferData").size());
+        assertEquals(2, device.calls("drawArrays").size());
+    }
+
+    @Test
+    void aDeletedListGivesUpItsVertices() {
+        int list = GL11.glGenLists(1);
+        GL11.glNewList(list, GL11.GL_COMPILE);
+        triangle();
+        GL11.glEndList();
+
+        GL11.glDeleteLists(list, 1);
+
+        assertEquals(1, device.calls("deleteBuffer").size());
+    }
+
     @Test
     void compileAndExecuteBothRecordsAndRuns() {
         int list = GL11.glGenLists(1);
@@ -864,16 +941,16 @@ class GL11Test {
 
     @Test
     void everyUnitGetsItsOwnCoordinateInTheVertex() {
+        GL11.glBegin(GL11.GL_TRIANGLES);
         GL11.glTexCoord2f(0.1f, 0.2f);
         org.lwjgl.opengl.GL13.glMultiTexCoord2f(org.lwjgl.opengl.GL13.GL_TEXTURE1, 0.3f, 0.4f);
-        GL11.glBegin(GL11.GL_TRIANGLES);
         GL11.glVertex2f(0.0f, 0.0f);
         GL11.glEnd();
 
-        assertEquals(0.1f, device.lastBufferData[7], 1.0e-6f);
-        assertEquals(0.2f, device.lastBufferData[8], 1.0e-6f);
-        assertEquals(0.3f, device.lastBufferData[9], 1.0e-6f);
-        assertEquals(0.4f, device.lastBufferData[10], 1.0e-6f);
+        assertEquals(0.1f, device.lastBufferData[3], 1.0e-6f);
+        assertEquals(0.2f, device.lastBufferData[4], 1.0e-6f);
+        assertEquals(0.3f, device.lastBufferData[5], 1.0e-6f);
+        assertEquals(0.4f, device.lastBufferData[6], 1.0e-6f);
     }
 
     @Test

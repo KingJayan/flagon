@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.IntConsumer;
 
 /**
  * gl display lists as commands
@@ -14,10 +15,24 @@ public final class DisplayLists {
     public static final int COMPILE_AND_EXECUTE = 0x1301;
 
     private final Map<Integer, List<Runnable>> lists = new HashMap<>();
+    private final Map<Integer, List<Integer>> blocks = new HashMap<>();
+    private IntConsumer release = block -> { };
     private List<Runnable> recording;
+    private List<Integer> recordingBlocks;
     private int recordingInto;
     private boolean executeWhileRecording;
     private int nextName = 1;
+
+    /** a list owns the vertices its blocks uploaded, so they go when the list does */
+    public void onRelease(IntConsumer release) {
+        this.release = release;
+    }
+
+    public void own(int block) {
+        if (recordingBlocks != null) {
+            recordingBlocks.add(block);
+        }
+    }
 
     public int generate(int count) {
         if (count < 0) {
@@ -50,6 +65,7 @@ public final class DisplayLists {
                     "glNewList: unknown mode 0x" + Integer.toHexString(mode));
         }
         recording = new ArrayList<>();
+        recordingBlocks = new ArrayList<>();
         recordingInto = name;
         executeWhileRecording = mode == COMPILE_AND_EXECUTE;
         nextName = Math.max(nextName, name + 1);
@@ -60,7 +76,10 @@ public final class DisplayLists {
             throw new IllegalStateException("glEndList called without glNewList");
         }
         lists.put(recordingInto, recording);
+        free(recordingInto);
+        blocks.put(recordingInto, recordingBlocks);
         recording = null;
+        recordingBlocks = null;
         executeWhileRecording = false;
     }
 
@@ -89,6 +108,16 @@ public final class DisplayLists {
     public void delete(int first, int count) {
         for (int name = first; name < first + count; name++) {
             lists.remove(name);
+            free(name);
+        }
+    }
+
+    private void free(int name) {
+        List<Integer> held = blocks.remove(name);
+        if (held != null) {
+            for (int block : held) {
+                release.accept(block);
+            }
         }
     }
 }

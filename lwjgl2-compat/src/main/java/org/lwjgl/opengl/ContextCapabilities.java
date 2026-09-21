@@ -1,6 +1,5 @@
 package org.lwjgl.opengl;
 
-import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Locale;
 import java.util.Set;
@@ -128,8 +127,7 @@ public final class ContextCapabilities {
 
     ContextCapabilities(String extensionString) {
         this.reported = extensionString == null ? "" : extensionString;
-        this.extensions = new HashSet<>(Arrays.asList(reported.split("\\s+")));
-        this.extensions.remove("");
+        this.extensions = split(reported);
 
         OpenGL11 = true;
         OpenGL12 = true;
@@ -260,13 +258,34 @@ public final class ContextCapabilities {
 
     private boolean hasAny(String... names) {
         for (String name : names) {
-            String bare = name.startsWith("GL_") ? name.substring(3) : name;
-            if (extensions.contains(name) || extensions.contains(bare)
-                    || extensions.contains("GL_" + bare)
-                    || extensions.contains(bare.toUpperCase(Locale.ROOT))) {
+            if (extensions.contains(canonical(name))) {
                 return true;
             }
         }
         return false;
+    }
+
+    private static Set<String> split(String reported) {
+        Set<String> names = new HashSet<>();
+        int at = 0;
+        while (at < reported.length()) {
+            while (at < reported.length() && reported.charAt(at) <= ' ') {
+                at++;
+            }
+            int start = at;
+            while (at < reported.length() && reported.charAt(at) > ' ') {
+                at++;
+            }
+            if (at > start) {
+                names.add(canonical(reported.substring(start, at)));
+            }
+        }
+        return names;
+    }
+
+    /** one spelling for GL_EXT_foo, EXT_foo and EXT_FOO alike */
+    private static String canonical(String name) {
+        String bare = name.startsWith("GL_") ? name.substring(3) : name;
+        return bare.toUpperCase(Locale.ROOT);
     }
 }

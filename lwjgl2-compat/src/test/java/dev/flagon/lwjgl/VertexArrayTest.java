@@ -131,9 +131,21 @@ class VertexArrayTest {
         GL11.glVertexPointer(3, 0, positions(new float[24]));
         GL11.glDrawArrays(GL11.GL_QUADS, 4, 4);
 
-        assertArrayContains(new int[] {4, 5, 6, 4, 6, 7}, device.lastElementData);
+        assertArrayContains(new int[] {0, 1, 2, 0, 2, 3}, device.lastElementData);
+        assertTrue(device.calls("attributePointer").contains(
+                "attributePointer 0 3 FLOAT false 12 48"));
         assertEquals(List.of("drawElements TRIANGLES 6 UNSIGNED_INT 0"),
                 device.calls("drawElements"));
+    }
+
+    @Test
+    void quadsFromADifferentOffsetReuseTheIndexBuffer() {
+        GL11.glEnableClientState(GL11.GL_VERTEX_ARRAY);
+        GL11.glVertexPointer(3, 0, positions(new float[24]));
+        GL11.glDrawArrays(GL11.GL_QUADS, 0, 4);
+        GL11.glDrawArrays(GL11.GL_QUADS, 4, 4);
+
+        assertEquals(1, device.calls("elementData").size());
     }
 
     @Test

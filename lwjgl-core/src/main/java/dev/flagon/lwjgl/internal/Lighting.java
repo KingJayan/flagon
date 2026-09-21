@@ -37,7 +37,14 @@ public final class Lighting {
     private float fogStart;
     private float fogEnd = 1.0f;
 
+    private final Revision revision;
+
     public Lighting() {
+        this(new Revision());
+    }
+
+    Lighting(Revision revision) {
+        this.revision = revision;
         for (int light = 0; light < LIGHTS; light++) {
             position[light * 4 + 2] = 1.0f;
             attenuation[light * 3] = 1.0f;
@@ -60,10 +67,12 @@ public final class Lighting {
     }
 
     public void setEnabled(boolean value) {
+        revision.bump();
         enabled = value;
     }
 
     public void setLightEnabled(int light, boolean value) {
+        revision.bump();
         lightEnabled[requireLight(light)] = value;
         lightEnabledInts[light] = value ? 1 : 0;
     }
@@ -91,23 +100,28 @@ public final class Lighting {
 
     /** the position gl stores is the one it was given, transformed by the modelview then. */
     public void setPosition(int light, float[] eyeSpace) {
+        revision.bump();
         System.arraycopy(eyeSpace, 0, position, requireLight(light) * 4, 4);
     }
 
     public void setAmbient(int light, float[] rgba) {
+        revision.bump();
         System.arraycopy(rgba, 0, ambient, requireLight(light) * 4, 4);
     }
 
     public void setDiffuse(int light, float[] rgba) {
+        revision.bump();
         System.arraycopy(rgba, 0, diffuse, requireLight(light) * 4, 4);
     }
 
     public void setSpecular(int light, float[] rgba) {
+        revision.bump();
         System.arraycopy(rgba, 0, specular, requireLight(light) * 4, 4);
     }
 
     /** constant, linear and quadratic, the three factors gl divides a light's reach by. */
     public void setAttenuation(int light, int which, float value) {
+        revision.bump();
         attenuation[requireLight(light) * 3 + which] = value;
     }
 
@@ -136,6 +150,7 @@ public final class Lighting {
     }
 
     public void setModelAmbient(float[] rgba) {
+        revision.bump();
         System.arraycopy(rgba, 0, modelAmbient, 0, 4);
     }
 
@@ -160,6 +175,7 @@ public final class Lighting {
     }
 
     public void setShininess(float value) {
+        revision.bump();
         shininess = value;
     }
 
@@ -168,6 +184,7 @@ public final class Lighting {
     }
 
     public void setColorMaterial(boolean value) {
+        revision.bump();
         colorMaterial = value;
     }
 
@@ -176,6 +193,7 @@ public final class Lighting {
     }
 
     public void setFogEnabled(boolean value) {
+        revision.bump();
         fogEnabled = value;
     }
 
@@ -184,6 +202,7 @@ public final class Lighting {
     }
 
     public void setFogMode(int mode) {
+        revision.bump();
         fogMode = mode;
     }
 
@@ -192,6 +211,7 @@ public final class Lighting {
     }
 
     public void setFogColor(float[] rgba) {
+        revision.bump();
         System.arraycopy(rgba, 0, fogColor, 0, 4);
     }
 
@@ -200,6 +220,7 @@ public final class Lighting {
     }
 
     public void setFogDensity(float value) {
+        revision.bump();
         fogDensity = value;
     }
 
@@ -208,6 +229,7 @@ public final class Lighting {
     }
 
     public void setFogStart(float value) {
+        revision.bump();
         fogStart = value;
     }
 
@@ -216,6 +238,7 @@ public final class Lighting {
     }
 
     public void setFogEnd(float value) {
+        revision.bump();
         fogEnd = value;
     }
 }

@@ -33,6 +33,9 @@ public interface RenderState {
 
     Lighting lighting();
 
+    /** how many times the state a draw reads has changed */
+    int revision();
+
     float normalX();
 
     float normalY();

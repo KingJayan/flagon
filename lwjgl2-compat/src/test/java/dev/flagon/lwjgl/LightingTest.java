@@ -1,6 +1,5 @@
 package dev.flagon.lwjgl;
 
-import dev.flagon.lwjgl.internal.FixedFunctionPipeline;
 import dev.flagon.lwjgl.internal.GLState;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -54,19 +53,16 @@ class LightingTest {
         GL11.glVertex3f(1.0f, 2.0f, 3.0f);
         GL11.glEnd();
 
-        int stride = FixedFunctionPipeline.VERTEX_FLOATS;
-        assertArrayEquals(new float[] {0.0f, 1.0f, 0.0f},
-                new float[] {device.lastBufferData[stride - 3], device.lastBufferData[stride - 2],
-                        device.lastBufferData[stride - 1]},
-                1.0e-6f);
+        assertTrue(device.calls("constantAttribute").contains(
+                "constantAttribute 6 0.0 1.0 0.0 0.0"));
     }
 
     @Test
     void theNormalStartsPointingDownTheZAxisAsGlSaysItDoes() {
         drawATriangle();
 
-        int stride = FixedFunctionPipeline.VERTEX_FLOATS;
-        assertEquals(1.0f, device.lastBufferData[stride - 1], 1.0e-6f);
+        assertTrue(device.calls("constantAttribute").contains(
+                "constantAttribute 6 0.0 0.0 1.0 0.0"));
     }
 
     @Test
@@ -249,8 +245,8 @@ class LightingTest {
         GL11.glBegin(GL11.GL_TRIANGLES);
         GL11.glVertex3f(0.0f, 0.0f, 0.0f);
         GL11.glEnd();
-        int stride = FixedFunctionPipeline.VERTEX_FLOATS;
-        assertEquals(1.0f, device.lastBufferData[stride - 2], 1.0e-6f);
+        assertTrue(device.calls("constantAttribute").contains(
+                "constantAttribute 6 0.0 1.0 0.0 0.0"));
     }
 
     @Test
