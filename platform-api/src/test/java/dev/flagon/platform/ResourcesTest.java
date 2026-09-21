@@ -69,6 +69,42 @@ class ResourcesTest {
     }
 
     @Test
+    void readsBackAFileThePackerCompressed() throws IOException {
+        String text = "abcdefgh".repeat(100);
+        Resources.install(deflated("big.txt", text));
+
+        assertEquals(text.length(), Resources.sizeOf("big.txt"));
+        assertArrayEquals(text.getBytes(StandardCharsets.UTF_8), Resources.read("big.txt"));
+        try (InputStream stream = Resources.open("big.txt")) {
+            assertArrayEquals(text.getBytes(StandardCharsets.UTF_8), stream.readAllBytes());
+        }
+    }
+
+    private static byte[] deflated(String file, String text) throws IOException {
+        byte[] raw = text.getBytes(StandardCharsets.UTF_8);
+        ByteArrayOutputStream packed = new ByteArrayOutputStream();
+        try (java.util.zip.DeflaterOutputStream out =
+                new java.util.zip.DeflaterOutputStream(packed)) {
+            out.write(raw);
+        }
+        byte[] body = packed.toByteArray();
+
+        ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+        DataOutputStream out = new DataOutputStream(bytes);
+        out.write("FLGNPK02".getBytes(StandardCharsets.US_ASCII));
+        out.writeInt(1);
+        byte[] name = file.getBytes(StandardCharsets.UTF_8);
+        out.writeInt(name.length);
+        out.write(name);
+        out.writeInt(raw.length);
+        out.writeInt(body.length);
+        out.writeByte(1);
+        out.write(body);
+        out.flush();
+        return bytes.toByteArray();
+    }
+
+    @Test
     void refusesBytesThatAreNotAPack() {
         assertThrows(IllegalArgumentException.class,
                 () -> Resources.install("not a pack at all".getBytes(StandardCharsets.UTF_8)));
@@ -94,16 +130,17 @@ class ResourcesTest {
     private static byte[] pack(Map<String, String> files) throws IOException {
         ByteArrayOutputStream bytes = new ByteArrayOutputStream();
         DataOutputStream out = new DataOutputStream(bytes);
-        out.write("FLGNPK01".getBytes(StandardCharsets.US_ASCII));
+        out.write("FLGNPK02".getBytes(StandardCharsets.US_ASCII));
         out.writeInt(files.size());
         for (Map.Entry<String, String> file : files.entrySet()) {
             byte[] name = file.getKey().getBytes(StandardCharsets.UTF_8);
+            byte[] content = file.getValue().getBytes(StandardCharsets.UTF_8);
             out.writeInt(name.length);
             out.write(name);
-            out.writeInt(file.getValue().getBytes(StandardCharsets.UTF_8).length);
-        }
-        for (String content : files.values()) {
-            out.write(content.getBytes(StandardCharsets.UTF_8));
+            out.writeInt(content.length);
+            out.writeInt(content.length);
+            out.writeByte(0);
+            out.write(content);
         }
         out.flush();
         return bytes.toByteArray();

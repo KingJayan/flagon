@@ -4,6 +4,7 @@ import dev.flagon.platform.ConsoleSink;
 import dev.flagon.platform.Resources;
 import dev.flagon.platform.browser.js.JsArrays;
 
+import org.teavm.jso.JSBody;
 import org.teavm.jso.JSObject;
 import org.teavm.jso.JSProperty;
 import org.teavm.jso.browser.Window;
@@ -29,6 +30,9 @@ final class ResourcePack {
         } catch (IllegalArgumentException broken) {
             Resources.install(null);
             console.warn("the resource pack is unreadable: " + broken.getMessage());
+        } finally {
+            // the bytes are in the java heap now, so the page can let its copy go
+            dropSupplied();
         }
     }
 
@@ -36,6 +40,9 @@ final class ResourcePack {
         @JSProperty("__flagonResources")
         ArrayBuffer getResources();
     }
+
+    @JSBody(script = "window.__flagonResources = undefined;")
+    private static native void dropSupplied();
 
     private static Int8Array supplied() {
         ArrayBuffer pack = Window.current().<Packed>cast().getResources();

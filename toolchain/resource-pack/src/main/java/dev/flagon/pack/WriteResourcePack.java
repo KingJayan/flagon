@@ -1,7 +1,9 @@
 package dev.flagon.pack;
 
+import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -10,12 +12,21 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.zip.Deflater;
+import java.util.zip.DeflaterOutputStream;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
 public final class WriteResourcePack {
 
-    static final byte[] MAGIC = "FLGNPK01".getBytes(StandardCharsets.US_ASCII);
+    static final byte[] MAGIC = "FLGNPK02".getBytes(StandardCharsets.US_ASCII);
+
+    static final int STORED = 0;
+    static final int DEFLATED = 1;
+
+    /** where one resource comes from; {@code entry} is null when the source is a plain file */
+    record Item(Path source, String entry) {
+    }
 
     private WriteResourcePack() {
     }
@@ -23,7 +34,7 @@ public final class WriteResourcePack {
     public static void main(String[] args) throws IOException {
         Path given = Path.of(args[0]);
         Path pack = Path.of(args[1]);
-        Map<String, byte[]> files = collect(given);
+        Map<String, Item> files = collect(given);
         Files.createDirectories(pack.getParent());
         try (OutputStream out = Files.newOutputStream(pack)) {
             write(files, out);
@@ -33,8 +44,8 @@ public final class WriteResourcePack {
                 : "packed " + files.size() + " resources from " + given + " into " + pack);
     }
 
-    static Map<String, byte[]> collect(Path given) throws IOException {
-        Map<String, byte[]> files = new LinkedHashMap<>();
+    static Map<String, Item> collect(Path given) throws IOException {
+        Map<String, Item> files = new LinkedHashMap<>();
         for (Path source : sourcesIn(given)) {
             if (Files.isDirectory(source)) {
                 readTree(source, files);
@@ -59,26 +70,24 @@ public final class WriteResourcePack {
         return jars.isEmpty() ? List.of(given) : jars;
     }
 
-    private static void readJar(Path jar, Map<String, byte[]> files) throws IOException {
+    private static void readJar(Path jar, Map<String, Item> files) throws IOException {
         try (ZipFile open = new ZipFile(jar.toFile())) {
             for (ZipEntry entry : open.stream().sorted(
                     (left, right) -> left.getName().compareTo(right.getName())).toList()) {
                 if (entry.isDirectory() || !wanted(entry.getName())) {
                     continue;
                 }
-                try (var bytes = open.getInputStream(entry)) {
-                    files.putIfAbsent(entry.getName(), bytes.readAllBytes());
-                }
+                files.putIfAbsent(entry.getName(), new Item(jar, entry.getName()));
             }
         }
     }
 
-    private static void readTree(Path root, Map<String, byte[]> files) throws IOException {
+    private static void readTree(Path root, Map<String, Item> files) throws IOException {
         try (var tree = Files.walk(root)) {
             for (Path file : tree.filter(Files::isRegularFile).sorted().toList()) {
                 String name = root.relativize(file).toString().replace('\\', '/');
                 if (wanted(name)) {
-                    files.putIfAbsent(name, Files.readAllBytes(file));
+                    files.putIfAbsent(name, new Item(file, null));
                 }
             }
         }
@@ -96,19 +105,69 @@ public final class WriteResourcePack {
                 && !upper.endsWith(".EC");
     }
 
-    static void write(Map<String, byte[]> files, OutputStream out) throws IOException {
+    static void write(Map<String, Item> files, OutputStream out) throws IOException {
         DataOutputStream data = new DataOutputStream(out);
         data.write(MAGIC);
         data.writeInt(files.size());
-        for (Map.Entry<String, byte[]> file : files.entrySet()) {
-            byte[] name = file.getKey().getBytes(StandardCharsets.UTF_8);
-            data.writeInt(name.length);
-            data.write(name);
-            data.writeInt(file.getValue().length);
-        }
-        for (byte[] bytes : files.values()) {
-            data.write(bytes);
+        try (Jars open = new Jars()) {
+            for (Map.Entry<String, Item> file : files.entrySet()) {
+                writeOne(data, file.getKey(), open.read(file.getValue()));
+            }
         }
         data.flush();
+    }
+
+    /** holds one jar open, because the resources of a jar are written one after the other */
+    private static final class Jars implements AutoCloseable {
+
+        private Path at;
+        private ZipFile open;
+
+        byte[] read(Item item) throws IOException {
+            if (item.entry() == null) {
+                return Files.readAllBytes(item.source());
+            }
+            if (!item.source().equals(at)) {
+                close();
+                open = new ZipFile(item.source().toFile());
+                at = item.source();
+            }
+            try (InputStream bytes = open.getInputStream(open.getEntry(item.entry()))) {
+                return bytes.readAllBytes();
+            }
+        }
+
+        @Override
+        public void close() throws IOException {
+            if (open != null) {
+                open.close();
+                open = null;
+                at = null;
+            }
+        }
+    }
+
+    private static void writeOne(DataOutputStream data, String name, byte[] raw)
+            throws IOException {
+        byte[] label = name.getBytes(StandardCharsets.UTF_8);
+        byte[] packed = deflate(raw);
+        boolean smaller = packed.length < raw.length;
+        data.writeInt(label.length);
+        data.write(label);
+        data.writeInt(raw.length);
+        data.writeInt(smaller ? packed.length : raw.length);
+        data.writeByte(smaller ? DEFLATED : STORED);
+        data.write(smaller ? packed : raw);
+    }
+
+    private static byte[] deflate(byte[] raw) throws IOException {
+        ByteArrayOutputStream packed = new ByteArrayOutputStream();
+        Deflater deflater = new Deflater(Deflater.BEST_COMPRESSION);
+        try (DeflaterOutputStream out = new DeflaterOutputStream(packed, deflater)) {
+            out.write(raw);
+        } finally {
+            deflater.end();
+        }
+        return packed.toByteArray();
     }
 }

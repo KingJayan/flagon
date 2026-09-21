@@ -92,16 +92,17 @@ class ResourceUrlsTest {
     private static byte[] pack(Map<String, String> files) throws IOException {
         ByteArrayOutputStream bytes = new ByteArrayOutputStream();
         DataOutputStream out = new DataOutputStream(bytes);
-        out.write("FLGNPK01".getBytes(StandardCharsets.US_ASCII));
+        out.write("FLGNPK02".getBytes(StandardCharsets.US_ASCII));
         out.writeInt(files.size());
         for (Map.Entry<String, String> file : files.entrySet()) {
             byte[] name = file.getKey().getBytes(StandardCharsets.UTF_8);
+            byte[] content = file.getValue().getBytes(StandardCharsets.UTF_8);
             out.writeInt(name.length);
             out.write(name);
-            out.writeInt(file.getValue().getBytes(StandardCharsets.UTF_8).length);
-        }
-        for (String content : files.values()) {
-            out.write(content.getBytes(StandardCharsets.UTF_8));
+            out.writeInt(content.length);
+            out.writeInt(content.length);
+            out.writeByte(0);
+            out.write(content);
         }
         out.flush();
         return bytes.toByteArray();
