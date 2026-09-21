@@ -4,7 +4,11 @@ import dev.flagon.platform.ConsoleSink;
 import dev.flagon.platform.Resources;
 import dev.flagon.platform.browser.js.JsArrays;
 
-import org.teavm.jso.JSBody;
+import org.teavm.jso.JSObject;
+import org.teavm.jso.JSProperty;
+import org.teavm.jso.browser.Window;
+import org.teavm.jso.core.JSObjects;
+import org.teavm.jso.typedarrays.ArrayBuffer;
 import org.teavm.jso.typedarrays.Int8Array;
 
 final class ResourcePack {
@@ -28,7 +32,13 @@ final class ResourcePack {
         }
     }
 
-    @JSBody(script = "var pack = window.__flagonResources;"
-            + "return pack ? new Int8Array(pack) : null;")
-    private static native Int8Array supplied();
+    interface Packed extends JSObject {
+        @JSProperty("__flagonResources")
+        ArrayBuffer getResources();
+    }
+
+    private static Int8Array supplied() {
+        ArrayBuffer pack = Window.current().<Packed>cast().getResources();
+        return pack == null || JSObjects.isUndefined(pack) ? null : new Int8Array(pack);
+    }
 }

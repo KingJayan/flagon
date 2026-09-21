@@ -58,6 +58,7 @@ final class WasmGCJSBodyLowering {
     private final WasmGCJSFunctions jsFunctions;
 
     private final Map<String, WasmLocal> arguments = new HashMap<>();
+    private WasmGCInlineIntrinsicContext context;
 
     WasmGCJSBodyLowering(WasmGCJsoCommonGenerator commonGen, WasmGCJSFunctions jsFunctions) {
         this.commonGen = commonGen;
@@ -82,6 +83,7 @@ final class WasmGCJSBodyLowering {
             return null;
         }
 
+        this.context = context;
         var taken = new ArrayList<WasmLocal>();
         for (var at = 0; at < names.size(); ++at) {
             var local = context.tempVars().acquire(WasmType.EXTERN);
@@ -202,6 +204,9 @@ final class WasmGCJSBodyLowering {
         }
         if (node instanceof InfixExpression) {
             var kind = node.getType();
+            if (kind == Token.ASSIGN) {
+                return isPut(node, names);
+            }
             if (kind != Token.SHEQ && kind != Token.SHNE && kind != Token.EQ && kind != Token.NE) {
                 return false;
             }
@@ -234,15 +239,29 @@ final class WasmGCJSBodyLowering {
                     result = Result.VALUE;
                 }
             } else {
-                var assignment = (InfixExpression) ((ExpressionStatement) statement).getExpression();
-                var target = (PropertyGet) assignment.getLeft();
-                write(target.getTarget(), builder);
-                builder.getGlobal(commonGen.jsStringConstant(target.getProperty().getIdentifier()));
-                write(assignment.getRight(), builder);
-                builder.call(jsFunctions.getSetter());
+                writePut((InfixExpression) ((ExpressionStatement) statement).getExpression(),
+                        builder, false);
             }
         }
         return result;
+    }
+
+    /** a write to a property, which also gives back what it wrote when a body returns it */
+    private void writePut(InfixExpression assignment, WasmInstructionBuilder builder, boolean gives) {
+        var target = (PropertyGet) assignment.getLeft();
+        WasmLocal written = null;
+        write(target.getTarget(), builder);
+        builder.getGlobal(commonGen.jsStringConstant(target.getProperty().getIdentifier()));
+        write(assignment.getRight(), builder);
+        if (gives) {
+            written = context.tempVars().acquire(WasmType.EXTERN);
+            builder.teeLocal(written);
+        }
+        builder.call(jsFunctions.getSetter());
+        if (written != null) {
+            builder.getLocal(written);
+            context.tempVars().release(written);
+        }
     }
 
     private void write(AstNode node, WasmInstructionBuilder builder) {
@@ -273,6 +292,8 @@ final class WasmGCJSBodyLowering {
             builder.call(jsFunctions.getNew(made.getArguments().size()));
         } else if (node instanceof FunctionCall) {
             writeCall((FunctionCall) node, builder);
+        } else if (node.getType() == Token.ASSIGN) {
+            writePut((InfixExpression) node, builder, true);
         } else if (node instanceof org.teavm.rhino.javascript.ast.UnaryExpression) {
             write(((org.teavm.rhino.javascript.ast.UnaryExpression) node).getOperand(), builder);
             builder.call(jsFunctions.getOperation("typeOf", 1));

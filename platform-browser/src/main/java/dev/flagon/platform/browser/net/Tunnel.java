@@ -4,6 +4,8 @@ import dev.flagon.platform.net.NetworkException;
 import org.teavm.interop.Async;
 import org.teavm.interop.AsyncCallback;
 import org.teavm.jso.JSBody;
+import org.teavm.jso.browser.Location;
+import org.teavm.jso.browser.Window;
 import org.teavm.jso.JSFunctor;
 import org.teavm.jso.JSObject;
 import org.teavm.jso.typedarrays.Int8Array;
@@ -36,18 +38,44 @@ final class Tunnel {
     private Tunnel() {
     }
 
-    @JSBody(script = "return typeof WebSocket !== 'undefined' && typeof location !== 'undefined';")
-    static native boolean isAvailable();
+    static boolean isAvailable() {
+        return hasWebSocket() && hasLocation();
+    }
 
-    @JSBody(params = {"host", "port", "path", "secure"}, script =
-            "var scheme = location.protocol === 'https:' ? 'wss://' : 'ws://';"
-            + "var token = window.__flagonProxyToken;"
-            + "return scheme + location.host + path"
-            + " + '?host=' + encodeURIComponent(host) + '&port=' + port"
-            + " + (secure ? '&tls=1' : '')"
-            + " + (typeof token === 'string' && token"
-            + " ? '&token=' + encodeURIComponent(token) : '');")
-    static native String endpoint(String host, int port, String path, boolean secure);
+    @JSBody(script = "return typeof WebSocket !== 'undefined';")
+    private static native boolean hasWebSocket();
+
+    @JSBody(script = "return typeof location !== 'undefined';")
+    private static native boolean hasLocation();
+
+    static String endpoint(String host, int port, String path, boolean secure) {
+        Location page = Window.current().getLocation();
+        String scheme = "https:".equals(page.getProtocol()) ? "wss://" : "ws://";
+        StringBuilder url = new StringBuilder(scheme)
+                .append(page.getHost())
+                .append(path)
+                .append("?host=").append(encode(host))
+                .append("&port=").append(port);
+        if (secure) {
+            url.append("&tls=1");
+        }
+        if (hasProxyToken()) {
+            String token = proxyToken();
+            if (!token.isEmpty()) {
+                url.append("&token=").append(encode(token));
+            }
+        }
+        return url.toString();
+    }
+
+    @JSBody(params = "text", script = "return encodeURIComponent(text);")
+    private static native String encode(String text);
+
+    @JSBody(script = "return typeof window.__flagonProxyToken === 'string';")
+    private static native boolean hasProxyToken();
+
+    @JSBody(script = "return window.__flagonProxyToken;")
+    private static native String proxyToken();
 
     @Async
     static native Handle open(String url);
