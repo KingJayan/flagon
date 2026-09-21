@@ -13,7 +13,6 @@ import java.util.Map;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
-import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -28,10 +27,10 @@ class WriteResourcePackTest {
                 "META-INF/MANIFEST.MF", "Manifest-Version: 1.0",
                 "META-INF/services/a.b.C", "a.b.D"));
 
-        Map<String, byte[]> packed = WriteResourcePack.collect(jar);
+        var packed = WriteResourcePack.collect(jar);
 
         assertEquals(2, packed.size());
-        assertArrayEquals("hello".getBytes(StandardCharsets.UTF_8), packed.get("assets/lang.txt"));
+        assertTrue(packed.containsKey("assets/lang.txt"));
         assertTrue(packed.containsKey("META-INF/services/a.b.C"));
         assertFalse(packed.containsKey("dev/flagon/Thing.class"));
     }
@@ -41,9 +40,9 @@ class WriteResourcePackTest {
         jar(work.resolve("a.jar"), Map.of("shared.txt", "first"));
         jar(work.resolve("b.jar"), Map.of("shared.txt", "second"));
 
-        Map<String, byte[]> packed = WriteResourcePack.collect(work);
+        var packed = WriteResourcePack.collect(work);
 
-        assertArrayEquals("first".getBytes(StandardCharsets.UTF_8), packed.get("shared.txt"));
+        assertEquals(work.resolve("a.jar"), packed.get("shared.txt").source());
     }
 
     @Test
@@ -52,7 +51,7 @@ class WriteResourcePackTest {
         Files.writeString(work.resolve("assets/lang.txt"), "hello");
         Files.writeString(work.resolve("Thing.class"), "bytecode");
 
-        Map<String, byte[]> packed = WriteResourcePack.collect(work);
+        var packed = WriteResourcePack.collect(work);
 
         assertEquals(Map.of("assets/lang.txt", "hello").keySet(), packed.keySet());
     }
@@ -63,14 +62,39 @@ class WriteResourcePackTest {
     }
 
     @Test
-    void writesTheMagicTheReaderLooksFor() throws IOException {
+    void writesTheMagicTheReaderLooksFor(@TempDir Path work) throws IOException {
+        Files.writeString(work.resolve("a.txt"), "a");
+
         ByteArrayOutputStream bytes = new ByteArrayOutputStream();
-        WriteResourcePack.write(Map.of("a.txt", "a".getBytes(StandardCharsets.UTF_8)), bytes);
+        WriteResourcePack.write(WriteResourcePack.collect(work), bytes);
 
         byte[] written = bytes.toByteArray();
         for (int at = 0; at < WriteResourcePack.MAGIC.length; at++) {
             assertEquals(WriteResourcePack.MAGIC[at], written[at]);
         }
+    }
+
+    @Test
+    void packsATextFileSmallerThanItReadsBack(@TempDir Path work) throws IOException {
+        Files.writeString(work.resolve("long.txt"), "abcdefgh".repeat(400));
+
+        ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+        WriteResourcePack.write(WriteResourcePack.collect(work), bytes);
+
+        assertTrue(bytes.size() < 3200, "the pack is " + bytes.size() + " bytes");
+    }
+
+    @Test
+    void keepsAFileCompressionWouldOnlyGrow(@TempDir Path work) throws IOException {
+        byte[] noisy = new byte[512];
+        new java.util.Random(7).nextBytes(noisy);
+        Files.write(work.resolve("noise.bin"), noisy);
+
+        ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+        WriteResourcePack.write(WriteResourcePack.collect(work), bytes);
+
+        byte[] written = bytes.toByteArray();
+        assertEquals(WriteResourcePack.STORED, written[written.length - noisy.length - 1]);
     }
 
     private static Path jar(Path at, Map<String, String> files) throws IOException {
