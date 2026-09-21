@@ -321,12 +321,15 @@
         <executions>
           <execution>
             <id>copy-wasm-runtime</id>
+            <!-- every module inherits this plugin, and one copy of the loader is enough -->
+            <inherited>false</inherited>
             <phase>prepare-package</phase>
             <goals>
               <goal>copy-resources</goal>
             </goals>
             <configuration>
               <outputDirectory>${flagon.bundleOutput}</outputDirectory>
+              <overwrite>true</overwrite>
               <resources>
                 <resource>
                   <directory>${maven.multiModuleProjectDirectory}/teavm/src/main/resources/org/teavm/backend/wasm</directory>

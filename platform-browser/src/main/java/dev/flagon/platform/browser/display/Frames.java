@@ -19,18 +19,22 @@ public final class Frames {
     private Frames() {
     }
 
+    private static int drawn;
+
     @Async
     public static native void awaitNextFrame();
 
     private static void awaitNextFrame(AsyncCallback<Void> callback) {
-        requestAnimationFrame(timestamp -> callback.complete(null));
+        requestAnimationFrame(timestamp -> {
+            countFrame(++drawn);
+            callback.complete(null);
+        });
     }
 
-    @JSBody(params = "handler", script = """
-            requestAnimationFrame(function (timestamp) {
-                window.__flagonFrames = (window.__flagonFrames || 0) + 1;
-                handler(timestamp);
-            });
-            """)
+    @JSBody(params = "handler", script = "requestAnimationFrame(handler);")
     private static native void requestAnimationFrame(FrameHandler handler);
+
+    // the browser tests read this count to see that the loop really draws
+    @JSBody(params = "count", script = "window.__flagonFrames = count;")
+    private static native void countFrame(int count);
 }

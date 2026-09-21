@@ -38,9 +38,18 @@ final class Opfs {
     private Opfs() {
     }
 
-    @JSBody(script = "return typeof navigator !== 'undefined' && !!navigator.storage "
-            + "&& typeof navigator.storage.getDirectory === 'function';")
-    static native boolean isAvailable();
+    static boolean isAvailable() {
+        return hasNavigator() && hasStorage() && offersDirectory();
+    }
+
+    @JSBody(script = "return typeof navigator !== 'undefined';")
+    private static native boolean hasNavigator();
+
+    @JSBody(script = "return navigator.storage != null;")
+    private static native boolean hasStorage();
+
+    @JSBody(script = "return typeof navigator.storage.getDirectory === 'function';")
+    private static native boolean offersDirectory();
 
     @Async
     static native Entry stat(String path);
