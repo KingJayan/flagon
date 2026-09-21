@@ -327,7 +327,7 @@ public final class FixedFunctionPipeline {
             return;
         }
         begin(render, lent);
-        bindArrays(arrays, render);
+        bindArrays(arrays, render, first, drawable);
         issue(mode, first, drawable);
     }
 
@@ -343,7 +343,7 @@ public final class FixedFunctionPipeline {
                             + "the quads with glDrawArrays, or supply triangle indices");
         }
         begin(render, lent);
-        bindArrays(arrays, render);
+        bindArrays(arrays, render, 0, StagingArrays.WHOLE);
         device.drawElements(mode.primitive(), count, indexType, offsetInBytes);
     }
 
@@ -502,26 +502,27 @@ public final class FixedFunctionPipeline {
         device.uniform4f(location, rgba[0], rgba[1], rgba[2], rgba[3]);
     }
 
-    private void bindArrays(VertexArrays arrays, RenderState render) {
-        bindSlot(VertexArrays.POSITION, arrays.position(), 0.0f, 0.0f, 0.0f, 1.0f);
-        bindSlot(VertexArrays.COLOR, arrays.color(),
+    private void bindArrays(VertexArrays arrays, RenderState render, int first, int count) {
+        bindSlot(VertexArrays.POSITION, arrays.position(), first, count, 0.0f, 0.0f, 0.0f, 1.0f);
+        bindSlot(VertexArrays.COLOR, arrays.color(), first, count,
                 render.red(), render.green(), render.blue(), render.alpha());
         for (int unit = 0; unit < VertexArrays.UNITS; unit++) {
-            bindSlot(VertexArrays.TEX_COORD + unit, arrays.texCoord(unit),
+            bindSlot(VertexArrays.TEX_COORD + unit, arrays.texCoord(unit), first, count,
                     render.s(unit), render.t(unit), 0.0f, 1.0f);
         }
-        bindSlot(VertexArrays.NORMAL, arrays.normal(),
+        bindSlot(VertexArrays.NORMAL, arrays.normal(), first, count,
                 render.normalX(), render.normalY(), render.normalZ(), 0.0f);
     }
 
-    private void bindSlot(int slot, ClientArray array, float x, float y, float z, float w) {
+    private void bindSlot(int slot, ClientArray array, int first, int count,
+                          float x, float y, float z, float w) {
         if (!array.isEnabled() || !array.isBound()) {
             device.disableAttribute(slot);
             device.constantAttribute(slot, x, y, z, w);
             return;
         }
         device.enableAttribute(slot);
-        staging.bind(slot, array);
+        staging.bind(slot, array, first, count);
     }
 
     public void dispose() {
