@@ -116,8 +116,9 @@ size: ## weigh the release bundles against toolchain/size-budget.txt
 	test $$over -eq 0 || { echo "a bundle is over budget; make it smaller or raise the number on purpose"; exit 1; }; \
 	echo "bundles are within budget"
 
+# keep teavm out of the test phase
 test: ## run the jvm unit tests
-	$(MVN) test
+	$(MVN) -Dflagon.phase.wasm=none -Dflagon.phase.js=none test
 
 browser: ## drive the real bundles in a browser (ARGS='--shard=1/4')
 	@test -d $(BUNDLES) || { echo "no bundles yet; run 'make build'"; exit 1; }

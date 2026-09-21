@@ -54,6 +54,7 @@
     <flagon.minify>false</flagon.minify>
 
     <flagon.strict>true</flagon.strict>
+    <flagon.phase.wasm>process-classes</flagon.phase.wasm>
     <flagon.phase.js>process-classes</flagon.phase.js>
     <flagon.sourceMaps>false</flagon.sourceMaps>
 
@@ -249,6 +250,7 @@
           <executions>
             <execution>
               <id>compile-wasm</id>
+              <phase>${flagon.phase.wasm}</phase>
               <goals>
                 <goal>compile</goal>
               </goals>

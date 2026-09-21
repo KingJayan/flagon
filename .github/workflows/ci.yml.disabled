@@ -36,14 +36,15 @@ jobs:
           key: bundles-${{ hashFiles('**/pom.xml', '**/src/main/**', 'vendor/*.jar', 'Makefile') }}
 
       - name: Fetch maven
-        if: steps.bundles.outputs.cache-hit != 'true'
         run: for attempt in 1 2 3; do ./mvnw -B -v && exit 0; sleep 10; done; exit 1
 
       - name: Check java style
-        if: steps.bundles.outputs.cache-hit != 'true'
         run: ./mvnw -B -q checkstyle:check
 
-      - name: Build & unit test backends
+      - name: Unit tests
+        run: make test
+
+      - name: Build backends
         if: steps.bundles.outputs.cache-hit != 'true'
         run: make build
 
@@ -88,16 +89,6 @@ jobs:
           name: site
           path: web/dist/
           retention-days: 1
-
-      - name: Cache browsers
-        uses: actions/cache@v5
-        with:
-          path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ hashFiles('web/bun.lock') }}
-          restore-keys: playwright-${{ runner.os }}-
-
-      - name: Install browsers
-        run: cd web && bunx playwright install chromium firefox
 
   browser:
     needs: [build, web]
@@ -173,10 +164,10 @@ jobs:
           path: web/blob-report/
           retention-days: 7
 
-  size:
+  release:
     if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v5
 
@@ -186,8 +177,37 @@ jobs:
           java-version: '25'
           cache: maven
 
-      - name: Build both backends as release
+      - name: Cache release bundles
+        id: bundles
+        uses: actions/cache@v5
+        with:
+          path: web/public/flagon
+          key: release-${{ hashFiles('**/pom.xml', '**/src/main/**', 'vendor/*.jar', 'Makefile') }}
+
+      - name: Build backends as release
+        if: steps.bundles.outputs.cache-hit != 'true'
         run: make build-release
+
+      - name: Upload release bundles
+        uses: actions/upload-artifact@v5
+        with:
+          name: bundles-release
+          path: web/public/flagon/
+          retention-days: 1
+
+  size:
+    needs: release
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Download release bundles
+        uses: actions/download-artifact@v5
+        with:
+          name: bundles-release
+          path: web/public/flagon/
 
       - name: Weigh bundles
         run: |
