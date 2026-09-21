@@ -24,6 +24,7 @@
     <module>toolchain/sound-classlib</module>
     <module>toolchain/crypto-classlib</module>
     <module>toolchain/concurrent-classlib</module>
+    <module>teavm-jso</module>
     <module>toolchain/classfile</module>
     <module>toolchain/reflect-policy</module>
     <module>toolchain/jdk-shims</module>
@@ -227,6 +228,11 @@
             <dependency>
               <groupId>org.teavm</groupId>
               <artifactId>teavm-core</artifactId>
+              <version>${teavm.core.version}</version>
+            </dependency>
+            <dependency>
+              <groupId>org.teavm</groupId>
+              <artifactId>teavm-jso-impl</artifactId>
               <version>${teavm.core.version}</version>
             </dependency>
           </dependencies>
