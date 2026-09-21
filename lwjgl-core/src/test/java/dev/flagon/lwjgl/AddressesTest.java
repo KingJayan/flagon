@@ -87,6 +87,35 @@ class AddressesTest {
     }
 
     @Test
+    void forgetsABufferNobodyHoldsAnyMore() {
+        ByteBuffer buffer = bytes(4);
+        long address = Addresses.of(buffer);
+        assertTrue(Addresses.isKnown(address));
+
+        buffer = null;
+        for (int tries = 0; tries < 50 && Addresses.isKnown(address); tries++) {
+            System.gc();
+        }
+
+        assertFalse(Addresses.isKnown(address));
+    }
+
+    @Test
+    void handsTheSlotOfAForgottenBufferToTheNextOne() {
+        long first = Addresses.of(bytes(4));
+        for (int tries = 0; tries < 50 && Addresses.isKnown(first); tries++) {
+            System.gc();
+        }
+        assertFalse(Addresses.isKnown(first));
+
+        ByteBuffer next = bytes(4);
+        long second = Addresses.of(next);
+
+        assertNotEquals(first, second);
+        assertTrue(Addresses.isKnown(second));
+    }
+
+    @Test
     void forgetsWhatWasRegisteredSinceAMark() {
         int mark = Addresses.mark();
         long address = Addresses.of(bytes(4));
