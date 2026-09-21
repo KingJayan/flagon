@@ -32,7 +32,7 @@ class BrowserInput implements InputSource {
     private final boolean[] keysDown = new boolean[Scancode.COUNT];
     private final boolean[] buttonsDown = new boolean[8];
 
-    private JSObject listeners;
+    private DomInput.Listeners listeners;
     private boolean repeatEvents;
     private boolean inside;
     private int x;
