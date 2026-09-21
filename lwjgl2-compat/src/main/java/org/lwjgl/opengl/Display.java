@@ -17,6 +17,7 @@ public final class Display {
     private static String title = "Flagon";
     private static int syncRate;
     private static long frameDue;
+    private static long frameNanos;
 
     private Display() {
     }
@@ -54,12 +55,19 @@ public final class Display {
             surface.destroy();
             surface = null;
             frameDue = 0;
+            frameNanos = 0;
         }
     }
 
     /** presents the frame and returns when the next one is due. */
     public static void update() {
-        required().present();
+        present(required());
+    }
+
+    private static void present(DisplaySurface target) {
+        long before = Platforms.get().clock().nanoTime();
+        target.present();
+        frameNanos = Platforms.get().clock().nanoTime() - before;
     }
 
     public static void update(boolean processMessages) {
@@ -78,8 +86,9 @@ public final class Display {
             frameDue = now + interval;
             return;
         }
-        while (Platforms.get().clock().nanoTime() < frameDue) {
-            surface.present();
+        // a browser clock reads a little early, so a deadline within half a frame counts as met
+        while (Platforms.get().clock().nanoTime() + frameNanos / 2 < frameDue) {
+            present(surface);
         }
         // a loop that has fallen behind takes the rate it can manage rather than chasing frames
         frameDue = Math.max(frameDue + interval, Platforms.get().clock().nanoTime());

@@ -23,6 +23,9 @@ final class FakeDisplayPlatform implements Platform, Clock, ConsoleSink, Runtime
     /** how long one of this host's frames takes; 144 Hz unless a test says otherwise */
     long frameNanos = 1_000_000_000L / 144;
 
+    /** how coarse this host's clock reads, the way a browser rounds performance.now() down */
+    long clockGrain = 1L;
+
     private final FileStore files = new MemoryFileStore();
     private final AudioDevice audio = new SilentAudioDevice(this);
     private final Network network = new UnavailableNetwork("no network in this test");
@@ -108,7 +111,7 @@ final class FakeDisplayPlatform implements Platform, Clock, ConsoleSink, Runtime
 
     @Override
     public long nanoTime() {
-        return nanos;
+        return nanos / clockGrain * clockGrain;
     }
 
     @Override
