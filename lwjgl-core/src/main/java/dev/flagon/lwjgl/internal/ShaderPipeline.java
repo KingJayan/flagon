@@ -23,7 +23,7 @@ public final class ShaderPipeline {
         if (drawable == 0 || !arrays.canDraw()) {
             return;
         }
-        bind(arrays);
+        bind(arrays, first, drawable);
         if (mode.isIndexed()) {
             int quads = drawable / DrawMode.QUAD_VERTICES;
             quadIndices.bind(quads, first);
@@ -45,7 +45,7 @@ public final class ShaderPipeline {
                             + "means rewriting the index buffer, which belongs to the caller. draw "
                             + "the quads with glDrawArrays, or supply triangle indices");
         }
-        bind(arrays);
+        bind(arrays, 0, StagingArrays.WHOLE);
         device.drawElements(mode.primitive(), count, indexType, offsetInBytes);
     }
 
@@ -58,7 +58,7 @@ public final class ShaderPipeline {
         if (count == 0 || instances == 0 || !arrays.canDraw()) {
             return;
         }
-        bind(arrays);
+        bind(arrays, first, count);
         device.drawArraysInstanced(mode.primitive(), first, count, instances);
     }
 
@@ -72,11 +72,11 @@ public final class ShaderPipeline {
         if (count == 0 || instances == 0 || !arrays.canDraw()) {
             return;
         }
-        bind(arrays);
+        bind(arrays, 0, StagingArrays.WHOLE);
         device.drawElementsInstanced(mode.primitive(), count, indexType, offsetInBytes, instances);
     }
 
-    private void bind(GenericArrays arrays) {
+    private void bind(GenericArrays arrays, int first, int count) {
         for (int slot = 0; slot < arrays.count(); slot++) {
             ClientArray array = arrays.slot(slot);
             if (!array.isEnabled() || !array.isBound()) {
@@ -84,7 +84,7 @@ public final class ShaderPipeline {
                 continue;
             }
             device.enableAttribute(slot);
-            staging.bind(slot, array);
+            staging.bind(slot, array, first, count);
             device.attributeDivisor(slot, array.divisor());
         }
     }
