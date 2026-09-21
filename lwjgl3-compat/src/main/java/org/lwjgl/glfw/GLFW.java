@@ -205,6 +205,9 @@ public final class GLFW {
     private static final long MONITOR = 1L;
 
     private static boolean initialised;
+    /** the bytes the one window handle names; the address table only holds it weakly */
+    private static final java.nio.ByteBuffer WINDOW = java.nio.ByteBuffer.allocateDirect(1);
+
     private static long window;
     private static DisplaySurface surface;
     private static String title = "Flagon";
@@ -304,7 +307,7 @@ public final class GLFW {
         GLState.attach(surface.graphics());
         InputState.attach(surface.input());
         shouldClose = false;
-        window = Addresses.of(java.nio.ByteBuffer.allocateDirect(1));
+        window = Addresses.of(WINDOW);
         return window;
     }
 
