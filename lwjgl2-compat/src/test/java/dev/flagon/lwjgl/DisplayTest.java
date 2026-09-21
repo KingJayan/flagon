@@ -46,6 +46,22 @@ class DisplayTest {
         assertTrue(platform.presented() >= 20, "presented " + platform.presented());
     }
 
+    /** one frame an iteration at the host's rate */
+    @Test
+    void presentsOneFrameAnIterationAtTheHostsOwnRate() throws LWJGLException {
+        platform.frameNanos = 1_000_000_000L / 60;
+        // browsers round performance.now() down
+        platform.clockGrain = 1_000_000L;
+        Display.create();
+
+        for (int frame = 0; frame < 60; frame++) {
+            Display.update();
+            Display.sync(60);
+        }
+
+        assertEquals(60, platform.presented());
+    }
+
     @Test
     void leavesALoopSlowerThanTheRateAlone() throws LWJGLException {
         platform.frameNanos = 1_000_000_000L / 20;
