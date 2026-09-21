@@ -1,8 +1,24 @@
 package dev.flagon.platform.browser.display;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import org.teavm.jso.JSBody;
 import org.teavm.jso.JSFunctor;
 import org.teavm.jso.JSObject;
+import org.teavm.jso.JSProperty;
+import org.teavm.jso.browser.Window;
+import org.teavm.jso.core.JSArrayReader;
+import org.teavm.jso.core.JSObjects;
+import org.teavm.jso.dom.events.Event;
+import org.teavm.jso.dom.events.EventListener;
+import org.teavm.jso.dom.events.EventTarget;
+import org.teavm.jso.dom.events.KeyboardEvent;
+import org.teavm.jso.dom.events.MouseEvent;
+import org.teavm.jso.dom.events.Touch;
+import org.teavm.jso.dom.events.TouchEvent;
+import org.teavm.jso.dom.events.WheelEvent;
+import org.teavm.jso.dom.html.HTMLCanvasElement;
 
 /**
  * dom event plumbing, kept apart from the input state it feeds
@@ -46,166 +62,243 @@ final class DomInput {
     /**
      * wires every listener at once and remembers them so {@link #detach} can undo it
      */
-    @JSBody(params = {"canvas", "key", "button", "move", "wheel", "presence", "focus"}, script = """
-            var locked = function () { return document.pointerLockElement === canvas; };
-            // css pixels are not backing-store pixels: the canvas is sized by the page
-            var atX = function (event) {
-                var box = canvas.getBoundingClientRect();
-                var scale = box.width > 0 ? canvas.width / box.width : 1;
-                return Math.round((event.clientX - box.left) * scale);
-            };
-            var atY = function (event) {
-                var box = canvas.getBoundingClientRect();
-                var scale = box.height > 0 ? canvas.height / box.height : 1;
-                return Math.round((event.clientY - box.top) * scale);
-            };
-            var scaled = function (movement, size, boxSize) {
-                return Math.round((movement | 0) * (boxSize > 0 ? size / boxSize : 1));
-            };
+    static Listeners attach(JSObject canvas, KeyHandler key, ButtonHandler button,
+                            MoveHandler move, WheelHandler wheel, PresenceHandler presence,
+                            FocusHandler focus) {
+        return new Listeners(canvas.cast(), key, button, move, wheel, presence, focus);
+    }
 
-            var state = {
-                canvas: canvas,
-                borrowedTabIndex: !canvas.hasAttribute('tabindex'),
-                keydown: function (event) {
-                    if (event.ctrlKey || event.metaKey || event.code === 'F5'
-                            || event.code === 'F11' || event.code === 'F12') {
-                        return;
-                    }
-                    if (event.code === 'Tab' && !locked()) {
-                        return;
-                    }
-                    if (key(event.code, event.key, true, event.repeat === true)) {
-                        event.preventDefault();
-                    }
-                },
-                keyup: function (event) {
-                    if (key(event.code, event.key, false, false)) {
-                        event.preventDefault();
-                    }
-                },
-                mousedown: function (event) {
-                    canvas.focus({preventScroll: true});
-                    button(event.button, true, atX(event), atY(event));
-                    event.preventDefault();
-                },
-                mouseup: function (event) {
-                    button(event.button, false, atX(event), atY(event));
-                    event.preventDefault();
-                },
-                mousemove: function (event) {
-                    var box = canvas.getBoundingClientRect();
-                    move(atX(event), atY(event),
-                            scaled(event.movementX, canvas.width, box.width),
-                            scaled(event.movementY, canvas.height, box.height),
-                            locked());
-                },
-                wheel: function (event) {
-                    wheel(event.deltaY, event.deltaMode | 0);
-                    event.preventDefault();
-                },
-                touched: null,
-                touchstart: function (event) {
-                    if (state.touched !== null) {
-                        return;
-                    }
-                    var touch = event.changedTouches[0];
-                    state.touched = touch.identifier;
-                    state.lastX = atX(touch);
-                    state.lastY = atY(touch);
-                    canvas.focus({preventScroll: true});
-                    presence(true);
-                    move(state.lastX, state.lastY, 0, 0, false);
-                    button(0, true, state.lastX, state.lastY);
-                    event.preventDefault();
-                },
-                touchmove: function (event) {
-                    var touch = state.tracked(event);
-                    if (!touch) {
-                        return;
-                    }
-                    var x = atX(touch);
-                    var y = atY(touch);
-                    move(x, y, x - state.lastX, y - state.lastY, false);
-                    state.lastX = x;
-                    state.lastY = y;
-                    event.preventDefault();
-                },
-                touchend: function (event) {
-                    var touch = state.tracked(event);
-                    if (!touch) {
-                        return;
-                    }
-                    state.touched = null;
-                    button(0, false, atX(touch), atY(touch));
-                    presence(false);
-                    event.preventDefault();
-                },
-                lastX: 0,
-                lastY: 0,
-                tracked: function (event) {
-                    for (var i = 0; i < event.changedTouches.length; i++) {
-                        if (event.changedTouches[i].identifier === state.touched) {
-                            return event.changedTouches[i];
-                        }
-                    }
-                    return null;
-                },
-                enter: function () { presence(true); },
-                leave: function () { presence(false); },
-                focused: function () { focus(true); },
-                blurred: function () { focus(false); },
-                contextmenu: function (event) { event.preventDefault(); }
+    static void detach(Listeners listeners) {
+        if (listeners != null) {
+            listeners.undo();
+        }
+    }
+
+    /** options for addEventListener and focus */
+    interface Options extends JSObject {
+        @JSProperty
+        void setPassive(boolean wanted);
+
+        @JSProperty
+        void setPreventScroll(boolean wanted);
+    }
+
+    /** the canvas box in fractional css pixels */
+    interface Box extends JSObject {
+        @JSProperty
+        double getLeft();
+
+        @JSProperty
+        double getTop();
+
+        @JSProperty
+        double getWidth();
+
+        @JSProperty
+        double getHeight();
+    }
+
+    /** the listeners detach must remove */
+    static final class Listeners {
+
+        private static final String[] KEYS_THE_BROWSER_KEEPS = {"F5", "F11", "F12"};
+
+        private final HTMLCanvasElement canvas;
+        private final boolean borrowedTabIndex;
+        private final List<Wired> wired = new ArrayList<>();
+
+        private int touched = -1;
+        private int lastX;
+        private int lastY;
+
+        private record Wired(EventTarget target, String type, EventListener<Event> listener) {
+        }
+
+        Listeners(HTMLCanvasElement canvas, KeyHandler key, ButtonHandler button, MoveHandler move,
+                  WheelHandler wheel, PresenceHandler presence, FocusHandler focus) {
+            this.canvas = canvas;
+            this.borrowedTabIndex = !canvas.hasAttribute("tabindex");
+            if (borrowedTabIndex) {
+                canvas.setAttribute("tabindex", "0");
+            }
+
+            Window page = Window.current();
+            EventListener<Event> onMove = event -> {
+                MouseEvent moved = event.cast();
+                Box box = box();
+                move.onMove(atX(moved.getClientX()), atY(moved.getClientY()),
+                        scaled(moved.getMovementX(), canvas.getWidth(), box.getWidth()),
+                        scaled(moved.getMovementY(), canvas.getHeight(), box.getHeight()),
+                        isLocked());
             };
+            onWindow(page, "mousemove", onMove);
+            onWindow(page, "mouseup", event -> {
+                MouseEvent up = event.cast();
+                button.onButton(up.getButton(), false, atX(up.getClientX()), atY(up.getClientY()));
+                event.preventDefault();
+            });
 
-            if (state.borrowedTabIndex) {
-                canvas.setAttribute('tabindex', '0');
-            }
-            window.addEventListener('mousemove', state.mousemove);
-            window.addEventListener('mouseup', state.mouseup);
-            canvas.addEventListener('keydown', state.keydown);
-            canvas.addEventListener('keyup', state.keyup);
-            canvas.addEventListener('mousedown', state.mousedown);
-            canvas.addEventListener('wheel', state.wheel, {passive: false});
-            canvas.addEventListener('touchstart', state.touchstart, {passive: false});
-            canvas.addEventListener('touchmove', state.touchmove, {passive: false});
-            canvas.addEventListener('touchend', state.touchend, {passive: false});
-            canvas.addEventListener('touchcancel', state.touchend, {passive: false});
-            canvas.addEventListener('mouseenter', state.enter);
-            canvas.addEventListener('mouseleave', state.leave);
-            canvas.addEventListener('focus', state.focused);
-            canvas.addEventListener('blur', state.blurred);
-            canvas.addEventListener('contextmenu', state.contextmenu);
-            canvas.focus({preventScroll: true});
-            return state;
-            """)
-    static native JSObject attach(JSObject canvas, KeyHandler key, ButtonHandler button,
-                                  MoveHandler move, WheelHandler wheel, PresenceHandler presence,
-                                  FocusHandler focus);
+            onCanvas("keydown", event -> {
+                KeyboardEvent pressed = event.cast();
+                if (pressed.isCtrlKey() || pressed.isMetaKey() || kept(pressed.getCode())) {
+                    return;
+                }
+                if ("Tab".equals(pressed.getCode()) && !isLocked()) {
+                    return;
+                }
+                if (key.onKey(pressed.getCode(), pressed.getKey(), true, pressed.isRepeat())) {
+                    event.preventDefault();
+                }
+            });
+            onCanvas("keyup", event -> {
+                KeyboardEvent released = event.cast();
+                if (key.onKey(released.getCode(), released.getKey(), false, false)) {
+                    event.preventDefault();
+                }
+            });
+            onCanvas("mousedown", event -> {
+                MouseEvent down = event.cast();
+                takeFocus();
+                button.onButton(down.getButton(), true, atX(down.getClientX()),
+                        atY(down.getClientY()));
+                event.preventDefault();
+            });
+            onCanvas("wheel", event -> {
+                WheelEvent turned = event.cast();
+                wheel.onWheel(turned.getDeltaY(), turned.getDeltaMode());
+                event.preventDefault();
+            }, false);
+            onCanvas("touchstart", event -> {
+                if (touched >= 0) {
+                    return;
+                }
+                Touch touch = ((TouchEvent) event.cast()).getChangedTouches().get(0);
+                touched = touch.getIdentifier();
+                lastX = atX(touch.getClientX());
+                lastY = atY(touch.getClientY());
+                takeFocus();
+                presence.onPresence(true);
+                move.onMove(lastX, lastY, 0, 0, false);
+                button.onButton(0, true, lastX, lastY);
+                event.preventDefault();
+            }, false);
+            onCanvas("touchmove", event -> {
+                Touch touch = tracked(event.cast());
+                if (touch == null) {
+                    return;
+                }
+                int x = atX(touch.getClientX());
+                int y = atY(touch.getClientY());
+                move.onMove(x, y, x - lastX, y - lastY, false);
+                lastX = x;
+                lastY = y;
+                event.preventDefault();
+            }, false);
+            EventListener<Event> onTouchEnd = event -> {
+                Touch touch = tracked(event.cast());
+                if (touch == null) {
+                    return;
+                }
+                touched = -1;
+                button.onButton(0, false, atX(touch.getClientX()), atY(touch.getClientY()));
+                presence.onPresence(false);
+                event.preventDefault();
+            };
+            onCanvas("touchend", onTouchEnd, false);
+            onCanvas("touchcancel", onTouchEnd, false);
+            onCanvas("mouseenter", event -> presence.onPresence(true));
+            onCanvas("mouseleave", event -> presence.onPresence(false));
+            onCanvas("focus", event -> focus.onFocus(true));
+            onCanvas("blur", event -> focus.onFocus(false));
+            onCanvas("contextmenu", Event::preventDefault);
+            takeFocus();
+        }
 
-    @JSBody(params = "state", script = """
-            if (!state) {
-                return;
+        void undo() {
+            for (Wired one : wired) {
+                one.target().removeEventListener(one.type(), one.listener());
             }
-            window.removeEventListener('mousemove', state.mousemove);
-            window.removeEventListener('mouseup', state.mouseup);
-            state.canvas.removeEventListener('keydown', state.keydown);
-            state.canvas.removeEventListener('keyup', state.keyup);
-            state.canvas.removeEventListener('mousedown', state.mousedown);
-            state.canvas.removeEventListener('wheel', state.wheel);
-            state.canvas.removeEventListener('touchstart', state.touchstart);
-            state.canvas.removeEventListener('touchmove', state.touchmove);
-            state.canvas.removeEventListener('touchend', state.touchend);
-            state.canvas.removeEventListener('touchcancel', state.touchend);
-            state.canvas.removeEventListener('mouseenter', state.enter);
-            state.canvas.removeEventListener('mouseleave', state.leave);
-            state.canvas.removeEventListener('focus', state.focused);
-            state.canvas.removeEventListener('blur', state.blurred);
-            state.canvas.removeEventListener('contextmenu', state.contextmenu);
-            if (state.borrowedTabIndex) {
-                state.canvas.removeAttribute('tabindex');
+            wired.clear();
+            if (borrowedTabIndex) {
+                canvas.removeAttribute("tabindex");
             }
-            """)
-    static native void detach(JSObject state);
+        }
+
+        private void onWindow(Window page, String type, EventListener<Event> listener) {
+            page.addEventListener(type, listener);
+            wired.add(new Wired(page, type, listener));
+        }
+
+        private void onCanvas(String type, EventListener<Event> listener) {
+            canvas.addEventListener(type, listener);
+            wired.add(new Wired(canvas, type, listener));
+        }
+
+        private void onCanvas(String type, EventListener<Event> listener, boolean passive) {
+            Options options = JSObjects.create();
+            options.setPassive(passive);
+            listen(canvas, type, listener, options);
+            wired.add(new Wired(canvas, type, listener));
+        }
+
+        private Touch tracked(TouchEvent event) {
+            JSArrayReader<Touch> changed = event.getChangedTouches();
+            for (int at = 0; at < changed.getLength(); at++) {
+                if (changed.get(at).getIdentifier() == touched) {
+                    return changed.get(at);
+                }
+            }
+            return null;
+        }
+
+        private void takeFocus() {
+            Options options = JSObjects.create();
+            options.setPreventScroll(true);
+            focusWithout(canvas, options);
+        }
+
+        private boolean isLocked() {
+            return isPointerLocked(canvas);
+        }
+
+        private static boolean kept(String code) {
+            for (String held : KEYS_THE_BROWSER_KEEPS) {
+                if (held.equals(code)) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        // css pixels are not backing-store pixels: the canvas is sized by the page
+        private int atX(double clientX) {
+            Box box = box();
+            double scale = box.getWidth() > 0 ? canvas.getWidth() / box.getWidth() : 1;
+            return (int) Math.round((clientX - box.getLeft()) * scale);
+        }
+
+        private int atY(double clientY) {
+            Box box = box();
+            double scale = box.getHeight() > 0 ? canvas.getHeight() / box.getHeight() : 1;
+            return (int) Math.round((clientY - box.getTop()) * scale);
+        }
+
+        private Box box() {
+            return canvas.getBoundingClientRect().cast();
+        }
+
+        private static int scaled(double movement, double size, double boxSize) {
+            return (int) Math.round((long) movement * (boxSize > 0 ? size / boxSize : 1));
+        }
+    }
+
+    @JSBody(params = {"target", "type", "listener", "options"},
+            script = "target.addEventListener(type, listener, options);")
+    private static native void listen(JSObject target, String type, JSObject listener,
+                                      JSObject options);
+
+    @JSBody(params = {"element", "options"}, script = "element.focus(options);")
+    private static native void focusWithout(JSObject element, JSObject options);
 
     /** pointer lock needs a user gesture and resolves later, so this reports acceptance only. */
     @JSBody(params = "canvas", script = """
