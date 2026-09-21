@@ -16,6 +16,8 @@
 package org.teavm.jso.impl.wasmgc;
 
 import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Map;
 import org.teavm.backend.wasm.WasmFunctionTypes;
 import org.teavm.backend.wasm.generate.WasmGCNameProvider;
 import org.teavm.backend.wasm.model.WasmFunction;
@@ -33,6 +35,7 @@ class WasmGCJSFunctions {
     private WasmFunction[] methodCallers = new WasmFunction[32];
     private WasmFunction[] news = new WasmFunction[32];
     private WasmFunction globalFunction;
+    private final Map<String, WasmFunction> named = new HashMap<>();
     private WasmFunction getFunction;
 
     WasmGCJSFunctions(WasmFunctionTypes functionTypes, WasmGCNameProvider names, WasmModule module) {
@@ -127,6 +130,45 @@ class WasmGCJSFunctions {
             news[index] = function;
         }
         return function;
+    }
+
+    /** an operation the loader carries */
+    WasmFunction getOperation(String id, int paramCount) {
+        return named.computeIfAbsent(id, name -> importOf(name, paramCount));
+    }
+
+    WasmFunction getSetter() {
+        return named.computeIfAbsent("setProperty", name -> {
+            var paramTypes = new WasmType[] { WasmType.EXTERN, WasmType.EXTERN, WasmType.EXTERN };
+            var function = new WasmFunction(functionTypes.of(null, paramTypes));
+            function.setName(names.topLevel("teavm.js:" + name));
+            function.setImportModule("teavmJso");
+            function.setImportName(name);
+            module.functions.add(function);
+            return function;
+        });
+    }
+
+    WasmFunction getBooleanWrapper() {
+        return named.computeIfAbsent("wrapBoolean", name -> {
+            var function = new WasmFunction(functionTypes.of(WasmType.EXTERN, WasmType.INT32));
+            function.setName(names.topLevel("teavm.js:" + name));
+            function.setImportModule("teavmJso");
+            function.setImportName(name);
+            module.functions.add(function);
+            return function;
+        });
+    }
+
+    WasmFunction getNumberWrapper() {
+        return named.computeIfAbsent("wrapDouble", name -> {
+            var function = new WasmFunction(functionTypes.of(WasmType.EXTERN, WasmType.FLOAT64));
+            function.setName(names.topLevel("teavm.js:" + name));
+            function.setImportModule("teavmJso");
+            function.setImportName(name);
+            module.functions.add(function);
+            return function;
+        });
     }
 
     private WasmFunction importOf(String id, int paramCount) {
