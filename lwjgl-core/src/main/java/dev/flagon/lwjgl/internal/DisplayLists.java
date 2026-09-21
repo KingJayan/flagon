@@ -1,9 +1,7 @@
 package dev.flagon.lwjgl.internal;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.function.IntConsumer;
 
 /**
@@ -14,8 +12,20 @@ public final class DisplayLists {
     public static final int COMPILE = 0x1300;
     public static final int COMPILE_AND_EXECUTE = 0x1301;
 
-    private final Map<Integer, List<Runnable>> lists = new HashMap<>();
-    private final Map<Integer, List<Integer>> blocks = new HashMap<>();
+    /** what a list name holds */
+    private static final class Held {
+
+        private final List<Runnable> commands;
+        private List<Integer> blocks;
+
+        Held(List<Runnable> commands, List<Integer> blocks) {
+            this.commands = commands;
+            this.blocks = blocks;
+        }
+    }
+
+    // a list name is its index
+    private final List<Held> lists = new ArrayList<>();
     private IntConsumer release = block -> { };
     private List<Runnable> recording;
     private List<Integer> recordingBlocks;
@@ -44,13 +54,13 @@ public final class DisplayLists {
         int first = nextName;
         nextName += count;
         for (int name = first; name < nextName; name++) {
-            lists.put(name, new ArrayList<>());
+            put(name, new Held(new ArrayList<>(), null));
         }
         return first;
     }
 
     public boolean exists(int name) {
-        return lists.containsKey(name);
+        return held(name) != null;
     }
 
     public void begin(int name, int mode) {
@@ -75,9 +85,8 @@ public final class DisplayLists {
         if (recording == null) {
             throw new IllegalStateException("glEndList called without glNewList");
         }
-        lists.put(recordingInto, recording);
         free(recordingInto);
-        blocks.put(recordingInto, recordingBlocks);
+        put(recordingInto, new Held(recording, recordingBlocks));
         recording = null;
         recordingBlocks = null;
         executeWhileRecording = false;
@@ -96,28 +105,44 @@ public final class DisplayLists {
     }
 
     public void call(int name) {
-        List<Runnable> list = lists.get(name);
-        if (list == null) {
+        Held found = held(name);
+        if (found == null) {
             return;
         }
-        for (Runnable command : list) {
-            command.run();
+        List<Runnable> commands = found.commands;
+        for (int at = 0; at < commands.size(); at++) {
+            commands.get(at).run();
         }
     }
 
     public void delete(int first, int count) {
         for (int name = first; name < first + count; name++) {
-            lists.remove(name);
             free(name);
+            if (name > 0 && name < lists.size()) {
+                lists.set(name, null);
+            }
         }
     }
 
-    private void free(int name) {
-        List<Integer> held = blocks.remove(name);
-        if (held != null) {
-            for (int block : held) {
-                release.accept(block);
-            }
+    private Held held(int name) {
+        return name > 0 && name < lists.size() ? lists.get(name) : null;
+    }
+
+    private void put(int name, Held into) {
+        while (lists.size() <= name) {
+            lists.add(null);
         }
+        lists.set(name, into);
+    }
+
+    private void free(int name) {
+        Held found = held(name);
+        if (found == null || found.blocks == null) {
+            return;
+        }
+        for (int block : found.blocks) {
+            release.accept(block);
+        }
+        found.blocks = null;
     }
 }
