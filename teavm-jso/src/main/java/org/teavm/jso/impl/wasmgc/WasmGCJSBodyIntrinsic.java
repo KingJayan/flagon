@@ -44,8 +44,11 @@ class WasmGCJSBodyIntrinsic implements WasmGCInlineIntrinsic {
             WasmInstructionBuilder builder) {
         if (emitter instanceof JSBodyAstEmitter) {
             var lowering = new WasmGCJSBodyLowering(commonGen, jsFunctions);
-            if (lowering.apply((JSBodyAstEmitter) emitter, inlined, invocation, context, builder)) {
-                if (invocation.getMethod().getReturnType() == ValueType.VOID) {
+            var wantsValue = invocation.getMethod().getReturnType() != ValueType.VOID;
+            var written = lowering.apply((JSBodyAstEmitter) emitter, inlined, wantsValue, invocation,
+                    context, builder);
+            if (written != null) {
+                if (written == WasmGCJSBodyLowering.Result.VALUE && !wantsValue) {
                     builder.drop();
                 }
                 return;
