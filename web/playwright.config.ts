@@ -59,7 +59,7 @@ export default defineConfig({
     {
       name: 'served',
       dependencies: ['bundles'],
-      testMatch: /net\.spec\.ts/,
+      testMatch: /(net|policy)\.spec\.ts/,
       use: { ...devices['Desktop Chrome'], baseURL: 'http://localhost:4273' },
     },
   ],
