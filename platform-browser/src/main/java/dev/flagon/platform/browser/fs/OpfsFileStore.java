@@ -15,7 +15,6 @@ import org.teavm.jso.typedarrays.Int8Array;
 public final class OpfsFileStore implements FileStore {
 
     private OpfsFileStore() {
-        Opfs.install();
     }
 
     /** @return the store, or null when this browser has no origin private file system */

@@ -135,8 +135,7 @@ function encodingFor(request: http.IncomingMessage, file: string): 'br' | 'gzip'
 
 const POLICY = [
   "default-src 'self'",
-  // teavm's wasm-gc loader evaluates a string, so 'wasm-unsafe-eval' alone is not enough
-  "script-src 'self' 'unsafe-eval' 'wasm-unsafe-eval'",
+  "script-src 'self' 'wasm-unsafe-eval'",
   "style-src 'self'",
   "img-src 'self' data: blob:",
   "media-src 'self' data: blob:",
