@@ -3,14 +3,13 @@ package dev.flagon.appentry;
 import dev.flagon.classfile.Classes;
 
 import java.io.IOException;
-import java.nio.file.Path;
 import java.util.Map;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 
 final class JarClasses implements Classes {
 
-    record Where(Path jar, String entry) {
+    record Where(JarFile jar, String entry) {
     }
 
     private final Map<String, Where> carriers;
@@ -25,11 +24,12 @@ final class JarClasses implements Classes {
         if (where == null) {
             return null;
         }
-        try (JarFile opened = new JarFile(where.jar().toFile())) {
-            JarEntry entry = opened.getJarEntry(where.entry());
-            try (var in = opened.getInputStream(entry)) {
-                return in.readAllBytes();
-            }
+        JarEntry entry = where.jar().getJarEntry(where.entry());
+        if (entry == null) {
+            return null;
+        }
+        try (var in = where.jar().getInputStream(entry)) {
+            return in.readAllBytes();
         } catch (IOException | RuntimeException unreadable) {
             return null;
         }
