@@ -16,6 +16,7 @@ import java.util.zip.Deflater;
 import java.util.zip.DeflaterOutputStream;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
+import java.util.stream.IntStream;
 
 public final class WriteResourcePack {
 
@@ -23,6 +24,9 @@ public final class WriteResourcePack {
 
     static final int STORED = 0;
     static final int DEFLATED = 1;
+
+    /** how many resources one parallel batch deflates, to bound what is held at once */
+    private static final int BATCH = 64;
 
     /** where one resource comes from */
     record Item(Path source, String entry) {
@@ -109,12 +113,32 @@ public final class WriteResourcePack {
         DataOutputStream data = new DataOutputStream(out);
         data.write(MAGIC);
         data.writeInt(files.size());
+        List<String> names = new ArrayList<>(files.keySet());
+        byte[][] raw = new byte[BATCH][];
+        byte[][] packed = new byte[BATCH][];
         try (Jars open = new Jars()) {
-            for (Map.Entry<String, Item> file : files.entrySet()) {
-                writeOne(data, file.getKey(), open.read(file.getValue()));
+            for (int first = 0; first < names.size(); first += BATCH) {
+                int count = Math.min(BATCH, names.size() - first);
+                for (int at = 0; at < count; at++) {
+                    raw[at] = open.read(files.get(names.get(first + at)));
+                }
+                deflateBatch(count, raw, packed);
+                for (int at = 0; at < count; at++) {
+                    writeOne(data, names.get(first + at), raw[at], packed[at]);
+                }
             }
         }
         data.flush();
+    }
+
+    private static void deflateBatch(int count, byte[][] raw, byte[][] packed) {
+        IntStream.range(0, count).parallel().forEach(at -> {
+            try {
+                packed[at] = deflate(raw[at]);
+            } catch (IOException impossible) {
+                throw new IllegalStateException("a resource would not deflate", impossible);
+            }
+        });
     }
 
     /** holds one jar open across its resources */
@@ -147,11 +171,10 @@ public final class WriteResourcePack {
         }
     }
 
-    private static void writeOne(DataOutputStream data, String name, byte[] raw)
+    private static void writeOne(DataOutputStream data, String name, byte[] raw, byte[] packed)
             throws IOException {
         byte[] label = name.getBytes(StandardCharsets.UTF_8);
-        byte[] packed = deflate(raw);
-        boolean smaller = packed.length < raw.length;
+        boolean smaller = packed != null && packed.length < raw.length;
         data.writeInt(label.length);
         data.write(label);
         data.writeInt(raw.length);

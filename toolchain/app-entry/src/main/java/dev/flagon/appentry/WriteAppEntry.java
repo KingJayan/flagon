@@ -10,7 +10,6 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
-import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -57,7 +56,13 @@ public final class WriteAppEntry {
         Path into = Path.of(args[1]).resolve("dev/flagon/app");
         Files.createDirectories(into);
 
-        List<Path> jars = jarsIn(given);
+        try (OpenJars jars = new OpenJars(jarsIn(given))) {
+            write(args, given, into, jars);
+        }
+    }
+
+    private static void write(String[] args, Path given, Path into, OpenJars jars)
+            throws IOException {
         List<String> mains = runnableIn(jars);
         List<String> named = namedByResources(jars);
         Files.writeString(into.resolve("AppEntry.java"), source(mains, named));
@@ -85,29 +90,31 @@ public final class WriteAppEntry {
             System.out.println(classes.size() + " classes may be constructed by reflection");
             if (classes.size() > WARN_ABOVE) {
                 System.out.println("that is a lot to keep constructors for, and it costs compile"
-                        + " time and bundle size. if the game only reflects over its own packages,"
-                        + " say so with -Dflagon.app.reflect=your.game.**");
+                        + " time and bundle size. if the game only reflects over its own"
+                        + " packages, say so with -Dflagon.app.reflect=your.game.**");
             }
         }
     }
 
-    static List<String> namedByResources(List<Path> jars) throws IOException {
+    static List<String> namedByResources(List<Path> paths) throws IOException {
+        try (OpenJars jars = new OpenJars(paths)) {
+            return namedByResources(jars);
+        }
+    }
+
+    private static List<String> namedByResources(OpenJars jars) throws IOException {
         Map<String, JarClasses.Where> carriers = carriersIn(jars);
         Set<String> carried = carriers.keySet();
         Set<String> named = new LinkedHashSet<>();
-        for (Path jar : jars) {
-            try (JarFile opened = new JarFile(jar.toFile())) {
-                Enumeration<JarEntry> entries = opened.entries();
-                while (entries.hasMoreElements()) {
-                    JarEntry entry = entries.nextElement();
-                    if (!describes(entry)) {
-                        continue;
-                    }
-                    Matcher found = TYPE_NAME.matcher(textOf(opened, entry));
-                    while (found.find()) {
-                        if (carried.contains(found.group())) {
-                            named.add(found.group());
-                        }
+        for (OpenJars.Opened opened : jars.all()) {
+            for (JarEntry entry : opened.entries()) {
+                if (!describes(entry)) {
+                    continue;
+                }
+                Matcher found = TYPE_NAME.matcher(textOf(opened.jar(), entry));
+                while (found.find()) {
+                    if (carried.contains(found.group())) {
+                        named.add(found.group());
                     }
                 }
             }
@@ -116,19 +123,16 @@ public final class WriteAppEntry {
         return named.stream().sorted().filter(loadable::test).toList();
     }
 
-    private static Map<String, JarClasses.Where> carriersIn(List<Path> jars) throws IOException {
+    private static Map<String, JarClasses.Where> carriersIn(OpenJars jars) {
         Map<String, JarClasses.Where> carriers = new LinkedHashMap<>();
-        for (Path jar : jars) {
-            try (JarFile opened = new JarFile(jar.toFile())) {
-                Enumeration<JarEntry> entries = opened.entries();
-                while (entries.hasMoreElements()) {
-                    String entry = entries.nextElement().getName();
-                    if (entry.endsWith(".class")) {
-                        carriers.putIfAbsent(
-                                entry.substring(0, entry.length() - ".class".length())
-                                        .replace('/', '.'),
-                                new JarClasses.Where(jar, entry));
-                    }
+        for (OpenJars.Opened opened : jars.all()) {
+            for (JarEntry found : opened.entries()) {
+                String entry = found.getName();
+                if (entry.endsWith(".class")) {
+                    carriers.putIfAbsent(
+                            entry.substring(0, entry.length() - ".class".length())
+                                    .replace('/', '.'),
+                            new JarClasses.Where(opened.jar(), entry));
                 }
             }
         }
@@ -151,24 +155,21 @@ public final class WriteAppEntry {
     }
 
     /** every class the jars carry, for the compiler to keep the constructors of */
-    private static List<String> classesIn(List<Path> jars) throws IOException {
+    private static List<String> classesIn(OpenJars jars) {
         List<String> classes = new ArrayList<>();
-        for (Path jar : jars) {
-            classes.addAll(classesOf(jar));
+        for (OpenJars.Opened opened : jars.all()) {
+            classes.addAll(classesOf(opened));
         }
         return classes;
     }
 
-    private static List<String> classesOf(Path jar) throws IOException {
+    private static List<String> classesOf(OpenJars.Opened opened) {
         List<String> classes = new ArrayList<>();
-        try (JarFile opened = new JarFile(jar.toFile())) {
-            Enumeration<JarEntry> entries = opened.entries();
-            while (entries.hasMoreElements()) {
-                String name = entries.nextElement().getName();
-                if (name.endsWith(".class")) {
-                    classes.add(name.substring(0, name.length() - ".class".length())
-                            .replace('/', '.'));
-                }
+        for (JarEntry entry : opened.entries()) {
+            String name = entry.getName();
+            if (name.endsWith(".class")) {
+                classes.add(name.substring(0, name.length() - ".class".length())
+                        .replace('/', '.'));
             }
         }
         return classes;
@@ -181,12 +182,18 @@ public final class WriteAppEntry {
      *
      * @return the shadowed class names, each mapped to the jars that carry it
      */
-    static Map<String, String> shadowedIn(List<Path> jars) throws IOException {
+    static Map<String, String> shadowedIn(List<Path> paths) throws IOException {
+        try (OpenJars jars = new OpenJars(paths)) {
+            return shadowedIn(jars);
+        }
+    }
+
+    private static Map<String, String> shadowedIn(OpenJars jars) {
         Map<String, String> firstIn = new HashMap<>();
         Map<String, String> shadowed = new LinkedHashMap<>();
-        for (Path jar : jars) {
-            String name = jar.getFileName().toString();
-            for (String type : classesOf(jar)) {
+        for (OpenJars.Opened opened : jars.all()) {
+            String name = opened.name();
+            for (String type : classesOf(opened)) {
                 String already = firstIn.putIfAbsent(type, name);
                 if (already != null && !already.equals(name)) {
                     shadowed.putIfAbsent(type, already + " wins over " + name);
@@ -196,7 +203,7 @@ public final class WriteAppEntry {
         return shadowed;
     }
 
-    private static void reportShadowing(List<Path> jars) throws IOException {
+    private static void reportShadowing(OpenJars jars) {
         Map<String, String> shadowed = shadowedIn(jars);
         if (shadowed.isEmpty()) {
             return;
@@ -269,36 +276,33 @@ public final class WriteAppEntry {
      * <p>a library beside it is on the classpath and nothing more, so a jar that declares a main
      * class is taken to be the application, and only when none does is every jar searched.
      */
-    private static List<String> runnableIn(List<Path> jars) throws IOException {
-        List<Path> declaring = new ArrayList<>();
-        for (Path jar : jars) {
-            try (JarFile opened = new JarFile(jar.toFile())) {
-                if (declaredBy(opened) != null) {
-                    declaring.add(jar);
-                }
+    private static List<String> runnableIn(OpenJars jars) throws IOException {
+        List<OpenJars.Opened> declaring = new ArrayList<>();
+        for (OpenJars.Opened opened : jars.all()) {
+            if (declaredBy(opened.jar()) != null) {
+                declaring.add(opened);
             }
         }
 
         List<String> mains = new ArrayList<>();
-        for (Path jar : declaring.isEmpty() ? jars : declaring) {
-            mains.addAll(runnableIn(jar));
+        for (OpenJars.Opened opened : declaring.isEmpty() ? jars.all() : declaring) {
+            mains.addAll(runnableIn(opened));
         }
         return mains;
     }
 
     /** what the jar says it runs, and failing that, everything in it that could be run */
-    private static List<String> runnableIn(Path jar) throws IOException {
-        try (JarFile opened = new JarFile(jar.toFile())) {
-            String declared = declaredBy(opened);
-            if (declared != null && hasMain(opened, declared.replace('.', '/') + ".class")) {
-                return List.of(declared);
-            }
-            if (declared != null) {
-                System.out.println("manifest names " + declared
-                        + ", which the jar has no runnable class for. searching instead");
-            }
-            return search(opened);
+    private static List<String> runnableIn(OpenJars.Opened opened) throws IOException {
+        String declared = declaredBy(opened.jar());
+        if (declared != null
+                && hasMain(opened.jar(), declared.replace('.', '/') + ".class")) {
+            return List.of(declared);
         }
+        if (declared != null) {
+            System.out.println("manifest names " + declared
+                    + ", which the jar has no runnable class for. searching instead");
+        }
+        return search(opened);
     }
 
     private static String declaredBy(JarFile opened) throws IOException {
@@ -310,15 +314,14 @@ public final class WriteAppEntry {
         return declared == null || declared.isBlank() ? null : declared.trim();
     }
 
-    private static List<String> search(JarFile opened) {
+    private static List<String> search(OpenJars.Opened opened) {
         List<String> found = new ArrayList<>();
-        Enumeration<JarEntry> entries = opened.entries();
-        while (entries.hasMoreElements()) {
-            String name = entries.nextElement().getName();
+        for (JarEntry entry : opened.entries()) {
+            String name = entry.getName();
             if (!name.endsWith(".class") || name.contains("$")) {
                 continue;
             }
-            if (hasMain(opened, name)) {
+            if (hasMain(opened.jar(), name)) {
                 found.add(name.substring(0, name.length() - ".class".length()).replace('/', '.'));
             }
         }
