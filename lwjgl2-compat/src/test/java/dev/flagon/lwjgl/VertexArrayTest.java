@@ -47,8 +47,21 @@ class VertexArrayTest {
         GL11.glVertexPointer(3, 0, vertices);
         GL11.glDrawArrays(GL11.GL_TRIANGLES, 0, 3);
 
-        assertEquals(List.of("byteDataARRAY 36 STREAM"), device.calls("byteDataARRAY"));
+        assertEquals(List.of("reserveARRAY 36 STREAM"), device.calls("reserveARRAY"));
+        assertEquals(List.of("byteSubDataARRAY 0 36"), device.calls("byteSubDataARRAY"));
         assertEquals(List.of("drawArrays TRIANGLES 0 3"), device.calls("drawArrays"));
+    }
+
+    @Test
+    void aDrawUploadsOnlyTheVerticesItReads() {
+        FloatBuffer vertices = positions(0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f,
+                1.0f, 1.0f, 0.0f, 2.0f, 2.0f, 0.0f);
+        GL11.glEnableClientState(GL11.GL_VERTEX_ARRAY);
+        GL11.glVertexPointer(3, 0, vertices);
+        GL11.glDrawArrays(GL11.GL_POINTS, 3, 1);
+
+        assertEquals(List.of("reserveARRAY 48 STREAM"), device.calls("reserveARRAY"));
+        assertEquals(List.of("byteSubDataARRAY 36 12"), device.calls("byteSubDataARRAY"));
     }
 
     @Test
@@ -65,7 +78,7 @@ class VertexArrayTest {
 
         // the pointer was set once; desktop code refills the buffer behind it every frame
         assertFalse(java.util.Arrays.equals(first, device.lastByteData));
-        assertEquals(2, device.calls("byteDataARRAY").size());
+        assertEquals(2, device.calls("byteSubDataARRAY").size());
     }
 
     @Test
