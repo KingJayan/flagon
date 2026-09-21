@@ -6,7 +6,9 @@ import dev.flagon.platform.graphics.BufferUsage;
 import dev.flagon.platform.graphics.GraphicsDevice;
 import dev.flagon.platform.graphics.IndexType;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -14,13 +16,10 @@ import java.util.Map;
  */
 public final class FixedFunctionPipeline {
 
-    public static final int VERTEX_FLOATS = 10 + 2 * VertexArrays.UNITS;
+    public static final int NO_CAPTURE = -1;
 
-    private static final int VERTEX_STRIDE = VERTEX_FLOATS * Float.BYTES;
-    private static final int COLOR_OFFSET = 3 * Float.BYTES;
-    private static final int TEX_COORD_OFFSET = 7 * Float.BYTES;
-    private static final int NORMAL_OFFSET = TEX_COORD_OFFSET
-            + 2 * VertexArrays.UNITS * Float.BYTES;
+    /** the widest immediate layout: every attribute at once */
+    public static final int VERTEX_FLOATS = 10 + 2 * VertexArrays.UNITS;
 
     private static final String VERTEX_SHADER = """
             #version 300 es
@@ -197,9 +196,21 @@ public final class FixedFunctionPipeline {
     private final GraphicsDevice device;
     private final int program;
     private final int buffer;
-    private final int immediateArray;
+    private final int[] immediateArrays = new int[ImmediateLayout.MASKS];
+    private int bufferFloats;
     private final QuadIndices quadIndices;
     private final float[] normalMatrix = new float[9];
+
+    private static final int NOTHING_WRITTEN = -1;
+
+    /** vertices a display list owns, uploaded once and drawn from there on every replay */
+    private record Captured(int buffer, int array, DrawMode mode, int vertexCount, int layout) {
+    }
+
+    private final List<Captured> captured = new ArrayList<>();
+    private final List<Integer> freeCaptures = new ArrayList<>();
+
+    private int written = NOTHING_WRITTEN;
 
     private final StagingArrays staging;
 
@@ -240,7 +251,6 @@ public final class FixedFunctionPipeline {
         this.device = device;
         this.program = device.createProgram(VERTEX_SHADER, FRAGMENT_SHADER);
         this.buffer = device.createBuffer();
-        this.immediateArray = describeImmediateLayout();
         this.quadIndices = new QuadIndices(device);
         this.staging = new StagingArrays(device, VertexArrays.SLOTS);
 
@@ -284,38 +294,131 @@ public final class FixedFunctionPipeline {
         }
     }
 
+    /** @return a handle to vertices the caller keeps, or {@code NO_CAPTURE} for an empty block */
+    public int capture(DrawMode mode, float[] vertices, int floatCount, int vertexCount,
+                       int layout) {
+        if (mode.usableVertices(vertexCount) == 0) {
+            return NO_CAPTURE;
+        }
+        int buffer = device.createBuffer();
+        device.bindBuffer(BufferTarget.ARRAY, buffer);
+        device.bufferData(BufferTarget.ARRAY, vertices, floatCount, BufferUsage.STATIC);
+        int array = describeImmediateLayout(layout, buffer);
+        Captured block = new Captured(buffer, array, mode, vertexCount, layout);
+        if (freeCaptures.isEmpty()) {
+            captured.add(block);
+            return captured.size() - 1;
+        }
+        int at = freeCaptures.remove(freeCaptures.size() - 1);
+        captured.set(at, block);
+        return at;
+    }
+
+    public void drawCaptured(int block, RenderState render, int lent) {
+        if (block == NO_CAPTURE) {
+            return;
+        }
+        Captured held = captured.get(block);
+        begin(render, lent);
+        device.bindVertexArray(held.array());
+        constants(held.layout(), render);
+        issue(held.mode(), 0, held.mode().usableVertices(held.vertexCount()));
+        device.bindVertexArray(GraphicsDevice.NO_VERTEX_ARRAY);
+    }
+
+    public void release(int block) {
+        if (block == NO_CAPTURE || captured.get(block) == null) {
+            return;
+        }
+        Captured held = captured.get(block);
+        device.deleteVertexArray(held.array());
+        device.deleteBuffer(held.buffer());
+        captured.set(block, null);
+        freeCaptures.add(block);
+    }
+
     public void drawImmediate(DrawMode mode, float[] vertices, int floatCount, int vertexCount,
-                              RenderState render, int lent) {
+                              int layout, RenderState render, int lent) {
         int drawable = mode.usableVertices(vertexCount);
         if (drawable == 0) {
             return;
         }
         begin(render, lent);
 
-        device.bindVertexArray(immediateArray);
+        device.bindVertexArray(immediateArray(layout));
         device.bindBuffer(BufferTarget.ARRAY, buffer);
-        device.bufferData(BufferTarget.ARRAY, vertices, floatCount, BufferUsage.STREAM);
+        stream(vertices, floatCount);
+        constants(layout, render);
         issue(mode, 0, drawable);
         device.bindVertexArray(GraphicsDevice.NO_VERTEX_ARRAY);
     }
 
-    private int describeImmediateLayout() {
+    /** the store grows to a high-water mark, so a block writes into it instead of replacing it */
+    private void stream(float[] vertices, int floatCount) {
+        if (floatCount > bufferFloats) {
+            bufferFloats = Math.max(floatCount, bufferFloats * 2);
+            device.bufferData(BufferTarget.ARRAY, bufferFloats * Float.BYTES, BufferUsage.STREAM);
+        }
+        device.bufferSubData(BufferTarget.ARRAY, 0, vertices, floatCount);
+    }
+
+    /** an attribute the block never set is the same for every vertex, so it is not uploaded */
+    private void constants(int layout, RenderState render) {
+        if (!ImmediateLayout.has(layout, ImmediateLayout.COLOR)) {
+            device.constantAttribute(VertexArrays.COLOR,
+                    render.red(), render.green(), render.blue(), render.alpha());
+        }
+        for (int unit = 0; unit < VertexArrays.UNITS; unit++) {
+            if (!ImmediateLayout.has(layout, ImmediateLayout.texCoord(unit))) {
+                device.constantAttribute(VertexArrays.TEX_COORD + unit,
+                        render.s(unit), render.t(unit), 0.0f, 1.0f);
+            }
+        }
+        if (!ImmediateLayout.has(layout, ImmediateLayout.NORMAL)) {
+            device.constantAttribute(VertexArrays.NORMAL,
+                    render.normalX(), render.normalY(), render.normalZ(), 0.0f);
+        }
+    }
+
+    private int immediateArray(int layout) {
+        if (immediateArrays[layout] == GraphicsDevice.NO_VERTEX_ARRAY) {
+            immediateArrays[layout] = describeImmediateLayout(layout);
+        }
+        return immediateArrays[layout];
+    }
+
+    private int describeImmediateLayout(int layout) {
+        return describeImmediateLayout(layout, buffer);
+    }
+
+    private int describeImmediateLayout(int layout, int from) {
+        int stride = ImmediateLayout.floats(layout) * Float.BYTES;
         int array = device.createVertexArray();
         device.bindVertexArray(array);
-        device.bindBuffer(BufferTarget.ARRAY, buffer);
+        device.bindBuffer(BufferTarget.ARRAY, from);
         for (int slot = 0; slot < VertexArrays.SLOTS; slot++) {
-            device.enableAttribute(slot);
+            device.disableAttribute(slot);
         }
-        device.attributePointer(VertexArrays.POSITION, 3, AttributeType.FLOAT, false,
-                VERTEX_STRIDE, 0);
-        device.attributePointer(VertexArrays.COLOR, 4, AttributeType.FLOAT, false,
-                VERTEX_STRIDE, COLOR_OFFSET);
+        device.enableAttribute(VertexArrays.POSITION);
+        device.attributePointer(VertexArrays.POSITION, 3, AttributeType.FLOAT, false, stride, 0);
+        if (ImmediateLayout.has(layout, ImmediateLayout.COLOR)) {
+            device.enableAttribute(VertexArrays.COLOR);
+            device.attributePointer(VertexArrays.COLOR, 4, AttributeType.FLOAT, false, stride,
+                    ImmediateLayout.colorOffset(layout) * Float.BYTES);
+        }
         for (int unit = 0; unit < VertexArrays.UNITS; unit++) {
-            device.attributePointer(VertexArrays.TEX_COORD + unit, 2, AttributeType.FLOAT, false,
-                    VERTEX_STRIDE, TEX_COORD_OFFSET + unit * 2 * Float.BYTES);
+            if (ImmediateLayout.has(layout, ImmediateLayout.texCoord(unit))) {
+                device.enableAttribute(VertexArrays.TEX_COORD + unit);
+                device.attributePointer(VertexArrays.TEX_COORD + unit, 2, AttributeType.FLOAT,
+                        false, stride,
+                        ImmediateLayout.texCoordOffset(layout, unit) * Float.BYTES);
+            }
         }
-        device.attributePointer(VertexArrays.NORMAL, 3, AttributeType.FLOAT, false,
-                VERTEX_STRIDE, NORMAL_OFFSET);
+        if (ImmediateLayout.has(layout, ImmediateLayout.NORMAL)) {
+            device.enableAttribute(VertexArrays.NORMAL);
+            device.attributePointer(VertexArrays.NORMAL, 3, AttributeType.FLOAT, false, stride,
+                    ImmediateLayout.normalOffset(layout) * Float.BYTES);
+        }
         device.bindVertexArray(GraphicsDevice.NO_VERTEX_ARRAY);
         return array;
     }
@@ -327,7 +430,7 @@ public final class FixedFunctionPipeline {
             return;
         }
         begin(render, lent);
-        bindArrays(arrays, render, first, drawable);
+        bindArrays(arrays, render, first, drawable, mode.isIndexed() ? first : 0);
         issue(mode, first, drawable);
     }
 
@@ -343,14 +446,14 @@ public final class FixedFunctionPipeline {
                             + "the quads with glDrawArrays, or supply triangle indices");
         }
         begin(render, lent);
-        bindArrays(arrays, render, 0, StagingArrays.WHOLE);
+        bindArrays(arrays, render, 0, StagingArrays.WHOLE, 0);
         device.drawElements(mode.primitive(), count, indexType, offsetInBytes);
     }
 
     private void issue(DrawMode mode, int first, int drawable) {
         if (mode.isIndexed()) {
             int quads = drawable / DrawMode.QUAD_VERTICES;
-            quadIndices.bind(quads, first);
+            quadIndices.bind(quads);
             device.drawElements(mode.primitive(), quads * DrawMode.QUAD_INDICES,
                     IndexType.UNSIGNED_INT, 0);
         } else {
@@ -360,10 +463,17 @@ public final class FixedFunctionPipeline {
 
     private void begin(RenderState render, int lent) {
         if (lent != GraphicsDevice.NO_PROGRAM) {
+            // the application owns a lent program and can link it again at any time
+            written = NOTHING_WRITTEN;
             beginLent(render, lent);
             return;
         }
         device.useProgram(program);
+        // gl keeps uniforms per program, so they still stand from the last draw through this one
+        if (written == render.revision()) {
+            return;
+        }
+        written = render.revision();
         device.uniformMatrix4(modelViewUniform, render.modelView());
         device.uniformMatrix4(projectionUniform, render.projection());
         device.uniform1f(pointSizeUniform, render.pointSize());
@@ -502,19 +612,21 @@ public final class FixedFunctionPipeline {
         device.uniform4f(location, rgba[0], rgba[1], rgba[2], rgba[3]);
     }
 
-    private void bindArrays(VertexArrays arrays, RenderState render, int first, int count) {
-        bindSlot(VertexArrays.POSITION, arrays.position(), first, count, 0.0f, 0.0f, 0.0f, 1.0f);
-        bindSlot(VertexArrays.COLOR, arrays.color(), first, count,
+    private void bindArrays(VertexArrays arrays, RenderState render, int first, int count,
+                            int base) {
+        bindSlot(VertexArrays.POSITION, arrays.position(), first, count, base,
+                0.0f, 0.0f, 0.0f, 1.0f);
+        bindSlot(VertexArrays.COLOR, arrays.color(), first, count, base,
                 render.red(), render.green(), render.blue(), render.alpha());
         for (int unit = 0; unit < VertexArrays.UNITS; unit++) {
-            bindSlot(VertexArrays.TEX_COORD + unit, arrays.texCoord(unit), first, count,
+            bindSlot(VertexArrays.TEX_COORD + unit, arrays.texCoord(unit), first, count, base,
                     render.s(unit), render.t(unit), 0.0f, 1.0f);
         }
-        bindSlot(VertexArrays.NORMAL, arrays.normal(), first, count,
+        bindSlot(VertexArrays.NORMAL, arrays.normal(), first, count, base,
                 render.normalX(), render.normalY(), render.normalZ(), 0.0f);
     }
 
-    private void bindSlot(int slot, ClientArray array, int first, int count,
+    private void bindSlot(int slot, ClientArray array, int first, int count, int base,
                           float x, float y, float z, float w) {
         if (!array.isEnabled() || !array.isBound()) {
             device.disableAttribute(slot);
@@ -522,13 +634,21 @@ public final class FixedFunctionPipeline {
             return;
         }
         device.enableAttribute(slot);
-        staging.bind(slot, array, first, count);
+        staging.bind(slot, array, first, count, base);
     }
 
     public void dispose() {
         staging.dispose();
         quadIndices.dispose();
-        device.deleteVertexArray(immediateArray);
+        for (int block = 0; block < captured.size(); block++) {
+            release(block);
+        }
+        for (int layout = 0; layout < immediateArrays.length; layout++) {
+            if (immediateArrays[layout] != GraphicsDevice.NO_VERTEX_ARRAY) {
+                device.deleteVertexArray(immediateArrays[layout]);
+                immediateArrays[layout] = GraphicsDevice.NO_VERTEX_ARRAY;
+            }
+        }
         device.deleteBuffer(buffer);
         device.deleteProgram(program);
     }

@@ -32,9 +32,10 @@ import org.teavm.jso.typedarrays.Int32Array;
 import org.teavm.jso.typedarrays.Int8Array;
 import org.teavm.jso.typedarrays.Uint8Array;
 
+import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.HashMap;
-import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 
 /** {@link GraphicsDevice} on a WebGL2 context. */
@@ -44,7 +45,7 @@ public final class WebGLGraphicsDevice implements GraphicsDevice {
 
     private final GlNames handles = new GlNames();
     private final GlNames uniforms = new GlNames();
-    private final Map<String, Integer> uniformNames = new HashMap<>();
+    private final List<Map<String, Integer>> uniformNames = new ArrayList<>();
     private final UniformCache cache = new UniformCache();
 
     private final JSObject defaultVertexArray;
@@ -462,6 +463,12 @@ public final class WebGLGraphicsDevice implements GraphicsDevice {
                 0, length);
     }
 
+    @Override
+    public void bufferSubData(BufferTarget target, int offsetInBytes, float[] data, int length) {
+        gl.bufferSubData(targetConstant(target), offsetInBytes, JsArrays.floats(data, length),
+                0, length);
+    }
+
     private static int targetConstant(BufferTarget target) {
         return switch (target) {
             case ARRAY -> WebGL2.ARRAY_BUFFER;
@@ -611,19 +618,34 @@ public final class WebGLGraphicsDevice implements GraphicsDevice {
         forgetUniforms(program);
     }
 
-    // the location objects go with the names, or a program's uniforms would be held for the life
-    // of the page by a table nothing can reach them through any more
+    // location objects go with the names, or a program's uniforms stay for the life of the page
     private void forgetUniforms(int program) {
-        String prefix = program + "/";
-        Iterator<Map.Entry<String, Integer>> known = uniformNames.entrySet().iterator();
-        while (known.hasNext()) {
-            Map.Entry<String, Integer> entry = known.next();
-            if (entry.getKey().startsWith(prefix)) {
-                uniforms.remove(entry.getValue());
-                cache.forget(entry.getValue());
-                known.remove();
+        if (program < 0 || program >= uniformNames.size()) {
+            return;
+        }
+        Map<String, Integer> known = uniformNames.get(program);
+        if (known == null) {
+            return;
+        }
+        for (int location : known.values()) {
+            if (location != NO_UNIFORM) {
+                uniforms.remove(location);
+                cache.forget(location);
             }
         }
+        uniformNames.set(program, null);
+    }
+
+    private Map<String, Integer> uniformsOf(int program) {
+        while (uniformNames.size() <= program) {
+            uniformNames.add(null);
+        }
+        Map<String, Integer> known = uniformNames.get(program);
+        if (known == null) {
+            known = new HashMap<>();
+            uniformNames.set(program, known);
+        }
+        return known;
     }
 
     @Override
@@ -631,21 +653,17 @@ public final class WebGLGraphicsDevice implements GraphicsDevice {
         gl.useProgram(program == NO_PROGRAM ? null : lookup(program, "program"));
     }
 
-    // one int per (program, name), so resolving the same uniform every frame does not grow the
-    // table; webgl location objects are opaque and cannot be compared, hence the name key
+    // one map per program, so resolving the same uniform every frame costs one lookup
     @Override
     public int uniformLocation(int program, String name) {
-        String key = program + "/" + name;
-        Integer known = uniformNames.get(key);
-        if (known != null) {
-            return known;
+        Map<String, Integer> known = uniformsOf(program);
+        Integer found = known.get(name);
+        if (found != null) {
+            return found;
         }
         JSObject location = gl.getUniformLocation(lookup(program, "program"), name);
-        if (location == null) {
-            return -1;
-        }
-        int assigned = uniforms.add(location);
-        uniformNames.put(key, assigned);
+        int assigned = location == null ? NO_UNIFORM : uniforms.add(location);
+        known.put(name, assigned);
         return assigned;
     }
 

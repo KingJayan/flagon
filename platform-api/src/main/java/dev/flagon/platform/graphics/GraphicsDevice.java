@@ -91,6 +91,8 @@ public interface GraphicsDevice {
 
     void bufferSubData(BufferTarget target, int offsetInBytes, byte[] data, int length);
 
+    void bufferSubData(BufferTarget target, int offsetInBytes, float[] data, int length);
+
     int createProgram(String vertexSource, String fragmentSource);
 
     int createShader(ShaderStage stage);

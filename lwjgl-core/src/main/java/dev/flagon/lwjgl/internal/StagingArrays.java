@@ -26,19 +26,24 @@ public final class StagingArrays {
         this.bytes = new byte[slots][];
     }
 
-    public void bind(int slot, ClientArray array, int first, int count) {
+    /**
+     * @param base the vertex index 0 reads, folded into the offset so a quad draw needs no
+     *             index rewrite
+     */
+    public void bind(int slot, ClientArray array, int first, int count, int base) {
         if (array.buffer() != GraphicsDevice.NO_BUFFER) {
             device.bindBuffer(BufferTarget.ARRAY, array.buffer());
         } else {
             device.bindBuffer(BufferTarget.ARRAY, buffer(slot));
             upload(slot, array, first, count);
         }
+        int offset = array.offset() + base * array.stride();
         if (array.isInteger()) {
             device.integerAttributePointer(slot, array.components(), array.type(), array.stride(),
-                    array.offset());
+                    offset);
         } else {
             device.attributePointer(slot, array.components(), array.type(), array.isNormalized(),
-                    array.stride(), array.offset());
+                    array.stride(), offset);
         }
     }
 

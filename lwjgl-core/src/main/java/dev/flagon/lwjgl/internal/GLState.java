@@ -11,9 +11,12 @@ import dev.flagon.platform.graphics.ShaderStage;
 import dev.flagon.platform.graphics.Winding;
 
 import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Deque;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -30,10 +33,10 @@ public final class GLState implements RenderState {
     private final GraphicsDevice device;
     private final FixedFunctionPipeline pipeline;
 
-    private final Deque<float[]> modelViewStack = new ArrayDeque<>();
-    private final Deque<float[]> projectionStack = new ArrayDeque<>();
-    private float[] modelView = Matrix4.identity();
-    private float[] projection = Matrix4.identity();
+    private final MatrixStack modelViewStack = new MatrixStack();
+    private final MatrixStack projectionStack = new MatrixStack();
+    private final float[] modelView = Matrix4.identity();
+    private final float[] projection = Matrix4.identity();
     private int matrixMode = MODELVIEW;
 
     private final boolean[] textureEnabled = new boolean[VertexArrays.UNITS];
@@ -80,10 +83,17 @@ public final class GLState implements RenderState {
     private int scissorWidth;
     private int scissorHeight;
     private final int[] boundTexture = new int[VertexArrays.UNITS];
-    private final Map<Integer, int[]> levelSizes = new HashMap<>();
-    private int[] proxySize = new int[] {0, 0};
-    private final Map<Integer, Integer> pixelStore = new HashMap<>();
-    private final Set<Integer> automaticMipmaps = new HashSet<>();
+    // the pixel store names run from GL_UNPACK_SWAP_BYTES to GL_PACK_ALIGNMENT without a gap
+    private static final int PIXEL_STORE_FIRST = 0x0CF0;
+    private static final int PIXEL_STORE_NAMES = 0x0D05 - PIXEL_STORE_FIRST + 1;
+
+    private static final int[] NO_LEVEL = new int[] {0, 0};
+
+    private final List<Texture> textures = new ArrayList<>();
+    private final int[] levelSize = new int[2];
+    private final int[] proxySize = new int[] {0, 0};
+    private final int[] pixelStore = new int[PIXEL_STORE_NAMES];
+    private int pixelStoreSet;
 
     private final Deque<Attributes> attributeStack = new ArrayDeque<>();
     private final DisplayLists displayLists = new DisplayLists();
@@ -113,7 +123,8 @@ public final class GLState implements RenderState {
     private float pointSize = 1.0f;
     private float pointSizeMin;
     private float pointSizeMax = Float.MAX_VALUE;
-    private final Lighting lighting = new Lighting();
+    private final Revision revision = new Revision();
+    private final Lighting lighting = new Lighting(revision);
     private float normalX;
     private float normalY;
     private float normalZ = 1.0f;
@@ -121,6 +132,7 @@ public final class GLState implements RenderState {
     private GLState(GraphicsDevice device) {
         this.device = device;
         this.pipeline = new FixedFunctionPipeline(device);
+        this.displayLists.onRelease(pipeline::release);
         this.attributes = new GenericArrays(device.maxAttributes());
         this.shaders = new ShaderPipeline(device, device.maxAttributes());
         this.viewportWidth = device.width();
@@ -172,53 +184,56 @@ public final class GLState implements RenderState {
         return matrixMode == PROJECTION ? projection : modelView;
     }
 
-    private void setActive(float[] matrix) {
-        if (matrixMode == PROJECTION) {
-            projection = matrix;
-        } else {
-            modelView = matrix;
-        }
+    /** @return the matrix a caller is about to change */
+    private float[] mutable() {
+        revision.bump();
+        return active();
+    }
+
+    @Override
+    public int revision() {
+        return revision.count();
     }
 
     public void pushMatrix() {
-        stack().push(Matrix4.copy(active()));
+        stack().push(active());
     }
 
     public void popMatrix() {
-        Deque<float[]> stack = stack();
+        MatrixStack stack = stack();
         if (stack.isEmpty()) {
             throw new IllegalStateException("matrix stack underflow in "
                     + (matrixMode == PROJECTION ? "GL_PROJECTION" : "GL_MODELVIEW"));
         }
-        setActive(stack.pop());
+        stack.pop(mutable());
     }
 
-    private Deque<float[]> stack() {
+    private MatrixStack stack() {
         return matrixMode == PROJECTION ? projectionStack : modelViewStack;
     }
 
     public void loadIdentity() {
-        Matrix4.setIdentity(active());
+        Matrix4.setIdentity(mutable());
     }
 
     public void translate(float x, float y, float z) {
-        Matrix4.translate(active(), x, y, z);
+        Matrix4.translate(mutable(), x, y, z);
     }
 
     public void rotate(float degrees, float x, float y, float z) {
-        Matrix4.rotate(active(), degrees, x, y, z);
+        Matrix4.rotate(mutable(), degrees, x, y, z);
     }
 
     public void scale(float x, float y, float z) {
-        Matrix4.scale(active(), x, y, z);
+        Matrix4.scale(mutable(), x, y, z);
     }
 
     public void ortho(float left, float right, float bottom, float top, float near, float far) {
-        Matrix4.ortho(active(), left, right, bottom, top, near, far);
+        Matrix4.ortho(mutable(), left, right, bottom, top, near, far);
     }
 
     public void frustum(float left, float right, float bottom, float top, float near, float far) {
-        Matrix4.frustum(active(), left, right, bottom, top, near, far);
+        Matrix4.frustum(mutable(), left, right, bottom, top, near, far);
     }
 
     @Override
@@ -242,9 +257,11 @@ public final class GLState implements RenderState {
                             + "program a vertex buffer of your own");
         }
         immediate.begin(mode);
+        immediate.hold(red, green, blue, alpha, s, t, normalX, normalY, normalZ);
     }
 
     public void color(float r, float g, float b, float a) {
+        immediate.touch(ImmediateLayout.COLOR);
         red = r;
         green = g;
         blue = b;
@@ -252,7 +269,8 @@ public final class GLState implements RenderState {
     }
 
     public void texCoord(int unit, float newS, float newT) {
-        s[VertexArrays.requireUnit(unit)] = newS;
+        immediate.touch(ImmediateLayout.texCoord(VertexArrays.requireUnit(unit)));
+        s[unit] = newS;
         t[unit] = newT;
     }
 
@@ -271,19 +289,19 @@ public final class GLState implements RenderState {
         }
         // a list holds the vertices the block built, not the calls that built them
         if (displayLists.isRecording()) {
-            float[] captured = immediate.captured();
-            DrawMode mode = immediate.mode();
-            int count = immediate.vertexCount();
+            int block = pipeline.capture(immediate.mode(), immediate.vertices(),
+                    immediate.floatCount(), immediate.vertexCount(), immediate.layout());
+            displayLists.own(block);
             int lent = lent();
             if (record(() -> {
-                pipeline.drawImmediate(mode, captured, captured.length, count, this, lent);
+                pipeline.drawCaptured(block, this, lent);
                 restoreBindings();
             })) {
                 return;
             }
         }
-        pipeline.drawImmediate(immediate.mode(), immediate.vertices(),
-                immediate.floatCount(), immediate.vertexCount(), this, lent());
+        pipeline.drawImmediate(immediate.mode(), immediate.vertices(), immediate.floatCount(),
+                immediate.vertexCount(), immediate.layout(), this, lent());
         restoreBindings();
     }
 
@@ -570,6 +588,7 @@ public final class GLState implements RenderState {
     // capability state
 
     public void setTextureEnabled(boolean enabled) {
+        revision.bump();
         textureEnabled[activeTexture] = enabled;
     }
 
@@ -579,6 +598,7 @@ public final class GLState implements RenderState {
     }
 
     public void setTextureEnv(int mode) {
+        revision.bump();
         textureEnv[activeTexture] = mode;
     }
 
@@ -605,6 +625,7 @@ public final class GLState implements RenderState {
     }
 
     public void setAlphaTestEnabled(boolean enabled) {
+        revision.bump();
         alphaTestEnabled = enabled;
     }
 
@@ -655,6 +676,7 @@ public final class GLState implements RenderState {
 
     /** the normal gl carries until the next glNormal3f, in object space. */
     public void normal(float x, float y, float z) {
+        immediate.touch(ImmediateLayout.NORMAL);
         normalX = x;
         normalY = y;
         normalZ = z;
@@ -676,6 +698,7 @@ public final class GLState implements RenderState {
     }
 
     public void pointSize(float size) {
+        revision.bump();
         pointSize = size;
     }
 
@@ -710,6 +733,7 @@ public final class GLState implements RenderState {
             throw new UnsupportedOperationException(
                     "glAlphaFunc emulates GL_GREATER only, got " + func);
         }
+        revision.bump();
         alphaTestFunc = func;
         alphaTestThreshold = reference;
     }
@@ -769,8 +793,8 @@ public final class GLState implements RenderState {
         device.setBlendColor(red, green, blue, alpha);
     }
 
-    public float[] blendColor() {
-        return blendColor.clone();
+    public void blendColor(float[] into) {
+        System.arraycopy(blendColor, 0, into, 0, 4);
     }
 
     // mirrored server state
@@ -862,15 +886,12 @@ public final class GLState implements RenderState {
     }
 
     public void setAutomaticMipmaps(boolean enabled) {
-        if (enabled) {
-            automaticMipmaps.add(boundTexture());
-        } else {
-            automaticMipmaps.remove(boundTexture());
-        }
+        texture(boundTexture(), true).automaticMipmaps = enabled;
     }
 
     public boolean automaticMipmaps() {
-        return automaticMipmaps.contains(boundTexture());
+        Texture known = texture(boundTexture(), false);
+        return known != null && known.automaticMipmaps;
     }
 
     public void deleteTexture(int texture) {
@@ -879,19 +900,26 @@ public final class GLState implements RenderState {
                 boundTexture[unit] = GraphicsDevice.NO_TEXTURE;
             }
         }
-        automaticMipmaps.remove(texture);
-        levelSizes.keySet().removeIf(level -> level >> 8 == texture);
+        if (texture >= 0 && texture < textures.size()) {
+            textures.set(texture, null);
+        }
         device.deleteTexture(texture);
     }
 
     /** gl answers glGetTexLevelParameter from the last upload, so the size is remembered here. */
     public void recordLevelSize(int level, int width, int height) {
-        levelSizes.put((boundTexture() << 8) | (level & 0xFF), new int[] {width, height});
+        Texture known = texture(boundTexture(), true);
+        if (known.levels.length < (level + 1) * 2) {
+            known.levels = Arrays.copyOf(known.levels, (level + 1) * 2);
+        }
+        known.levels[level * 2] = width;
+        known.levels[level * 2 + 1] = height;
     }
 
     /** a proxy request does not change the texture that is bound, so its size is kept here */
     public void recordProxySize(int width, int height) {
-        proxySize = new int[] {width, height};
+        proxySize[0] = width;
+        proxySize[1] = height;
     }
 
     /** @return the size of the last proxy request, or zeroes if the device does not take it */
@@ -901,18 +929,58 @@ public final class GLState implements RenderState {
 
     /** @return the width and height of the level, or zeroes if nothing was uploaded to it */
     public int[] levelSize(int level) {
-        return levelSizes.getOrDefault((boundTexture() << 8) | (level & 0xFF), new int[] {0, 0});
+        Texture known = texture(boundTexture(), false);
+        if (known == null || known.levels.length < (level + 1) * 2) {
+            return NO_LEVEL;
+        }
+        levelSize[0] = known.levels[level * 2];
+        levelSize[1] = known.levels[level * 2 + 1];
+        return levelSize;
     }
 
     public void setPixelStore(int name, int value) {
-        pixelStore.put(name, value);
+        int at = name - PIXEL_STORE_FIRST;
+        pixelStore[at] = value;
+        pixelStoreSet |= 1 << at;
     }
 
     public int pixelStore(int name, int fallback) {
-        return pixelStore.getOrDefault(name, fallback);
+        int at = name - PIXEL_STORE_FIRST;
+        if (at < 0 || at >= PIXEL_STORE_NAMES || (pixelStoreSet & (1 << at)) == 0) {
+            return fallback;
+        }
+        return pixelStore[at];
+    }
+
+    private Texture texture(int name, boolean create) {
+        if (name < 0) {
+            return null;
+        }
+        if (name >= textures.size()) {
+            if (!create) {
+                return null;
+            }
+            while (textures.size() <= name) {
+                textures.add(null);
+            }
+        }
+        Texture known = textures.get(name);
+        if (known == null && create) {
+            known = new Texture();
+            textures.set(name, known);
+        }
+        return known;
+    }
+
+    /** what gl remembers about one texture name */
+    private static final class Texture {
+
+        private boolean automaticMipmaps;
+        private int[] levels = new int[0];
     }
 
     void restoreAlphaFunc(CompareFunc func, float reference) {
+        revision.bump();
         alphaTestFunc = func;
         alphaTestThreshold = reference;
     }
@@ -997,20 +1065,32 @@ public final class GLState implements RenderState {
         };
     }
 
-    public int[] viewportBox() {
-        return new int[] {viewportX, viewportY, viewportWidth, viewportHeight};
+    public void viewportBox(int[] into) {
+        into[0] = viewportX;
+        into[1] = viewportY;
+        into[2] = viewportWidth;
+        into[3] = viewportHeight;
     }
 
-    public int[] scissorBox() {
-        return new int[] {scissorX, scissorY, scissorWidth, scissorHeight};
+    public void scissorBox(int[] into) {
+        into[0] = scissorX;
+        into[1] = scissorY;
+        into[2] = scissorWidth;
+        into[3] = scissorHeight;
     }
 
-    public float[] clearColorValue() {
-        return new float[] {clearRed, clearGreen, clearBlue, clearAlpha};
+    public void clearColorValue(float[] into) {
+        into[0] = clearRed;
+        into[1] = clearGreen;
+        into[2] = clearBlue;
+        into[3] = clearAlpha;
     }
 
-    public float[] currentColor() {
-        return new float[] {red, green, blue, alpha};
+    public void currentColor(float[] into) {
+        into[0] = red;
+        into[1] = green;
+        into[2] = blue;
+        into[3] = alpha;
     }
 
     public int matrixMode() {
@@ -1048,10 +1128,10 @@ public final class GLState implements RenderState {
     // matrix loading
 
     public void loadMatrix(float[] matrix) {
-        System.arraycopy(matrix, 0, active(), 0, 16);
+        System.arraycopy(matrix, 0, mutable(), 0, 16);
     }
 
     public void multMatrix(float[] matrix) {
-        Matrix4.multiply(active(), matrix);
+        Matrix4.multiply(mutable(), matrix);
     }
 }

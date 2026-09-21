@@ -199,6 +199,13 @@ final class RecordingGraphicsDevice implements GraphicsDevice {
     }
 
     @Override
+    public void bufferSubData(BufferTarget target, int offsetInBytes, float[] data, int length) {
+        lastBufferData = new float[length];
+        System.arraycopy(data, 0, lastBufferData, 0, length);
+        calls.add("bufferSubData " + offsetInBytes + " " + length);
+    }
+
+    @Override
     public int createProgram(String vertexSource, String fragmentSource) {
         return nextName++;
     }

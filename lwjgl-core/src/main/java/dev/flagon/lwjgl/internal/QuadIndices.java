@@ -14,28 +14,27 @@ final class QuadIndices {
 
     private int[] indices = new int[0];
     private int uploadedQuads;
-    private int uploadedFirst = -1;
 
     QuadIndices(GraphicsDevice device) {
         this.device = device;
         this.buffer = device.createBuffer();
     }
 
-    void bind(int quads, int first) {
+    /** the indices always count from zero; a draw reaches its own vertices through the offset */
+    void bind(int quads) {
         device.bindBuffer(BufferTarget.ELEMENT, buffer);
-        if (first == uploadedFirst && quads <= uploadedQuads) {
+        if (quads <= uploadedQuads) {
             return;
         }
         indices = new int[quads * DrawMode.QUAD_INDICES];
-        write(indices, quads, first);
+        write(indices, quads);
         device.bufferData(BufferTarget.ELEMENT, indices, indices.length, BufferUsage.STATIC);
         uploadedQuads = quads;
-        uploadedFirst = first;
     }
 
-    static void write(int[] indices, int quads, int first) {
+    static void write(int[] indices, int quads) {
         for (int quad = 0, out = 0; quad < quads; quad++) {
-            int base = first + quad * DrawMode.QUAD_VERTICES;
+            int base = quad * DrawMode.QUAD_VERTICES;
             indices[out++] = base;
             indices[out++] = base + 1;
             indices[out++] = base + 2;

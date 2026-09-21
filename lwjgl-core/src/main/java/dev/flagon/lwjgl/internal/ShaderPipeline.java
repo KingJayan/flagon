@@ -23,13 +23,14 @@ public final class ShaderPipeline {
         if (drawable == 0 || !arrays.canDraw()) {
             return;
         }
-        bind(arrays, first, drawable);
         if (mode.isIndexed()) {
+            bind(arrays, first, drawable, first);
             int quads = drawable / DrawMode.QUAD_VERTICES;
-            quadIndices.bind(quads, first);
+            quadIndices.bind(quads);
             device.drawElements(mode.primitive(), quads * DrawMode.QUAD_INDICES,
                     IndexType.UNSIGNED_INT, 0);
         } else {
+            bind(arrays, first, drawable, 0);
             device.drawArrays(mode.primitive(), first, drawable);
         }
     }
@@ -45,7 +46,7 @@ public final class ShaderPipeline {
                             + "means rewriting the index buffer, which belongs to the caller. draw "
                             + "the quads with glDrawArrays, or supply triangle indices");
         }
-        bind(arrays, 0, StagingArrays.WHOLE);
+        bind(arrays, 0, StagingArrays.WHOLE, 0);
         device.drawElements(mode.primitive(), count, indexType, offsetInBytes);
     }
 
@@ -58,7 +59,7 @@ public final class ShaderPipeline {
         if (count == 0 || instances == 0 || !arrays.canDraw()) {
             return;
         }
-        bind(arrays, first, count);
+        bind(arrays, first, count, 0);
         device.drawArraysInstanced(mode.primitive(), first, count, instances);
     }
 
@@ -72,11 +73,11 @@ public final class ShaderPipeline {
         if (count == 0 || instances == 0 || !arrays.canDraw()) {
             return;
         }
-        bind(arrays, 0, StagingArrays.WHOLE);
+        bind(arrays, 0, StagingArrays.WHOLE, 0);
         device.drawElementsInstanced(mode.primitive(), count, indexType, offsetInBytes, instances);
     }
 
-    private void bind(GenericArrays arrays, int first, int count) {
+    private void bind(GenericArrays arrays, int first, int count, int base) {
         for (int slot = 0; slot < arrays.count(); slot++) {
             ClientArray array = arrays.slot(slot);
             if (!array.isEnabled() || !array.isBound()) {
@@ -84,7 +85,7 @@ public final class ShaderPipeline {
                 continue;
             }
             device.enableAttribute(slot);
-            staging.bind(slot, array, first, count);
+            staging.bind(slot, array, first, count, base);
             device.attributeDivisor(slot, array.divisor());
         }
     }

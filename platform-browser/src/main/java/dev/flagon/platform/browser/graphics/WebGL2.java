@@ -201,6 +201,9 @@ public interface WebGL2 extends JSObject {
 
     void bufferSubData(int target, int offsetInBytes, Int8Array data, int sourceOffset, int length);
 
+    void bufferSubData(int target, int offsetInBytes, Float32Array data, int sourceOffset,
+            int length);
+
     JSObject createShader(int type);
 
     void shaderSource(JSObject shader, String source);

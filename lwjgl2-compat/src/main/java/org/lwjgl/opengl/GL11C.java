@@ -204,6 +204,11 @@ public class GL11C {
     public static final int GL_COLOR_CLEAR_VALUE = 0x0C22;
     public static final int GL_COLOR_WRITEMASK = 0x0C23;
     public static final int GL_TEXTURE_BINDING_2D = 0x8069;
+
+    // gl is single-threaded, so one scratch vector serves every query
+    private static final int[] INT_VECTOR = new int[16];
+    private static final float[] FLOAT_VECTOR = new float[16];
+
     static GLState state() {
         return GLState.get();
     }
@@ -555,10 +560,19 @@ public class GL11C {
     }
     /** the vector forms fill the buffer from its current position, without moving it. */
     public static void glGetInteger(int name, IntBuffer values) {
-        int[] read = switch (name) {
-            case GL_VIEWPORT -> state().viewportBox();
-            case GL_SCISSOR_BOX -> state().scissorBox();
-            default -> new int[] {glGetInteger(name)};
+        int read = switch (name) {
+            case GL_VIEWPORT -> {
+                state().viewportBox(INT_VECTOR);
+                yield 4;
+            }
+            case GL_SCISSOR_BOX -> {
+                state().scissorBox(INT_VECTOR);
+                yield 4;
+            }
+            default -> {
+                INT_VECTOR[0] = glGetInteger(name);
+                yield 1;
+            }
         };
         put(values, read, name);
     }
@@ -566,33 +580,40 @@ public class GL11C {
         return switch (name) {
             case GL_DEPTH_CLEAR_VALUE -> (float) state().clearDepthValue();
             default -> {
-                float[] vector = floatVector(name);
-                if (vector.length != 1) {
+                int read = floatVector(name, FLOAT_VECTOR);
+                if (read != 1) {
                     throw new UnsupportedOperationException(
                             "glGetFloat: 0x" + Integer.toHexString(name) + " is a vector of "
-                                    + vector.length + "; read it into a FloatBuffer");
+                                    + read + "; read it into a FloatBuffer");
                 }
-                yield vector[0];
+                yield FLOAT_VECTOR[0];
             }
         };
     }
     public static void glGetFloat(int name, FloatBuffer values) {
-        float[] read = floatVector(name);
-        if (values.remaining() < read.length) {
+        int read = floatVector(name, FLOAT_VECTOR);
+        if (values.remaining() < read) {
             throw new IllegalArgumentException("glGetFloat: 0x" + Integer.toHexString(name)
-                    + " needs room for " + read.length + " floats, got " + values.remaining());
+                    + " needs room for " + read + " floats, got " + values.remaining());
         }
-        values.duplicate().put(read);
+        values.duplicate().put(FLOAT_VECTOR, 0, read);
     }
-    static float[] floatVector(int name) {
-        return switch (name) {
-            case GL_MODELVIEW_MATRIX -> state().modelView().clone();
-            case GL_PROJECTION_MATRIX -> state().projection().clone();
-            case GL_CURRENT_COLOR -> state().currentColor();
-            case GL_COLOR_CLEAR_VALUE -> state().clearColorValue();
-            case GL_DEPTH_CLEAR_VALUE -> new float[] {(float) state().clearDepthValue()};
+
+    /** @return how many floats of {@code into} the name fills */
+    static int floatVector(int name, float[] into) {
+        switch (name) {
+            case GL_MODELVIEW_MATRIX -> System.arraycopy(state().modelView(), 0, into, 0, 16);
+            case GL_PROJECTION_MATRIX -> System.arraycopy(state().projection(), 0, into, 0, 16);
+            case GL_CURRENT_COLOR -> state().currentColor(into);
+            case GL_COLOR_CLEAR_VALUE -> state().clearColorValue(into);
+            case GL_DEPTH_CLEAR_VALUE -> into[0] = (float) state().clearDepthValue();
             default -> throw new UnsupportedOperationException(
                     "glGetFloat does not emulate 0x" + Integer.toHexString(name));
+        }
+        return switch (name) {
+            case GL_MODELVIEW_MATRIX, GL_PROJECTION_MATRIX -> 16;
+            case GL_DEPTH_CLEAR_VALUE -> 1;
+            default -> 4;
         };
     }
     public static boolean glGetBoolean(int name) {
@@ -602,12 +623,12 @@ public class GL11C {
                     "glGetBoolean does not emulate 0x" + Integer.toHexString(name));
         };
     }
-    static void put(IntBuffer values, int[] read, int name) {
-        if (values.remaining() < read.length) {
+    static void put(IntBuffer values, int read, int name) {
+        if (values.remaining() < read) {
             throw new IllegalArgumentException("glGetInteger: 0x" + Integer.toHexString(name)
-                    + " needs room for " + read.length + " ints, got " + values.remaining());
+                    + " needs room for " + read + " ints, got " + values.remaining());
         }
-        values.duplicate().put(read);
+        values.duplicate().put(INT_VECTOR, 0, read);
     }
     static int compareEnum(CompareFunc func) {
         return switch (func) {
@@ -1031,9 +1052,8 @@ public class GL11C {
             device().textureStorage(level, width, height);
             return;
         }
-        int pixelCount = width * height;
-        byte[] read = bytes(pixels, pixelCount * components(format, "glTexImage2D"));
-        device().textureImage(level, width, height, toRgba(read, pixelCount, format));
+        device().textureImage(level, width, height,
+                readRgba(pixels, width * height, format, "glTexImage2D"));
         rebuildMipmaps();
     }
     public static void glTexImage2D(int target, int level, int internalFormat, int width,
@@ -1051,8 +1071,7 @@ public class GL11C {
             device().textureStorage(level, width, height);
             return;
         }
-        device().textureImage(level, width, height,
-                spread(unpack(pixels, width, height), width * height));
+        device().textureImage(level, width, height, unpackRgba(pixels, width, height));
         rebuildMipmaps();
     }
     public static void glTexSubImage2D(int target, int level, int x, int y, int width, int height,
@@ -1061,9 +1080,8 @@ public class GL11C {
         state().refuseWhileRecording("glTexSubImage2D");
         requireLevel(level);
         requirePixelType(type, format, "glTexSubImage2D");
-        int pixelCount = width * height;
-        byte[] read = bytes(pixels, pixelCount * components(format, "glTexSubImage2D"));
-        device().textureSubImage(level, x, y, width, height, toRgba(read, pixelCount, format));
+        device().textureSubImage(level, x, y, width, height,
+                readRgba(pixels, width * height, format, "glTexSubImage2D"));
         rebuildMipmaps();
     }
     public static void glTexSubImage2D(int target, int level, int x, int y, int width, int height,
@@ -1072,8 +1090,7 @@ public class GL11C {
         state().refuseWhileRecording("glTexSubImage2D");
         requireLevel(level);
         requireRgbaBytes(format, type);
-        device().textureSubImage(level, x, y, width, height,
-                spread(unpack(pixels, width, height), width * height));
+        device().textureSubImage(level, x, y, width, height, unpackRgba(pixels, width, height));
         rebuildMipmaps();
     }
     public static void glTexSubImage2D(int target, int level, int x, int y, int width, int height,
@@ -1090,28 +1107,50 @@ public class GL11C {
             device().generateMipmap();
         }
     }
-    /** @return the bytes as they lie, read in bulk and without consuming the caller's buffer */
-    static byte[] bytes(ByteBuffer pixels, int count) {
-        byte[] rgba = new byte[count];
-        pixels.duplicate().get(rgba);
-        return rgba;
+    /**
+     * @return the bytes a texture takes, read in bulk and widened in the same pass, without
+     *         consuming the caller's buffer
+     */
+    static byte[] readRgba(ByteBuffer pixels, int pixelCount, int format, String call) {
+        int step = components(format, call);
+        if (format == GL_RGBA) {
+            byte[] rgba = new byte[pixelCount * 4];
+            pixels.duplicate().get(rgba);
+            return rgba;
+        }
+        byte[] read = scratch(pixelCount * step);
+        pixels.duplicate().get(read, 0, pixelCount * step);
+        return toRgba(read, pixelCount, format, step);
+    }
+
+    // the narrow formats read into one buffer and widen out of it, so only the result is new
+    private static byte[] pixelScratch = new byte[0];
+
+    private static byte[] scratch(int bytes) {
+        if (pixelScratch.length < bytes) {
+            pixelScratch = new byte[bytes];
+        }
+        return pixelScratch;
     }
     /**
-     * @return the rectangle glPixelStorei points at, copied out of the buffer row by row
+     * @return the rectangle glPixelStorei points at, read a row at a time straight into the bytes
+     *         a texture takes
      */
-    static int[] unpack(IntBuffer pixels, int width, int height) {
+    static byte[] unpackRgba(IntBuffer pixels, int width, int height) {
         int rowLength = state().pixelStore(GL_UNPACK_ROW_LENGTH, 0);
         int stride = rowLength == 0 ? width : rowLength;
         int skipRows = state().pixelStore(GL_UNPACK_SKIP_ROWS, 0);
         int skipPixels = state().pixelStore(GL_UNPACK_SKIP_PIXELS, 0);
         IntBuffer source = pixels.duplicate();
         int at = source.position() + skipRows * stride + skipPixels;
-        int[] copied = new int[width * height];
-        for (int row = 0; row < height; row++) {
-            source.position(at + row * stride);
-            source.get(copied, row * width, width);
+        byte[] rgba = new byte[width * height * 4];
+        int[] row = new int[width];
+        for (int line = 0; line < height; line++) {
+            source.position(at + line * stride);
+            source.get(row, 0, width);
+            spreadInto(row, width, rgba, line * width * 4);
         }
-        return copied;
+        return rgba;
     }
     /** @return 0xAARRGGBB ints laid back out as the r, g, b, a bytes a texture takes */
     static byte[] spread(int[] pixels, int count) {
@@ -1120,14 +1159,17 @@ public class GL11C {
                     "need " + count + " pixels, got " + pixels.length);
         }
         byte[] rgba = new byte[count * 4];
-        for (int pixel = 0, out = 0; pixel < count; pixel++) {
+        spreadInto(pixels, count, rgba, 0);
+        return rgba;
+    }
+    private static void spreadInto(int[] pixels, int count, byte[] rgba, int out) {
+        for (int pixel = 0; pixel < count; pixel++) {
             int argb = pixels[pixel];
             rgba[out++] = (byte) (argb >> 16);
             rgba[out++] = (byte) (argb >> 8);
             rgba[out++] = (byte) argb;
             rgba[out++] = (byte) (argb >>> 24);
         }
-        return rgba;
     }
     /** one int per pixel is 0xAARRGGBB, which is what GL_BGRA with the packed type names */
     static void requireRgbaBytes(int format, int type) {
@@ -1169,12 +1211,8 @@ public class GL11C {
     /**
      * webgl2 takes rgba bytes, so the narrower formats are widened here rather than at the device.
      */
-    static byte[] toRgba(byte[] source, int pixels, int format) {
-        if (format == GL_RGBA) {
-            return source;
-        }
+    static byte[] toRgba(byte[] source, int pixels, int format, int step) {
         byte[] rgba = new byte[pixels * 4];
-        int step = components(format, "glTexImage2D");
         for (int pixel = 0; pixel < pixels; pixel++) {
             int from = pixel * step;
             int to = pixel * 4;
