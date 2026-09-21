@@ -16,7 +16,7 @@ APP := $(if $(VENDOR_JARS),-Papp,)
 PRESERVE_FILE := vendor/preserve.txt
 PRESERVE := $(if $(wildcard $(PRESERVE_FILE)),-Dflagon.preserve='$(shell grep -v '^\#' $(PRESERVE_FILE) | paste -sd, -)',)
 
-.PHONY: help setup deps browsers browsers-deps browser-chromium browser-served browser-firefox bundles app build bundles-release \
+.PHONY: help setup deps browsers browsers-deps browser-chromium browser-served browser-firefox bundles fast app build bundles-release \
         build-release test browser flake typecheck lint site dev serve \
         check report merge-reports watch version release publish clean verify-bundles size \
         app-cost app-size
@@ -47,6 +47,13 @@ browser-served: browser-chromium ## the served run drives chromium too
 browser-firefox: ## install just firefox, and the libraries it wants
 	cd $(WEB) && bunx playwright install-deps firefox && bunx playwright install firefox
 
+fast: ## compile webassembly only for the dev loop
+	@rm -f $(BUNDLES)/*.js.map $(BUNDLES)/*.js.teavmdbg
+	@for js in $(BUNDLES)/*.js; do case $$js in *wasm-gc-module-runtime.js) continue;; esac; rm -f $$js; done
+	$(MVN) -Pfast $(APP) $(PRESERVE) package
+	@$(MAKE) verify-bundles
+	@echo "javascript bundles are gone; run 'make bundles' before 'make browser'"
+
 bundles: ## compile java to webassembly gc and to javascript
 	$(MVN) $(APP) $(PRESERVE) package
 	@$(MAKE) verify-bundles
@@ -72,6 +79,7 @@ app-size: ## weigh the app bundle that both backends emitted
 verify-bundles: ## check the emitted bundles are whole
 	@for bundle in $(BUNDLES)/*.js $(BUNDLES)/*.wasm; do \
 		case $$bundle in *wasm-gc-module-runtime.js) continue;; esac; \
+		test -f $$bundle || continue; \
 		size=$$(wc -c < $$bundle | tr -d " "); \
 		test $$size -ge 100000 || { echo "$$bundle is only $$size bytes; run 'make clean'"; exit 1; }; \
 		grep -q "Unresolved compilation problem" $$bundle \
