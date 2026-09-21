@@ -10,9 +10,7 @@
     <relativePath>../pom.xml</relativePath>
   </parent>
 
-  <groupId>org.teavm</groupId>
-  <artifactId>teavm-jso-impl</artifactId>
-  <version>0.15.0-flagon</version>
+  <artifactId>teavm-jso-impl-patched</artifactId>
   <name>Flagon :: TeaVM JSO</name>
   <description>Rebuilds teavm-jso-impl 0.15.0 with the JavaScript interop fixes Flagon needs.</description>
 
@@ -31,7 +29,7 @@
     <dependency>
       <groupId>org.teavm</groupId>
       <artifactId>teavm-core</artifactId>
-      <version>${teavm.core.version}</version>
+      <version>${teavm.version}</version>
     </dependency>
     <dependency>
       <groupId>org.teavm</groupId>

@@ -44,7 +44,6 @@
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <maven.compiler.release>25</maven.compiler.release>
     <teavm.version>0.15.0</teavm.version>
-    <teavm.core.version>0.15.0-flagon</teavm.core.version>
     <junit.version>5.11.4</junit.version>
     <lwjgl.version>2.9.3</lwjgl.version>
     <lwjgl3.version>3.3.3</lwjgl3.version>
@@ -55,7 +54,8 @@
     <flagon.minify>false</flagon.minify>
 
     <flagon.strict>true</flagon.strict>
-    <flagon.sourceMaps>true</flagon.sourceMaps>
+    <flagon.phase.js>process-classes</flagon.phase.js>
+    <flagon.sourceMaps>false</flagon.sourceMaps>
 
     <flagon.reflect.classes></flagon.reflect.classes>
 
@@ -141,7 +141,17 @@
       <dependency>
         <groupId>org.teavm</groupId>
         <artifactId>teavm-core</artifactId>
-        <version>${teavm.core.version}</version>
+        <version>${teavm.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>dev.flagon</groupId>
+        <artifactId>teavm-core-patched</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>dev.flagon</groupId>
+        <artifactId>teavm-jso-impl-patched</artifactId>
+        <version>${project.version}</version>
       </dependency>
       <dependency>
         <groupId>org.junit</groupId>
@@ -224,16 +234,16 @@
           <artifactId>teavm-maven-plugin</artifactId>
           <version>${teavm.version}</version>
           <dependencies>
-            <!-- teavm/ carries the compiler fixes that 0.15.0 lacks -->
+            <!-- these shadow the stock teavm jars whole -->
             <dependency>
-              <groupId>org.teavm</groupId>
-              <artifactId>teavm-core</artifactId>
-              <version>${teavm.core.version}</version>
+              <groupId>dev.flagon</groupId>
+              <artifactId>teavm-core-patched</artifactId>
+              <version>${project.version}</version>
             </dependency>
             <dependency>
-              <groupId>org.teavm</groupId>
-              <artifactId>teavm-jso-impl</artifactId>
-              <version>${teavm.core.version}</version>
+              <groupId>dev.flagon</groupId>
+              <artifactId>teavm-jso-impl-patched</artifactId>
+              <version>${project.version}</version>
             </dependency>
           </dependencies>
           <executions>
@@ -265,6 +275,7 @@
             </execution>
             <execution>
               <id>compile-js</id>
+              <phase>${flagon.phase.js}</phase>
               <goals>
                 <goal>compile</goal>
               </goals>
@@ -366,9 +377,15 @@
                   <goal>run</goal>
                 </goals>
                 <configuration>
-                  <target>
-                    <delete file="${flagon.app.jar}" quiet="true"/>
-                    <zip destfile="${flagon.app.jar}" duplicate="preserve" whenempty="create">
+                  <target xmlns:unless="ant:unless">
+                    <uptodate property="flagon.app.jar.current"
+                              targetfile="${flagon.app.jar}">
+                      <srcfiles dir="${flagon.app.dir}" includes="*.jar"/>
+                    </uptodate>
+                    <delete file="${flagon.app.jar}" quiet="true"
+                            unless:set="flagon.app.jar.current"/>
+                    <zip destfile="${flagon.app.jar}" duplicate="preserve" whenempty="create"
+                         unless:set="flagon.app.jar.current">
                       <zipgroupfileset dir="${flagon.app.dir}" includes="*.jar"/>
                     </zip>
                   </target>
@@ -404,11 +421,17 @@
     </profile>
 
     <profile>
+      <id>fast</id>
+      <properties>
+        <flagon.phase.js>none</flagon.phase.js>
+      </properties>
+    </profile>
+
+    <profile>
       <id>release</id>
       <properties>
         <flagon.optimization.wasm>FULL</flagon.optimization.wasm>
         <flagon.minify>true</flagon.minify>
-        <flagon.sourceMaps>false</flagon.sourceMaps>
       </properties>
     </profile>
   </profiles>

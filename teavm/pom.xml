@@ -10,9 +10,7 @@
     <relativePath>../pom.xml</relativePath>
   </parent>
 
-  <groupId>org.teavm</groupId>
-  <artifactId>teavm-core</artifactId>
-  <version>0.15.0-flagon</version>
+  <artifactId>teavm-core-patched</artifactId>
   <name>Flagon :: TeaVM Core</name>
   <description>Rebuilds teavm-core 0.15.0 with the compiler fixes Flagon needs.</description>
 

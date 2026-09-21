@@ -39,9 +39,8 @@
     </dependency>
 
     <dependency>
-      <groupId>org.teavm</groupId>
-      <artifactId>teavm-core</artifactId>
-      <version>${teavm.version}</version>
+      <groupId>dev.flagon</groupId>
+      <artifactId>teavm-core-patched</artifactId>
       <scope>provided</scope>
     </dependency>
   </dependencies>

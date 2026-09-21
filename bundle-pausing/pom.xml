@@ -31,8 +31,8 @@
       <artifactId>platform-browser</artifactId>
     </dependency>
     <dependency>
-      <groupId>org.teavm</groupId>
-      <artifactId>teavm-core</artifactId>
+      <groupId>dev.flagon</groupId>
+      <artifactId>teavm-core-patched</artifactId>
       <scope>provided</scope>
     </dependency>
     <dependency>
