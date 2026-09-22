@@ -193,9 +193,20 @@ public interface GraphicsDevice {
 
     void bindTexture(int unit, int texture);
 
+    /** @param rgba at least {@code width * height * 4} bytes */
     void textureImage(int level, int width, int height, byte[] rgba);
 
     void textureSubImage(int level, int x, int y, int width, int height, byte[] rgba);
+
+    /** the same upload from one 0xAARRGGBB int per pixel */
+    default void textureImageArgb(int level, int width, int height, int[] argb, int count) {
+        textureImage(level, width, height, Argb.spread(argb, count));
+    }
+
+    default void textureSubImageArgb(int level, int x, int y, int width, int height,
+                                     int[] argb, int count) {
+        textureSubImage(level, x, y, width, height, Argb.spread(argb, count));
+    }
 
     void generateMipmap();
 
