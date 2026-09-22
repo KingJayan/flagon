@@ -81,8 +81,8 @@ public final class Lighting {
         return lightEnabled[requireLight(light)];
     }
 
-    public boolean[] lightEnabledFlagsCopy() {
-        return lightEnabled.clone();
+    void copyLightEnabledInto(boolean[] flags) {
+        System.arraycopy(lightEnabled, 0, flags, 0, LIGHTS);
     }
 
     public int[] lightEnabledFlags() {

@@ -10,19 +10,12 @@ import dev.flagon.platform.graphics.IndexType;
 import dev.flagon.platform.graphics.ShaderStage;
 import dev.flagon.platform.graphics.Winding;
 
-import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Deque;
-import java.util.HashMap;
-import java.util.HashSet;
+import java.util.BitSet;
 import java.util.List;
-import java.util.Map;
-import java.util.Set;
 
-/**
- * the context state gl keeps internally and exposes only through its setters.
- */
+/* internal gl context state */
 public final class GLState implements RenderState {
 
     public static final int MODELVIEW = 0x1700;
@@ -83,7 +76,7 @@ public final class GLState implements RenderState {
     private int scissorWidth;
     private int scissorHeight;
     private final int[] boundTexture = new int[VertexArrays.UNITS];
-    // the pixel store names run from GL_UNPACK_SWAP_BYTES to GL_PACK_ALIGNMENT without a gap
+
     private static final int PIXEL_STORE_FIRST = 0x0CF0;
     private static final int PIXEL_STORE_NAMES = 0x0D05 - PIXEL_STORE_FIRST + 1;
 
@@ -95,7 +88,8 @@ public final class GLState implements RenderState {
     private final int[] pixelStore = new int[PIXEL_STORE_NAMES];
     private int pixelStoreSet;
 
-    private final Deque<Attributes> attributeStack = new ArrayDeque<>();
+    private final List<Attributes> attributeStack = new ArrayList<>();
+    private int attributeDepth;
     private final DisplayLists displayLists = new DisplayLists();
 
     private final ImmediateBuffer immediate = new ImmediateBuffer();
@@ -103,12 +97,13 @@ public final class GLState implements RenderState {
     private final VertexArrays arrays = new VertexArrays();
     private final GenericArrays attributes;
     private final ShaderPipeline shaders;
-    private final Map<Integer, ShaderStage> shaderStages = new HashMap<>();
-    private final Map<Integer, String> shaderSources = new HashMap<>();
-    private final Set<Integer> fixedFunctionShaders = new HashSet<>();
-    private final Set<Integer> fixedFunctionPrograms = new HashSet<>();
-    private final Map<Integer, Set<Integer>> attachedShaders = new HashMap<>();
-    private final Map<Integer, Integer> writtenStages = new HashMap<>();
+    // gl names are dense small ints
+    private final List<ShaderStage> shaderStages = new ArrayList<>();
+    private final List<String> shaderSources = new ArrayList<>();
+    private final BitSet fixedFunctionShaders = new BitSet();
+    private final BitSet fixedFunctionPrograms = new BitSet();
+    private final List<BitSet> attachedShaders = new ArrayList<>();
+    private int[] writtenStages = new int[16];
     private int program = GraphicsDevice.NO_PROGRAM;
     private int arrayBuffer;
     private int elementBuffer;
@@ -426,7 +421,7 @@ public final class GLState implements RenderState {
 
     /** a bound program whose shaders were written against gl's fixed-function state */
     public boolean readsFixedFunction() {
-        return program != GraphicsDevice.NO_PROGRAM && fixedFunctionPrograms.contains(program);
+        return program != GraphicsDevice.NO_PROGRAM && fixedFunctionPrograms.get(program);
     }
 
     public void drawElements(DrawMode mode, int count, IndexType indexType, int offsetInBytes) {
@@ -463,11 +458,11 @@ public final class GLState implements RenderState {
     }
 
     public void trackShader(int shader, ShaderStage stage) {
-        shaderStages.put(shader, stage);
+        put(shaderStages, shader, stage);
     }
 
     public ShaderStage shaderStage(int shader) {
-        ShaderStage stage = shaderStages.get(shader);
+        ShaderStage stage = at(shaderStages, shader);
         if (stage == null) {
             throw new IllegalArgumentException(
                     "not a shader created by glCreateShader: " + shader);
@@ -476,13 +471,24 @@ public final class GLState implements RenderState {
     }
 
     public void forgetShader(int shader) {
-        shaderStages.remove(shader);
-        shaderSources.remove(shader);
-        fixedFunctionShaders.remove(shader);
+        put(shaderStages, shader, null);
+        put(shaderSources, shader, null);
+        fixedFunctionShaders.clear(shader);
     }
 
     public void sourced(int shader, String translated) {
-        shaderSources.put(shader, translated);
+        put(shaderSources, shader, translated);
+    }
+
+    private static <T> void put(List<T> held, int name, T value) {
+        while (held.size() <= name) {
+            held.add(null);
+        }
+        held.set(name, value);
+    }
+
+    private static <T> T at(List<T> held, int name) {
+        return name >= 0 && name < held.size() ? held.get(name) : null;
     }
 
     /**
@@ -490,20 +496,17 @@ public final class GLState implements RenderState {
      * both, so the missing one is written here from the state the other stage names.
      */
     public void completeProgram(int target) {
-        Set<Integer> attached = attachedShaders.getOrDefault(target, Set.of());
-        int supplied = 0;
-        boolean vertex = false;
-        boolean fragment = false;
-        for (int shader : attached) {
-            ShaderStage stage = shaderStages.get(shader);
-            vertex |= stage == ShaderStage.VERTEX;
-            fragment |= stage == ShaderStage.FRAGMENT;
-            supplied = shader;
-        }
-        if (vertex == fragment || attached.size() != 1) {
+        BitSet attached = at(attachedShaders, target);
+        if (attached == null || attached.cardinality() != 1) {
             return;
         }
-        String source = shaderSources.get(supplied);
+        int supplied = attached.nextSetBit(0);
+        ShaderStage stage = at(shaderStages, supplied);
+        boolean vertex = stage == ShaderStage.VERTEX;
+        if (vertex == (stage == ShaderStage.FRAGMENT)) {
+            return;
+        }
+        String source = at(shaderSources, supplied);
         if (source == null) {
             return;
         }
@@ -521,7 +524,11 @@ public final class GLState implements RenderState {
         trackShader(written, missing);
         attachShader(target, written);
         device.attachShader(target, written);
-        writtenStages.put(target, written);
+        if (target >= writtenStages.length) {
+            writtenStages = Arrays.copyOf(writtenStages,
+                    Math.max(target + 1, writtenStages.length * 2));
+        }
+        writtenStages[target] = written;
     }
 
     /** @return the program the fixed-function pipeline should draw through, if not its own */
@@ -530,42 +537,42 @@ public final class GLState implements RenderState {
     }
 
     public void markFixedFunction(int shader, boolean reads) {
-        if (reads) {
-            fixedFunctionShaders.add(shader);
-        } else {
-            fixedFunctionShaders.remove(shader);
-        }
+        fixedFunctionShaders.set(shader, reads);
     }
 
     public void attachShader(int target, int shader) {
-        attachedShaders.computeIfAbsent(target, any -> new HashSet<>()).add(shader);
+        BitSet attached = at(attachedShaders, target);
+        if (attached == null) {
+            attached = new BitSet();
+            put(attachedShaders, target, attached);
+        }
+        attached.set(shader);
     }
 
     public void detachShader(int target, int shader) {
-        Set<Integer> attached = attachedShaders.get(target);
+        BitSet attached = at(attachedShaders, target);
         if (attached != null) {
-            attached.remove(shader);
+            attached.clear(shader);
         }
     }
 
     /** a program reads the fixed-function state when either shader it linked did */
     public void linkedProgram(int linked) {
+        BitSet attached = at(attachedShaders, linked);
         boolean reads = false;
-        for (int shader : attachedShaders.getOrDefault(linked, Set.of())) {
-            reads |= fixedFunctionShaders.contains(shader);
+        for (int shader = attached == null ? -1 : attached.nextSetBit(0); shader >= 0;
+                shader = attached.nextSetBit(shader + 1)) {
+            reads |= fixedFunctionShaders.get(shader);
         }
-        if (reads) {
-            fixedFunctionPrograms.add(linked);
-        } else {
-            fixedFunctionPrograms.remove(linked);
-        }
+        fixedFunctionPrograms.set(linked, reads);
     }
 
     public void forgetProgram(int deleted) {
-        attachedShaders.remove(deleted);
-        fixedFunctionPrograms.remove(deleted);
-        Integer written = writtenStages.remove(deleted);
-        if (written != null) {
+        put(attachedShaders, deleted, null);
+        fixedFunctionPrograms.clear(deleted);
+        int written = deleted < writtenStages.length ? writtenStages[deleted] : 0;
+        if (written != 0) {
+            writtenStages[deleted] = 0;
             forgetShader(written);
             device.deleteShader(written);
         }
@@ -1005,11 +1012,13 @@ public final class GLState implements RenderState {
     // the attribute stack
 
     public void pushAttrib(int mask) {
-        attributeStack.push(new Attributes(mask,
+        if (attributeDepth == attributeStack.size()) {
+            attributeStack.add(new Attributes());
+        }
+        attributeStack.get(attributeDepth++).hold(this, mask,
                 depthTest, blend, cullFaceEnabled, scissorTest, textureEnabled[activeTexture],
                 alphaTestEnabled,
                 lighting.isEnabled(), lighting.isFogEnabled(), lighting.isColorMaterial(),
-                lighting.lightEnabledFlagsCopy(),
                 normalX, normalY, normalZ,
                 clearRed, clearGreen, clearBlue, clearAlpha, clearDepthValue,
                 maskRed, maskGreen, maskBlue, maskAlpha, depthWrite,
@@ -1017,14 +1026,14 @@ public final class GLState implements RenderState {
                 culledFaces, frontFace,
                 viewportX, viewportY, viewportWidth, viewportHeight,
                 scissorX, scissorY, scissorWidth, scissorHeight,
-                red, green, blue, alpha, s[0], t[0], matrixMode, boundTexture[activeTexture]));
+                red, green, blue, alpha, s[0], t[0], matrixMode, boundTexture[activeTexture]);
     }
 
     public void popAttrib() {
-        if (attributeStack.isEmpty()) {
+        if (attributeDepth == 0) {
             throw new IllegalStateException("glPopAttrib called with an empty attribute stack");
         }
-        attributeStack.pop().restore(this);
+        attributeStack.get(--attributeDepth).restore(this);
     }
 
     // display lists
