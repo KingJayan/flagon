@@ -12,6 +12,8 @@ import java.util.Set;
 
 public final class ClassLoaders {
 
+    private static final int WARNINGS = 256;
+
     private static final Set<String> TOLD = new HashSet<>();
 
     private ClassLoaders() {
@@ -44,10 +46,22 @@ public final class ClassLoaders {
         if (found == null) {
             found = packageAt(name);
         }
-        if (found == null && TOLD.add(name)) {
-            say("nothing answers getResource(\"" + name + "\"): this bundle packs no such file.");
+        if (found == null) {
+            warnOnce(name);
         }
         return found;
+    }
+
+    // a game can probe many paths, so the names behind the warning are counted and then dropped
+    private static void warnOnce(String name) {
+        if (TOLD.size() >= WARNINGS || !TOLD.add(name)) {
+            return;
+        }
+        if (TOLD.size() == WARNINGS) {
+            say("nothing answers getResource for " + WARNINGS + " names now, so no more of these");
+            return;
+        }
+        say("nothing answers getResource(\"" + name + "\"): this bundle packs no such file.");
     }
 
     private static URL packageAt(String name) {
