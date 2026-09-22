@@ -7,9 +7,8 @@ import dev.flagon.platform.graphics.GraphicsDevice;
 import dev.flagon.platform.graphics.IndexType;
 
 import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.Arrays;
 import java.util.List;
-import java.util.Map;
 
 /**
  * reproduces gl 1.x fixed-function output with a single shader.
@@ -210,7 +209,8 @@ public final class FixedFunctionPipeline {
     private final List<Captured> captured = new ArrayList<>();
     private final List<Integer> freeCaptures = new ArrayList<>();
 
-    private int written = NOTHING_WRITTEN;
+    private final int[] written = new int[Revision.GROUPS];
+    private int normalMatrixFrom = NOTHING_WRITTEN;
 
     private final StagingArrays staging;
 
@@ -245,7 +245,7 @@ public final class FixedFunctionPipeline {
     private final int fogEndUniform;
 
     /** what a translated fixed-function shader of the application's own reads, per program */
-    private final Map<Integer, Borrowed> borrowed = new HashMap<>();
+    private Borrowed[] borrowed = new Borrowed[16];
 
     public FixedFunctionPipeline(GraphicsDevice device) {
         this.device = device;
@@ -253,6 +253,7 @@ public final class FixedFunctionPipeline {
         this.buffer = device.createBuffer();
         this.quadIndices = new QuadIndices(device);
         this.staging = new StagingArrays(device, VertexArrays.SLOTS);
+        Arrays.fill(written, NOTHING_WRITTEN);
 
         modelViewUniform = device.uniformLocation(program, "u_modelView");
         projectionUniform = device.uniformLocation(program, "u_projection");
@@ -464,27 +465,62 @@ public final class FixedFunctionPipeline {
     private void begin(RenderState render, int lent) {
         if (lent != GraphicsDevice.NO_PROGRAM) {
             // the application owns a lent program and can link it again at any time
-            written = NOTHING_WRITTEN;
+            Arrays.fill(written, NOTHING_WRITTEN);
             beginLent(render, lent);
             return;
         }
         device.useProgram(program);
         // gl keeps uniforms per program, so they still stand from the last draw through this one
-        if (written == render.revision()) {
-            return;
+        boolean matrix = moved(render, Revision.MATRIX);
+        boolean texture = moved(render, Revision.TEXTURE);
+        boolean alpha = moved(render, Revision.ALPHA);
+        boolean point = moved(render, Revision.POINT);
+        boolean lights = moved(render, Revision.LIGHTING);
+        boolean fog = moved(render, Revision.FOG);
+        keep(render);
+        if (matrix) {
+            device.uniformMatrix4(modelViewUniform, render.modelView());
+            device.uniformMatrix4(projectionUniform, render.projection());
         }
-        written = render.revision();
-        device.uniformMatrix4(modelViewUniform, render.modelView());
-        device.uniformMatrix4(projectionUniform, render.projection());
-        device.uniform1f(pointSizeUniform, render.pointSize());
-        for (int unit = 0; unit < VertexArrays.UNITS; unit++) {
-            device.uniform1i(textureEnabledUniforms[unit], render.isTextureEnabled(unit) ? 1 : 0);
-            device.uniform1i(textureEnvUniforms[unit], render.textureEnv(unit));
+        if (point) {
+            device.uniform1f(pointSizeUniform, render.pointSize());
         }
-        device.uniform1i(alphaTestEnabledUniform, render.isAlphaTestEnabled() ? 1 : 0);
-        device.uniform1f(alphaTestThresholdUniform, render.alphaTestThreshold());
-        light(render);
-        fog(render.lighting());
+        if (texture) {
+            for (int unit = 0; unit < VertexArrays.UNITS; unit++) {
+                device.uniform1i(textureEnabledUniforms[unit],
+                        render.isTextureEnabled(unit) ? 1 : 0);
+                device.uniform1i(textureEnvUniforms[unit], render.textureEnv(unit));
+            }
+        }
+        if (alpha) {
+            device.uniform1i(alphaTestEnabledUniform, render.isAlphaTestEnabled() ? 1 : 0);
+            device.uniform1f(alphaTestThresholdUniform, render.alphaTestThreshold());
+        }
+        // the shader reads the normal matrix, so the modelview reaches the lights too
+        if (lights || matrix) {
+            light(render);
+        }
+        if (fog) {
+            fog(render.lighting());
+        }
+    }
+
+    private boolean moved(RenderState render, int group) {
+        return written[group] != render.revision(group);
+    }
+
+    private void keep(RenderState render) {
+        for (int group = 0; group < Revision.GROUPS; group++) {
+            written[group] = render.revision(group);
+        }
+    }
+
+    private float[] normalMatrix(RenderState render) {
+        if (normalMatrixFrom != render.revision(Revision.MATRIX)) {
+            normalMatrixFrom = render.revision(Revision.MATRIX);
+            Matrix4.normalMatrix(render.modelView(), normalMatrix);
+        }
+        return normalMatrix;
     }
 
     /**
@@ -493,31 +529,55 @@ public final class FixedFunctionPipeline {
      */
     private void beginLent(RenderState render, int lent) {
         device.useProgram(lent);
-        Borrowed where = borrowed.computeIfAbsent(lent, this::locateIn);
+        Borrowed where = borrowedBy(lent);
         Lighting lighting = render.lighting();
-        device.uniformMatrix4(where.modelView, render.modelView());
-        device.uniformMatrix4(where.projection, render.projection());
-        device.uniformMatrices(where.normalMatrix, 3, false,
-                Matrix4.normalMatrix(render.modelView(), normalMatrix), 1);
-        uniform4(where.fogStructColor, lighting.fogColor());
-        device.uniform1f(where.fogStructDensity, lighting.fogDensity());
-        device.uniform1f(where.fogStructStart, lighting.fogStart());
-        device.uniform1f(where.fogStructEnd, lighting.fogEnd());
-        float span = lighting.fogEnd() - lighting.fogStart();
-        device.uniform1f(where.fogStructScale, span == 0.0f ? 0.0f : 1.0f / span);
-
-        for (int unit = 0; unit < VertexArrays.UNITS; unit++) {
-            device.uniform1i(where.textureEnabled[unit], render.isTextureEnabled(unit) ? 1 : 0);
-            device.uniform1i(where.textureEnv[unit], render.textureEnv(unit));
+        boolean matrix = where.moved(render, Revision.MATRIX);
+        boolean texture = where.moved(render, Revision.TEXTURE);
+        boolean alpha = where.moved(render, Revision.ALPHA);
+        boolean fog = where.moved(render, Revision.FOG);
+        where.keep(render);
+        if (matrix) {
+            device.uniformMatrix4(where.modelView, render.modelView());
+            device.uniformMatrix4(where.projection, render.projection());
+            device.uniformMatrices(where.normalMatrix, 3, false, normalMatrix(render), 1);
         }
-        device.uniform1i(where.alphaTestEnabled, render.isAlphaTestEnabled() ? 1 : 0);
-        device.uniform1f(where.alphaTestThreshold, render.alphaTestThreshold());
-        device.uniform1i(where.fogEnabled, lighting.isFogEnabled() ? 1 : 0);
-        device.uniform1i(where.fogMode, lighting.fogMode());
-        uniform4(where.fogColor, lighting.fogColor());
-        device.uniform1f(where.fogDensity, lighting.fogDensity());
-        device.uniform1f(where.fogStart, lighting.fogStart());
-        device.uniform1f(where.fogEnd, lighting.fogEnd());
+        if (fog) {
+            uniform4(where.fogStructColor, lighting.fogColor());
+            device.uniform1f(where.fogStructDensity, lighting.fogDensity());
+            device.uniform1f(where.fogStructStart, lighting.fogStart());
+            device.uniform1f(where.fogStructEnd, lighting.fogEnd());
+            float span = lighting.fogEnd() - lighting.fogStart();
+            device.uniform1f(where.fogStructScale, span == 0.0f ? 0.0f : 1.0f / span);
+            device.uniform1i(where.fogEnabled, lighting.isFogEnabled() ? 1 : 0);
+            device.uniform1i(where.fogMode, lighting.fogMode());
+            uniform4(where.fogColor, lighting.fogColor());
+            device.uniform1f(where.fogDensity, lighting.fogDensity());
+            device.uniform1f(where.fogStart, lighting.fogStart());
+            device.uniform1f(where.fogEnd, lighting.fogEnd());
+        }
+        if (texture) {
+            for (int unit = 0; unit < VertexArrays.UNITS; unit++) {
+                device.uniform1i(where.textureEnabled[unit],
+                        render.isTextureEnabled(unit) ? 1 : 0);
+                device.uniform1i(where.textureEnv[unit], render.textureEnv(unit));
+            }
+        }
+        if (alpha) {
+            device.uniform1i(where.alphaTestEnabled, render.isAlphaTestEnabled() ? 1 : 0);
+            device.uniform1f(where.alphaTestThreshold, render.alphaTestThreshold());
+        }
+    }
+
+    private Borrowed borrowedBy(int lent) {
+        if (lent >= borrowed.length) {
+            borrowed = Arrays.copyOf(borrowed, Math.max(lent + 1, borrowed.length * 2));
+        }
+        Borrowed where = borrowed[lent];
+        if (where == null) {
+            where = locateIn(lent);
+            borrowed[lent] = where;
+        }
+        return where;
     }
 
     private Borrowed locateIn(int lent) {
@@ -549,6 +609,7 @@ public final class FixedFunctionPipeline {
 
     /** a lent program declares some subset of these; the rest come back as no location */
     private static final class Borrowed {
+        private final int[] written = new int[Revision.GROUPS];
         private int modelView;
         private int projection;
         private int normalMatrix;
@@ -567,10 +628,26 @@ public final class FixedFunctionPipeline {
         private int fogDensity;
         private int fogStart;
         private int fogEnd;
+
+        Borrowed() {
+            Arrays.fill(written, NOTHING_WRITTEN);
+        }
+
+        boolean moved(RenderState render, int group) {
+            return written[group] != render.revision(group);
+        }
+
+        void keep(RenderState render) {
+            for (int group = 0; group < Revision.GROUPS; group++) {
+                written[group] = render.revision(group);
+            }
+        }
     }
 
     public void forgetProgram(int deleted) {
-        borrowed.remove(deleted);
+        if (deleted >= 0 && deleted < borrowed.length) {
+            borrowed[deleted] = null;
+        }
     }
 
     private void light(RenderState render) {
@@ -579,8 +656,7 @@ public final class FixedFunctionPipeline {
         if (!lighting.isEnabled()) {
             return;
         }
-        device.uniformMatrices(normalMatrixUniform, 3, false,
-                Matrix4.normalMatrix(render.modelView(), normalMatrix), 1);
+        device.uniformMatrices(normalMatrixUniform, 3, false, normalMatrix(render), 1);
         device.uniformInts(lightEnabledUniform, 1, lighting.lightEnabledFlags(), Lighting.LIGHTS);
         device.uniformFloats(lightPositionUniform, 4, lighting.positions(), Lighting.LIGHTS);
         device.uniformFloats(lightAmbientUniform, 4, lighting.ambients(), Lighting.LIGHTS);
