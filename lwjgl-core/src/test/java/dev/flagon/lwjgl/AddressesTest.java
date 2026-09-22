@@ -10,6 +10,10 @@ import dev.flagon.lwjgl.internal.Addresses;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.IntBuffer;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 import org.junit.jupiter.api.Test;
 
 class AddressesTest {
@@ -124,5 +128,24 @@ class AddressesTest {
         Addresses.reset(mark);
 
         assertFalse(Addresses.isKnown(address));
+    }
+
+    @Test
+    void keepsManyBuffersApartAsSlotsComeAndGo() {
+        List<ByteBuffer> kept = new ArrayList<>();
+        Set<Long> addresses = new HashSet<>();
+        for (int at = 0; at < 500; at++) {
+            ByteBuffer buffer = bytes(4);
+            assertTrue(addresses.add(Addresses.of(buffer)));
+            if (at % 2 == 0) {
+                kept.add(buffer);
+            }
+            Addresses.of(bytes(4));
+        }
+        System.gc();
+
+        for (ByteBuffer buffer : kept) {
+            assertTrue(Addresses.isKnown(Addresses.of(buffer)));
+        }
     }
 }

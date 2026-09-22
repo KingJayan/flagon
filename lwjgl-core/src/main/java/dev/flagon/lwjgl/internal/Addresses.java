@@ -11,9 +11,8 @@ import java.nio.IntBuffer;
 import java.nio.LongBuffer;
 import java.nio.ShortBuffer;
 import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.Arrays;
 import java.util.List;
-import java.util.Map;
 
 public final class Addresses {
 
@@ -24,12 +23,20 @@ public final class Addresses {
     private static final int GENERATIONS = 1 << 8;
 
     private static final ReferenceQueue<Buffer> COLLECTED = new ReferenceQueue<>();
-    private static final List<Held> SLOTS = new ArrayList<>();
-    private static final List<Integer> AGES = new ArrayList<>();
-    private static final List<Integer> FREE = new ArrayList<>();
-    private static final Map<Integer, List<Held>> BY_IDENTITY = new HashMap<>();
     private static final List<Held> REGISTERED = new ArrayList<>();
 
+    private static Held[] slots = new Held[64];
+    private static int[] ages = new int[64];
+    private static int slotCount;
+
+    private static int[] free = new int[64];
+    private static int freeCount;
+
+    private static Held[] table = new Held[64];
+    private static int tableCount;
+
+    private static Held last;
+    private static int gone;
     private static int sequence;
 
     /** one buffer's address, held weakly */
@@ -39,6 +46,8 @@ public final class Addresses {
         private final int sequence;
         private final int slot;
 
+        private Held sameIdentity;
+        private boolean dropped;
         private long handle;
 
         Held(Buffer buffer, int identity, int sequence, int slot) {
@@ -78,72 +87,164 @@ public final class Addresses {
     }
 
     private static long base(Buffer buffer) {
+        // draw code hands over the same buffer again and again
+        Held memo = last;
+        if (memo != null && memo.get() == buffer) {
+            return memo.handle;
+        }
         sweep();
         int identity = System.identityHashCode(buffer);
         Held known = find(identity, buffer);
-        if (known != null) {
-            return known.handle;
+        if (known == null) {
+            int slot = takeSlot();
+            known = new Held(buffer, identity, sequence++, slot);
+            known.handle = ((long) ages[slot] << 56) | ((long) (slot + 1) << 32);
+            slots[slot] = known;
+            add(known);
         }
-        int slot = takeSlot();
-        Held held = new Held(buffer, identity, sequence++, slot);
-        held.handle = ((long) AGES.get(slot) << 56) | ((long) (slot + 1) << 32);
-        SLOTS.set(slot, held);
-        add(held);
-        return held.handle;
+        last = known;
+        return known.handle;
     }
 
     private static int takeSlot() {
-        if (!FREE.isEmpty()) {
-            return FREE.remove(FREE.size() - 1);
+        if (freeCount > 0) {
+            return free[--freeCount];
         }
-        if (SLOTS.size() >= SLOT_MASK) {
+        if (slotCount >= SLOT_MASK) {
             throw new IllegalStateException("this build hands out at most " + SLOT_MASK
                     + " addresses at a time, and every one of them is still in use");
         }
-        SLOTS.add(null);
-        AGES.add(0);
-        return SLOTS.size() - 1;
+        if (slotCount == slots.length) {
+            slots = Arrays.copyOf(slots, slots.length * 2);
+            ages = Arrays.copyOf(ages, ages.length * 2);
+        }
+        return slotCount++;
+    }
+
+    private static int start(int identity) {
+        int spread = identity * 0x9E3779B9;
+        return (spread ^ (spread >>> 16)) & (table.length - 1);
+    }
+
+    private static int after(int at) {
+        return (at + 1) & (table.length - 1);
+    }
+
+    private static int seat(int identity) {
+        int at = start(identity);
+        while (table[at] != null && table[at].identity != identity) {
+            at = after(at);
+        }
+        return at;
     }
 
     private static Held find(int identity, Buffer buffer) {
-        List<Held> bucket = BY_IDENTITY.get(identity);
-        if (bucket != null) {
-            for (Held held : bucket) {
-                if (held.get() == buffer) {
-                    return held;
-                }
+        for (Held held = table[seat(identity)]; held != null; held = held.sameIdentity) {
+            if (held.get() == buffer) {
+                return held;
             }
         }
         return null;
     }
 
     private static void add(Held held) {
-        BY_IDENTITY.computeIfAbsent(held.identity, key -> new ArrayList<>()).add(held);
+        int at = seat(held.identity);
+        if (table[at] == null) {
+            table[at] = held;
+            tableCount++;
+            if (tableCount * 4 >= table.length * 3) {
+                widen();
+            }
+        } else {
+            held.sameIdentity = table[at].sameIdentity;
+            table[at].sameIdentity = held;
+        }
         REGISTERED.add(held);
+    }
+
+    private static void widen() {
+        Held[] was = table;
+        table = new Held[was.length * 2];
+        for (Held head : was) {
+            if (head != null) {
+                table[seat(head.identity)] = head;
+            }
+        }
+    }
+
+    private static void unmap(Held held) {
+        int at = seat(held.identity);
+        Held head = table[at];
+        if (head == null) {
+            return;
+        }
+        if (head != held) {
+            for (Held before = head; before.sameIdentity != null; before = before.sameIdentity) {
+                if (before.sameIdentity == held) {
+                    before.sameIdentity = held.sameIdentity;
+                    break;
+                }
+            }
+        } else if (head.sameIdentity != null) {
+            table[at] = head.sameIdentity;
+        } else {
+            table[at] = null;
+            tableCount--;
+            close(at);
+        }
+        held.sameIdentity = null;
+    }
+
+    // linear probing leaves no tombstone: pull back whatever probed past the hole
+    private static void close(int hole) {
+        for (int at = after(hole); table[at] != null; at = after(at)) {
+            int wanted = start(table[at].identity);
+            if (((at - wanted) & (table.length - 1)) >= ((at - hole) & (table.length - 1))) {
+                table[hole] = table[at];
+                table[at] = null;
+                hole = at;
+            }
+        }
     }
 
     private static void sweep() {
         for (Reference<? extends Buffer> dead = COLLECTED.poll(); dead != null;
                 dead = COLLECTED.poll()) {
-            if (dead instanceof Held held) {
-                REGISTERED.remove(held);
+            if (dead instanceof Held held && !held.dropped) {
                 drop(held);
+                gone++;
             }
+        }
+        if (gone * 2 > REGISTERED.size()) {
+            compact();
         }
     }
 
-    private static void drop(Held held) {
-        List<Held> bucket = BY_IDENTITY.get(held.identity);
-        if (bucket != null) {
-            bucket.remove(held);
-            if (bucket.isEmpty()) {
-                BY_IDENTITY.remove(held.identity);
+    private static void compact() {
+        int out = 0;
+        for (int at = 0; at < REGISTERED.size(); at++) {
+            Held held = REGISTERED.get(at);
+            if (!held.dropped) {
+                REGISTERED.set(out++, held);
             }
         }
-        if (held.slot >= 0 && SLOTS.get(held.slot) == held) {
-            SLOTS.set(held.slot, null);
-            AGES.set(held.slot, (AGES.get(held.slot) + 1) % GENERATIONS);
-            FREE.add(held.slot);
+        REGISTERED.subList(out, REGISTERED.size()).clear();
+        gone = 0;
+    }
+
+    private static void drop(Held held) {
+        held.dropped = true;
+        if (last == held) {
+            last = null;
+        }
+        unmap(held);
+        if (held.slot >= 0 && slots[held.slot] == held) {
+            slots[held.slot] = null;
+            ages[held.slot] = (ages[held.slot] + 1) % GENERATIONS;
+            if (freeCount == free.length) {
+                free = Arrays.copyOf(free, free.length * 2);
+            }
+            free[freeCount++] = held.slot;
         }
     }
 
@@ -192,13 +293,17 @@ public final class Addresses {
 
     public static void reset(int mark) {
         sweep();
-        for (int at = REGISTERED.size() - 1; at >= 0; at--) {
-            Held held = REGISTERED.get(at);
+        while (!REGISTERED.isEmpty()) {
+            Held held = REGISTERED.get(REGISTERED.size() - 1);
             if (held.sequence < mark) {
                 break;
             }
-            REGISTERED.remove(at);
-            drop(held);
+            REGISTERED.remove(REGISTERED.size() - 1);
+            if (held.dropped) {
+                gone--;
+            } else {
+                drop(held);
+            }
         }
         sequence = Math.min(sequence, mark);
     }
@@ -209,10 +314,10 @@ public final class Addresses {
 
     private static Held held(long address) {
         int index = (int) ((address >>> 32) & SLOT_MASK) - 1;
-        if (index < 0 || index >= SLOTS.size()) {
+        if (index < 0 || index >= slotCount) {
             return null;
         }
-        Held held = SLOTS.get(index);
+        Held held = slots[index];
         if (held == null || held.get() == null) {
             return null;
         }
