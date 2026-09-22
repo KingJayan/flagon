@@ -69,10 +69,15 @@ final class Canvas {
         wanted.setDepth(true);
         wanted.setStencil(true);
         wanted.setAntialias(false);
-        wanted.setPreserveDrawingBuffer(true);
+        // many drivers copy the drawing buffer each frame to keep it, so only a page that reads
+        // the frame back later asks for that
+        wanted.setPreserveDrawingBuffer(wantsPreserved());
         wanted.setPowerPreference("high-performance");
         return askForContext(canvas, wanted);
     }
+
+    @JSBody(script = "return new URLSearchParams(location.search).has('preserve');")
+    private static native boolean wantsPreserved();
 
     @JSBody(params = {"canvas", "wanted"}, script = "return canvas.getContext('webgl2', wanted);")
     private static native WebGL2 askForContext(JSObject canvas, ContextOptions wanted);

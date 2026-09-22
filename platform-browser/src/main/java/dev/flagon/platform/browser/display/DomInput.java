@@ -56,6 +56,11 @@ final class DomInput {
         void onFocus(boolean focused);
     }
 
+    @JSFunctor
+    interface Noticed extends JSObject {
+        void happened();
+    }
+
     private DomInput() {
     }
 
@@ -107,6 +112,9 @@ final class DomInput {
         private final boolean borrowedTabIndex;
         private final List<Wired> wired = new ArrayList<>();
 
+        private final JSObject sizes;
+        private Box measured;
+
         private int touched = -1;
         private int lastX;
         private int lastY;
@@ -123,6 +131,12 @@ final class DomInput {
             }
 
             Window page = Window.current();
+            // reading the box forces layout, so it is read once and dropped when the page moves
+            Noticed forget = () -> measured = null;
+            this.sizes = watchSize(canvas, forget);
+            EventListener<Event> whenMoved = event -> measured = null;
+            onWindow(page, "resize", whenMoved);
+            onWindow(page, "scroll", whenMoved);
             EventListener<Event> onMove = event -> {
                 MouseEvent moved = event.cast();
                 Box box = box();
@@ -215,6 +229,7 @@ final class DomInput {
         }
 
         void undo() {
+            stopWatching(sizes);
             for (Wired one : wired) {
                 one.target().removeEventListener(one.type(), one.listener());
             }
@@ -284,7 +299,10 @@ final class DomInput {
         }
 
         private Box box() {
-            return canvas.getBoundingClientRect().cast();
+            if (measured == null) {
+                measured = canvas.getBoundingClientRect().cast();
+            }
+            return measured;
         }
 
         private static int scaled(double movement, double size, double boxSize) {
@@ -296,6 +314,16 @@ final class DomInput {
             script = "target.addEventListener(type, listener, options);")
     private static native void listen(JSObject target, String type, JSObject listener,
                                       JSObject options);
+
+    @JSBody(params = {"element", "watcher"}, script = """
+            var watching = new ResizeObserver(watcher);
+            watching.observe(element);
+            return watching;
+            """)
+    private static native JSObject watchSize(JSObject element, Noticed watcher);
+
+    @JSBody(params = "watching", script = "watching.disconnect();")
+    private static native void stopWatching(JSObject watching);
 
     @JSBody(params = {"element", "options"}, script = "element.focus(options);")
     private static native void focusWithout(JSObject element, JSObject options);
