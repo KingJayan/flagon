@@ -33,8 +33,8 @@ public interface RenderState {
 
     Lighting lighting();
 
-    /** how many times the state a draw reads has changed */
-    int revision();
+    /** how many times one group of the state a draw reads has changed */
+    int revision(int group);
 
     float normalX();
 

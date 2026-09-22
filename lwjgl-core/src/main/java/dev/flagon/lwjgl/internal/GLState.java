@@ -186,13 +186,13 @@ public final class GLState implements RenderState {
 
     /** @return the matrix a caller is about to change */
     private float[] mutable() {
-        revision.bump();
+        revision.bump(Revision.MATRIX);
         return active();
     }
 
     @Override
-    public int revision() {
-        return revision.count();
+    public int revision(int group) {
+        return revision.count(group);
     }
 
     public void pushMatrix() {
@@ -588,7 +588,10 @@ public final class GLState implements RenderState {
     // capability state
 
     public void setTextureEnabled(boolean enabled) {
-        revision.bump();
+        if (textureEnabled[activeTexture] == enabled) {
+            return;
+        }
+        revision.bump(Revision.TEXTURE);
         textureEnabled[activeTexture] = enabled;
     }
 
@@ -598,7 +601,10 @@ public final class GLState implements RenderState {
     }
 
     public void setTextureEnv(int mode) {
-        revision.bump();
+        if (textureEnv[activeTexture] == mode) {
+            return;
+        }
+        revision.bump(Revision.TEXTURE);
         textureEnv[activeTexture] = mode;
     }
 
@@ -625,7 +631,10 @@ public final class GLState implements RenderState {
     }
 
     public void setAlphaTestEnabled(boolean enabled) {
-        revision.bump();
+        if (alphaTestEnabled == enabled) {
+            return;
+        }
+        revision.bump(Revision.ALPHA);
         alphaTestEnabled = enabled;
     }
 
@@ -698,7 +707,10 @@ public final class GLState implements RenderState {
     }
 
     public void pointSize(float size) {
-        revision.bump();
+        if (pointSize == size) {
+            return;
+        }
+        revision.bump(Revision.POINT);
         pointSize = size;
     }
 
@@ -733,9 +745,7 @@ public final class GLState implements RenderState {
             throw new UnsupportedOperationException(
                     "glAlphaFunc emulates GL_GREATER only, got " + func);
         }
-        revision.bump();
-        alphaTestFunc = func;
-        alphaTestThreshold = reference;
+        setAlphaFunc(func, reference);
     }
 
     public CompareFunc alphaTestFunc() {
@@ -980,7 +990,14 @@ public final class GLState implements RenderState {
     }
 
     void restoreAlphaFunc(CompareFunc func, float reference) {
-        revision.bump();
+        setAlphaFunc(func, reference);
+    }
+
+    private void setAlphaFunc(CompareFunc func, float reference) {
+        if (alphaTestFunc == func && alphaTestThreshold == reference) {
+            return;
+        }
+        revision.bump(Revision.ALPHA);
         alphaTestFunc = func;
         alphaTestThreshold = reference;
     }
