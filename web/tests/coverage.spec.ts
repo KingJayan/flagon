@@ -6,16 +6,15 @@ import { fileURLToPath } from 'node:url';
 const here = path.dirname(fileURLToPath(import.meta.url));
 
 /**
- * headless firefox on a runner has no gpu and no sound, so a spec that opens a display is
- * chromium's. that rule lived in a comment and was forgotten twice, so it is checked here:
- * a spec says '// needs a display' on its first line, and the firefox project ignores exactly
- * those. a spec that passes locally, where there is a gpu, is not evidence either way.
+ * headless firefox on a runner has no gpu and no sound. a spec needing either is chromium's.
+ * a spec says '// needs a display' on its first line, and the firefox project lists the rest.
  */
+
 test.describe('which engine runs which spec', () => {
-  test('firefox ignores exactly the specs that say they need a display', async () => {
+  test('firefox runs exactly the specs that need no display', async () => {
     const config = await fs.readFile(path.join(here, '../playwright.config.ts'), 'utf8');
-    const listed = /testIgnore: \[(.*?)\]/s.exec(config);
-    const ignored = new Set(
+    const listed = /testMatch: \[(.*?)\]/s.exec(config);
+    const matched = new Set(
       [...(listed?.[1] ?? '').matchAll(/\*\*\/([\w.-]+\.spec\.ts)/g)].map((found) => found[1]),
     );
 
@@ -30,11 +29,12 @@ test.describe('which engine runs which spec', () => {
       }
     }
 
-    const unlisted = [...declared].filter((name) => !ignored.has(name));
-    const unnecessary = [...ignored].filter((name) => !declared.has(name));
+    const headless = names.filter((name) => !declared.has(name));
+    const missing = headless.filter((name) => !matched.has(name));
+    const wrong = [...matched].filter((name) => declared.has(name));
 
-    expect(unlisted, 'these open a display; add them to the firefox testIgnore').toEqual([]);
-    expect(unnecessary, 'these no longer say they need a display; drop them').toEqual([]);
+    expect(missing, 'these need no display; add them to the firefox testMatch').toEqual([]);
+    expect(wrong, 'these open a display; drop them from the firefox testMatch').toEqual([]);
     expect(declared.size).toBeGreaterThan(0);
   });
 

@@ -9,7 +9,8 @@ export default defineConfig({
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,
-  workers: process.env.CI ? '50%' : undefined,
+  // CI shards each project across runners
+  workers: process.env.CI ? '100%' : undefined,
   reporter: process.env.CI ? [['github'], ['blob']] : 'list',
   use: {
     baseURL: 'http://localhost:5273',
@@ -31,28 +32,26 @@ export default defineConfig({
     {
       name: 'firefox',
       dependencies: ['bundles'],
-      testIgnore: [
-        '**/a11y.spec.ts',
-        '**/arrays.spec.ts',
-        '**/audio.spec.ts',
-        '**/core-profile.spec.ts',
-        '**/design.spec.ts',
-        '**/display.spec.ts',
-        '**/example.spec.ts',
-        '**/fixedfunction.spec.ts',
-        '**/framebuffer.spec.ts',
-        '**/glcore.spec.ts',
-        '**/glfw.spec.ts',
-        '**/halfshader.spec.ts',
-        '**/input.spec.ts',
-        '**/play.spec.ts',
-        '**/reflection.spec.ts',
-        '**/render.spec.ts',
-        '**/shaders.spec.ts',
-        '**/shell.spec.ts',
-        '**/texture.spec.ts',
-        '**/threading.spec.ts',
-        '**/thirdparty.spec.ts',
+      // firefox runs the specs named here
+      testMatch: [
+        '**/boot.spec.ts',
+        '**/classloader.spec.ts',
+        '**/coverage.spec.ts',
+        '**/crypto.spec.ts',
+        '**/files.spec.ts',
+        '**/image.spec.ts',
+        '**/jdkgaps.spec.ts',
+        '**/liveness.spec.ts',
+        '**/lwjgl3.spec.ts',
+        '**/net.spec.ts',
+        '**/pausing.spec.ts',
+        '**/policy.spec.ts',
+        '**/proxy.spec.ts',
+        '**/resources.spec.ts',
+        '**/shapes.spec.ts',
+        '**/shutdownhook.spec.ts',
+        '**/tls.spec.ts',
+        '**/tunnel.spec.ts',
       ],
       use: { ...devices['Desktop Firefox'] },
     },
@@ -73,9 +72,9 @@ export default defineConfig({
     ...(servedRuns
       ? [
           {
-            command: process.env.CI
-              ? 'bun run proxy -- --root dist --port 4273 --probes'
-              : 'bun run build && bun run proxy -- --root dist --port 4273 --probes',
+            // ci builds dist in an earlier job
+            command: (process.env.CI ? '' : 'bun run build && ')
+              + 'bun run proxy -- --root dist --port 4273 --probes',
             url: 'http://localhost:4273',
             reuseExistingServer: !process.env.CI,
             timeout: 180_000,
