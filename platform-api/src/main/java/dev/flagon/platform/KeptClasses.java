@@ -3,14 +3,17 @@ package dev.flagon.platform;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.Set;
 
 public final class KeptClasses {
 
     static final String ROOT = "/flagon/classes";
 
-    private static final List<String> LAID_OUT = new ArrayList<>();
+    private static final Set<String> LAID_OUT = new HashSet<>();
+
+    private static String[] sorted;
 
     private KeptClasses() {
     }
@@ -20,28 +23,49 @@ public final class KeptClasses {
         return "";
     }
 
-    static boolean holds(String path) {
-        String prefix = path.replace('/', '.') + ".";
-        for (String name : names().split(",")) {
-            if (name.startsWith(prefix)) {
-                return true;
+    // the list runs to tens of thousands of names, so it is split and sorted once
+    private static String[] sorted() {
+        if (sorted == null) {
+            String all = names();
+            sorted = all.isEmpty() ? new String[0] : all.split(",");
+            Arrays.sort(sorted);
+        }
+        return sorted;
+    }
+
+    /** @return where the names under a package start */
+    private static int from(String prefix) {
+        String[] names = sorted();
+        int low = 0;
+        int high = names.length;
+        while (low < high) {
+            int middle = (low + high) >>> 1;
+            if (names[middle].compareTo(prefix) < 0) {
+                low = middle + 1;
+            } else {
+                high = middle;
             }
         }
-        return false;
+        return low;
+    }
+
+    static boolean holds(String path) {
+        String prefix = path.replace('/', '.') + ".";
+        String[] names = sorted();
+        int at = from(prefix);
+        return at < names.length && names[at].startsWith(prefix);
     }
 
     // a scan reads a directory, so write one
     static File layOut(String path) {
         File directory = new File(ROOT + "/" + path);
-        if (LAID_OUT.contains(path)) {
+        if (!LAID_OUT.add(path)) {
             return directory;
         }
-        LAID_OUT.add(path);
         String prefix = path.replace('/', '.') + ".";
-        for (String name : names().split(",")) {
-            if (name.startsWith(prefix)) {
-                write(new File(ROOT + "/" + name.replace('.', '/') + ".class"));
-            }
+        String[] names = sorted();
+        for (int at = from(prefix); at < names.length && names[at].startsWith(prefix); at++) {
+            write(new File(ROOT + "/" + names[at].replace('.', '/') + ".class"));
         }
         return directory;
     }
