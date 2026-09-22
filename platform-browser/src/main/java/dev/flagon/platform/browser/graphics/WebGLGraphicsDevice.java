@@ -33,6 +33,7 @@ import org.teavm.jso.typedarrays.Int8Array;
 import org.teavm.jso.typedarrays.Uint8Array;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.BitSet;
 import java.util.HashMap;
 import java.util.List;
@@ -54,6 +55,9 @@ public final class WebGLGraphicsDevice implements GraphicsDevice {
     // names are small ints handed out by a table, so a bitset asks nothing of the allocator
     private final BitSet defaulted = new BitSet();
 
+    /** the fields of one attribute pointer */
+    private static final int POINTER_FIELDS = 6;
+
     private final boolean[] capabilityOn = new boolean[6];
     private final boolean[] capabilityKnown = new boolean[6];
 
@@ -64,6 +68,24 @@ public final class WebGLGraphicsDevice implements GraphicsDevice {
 
     private int boundArrayBuffer = NO_BUFFER;
     private int boundFramebuffer = NO_FRAMEBUFFER;
+
+    // enable state, pointers and the element binding live in the vertex array
+    private final List<Attributes> arrays = new ArrayList<>();
+    private int boundArray = NO_VERTEX_ARRAY;
+    private float[] constants = new float[0];
+    private final BitSet constantsKnown = new BitSet();
+
+    private int viewportX;
+    private int viewportY;
+    private int viewportWidth = -1;
+    private int viewportHeight = -1;
+    private int scissorX;
+    private int scissorY;
+    private int scissorWidth = -1;
+    private int scissorHeight = -1;
+    private int blendEquationColor = WebGL2.FUNC_ADD;
+    private int blendEquationAlpha = WebGL2.FUNC_ADD;
+    private final float[] blendColor = new float[4];
 
     // the rest of the render state, remembered for the same reason the capabilities are: a
     // program sets these around every batch, almost always to what they already were. the
@@ -81,11 +103,35 @@ public final class WebGLGraphicsDevice implements GraphicsDevice {
     private boolean blueMask = true;
     private boolean alphaMask = true;
 
+    /** what one vertex array remembers */
+    private static final class Attributes {
+
+        private int elementBuffer = NO_BUFFER;
+        private final BitSet enabled = new BitSet();
+        private final BitSet described = new BitSet();
+        private int[] pointers = new int[0];
+    }
+
     public WebGLGraphicsDevice(WebGL2 gl) {
         this.gl = gl;
         // webgl2 core profile requires a bound vertex array object before any attribute is set
         this.defaultVertexArray = gl.createVertexArray();
         gl.bindVertexArray(defaultVertexArray);
+        // nothing here wants premultiplied alpha
+        gl.pixelStorei(WebGL2.UNPACK_PREMULTIPLY_ALPHA_WEBGL, 0);
+
+    }
+
+    private Attributes attributes() {
+        while (arrays.size() <= boundArray) {
+            arrays.add(null);
+        }
+        Attributes held = arrays.get(boundArray);
+        if (held == null) {
+            held = new Attributes();
+            arrays.set(boundArray, held);
+        }
+        return held;
     }
 
     @Override
@@ -97,6 +143,7 @@ public final class WebGLGraphicsDevice implements GraphicsDevice {
     public void bindVertexArray(int array) {
         gl.bindVertexArray(array == NO_VERTEX_ARRAY ? defaultVertexArray
                 : lookup(array, "vertex array"));
+        boundArray = array;
     }
 
     @Override
@@ -106,6 +153,12 @@ public final class WebGLGraphicsDevice implements GraphicsDevice {
         }
         gl.deleteVertexArray(lookup(array, "vertex array"));
         handles.remove(array);
+        if (array < arrays.size()) {
+            arrays.set(array, null);
+        }
+        if (boundArray == array) {
+            boundArray = NO_VERTEX_ARRAY;
+        }
     }
 
     private int store(JSObject object) {
@@ -132,6 +185,14 @@ public final class WebGLGraphicsDevice implements GraphicsDevice {
 
     @Override
     public void viewport(int x, int y, int width, int height) {
+        if (viewportX == x && viewportY == y && viewportWidth == width
+                && viewportHeight == height) {
+            return;
+        }
+        viewportX = x;
+        viewportY = y;
+        viewportWidth = width;
+        viewportHeight = height;
         gl.viewport(x, y, width, height);
     }
 
@@ -241,16 +302,31 @@ public final class WebGLGraphicsDevice implements GraphicsDevice {
 
     @Override
     public void setBlendEquation(BlendEquation equation) {
-        gl.blendEquation(blendEquation(equation));
+        setBlendEquationSeparate(equation, equation);
     }
 
     @Override
     public void setBlendEquationSeparate(BlendEquation color, BlendEquation alpha) {
-        gl.blendEquationSeparate(blendEquation(color), blendEquation(alpha));
+        int wantedColor = blendEquation(color);
+        int wantedAlpha = blendEquation(alpha);
+        if (blendEquationColor == wantedColor && blendEquationAlpha == wantedAlpha) {
+            return;
+        }
+        blendEquationColor = wantedColor;
+        blendEquationAlpha = wantedAlpha;
+        gl.blendEquationSeparate(wantedColor, wantedAlpha);
     }
 
     @Override
     public void setBlendColor(float red, float green, float blue, float alpha) {
+        if (blendColor[0] == red && blendColor[1] == green && blendColor[2] == blue
+                && blendColor[3] == alpha) {
+            return;
+        }
+        blendColor[0] = red;
+        blendColor[1] = green;
+        blendColor[2] = blue;
+        blendColor[3] = alpha;
         gl.blendColor(red, green, blue, alpha);
     }
 
@@ -290,6 +366,13 @@ public final class WebGLGraphicsDevice implements GraphicsDevice {
 
     @Override
     public void setScissor(int x, int y, int width, int height) {
+        if (scissorX == x && scissorY == y && scissorWidth == width && scissorHeight == height) {
+            return;
+        }
+        scissorX = x;
+        scissorY = y;
+        scissorWidth = width;
+        scissorHeight = height;
         gl.scissor(x, y, width, height);
     }
 
@@ -412,9 +495,22 @@ public final class WebGLGraphicsDevice implements GraphicsDevice {
     public void deleteBuffer(int buffer) {
         gl.deleteBuffer(lookup(buffer, "buffer"));
         handles.remove(buffer);
-        // deleting the bound buffer unbinds it
+        // deleting the bound buffer unbinds it, and the name comes back later
         if (boundArrayBuffer == buffer) {
             boundArrayBuffer = NO_BUFFER;
+        }
+        for (Attributes held : arrays) {
+            if (held == null) {
+                continue;
+            }
+            if (held.elementBuffer == buffer) {
+                held.elementBuffer = NO_BUFFER;
+            }
+            for (int slot = 0; slot * POINTER_FIELDS < held.pointers.length; slot++) {
+                if (held.pointers[slot * POINTER_FIELDS] == buffer) {
+                    held.described.clear(slot);
+                }
+            }
         }
     }
 
@@ -427,6 +523,12 @@ public final class WebGLGraphicsDevice implements GraphicsDevice {
                 return;
             }
             boundArrayBuffer = buffer;
+        } else {
+            Attributes held = attributes();
+            if (held.elementBuffer == buffer) {
+                return;
+            }
+            held.elementBuffer = buffer;
         }
         gl.bindBuffer(targetConstant(target), buffer == NO_BUFFER ? null : lookup(buffer,
                 "buffer"));
@@ -865,11 +967,22 @@ public final class WebGLGraphicsDevice implements GraphicsDevice {
 
     @Override
     public void enableAttribute(int location) {
+        Attributes held = attributes();
+        if (held.enabled.get(location)) {
+            return;
+        }
+        held.enabled.set(location);
         gl.enableVertexAttribArray(location);
     }
 
     @Override
     public void disableAttribute(int location) {
+        // a vertex array starts with every attribute off
+        Attributes held = attributes();
+        if (!held.enabled.get(location)) {
+            return;
+        }
+        held.enabled.clear(location);
         gl.disableVertexAttribArray(location);
     }
 
@@ -878,8 +991,40 @@ public final class WebGLGraphicsDevice implements GraphicsDevice {
                                  boolean normalized, int strideInBytes, int offsetInBytes) {
         requireAligned(type, strideInBytes, "stride");
         requireAligned(type, offsetInBytes, "offset");
+        if (described(location, components, attributeType(type), normalized ? 1 : 0,
+                strideInBytes, offsetInBytes)) {
+            return;
+        }
         gl.vertexAttribPointer(location, components, attributeType(type), normalized,
                 strideInBytes, offsetInBytes);
+    }
+
+    // gl records the array buffer bound at the time
+    private boolean described(int location, int components, int type, int normalized,
+                              int strideInBytes, int offsetInBytes) {
+        Attributes held = attributes();
+        int at = location * POINTER_FIELDS;
+        if (at + POINTER_FIELDS > held.pointers.length) {
+            held.pointers = Arrays.copyOf(held.pointers, at + POINTER_FIELDS);
+        }
+        int[] pointers = held.pointers;
+        if (held.described.get(location)
+                && pointers[at] == boundArrayBuffer
+                && pointers[at + 1] == components
+                && pointers[at + 2] == type
+                && pointers[at + 3] == normalized
+                && pointers[at + 4] == strideInBytes
+                && pointers[at + 5] == offsetInBytes) {
+            return true;
+        }
+        held.described.set(location);
+        pointers[at] = boundArrayBuffer;
+        pointers[at + 1] = components;
+        pointers[at + 2] = type;
+        pointers[at + 3] = normalized;
+        pointers[at + 4] = strideInBytes;
+        pointers[at + 5] = offsetInBytes;
+        return false;
     }
 
     @Override
@@ -887,6 +1032,10 @@ public final class WebGLGraphicsDevice implements GraphicsDevice {
                                         int strideInBytes, int offsetInBytes) {
         requireAligned(type, strideInBytes, "stride");
         requireAligned(type, offsetInBytes, "offset");
+        if (described(location, components, attributeType(type), 2, strideInBytes,
+                offsetInBytes)) {
+            return;
+        }
         gl.vertexAttribIPointer(location, components, attributeType(type), strideInBytes,
                 offsetInBytes);
     }
@@ -908,6 +1057,19 @@ public final class WebGLGraphicsDevice implements GraphicsDevice {
 
     @Override
     public void constantAttribute(int location, float x, float y, float z, float w) {
+        int at = location * 4;
+        if (at + 4 > constants.length) {
+            constants = Arrays.copyOf(constants, at + 4);
+        }
+        if (constantsKnown.get(location) && constants[at] == x && constants[at + 1] == y
+                && constants[at + 2] == z && constants[at + 3] == w) {
+            return;
+        }
+        constantsKnown.set(location);
+        constants[at] = x;
+        constants[at + 1] = y;
+        constants[at + 2] = z;
+        constants[at + 3] = w;
         gl.vertexAttrib4f(location, x, y, z, w);
     }
 
@@ -980,7 +1142,6 @@ public final class WebGLGraphicsDevice implements GraphicsDevice {
     @Override
     public void textureImage(int level, int width, int height, byte[] rgba) {
         Uint8Array data = pixels(width, height, rgba);
-        gl.pixelStorei(WebGL2.UNPACK_PREMULTIPLY_ALPHA_WEBGL, 0);
         gl.texImage2D(WebGL2.TEXTURE_2D, level, WebGL2.RGBA, width, height, 0,
                 WebGL2.RGBA, WebGL2.UNSIGNED_BYTE, data);
     }
@@ -988,7 +1149,6 @@ public final class WebGLGraphicsDevice implements GraphicsDevice {
     @Override
     public void textureSubImage(int level, int x, int y, int width, int height, byte[] rgba) {
         Uint8Array data = pixels(width, height, rgba);
-        gl.pixelStorei(WebGL2.UNPACK_PREMULTIPLY_ALPHA_WEBGL, 0);
         gl.texSubImage2D(WebGL2.TEXTURE_2D, level, x, y, width, height,
                 WebGL2.RGBA, WebGL2.UNSIGNED_BYTE, data);
     }
@@ -1110,7 +1270,6 @@ public final class WebGLGraphicsDevice implements GraphicsDevice {
 
     @Override
     public void textureStorage(int level, int width, int height) {
-        gl.pixelStorei(WebGL2.UNPACK_PREMULTIPLY_ALPHA_WEBGL, 0);
         gl.texImage2D(WebGL2.TEXTURE_2D, level, WebGL2.RGBA, width, height, 0,
                 WebGL2.RGBA, WebGL2.UNSIGNED_BYTE, null);
     }

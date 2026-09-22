@@ -1,1 +1,3 @@
-example/** linguist-generated=true
+examples/** linguist-generated=true
+teavm/** linguist-generated=true
+teavm-jso/** linguist-generated=true
