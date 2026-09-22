@@ -7,7 +7,8 @@ export type Backend = (typeof BACKENDS)[number];
 
 /** opens a program on one backend. `query` is the rest of the shell's url parameters. */
 export async function open(page: Page, backend: Backend, query: string): Promise<void> {
-  await page.goto(`/?backend=${backend}${query ? `&${query}` : ''}`);
+  // the frame is read back from a later task
+  await page.goto(`/?preserve=1&backend=${backend}${query ? `&${query}` : ''}`);
 }
 
 /** collects anything the browser itself considers an error. */
