@@ -9,6 +9,11 @@ import org.teavm.jso.typedarrays.Uint8Array;
 import org.teavm.jso.typedarrays.Uint32Array;
 import org.teavm.jso.JSBody;
 
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
+import java.nio.FloatBuffer;
+import java.nio.IntBuffer;
+
 /**
  * hands the first {@code length} elements of a java array to a browser api as a typed array
  *
@@ -43,7 +48,16 @@ public final class JsArrays {
     public static Float32Array floats(float[] values, int length) {
         require(length, values.length);
         if (copies()) {
-            return Float32Array.copyFromJavaArray(prefix(values, length));
+            if (length > STORED) {
+                return Float32Array.copyFromJavaArray(prefix(values, length));
+            }
+            if (floatStore == null || floatStore.capacity() < length) {
+                floatStore = direct(length * Float.BYTES).asFloatBuffer();
+            }
+            floatStore.position(0);
+            floatStore.put(values, 0, length);
+            Float32Array store = Float32Array.fromJavaBuffer(floatStore);
+            return new Float32Array(store.getBuffer(), store.getByteOffset(), length);
         }
         Float32Array whole = Float32Array.fromJavaArray(values);
         return Float32Array.create(whole.getBuffer(), whole.getByteOffset(), length);
@@ -63,7 +77,16 @@ public final class JsArrays {
     public static Int32Array ints(int[] values, int length) {
         require(length, values.length);
         if (copies()) {
-            return Int32Array.copyFromJavaArray(prefix(values, length));
+            if (length > STORED) {
+                return Int32Array.copyFromJavaArray(prefix(values, length));
+            }
+            if (intStore == null || intStore.capacity() < length) {
+                intStore = direct(length * Integer.BYTES).asIntBuffer();
+            }
+            intStore.position(0);
+            intStore.put(values, 0, length);
+            Int32Array store = Int32Array.fromJavaBuffer(intStore);
+            return new Int32Array(store.getBuffer(), store.getByteOffset(), length);
         }
         Int32Array whole = Int32Array.fromJavaArray(values);
         return Int32Array.create(whole.getBuffer(), whole.getByteOffset(), length);
@@ -91,6 +114,17 @@ public final class JsArrays {
             return new Uint8Array(into.buffer, into.byteOffset, count * 4);
             """)
     public static native Uint8Array rgbaOf(Uint32Array argb, int count, Uint32Array into);
+
+    /** biggest upload one store serves */
+    private static final int STORED = 64 * 1024;
+
+    // javascript reads a direct buffer where it stands
+    private static FloatBuffer floatStore;
+    private static IntBuffer intStore;
+
+    private static ByteBuffer direct(int bytes) {
+        return ByteBuffer.allocateDirect(bytes).order(ByteOrder.nativeOrder());
+    }
 
     private static byte[] prefix(byte[] values, int length) {
         if (length == values.length) {
