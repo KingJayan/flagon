@@ -7,6 +7,7 @@ import org.teavm.jso.typedarrays.Int32Array;
 import org.teavm.jso.typedarrays.Int8Array;
 import org.teavm.jso.typedarrays.Uint8Array;
 import org.teavm.jso.typedarrays.Uint32Array;
+import org.teavm.jso.JSBody;
 
 /**
  * hands the first {@code length} elements of a java array to a browser api as a typed array
@@ -76,6 +77,20 @@ public final class JsArrays {
         Uint32Array whole = Uint32Array.fromJavaArray(values);
         return new Uint32Array(whole.getBuffer(), whole.getByteOffset(), length);
     }
+
+    /**
+     * @param into a store the caller keeps, at least {@code count} ints long
+     * @return the pixels as the r, g, b, a bytes a texture takes, swizzled in one native pass
+     */
+    @JSBody(params = {"argb", "count", "into"}, script = """
+            for (var at = 0; at < count; at++) {
+                var pixel = argb[at];
+                into[at] = (pixel & 0xFF00FF00) | ((pixel & 0x00FF0000) >>> 16)
+                        | ((pixel & 0x000000FF) << 16);
+            }
+            return new Uint8Array(into.buffer, into.byteOffset, count * 4);
+            """)
+    public static native Uint8Array rgbaOf(Uint32Array argb, int count, Uint32Array into);
 
     private static byte[] prefix(byte[] values, int length) {
         if (length == values.length) {

@@ -30,6 +30,7 @@ import org.teavm.jso.core.JSString;
 import org.teavm.jso.typedarrays.Float32Array;
 import org.teavm.jso.typedarrays.Int32Array;
 import org.teavm.jso.typedarrays.Int8Array;
+import org.teavm.jso.typedarrays.Uint32Array;
 import org.teavm.jso.typedarrays.Uint8Array;
 
 import java.util.ArrayList;
@@ -74,6 +75,7 @@ public final class WebGLGraphicsDevice implements GraphicsDevice {
     private final List<Attributes> arrays = new ArrayList<>();
     private int boundArray = NO_VERTEX_ARRAY;
     private float[] constants = new float[0];
+    private Uint32Array swizzled;
     private final BitSet constantsKnown = new BitSet();
 
     private int viewportX;
@@ -1145,6 +1147,31 @@ public final class WebGLGraphicsDevice implements GraphicsDevice {
         Uint8Array data = pixels(width, height, rgba);
         gl.texImage2D(WebGL2.TEXTURE_2D, level, WebGL2.RGBA, width, height, 0,
                 WebGL2.RGBA, WebGL2.UNSIGNED_BYTE, data);
+    }
+
+    @Override
+    public void textureImageArgb(int level, int width, int height, int[] argb, int count) {
+        gl.texImage2D(WebGL2.TEXTURE_2D, level, WebGL2.RGBA, width, height, 0,
+                WebGL2.RGBA, WebGL2.UNSIGNED_BYTE, rgba(argb, count));
+    }
+
+    @Override
+    public void textureSubImageArgb(int level, int x, int y, int width, int height,
+                                    int[] argb, int count) {
+        gl.texSubImage2D(WebGL2.TEXTURE_2D, level, x, y, width, height,
+                WebGL2.RGBA, WebGL2.UNSIGNED_BYTE, rgba(argb, count));
+    }
+
+    // the swizzle runs in javascript over a store this device keeps, so nothing is allocated
+    // per upload and the pixels are walked once, natively
+    private Uint8Array rgba(int[] argb, int count) {
+        if (argb.length < count) {
+            throw new IllegalArgumentException("need " + count + " pixels, got " + argb.length);
+        }
+        if (swizzled == null || swizzled.getLength() < count) {
+            swizzled = new Uint32Array(count);
+        }
+        return JsArrays.rgbaOf(JsArrays.unsignedInts(argb, count), count, swizzled);
     }
 
     @Override

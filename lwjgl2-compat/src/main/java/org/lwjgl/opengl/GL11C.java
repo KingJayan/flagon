@@ -24,6 +24,7 @@ import dev.flagon.platform.graphics.TextureWrap;
 
 import java.nio.ByteBuffer;
 import java.nio.FloatBuffer;
+import java.util.Arrays;
 import java.nio.IntBuffer;
 
 /**
@@ -682,24 +683,30 @@ public class GL11C {
         }
         state().multMatrix(matrix);
     }
-    /** copied rather than referenced: the caller may reuse the array before a list replays it. */
+    private static final float[] SIXTEEN = new float[16];
+    private static final float[] FOUR = new float[4];
+
+    // a list replays later and keeps what it was given, so only a list gets a copy of its own
     static float[] require16(float[] matrix, String call) {
         if (matrix.length < 16) {
             throw new IllegalArgumentException(
                     call + " needs 16 floats, got " + matrix.length);
         }
-        float[] copy = new float[16];
-        System.arraycopy(matrix, 0, copy, 0, 16);
-        return copy;
+        return recording() ? Arrays.copyOf(matrix, 16) : matrix;
     }
     static float[] read16(FloatBuffer matrix, String call) {
         if (matrix.remaining() < 16) {
             throw new IllegalArgumentException(
                     call + " needs 16 floats, got " + matrix.remaining());
         }
-        float[] copy = new float[16];
-        matrix.duplicate().get(copy);
-        return copy;
+        return read(matrix, recording() ? new float[16] : SIXTEEN, 16);
+    }
+    private static float[] read(FloatBuffer values, float[] into, int count) {
+        int at = values.position();
+        for (int one = 0; one < count; one++) {
+            into[one] = values.get(at + one);
+        }
+        return into;
     }
     /** the coordinate belongs to a unit; {@link GL13#glMultiTexCoord2f} names a different one. */
     static void texCoord(int unit, float s, float t) {
@@ -791,16 +798,14 @@ public class GL11C {
             throw new IllegalArgumentException(call + " wants four components, got "
                     + values.length);
         }
-        return java.util.Arrays.copyOf(values, 4);
+        return recording() ? Arrays.copyOf(values, 4) : values;
     }
     static float[] read4(FloatBuffer values, String call) {
         if (values.remaining() < 4) {
             throw new IllegalArgumentException(call + " wants four components, got "
                     + values.remaining());
         }
-        float[] copied = new float[4];
-        values.duplicate().get(copied);
-        return copied;
+        return read(values, recording() ? new float[4] : FOUR, 4);
     }
     public static void glDrawArrays(int mode, int first, int count) {
         state().refuseWhileRecording("glDrawArrays");
@@ -1030,7 +1035,7 @@ public class GL11C {
         requireLevel(level);
         requireRgbaBytes(format, type);
         state().recordLevelSize(level, width, height);
-        device().textureImage(level, width, height, spread(pixels, width * height));
+        device().textureImageArgb(level, width, height, pixels, width * height);
         rebuildMipmaps();
     }
     /**
@@ -1071,7 +1076,8 @@ public class GL11C {
             device().textureStorage(level, width, height);
             return;
         }
-        device().textureImage(level, width, height, unpackRgba(pixels, width, height));
+        device().textureImageArgb(level, width, height, gather(pixels, width, height),
+                width * height);
         rebuildMipmaps();
     }
     public static void glTexSubImage2D(int target, int level, int x, int y, int width, int height,
@@ -1090,7 +1096,8 @@ public class GL11C {
         state().refuseWhileRecording("glTexSubImage2D");
         requireLevel(level);
         requireRgbaBytes(format, type);
-        device().textureSubImage(level, x, y, width, height, unpackRgba(pixels, width, height));
+        device().textureSubImageArgb(level, x, y, width, height,
+                gather(pixels, width, height), width * height);
         rebuildMipmaps();
     }
     public static void glTexSubImage2D(int target, int level, int x, int y, int width, int height,
@@ -1099,7 +1106,7 @@ public class GL11C {
         state().refuseWhileRecording("glTexSubImage2D");
         requireLevel(level);
         requireRgbaBytes(format, type);
-        device().textureSubImage(level, x, y, width, height, spread(pixels, width * height));
+        device().textureSubImageArgb(level, x, y, width, height, pixels, width * height);
         rebuildMipmaps();
     }
     static void rebuildMipmaps() {
@@ -1132,44 +1139,24 @@ public class GL11C {
         }
         return pixelScratch;
     }
-    /**
-     * @return the rectangle glPixelStorei points at, read a row at a time straight into the bytes
-     *         a texture takes
-     */
-    static byte[] unpackRgba(IntBuffer pixels, int width, int height) {
+    private static int[] gathered = new int[0];
+
+    /** @return the rectangle glPixelStorei points at, read a row at a time into one store */
+    static int[] gather(IntBuffer pixels, int width, int height) {
         int rowLength = state().pixelStore(GL_UNPACK_ROW_LENGTH, 0);
         int stride = rowLength == 0 ? width : rowLength;
         int skipRows = state().pixelStore(GL_UNPACK_SKIP_ROWS, 0);
         int skipPixels = state().pixelStore(GL_UNPACK_SKIP_PIXELS, 0);
-        IntBuffer source = pixels.duplicate();
-        int at = source.position() + skipRows * stride + skipPixels;
-        byte[] rgba = new byte[width * height * 4];
-        int[] row = new int[width];
+        int at = pixels.position() + skipRows * stride + skipPixels;
+        if (gathered.length < width * height) {
+            gathered = new int[width * height];
+        }
         for (int line = 0; line < height; line++) {
-            source.position(at + line * stride);
-            source.get(row, 0, width);
-            spreadInto(row, width, rgba, line * width * 4);
+            for (int column = 0; column < width; column++) {
+                gathered[line * width + column] = pixels.get(at + line * stride + column);
+            }
         }
-        return rgba;
-    }
-    /** @return 0xAARRGGBB ints laid back out as the r, g, b, a bytes a texture takes */
-    static byte[] spread(int[] pixels, int count) {
-        if (pixels.length < count) {
-            throw new IllegalArgumentException(
-                    "need " + count + " pixels, got " + pixels.length);
-        }
-        byte[] rgba = new byte[count * 4];
-        spreadInto(pixels, count, rgba, 0);
-        return rgba;
-    }
-    private static void spreadInto(int[] pixels, int count, byte[] rgba, int out) {
-        for (int pixel = 0; pixel < count; pixel++) {
-            int argb = pixels[pixel];
-            rgba[out++] = (byte) (argb >> 16);
-            rgba[out++] = (byte) (argb >> 8);
-            rgba[out++] = (byte) argb;
-            rgba[out++] = (byte) (argb >>> 24);
-        }
+        return gathered;
     }
     /** one int per pixel is 0xAARRGGBB, which is what GL_BGRA with the packed type names */
     static void requireRgbaBytes(int format, int type) {

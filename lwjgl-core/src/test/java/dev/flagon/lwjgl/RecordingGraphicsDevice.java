@@ -23,6 +23,7 @@ import dev.flagon.platform.graphics.TextureFilter;
 import dev.flagon.platform.graphics.TextureWrap;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -578,16 +579,21 @@ final class RecordingGraphicsDevice implements GraphicsDevice {
 
     @Override
     public void textureImage(int level, int width, int height, byte[] rgba) {
-        lastTextureBytes = rgba;
+        lastTextureBytes = kept(rgba, width * height * 4);
         calls.add("textureImage " + level + " " + width + "x" + height);
-        lastRgba = rgba;
+        lastRgba = lastTextureBytes;
+    }
+
+    // a device reads the bytes the rectangle names and leaves any store behind them alone
+    private static byte[] kept(byte[] rgba, int needed) {
+        return rgba.length == needed ? rgba : Arrays.copyOf(rgba, needed);
     }
 
     @Override
     public void textureSubImage(int level, int x, int y, int width, int height, byte[] rgba) {
-        lastTextureBytes = rgba;
+        lastTextureBytes = kept(rgba, width * height * 4);
         calls.add("textureSubImage " + level + " " + x + "," + y + " " + width + "x" + height);
-        lastRgba = rgba;
+        lastRgba = lastTextureBytes;
     }
 
     @Override
