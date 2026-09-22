@@ -4,15 +4,12 @@ import dev.flagon.platform.graphics.BufferTarget;
 import dev.flagon.platform.graphics.BufferUsage;
 import dev.flagon.platform.graphics.GraphicsDevice;
 
-/**
- * the element buffer that turns quads into triangle pairs
- */
+/* quads --> triangle pairs */
 final class QuadIndices {
 
     private final GraphicsDevice device;
     private final int buffer;
 
-    private int[] indices = new int[0];
     private int uploadedQuads;
 
     QuadIndices(GraphicsDevice device) {
@@ -20,13 +17,12 @@ final class QuadIndices {
         this.buffer = device.createBuffer();
     }
 
-    /** the indices always count from zero; a draw reaches its own vertices through the offset */
     void bind(int quads) {
         device.bindBuffer(BufferTarget.ELEMENT, buffer);
         if (quads <= uploadedQuads) {
             return;
         }
-        indices = new int[quads * DrawMode.QUAD_INDICES];
+        int[] indices = new int[quads * DrawMode.QUAD_INDICES];
         write(indices, quads);
         device.bufferData(BufferTarget.ELEMENT, indices, indices.length, BufferUsage.STATIC);
         uploadedQuads = quads;
