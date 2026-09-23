@@ -26,20 +26,18 @@ jobs:
         with:
           distribution: temurin
           java-version: '25'
-          cache: maven
 
       - name: Cache bundles
         id: bundles
         uses: actions/cache@v5
         with:
           path: web/public/flagon
-          key: bundles-${{ hashFiles('**/pom.xml', '**/src/main/**', 'vendor/*.jar', 'Makefile') }}
+          key: bundles-${{ hashFiles('**/*.gradle.kts', 'gradle/libs.versions.toml', '**/src/main/**', 'vendor/*.jar', 'Makefile') }}
 
-      - name: Fetch maven
-        run: for attempt in 1 2 3; do ./mvnw -B -v && exit 0; sleep 10; done; exit 1
+      - uses: gradle/actions/setup-gradle@v4
 
       - name: Check java style
-        run: ./mvnw -B -q checkstyle:check
+        run: ./gradlew lintJava
 
       - name: Unit tests
         run: make test
@@ -175,14 +173,13 @@ jobs:
         with:
           distribution: temurin
           java-version: '25'
-          cache: maven
 
       - name: Cache release bundles
         id: bundles
         uses: actions/cache@v5
         with:
           path: web/public/flagon
-          key: release-${{ hashFiles('**/pom.xml', '**/src/main/**', 'vendor/*.jar', 'Makefile') }}
+          key: release-${{ hashFiles('**/*.gradle.kts', 'gradle/libs.versions.toml', '**/src/main/**', 'vendor/*.jar', 'Makefile') }}
 
       - name: Build backends as release
         if: steps.bundles.outputs.cache-hit != 'true'

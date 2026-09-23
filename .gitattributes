@@ -1,3 +1,6 @@
 examples/** linguist-generated=true
 teavm/** linguist-generated=true
 teavm-jso/** linguist-generated=true
+gradle/wrapper/gradle-wrapper.jar binary linguist-vendored
+gradlew text eol=lf
+gradlew.bat text eol=crlf

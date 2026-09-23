@@ -1,9 +1,7 @@
-target/
 node_modules/
 dist/
 .DS_Store
 
-# build artifacts served to the browser
 web/public/flagon/
 
 # playwright
@@ -11,10 +9,14 @@ test-results/
 web/playwright-report/
 web/blob-report/
 
-# your own jar
 vendor/*
 !vendor/.gitkeep
 
 .todo.md
 .vscode/settings.json
 .claude/
+.gradle/
+/build/
+*/build/
+*/*/build/
+!gradle/wrapper/gradle-wrapper.jar

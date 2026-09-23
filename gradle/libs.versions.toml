@@ -1,0 +1,34 @@
+[versions]
+teavm = "0.15.0"
+junit = "5.11.4"
+checkstyle = "10.21.1"
+lwjgl2 = "2.9.3"
+lwjgl3 = "3.3.3"
+
+[libraries]
+teavm-core = { module = "org.teavm:teavm-core", version.ref = "teavm" }
+teavm-classlib = { module = "org.teavm:teavm-classlib", version.ref = "teavm" }
+teavm-interop = { module = "org.teavm:teavm-interop", version.ref = "teavm" }
+teavm-jso = { module = "org.teavm:teavm-jso", version.ref = "teavm" }
+teavm-jso-apis = { module = "org.teavm:teavm-jso-apis", version.ref = "teavm" }
+teavm-jso-impl = { module = "org.teavm:teavm-jso-impl", version.ref = "teavm" }
+teavm-tooling = { module = "org.teavm:teavm-tooling", version.ref = "teavm" }
+teavm-deobfuscator = { module = "org.teavm:teavm-wasm-gc-deobfuscator", version.ref = "teavm" }
+teavm-platform = { module = "org.teavm:teavm-platform", version.ref = "teavm" }
+teavm-metaprogramming-api = { module = "org.teavm:teavm-metaprogramming-api", version.ref = "teavm" }
+teavm-extension-apis = { module = "org.teavm:teavm-extension-apis", version.ref = "teavm" }
+teavm-extension-spi = { module = "org.teavm:teavm-extension-spi", version.ref = "teavm" }
+teavm-extension-spi-util = { module = "org.teavm:teavm-extension-spi-util", version.ref = "teavm" }
+teavm-asm = { module = "org.teavm:teavm-relocated-libs-asm", version.ref = "teavm" }
+teavm-asm-tree = { module = "org.teavm:teavm-relocated-libs-asm-tree", version.ref = "teavm" }
+teavm-asm-analysis = { module = "org.teavm:teavm-relocated-libs-asm-analysis", version.ref = "teavm" }
+teavm-asm-commons = { module = "org.teavm:teavm-relocated-libs-asm-commons", version.ref = "teavm" }
+teavm-asm-util = { module = "org.teavm:teavm-relocated-libs-asm-util", version.ref = "teavm" }
+teavm-hppc = { module = "org.teavm:teavm-relocated-libs-hppc", version.ref = "teavm" }
+teavm-rhino = { module = "org.teavm:teavm-relocated-libs-rhino", version.ref = "teavm" }
+junit-bom = { module = "org.junit:junit-bom", version.ref = "junit" }
+junit-jupiter = { module = "org.junit.jupiter:junit-jupiter" }
+lwjgl2 = { module = "org.lwjgl.lwjgl:lwjgl", version.ref = "lwjgl2" }
+lwjgl3 = { module = "org.lwjgl:lwjgl", version.ref = "lwjgl3" }
+lwjgl3-glfw = { module = "org.lwjgl:lwjgl-glfw", version.ref = "lwjgl3" }
+lwjgl3-opengl = { module = "org.lwjgl:lwjgl-opengl", version.ref = "lwjgl3" }
