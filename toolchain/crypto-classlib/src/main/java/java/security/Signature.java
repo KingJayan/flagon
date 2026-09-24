@@ -3,13 +3,6 @@ package java.security;
 import java.math.BigInteger;
 import java.util.Locale;
 
-/**
- * checks that a message came from whoever holds the private key.
- *
- * <p>{@code SHA1withRSA} and {@code SHA256withRSA}, with PKCS#1 type 1 padding. a launcher
- * checks a download with one of these, and the check is the point, so it is done properly
- * rather than waved through.
- */
 public abstract class Signature {
 
     private final String algorithm;

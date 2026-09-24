@@ -24,7 +24,6 @@ checkstyle {
     configFile = rootProject.file("toolchain/checkstyle/checkstyle.xml")
 }
 
-// generated code is not written by hand, so style rules do not apply to it
 tasks.withType<Checkstyle>().configureEach {
     val generated = layout.buildDirectory.get().asFile
     setSource(source.filter { !it.startsWith(generated) })
@@ -40,6 +39,5 @@ tasks.withType<Test>().configureEach {
     useJUnitPlatform()
 }
 
-// maven put a provided dependency on the test classpath too, and the tests still expect it there
 configurations.named("testCompileOnly") { extendsFrom(configurations["compileOnly"]) }
 configurations.named("testRuntimeOnly") { extendsFrom(configurations["compileOnly"]) }

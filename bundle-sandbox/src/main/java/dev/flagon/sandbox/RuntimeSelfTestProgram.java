@@ -248,21 +248,11 @@ public final class RuntimeSelfTestProgram implements Program {
             if (i > 0) {
                 joined.append(',');
             }
-            // reading an element as a string is the other half: the array may be typed while
-            // its contents are not
             joined.append(arguments[i].trim());
         }
         Platforms.get().console().info("arguments: [" + joined + "]");
     }
 
-    /**
-     * what reflection does here, pinned rather than assumed
-     *
-     * <p>the compiler keeps only what it can see being reached, so a class carries its identity
-     * and its place in the hierarchy but not its members. asking for members is the sharp edge:
-     * it does not fail, it answers empty, and code that walks the answer quietly does nothing.
-     * these checks are here so a teavm upgrade that changes any of it is noticed.
-     */
     private void reflection() {
         check("class name", "dev.flagon.sandbox.RuntimeSelfTestProgram$Square",
                 Square.class.getName());
@@ -287,7 +277,6 @@ public final class RuntimeSelfTestProgram implements Program {
             check("forName finds a reachable class", "java.lang.String", "threw " + missing);
         }
 
-        // the silent half: members are stripped, so these answer empty rather than throwing
         check("declared fields are stripped", 0, Square.class.getDeclaredFields().length);
         check("declared methods are stripped", 0, Square.class.getDeclaredMethods().length);
         check("constructors are stripped", 0, Square.class.getConstructors().length);

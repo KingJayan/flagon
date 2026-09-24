@@ -5,11 +5,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-/**
- * programs a bundle can boot.
- * explicit registration rather than ServiceLoader: an aot compiler only keeps what's
- * statically reachable.
- */
 public final class ProgramRegistry {
 
     private final Map<String, Program> byId = new LinkedHashMap<>();

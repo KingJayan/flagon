@@ -25,20 +25,17 @@ import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
 /**
- * writes the entry points for whatever jar was dropped in
+ * writes entry points for vendor jar
  */
 public final class WriteAppEntry {
 
     private WriteAppEntry() {
     }
 
-    /** naming every class costs compile time and bundle size, so say when the list gets big */
     private static final int WARN_ABOVE = 10_000;
 
-    /** past this the list is doing more harm than the reflection it enables */
     private static final int LIMIT = 50_000;
 
-    /** how many shadowed names are worth printing before the point is made */
     private static final int SHADOWS_SHOWN = 10;
 
     private static final int RESOURCE_LIMIT = 1 << 20;
@@ -46,11 +43,6 @@ public final class WriteAppEntry {
     private static final Pattern TYPE_NAME = Pattern.compile(
             "[A-Za-z_$][A-Za-z0-9_$]*(?:\\.[A-Za-z_$][A-Za-z0-9_$]*)+");
 
-    /**
-     * {@code args[0]} a jar or a directory of them, {@code args[1]} the source directory to
-     * write into, {@code args[2]} where to list the classes they carry, if anywhere,
-     * {@code args[3]} comma-separated globs narrowing that list, if any
-     */
     public static void main(String[] args) throws Exception {
         Path given = Path.of(args[0]);
         Path into = Path.of(args[1]).resolve("dev/flagon/app");
@@ -75,19 +67,23 @@ public final class WriteAppEntry {
                 : "app programs: " + mains);
         reportShadowing(jars);
 
-        // the build may pass the argument through empty, which asks for no list at all
         if (args.length > 2 && args[2] != null && !args[2].isBlank()) {
             String narrowing = args.length > 3 && args[3] != null ? args[3] : "";
+
             List<String> classes = narrow(classesIn(jars), narrowing);
+
             if (classes.size() > LIMIT) {
                 throw new IllegalStateException(classes.size() + " classes is more than the "
                         + LIMIT + " this will name for reflection. narrow it with"
                         + " -Dflagon.app.reflect=your.game.**,your.other.pack.**");
             }
+
             Path listed = Path.of(args[2]).toAbsolutePath();
             Files.createDirectories(listed.getParent());
             Files.write(listed, classes);
+
             System.out.println(classes.size() + " classes may be constructed by reflection");
+
             if (classes.size() > WARN_ABOVE) {
                 System.out.println("that is a lot to keep constructors for, and it costs compile"
                         + " time and bundle size. if the game only reflects over its own"
@@ -154,7 +150,6 @@ public final class WriteAppEntry {
         }
     }
 
-    /** every class the jars carry, for the compiler to keep the constructors of */
     private static List<String> classesIn(OpenJars jars) {
         List<String> classes = new ArrayList<>();
         for (OpenJars.Opened opened : jars.all()) {
@@ -175,13 +170,6 @@ public final class WriteAppEntry {
         return classes;
     }
 
-    /**
-     * the jars are folded into one, and the fold keeps the first copy of a class it meets. a
-     * library that carries a class of the application's own name therefore replaces it, and
-     * nothing says so, which is why this does.
-     *
-     * @return the shadowed class names, each mapped to the jars that carry it
-     */
     static Map<String, String> shadowedIn(List<Path> paths) throws IOException {
         try (OpenJars jars = new OpenJars(paths)) {
             return shadowedIn(jars);
@@ -218,10 +206,6 @@ public final class WriteAppEntry {
         }
     }
 
-    /**
-     * keeps the classes a glob names. {@code *} stops at a package boundary and {@code **} does
-     * not, so {@code net.minecraft.*} is one package and {@code net.minecraft.**} is the tree.
-     */
     private static List<String> narrow(List<String> classes, String globs) {
         List<Pattern> wanted = new ArrayList<>();
         for (String glob : globs.split(",")) {
@@ -255,7 +239,6 @@ public final class WriteAppEntry {
         return pattern.toString();
     }
 
-    /** the jars to consider, a directory holding an application's libraries beside it */
     private static List<Path> jarsIn(Path given) throws IOException {
         if (Files.isRegularFile(given)) {
             return List.of(given);
@@ -270,12 +253,6 @@ public final class WriteAppEntry {
         }
     }
 
-    /**
-     * what the application runs
-     *
-     * <p>a library beside it is on the classpath and nothing more, so a jar that declares a main
-     * class is taken to be the application, and only when none does is every jar searched.
-     */
     private static List<String> runnableIn(OpenJars jars) throws IOException {
         List<OpenJars.Opened> declaring = new ArrayList<>();
         for (OpenJars.Opened opened : jars.all()) {
@@ -291,7 +268,6 @@ public final class WriteAppEntry {
         return mains;
     }
 
-    /** what the jar says it runs, and failing that, everything in it that could be run */
     private static List<String> runnableIn(OpenJars.Opened opened) throws IOException {
         String declared = declaredBy(opened.jar());
         if (declared != null
@@ -328,9 +304,6 @@ public final class WriteAppEntry {
         return found;
     }
 
-    /**
-     * whether the class file declares {@code public static void main(String[])}
-     */
     private static boolean hasMain(JarFile opened, String entry) {
         JarEntry found = opened.getJarEntry(entry);
         if (found == null) {
@@ -352,7 +325,6 @@ public final class WriteAppEntry {
         }
     }
 
-    /** only the utf8 entries are kept; nothing else here names a method */
     private static String[] constantPool(DataInputStream in) throws IOException {
         String[] constants = new String[in.readUnsignedShort()];
         for (int at = 1; at < constants.length; at++) {
@@ -403,9 +375,6 @@ public final class WriteAppEntry {
         }
     }
 
-    /**
-     * the simple name, unless two classes share one, in which case the whole name earns its keep
-     */
     private static List<String> idsFor(List<String> mains) {
         Set<String> simple = new LinkedHashSet<>();
         boolean clash = false;

@@ -2,14 +2,11 @@ plugins {
     id("flagon.published")
 }
 
-/** the stock jar this module rebuilds, resolved alone */
-val stock: Configuration by configurations.creating {
+val stock = configurations.create("stock") {
     isTransitive = false
 }
 
-// the stock classes join this module's own output, which precedes them on every classpath,
-// so a consumer sees one whole library with this module's fixes in it
-val unpackStock by tasks.registering(Sync::class) {
+val unpackStock = tasks.register<Sync>("unpackStock") {
     from(provider { stock.map { zipTree(it) } })
     into(layout.buildDirectory.dir("stock"))
 }
@@ -23,7 +20,6 @@ tasks.named<Jar>("jar") {
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
 }
 
-// a consumer that reads loose class directories would miss the stock half, so hand it the jar
 listOf("apiElements", "runtimeElements").forEach { name ->
     configurations.named(name) {
         outgoing.variants.removeIf { it.name == "classes" || it.name == "resources" }

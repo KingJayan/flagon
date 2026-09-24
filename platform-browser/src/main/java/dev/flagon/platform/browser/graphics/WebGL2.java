@@ -11,13 +11,6 @@ import org.teavm.jso.typedarrays.Int8Array;
 import org.teavm.jso.typedarrays.Uint8Array;
 import org.teavm.jso.typedarrays.Uint32Array;
 
-/**
- * the slice of WebGL2RenderingContext this project uses.
- *
- * <p>teavm ships jso bindings for webgl1 only, so the context is declared here directly. only
- * methods actually called are listed; anything missing is a compile error rather than a
- * runtime surprise.
- */
 public interface WebGL2 extends JSObject {
 
     int FRAMEBUFFER = 0x8D40;

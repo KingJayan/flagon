@@ -11,7 +11,7 @@ import org.teavm.jso.JSObject;
 import org.teavm.jso.typedarrays.Int8Array;
 
 /**
- a socket at the far side of a websocket
+ a socket at the far side of a ws
  */
 final class Tunnel {
 
@@ -19,7 +19,6 @@ final class Tunnel {
 
     private static final int SEND_LIMIT = 1 << 20;
 
-    /** how long a full browser buffer may stay full before the connection is called lost */
     private static final long SEND_DEADLINE_MS = 30_000L;
 
     interface Handle extends JSObject {
@@ -84,7 +83,6 @@ final class Tunnel {
         netOpen(url, settle(callback));
     }
 
-    /** @return the next bytes to arrive, or null once the far end has hung up */
     @Async
     static native Int8Array receive(Handle handle);
 

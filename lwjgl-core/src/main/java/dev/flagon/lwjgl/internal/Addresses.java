@@ -39,7 +39,6 @@ public final class Addresses {
     private static int gone;
     private static int sequence;
 
-    /** one buffer's address, held weakly */
     private static final class Held extends WeakReference<Buffer> {
 
         private final int identity;
@@ -87,7 +86,6 @@ public final class Addresses {
     }
 
     private static long base(Buffer buffer) {
-        // draw code hands over the same buffer again and again
         Held memo = last;
         if (memo != null && memo.get() == buffer) {
             return memo.handle;
@@ -195,7 +193,6 @@ public final class Addresses {
         held.sameIdentity = null;
     }
 
-    // linear probing leaves no tombstone: pull back whatever probed past the hole
     private static void close(int hole) {
         for (int at = after(hole); table[at] != null; at = after(at)) {
             int wanted = start(table[at].identity);
@@ -248,10 +245,6 @@ public final class Addresses {
         }
     }
 
-    /**
-     * @param capacity how many bytes the caller expects to reach
-     * @return the bytes the address names
-     */
     public static ByteBuffer bytes(long address, int capacity) {
         ByteBuffer slot = byteSlot(address);
         int offset = (int) address;

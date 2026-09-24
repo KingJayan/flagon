@@ -12,15 +12,7 @@ import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
 
 /**
- * openal 1.0 over the platform mixer.
- *
- * <p>errors are latched rather than thrown, which is what openal does and what code polling
- * {@code alGetError()} expects. a call that names something that does not exist leaves
- * {@code AL_INVALID_NAME} behind and changes nothing.
- *
- * <p>parameters with no counterpart in the browser's mixer throw
- * {@link UnsupportedOperationException} naming the parameter, rather than being dropped: a
- * cone angle that silently does nothing is a sound that plays at the wrong volume forever.
+ * openal 1.0 over plat mixe
  */
 public final class AL10 {
 

@@ -307,7 +307,6 @@ final class RecordingGraphicsDevice implements GraphicsDevice {
         calls.add("deleteProgram " + program);
     }
 
-    /** @return the source the device was given for {@code shader}, after translation */
     String sourceOf(int shader) {
         return shaderSources.get(shader);
     }
@@ -681,7 +680,6 @@ final class RecordingGraphicsDevice implements GraphicsDevice {
         };
     }
 
-    /** @return the recorded calls whose first word matches {@code name}. */
     List<String> calls(String name) {
         return calls.stream().filter(call -> call.startsWith(name + " ")).toList();
     }

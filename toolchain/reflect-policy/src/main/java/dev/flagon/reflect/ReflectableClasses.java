@@ -87,13 +87,6 @@ public final class ReflectableClasses extends SimpleReflectionPolicy {
         return patterns;
     }
 
-    /**
-     * the classes a file names, one per line
-     *
-     * <p>a jar nobody wrote cannot be annotated, and an obfuscated one cannot be globbed by hand
-     * either, so the build lists its classes instead. they keep their constructors, which is what
-     * such a jar reflects for: a registry that builds an entry from the class it was handed.
-     */
     private Set<String> constructed() {
         String named = environment().property(CONSTRUCTED);
         if (named == null || named.isBlank() || !Files.isRegularFile(Path.of(named))) {

@@ -6,12 +6,6 @@ import java.util.Collection;
 import java.util.Iterator;
 import java.util.Queue;
 
-/**
- * the handoff a worker writes and the frame loop drains
- *
- * <p>green threads switch only where one suspends, so a deque guarded by a monitor is as
- * concurrent as this runtime gets.
- */
 public class ConcurrentLinkedQueue<E> extends AbstractQueue<E> implements Queue<E> {
 
     private final ArrayDeque<E> items = new ArrayDeque<>();

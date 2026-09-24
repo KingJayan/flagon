@@ -7,22 +7,20 @@ plugins {
 val vendorDir = rootProject.layout.projectDirectory.dir("vendor")
 
 // merge vendor jars
-val vendorJar by tasks.registering(Zip::class) {
+val vendorJar = tasks.register<Zip>("vendorJar") {
     description = "fold the jars in vendor/ into one"
-    // sorted, so the same jar wins a duplicate entry every time
     from(
         provider {
             vendorDir.asFileTree.matching { include("*.jar") }.files.sorted().map { zipTree(it) }
         },
     )
-    // a signed jar's digests do not describe the merged jar
     exclude("META-INF/*.SF", "META-INF/*.DSA", "META-INF/*.RSA", "META-INF/*.EC")
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
     destinationDirectory.set(layout.buildDirectory.dir("vendor"))
     archiveFileName.set("app.jar")
 }
 
-val appEntry: Configuration by configurations.creating
+val appEntry = configurations.create("appEntry")
 
 dependencies {
     implementation(project(":runtime"))
@@ -47,7 +45,7 @@ dependencies {
 val generatedSources = layout.buildDirectory.dir("generated/app")
 val constructed = layout.buildDirectory.file("app-classes.txt")
 
-val writeAppEntry by tasks.registering(JavaExec::class) {
+val writeAppEntry = tasks.register<JavaExec>("writeAppEntry") {
     description = "write the entry point from what the jars in vendor/ say about themselves"
     classpath = appEntry
     mainClass.set("dev.flagon.appentry.WriteAppEntry")
@@ -55,7 +53,7 @@ val writeAppEntry by tasks.registering(JavaExec::class) {
     outputs.dir(generatedSources)
     outputs.file(constructed)
     outputs.cacheIf { true }
-    // these locals keep the build script itself out of the serialized task
+
     val vendor = vendorDir.asFile.absolutePath
     val generated = generatedSources
     val classList = constructed

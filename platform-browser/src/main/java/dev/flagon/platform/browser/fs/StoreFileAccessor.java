@@ -5,9 +5,6 @@ import org.teavm.runtime.fs.VirtualFileAccessor;
 
 import java.io.IOException;
 
-/**
- * an open file, held whole in memory between {@code open} and {@code close}
- */
 final class StoreFileAccessor implements VirtualFileAccessor {
 
     private final FileStore store;
@@ -26,10 +23,6 @@ final class StoreFileAccessor implements VirtualFileAccessor {
         this.store = store;
         this.path = path;
         this.writable = writable;
-        // teavm's RandomAccessFile.close() drops its accessor without closing or flushing it, so
-        // anything held back is lost. it is the only caller that opens a file both readable and
-        // writable, and that is what makes it safe to single out: those write straight through,
-        // and streams, which do close properly, keep the cheaper path
         this.writeThrough = readable && writable;
         this.data = store.read(path);
         this.length = data.length;
@@ -105,10 +98,11 @@ final class StoreFileAccessor implements VirtualFileAccessor {
             throw new IOException("file is not open for writing: " + path);
         }
         ensureCapacity(to);
-        // growing exposes bytes nothing ever wrote, and a file extended by seek reads as zeroes
+
         for (int at = length; at < to; at++) {
             data[at] = 0;
         }
+
         length = to;
         position = Math.min(position, length);
         dirty = true;

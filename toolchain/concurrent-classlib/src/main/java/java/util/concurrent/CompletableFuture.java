@@ -8,12 +8,6 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
-/**
- * a value that arrives later, and the chain of work waiting on it
- *
- * <p>the async forms run on the shared pool, which is green threads: the work is ordered rather
- * than parallel, and a stage that never suspends holds the page until it returns.
- */
 public class CompletableFuture<T> implements Future<T>, CompletionStage<T> {
 
     private static final ExecutorService POOL = Executors.newFixedThreadPool(4);
@@ -137,7 +131,6 @@ public class CompletableFuture<T> implements Future<T>, CompletionStage<T> {
         return true;
     }
 
-    /** runs the stage now when the value is already here, and queues it when it is not */
     private void onSettled(Runnable stage) {
         synchronized (this) {
             if (!done) {
@@ -284,7 +277,6 @@ public class CompletableFuture<T> implements Future<T>, CompletionStage<T> {
             try {
                 action.accept(value, failure);
             } catch (Throwable ignored) {
-                // whenComplete observes the result; it does not get to replace it
             }
             if (failure != null) {
                 next.completeExceptionally(failure);

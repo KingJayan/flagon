@@ -15,8 +15,10 @@ vendor/*
 .todo.md
 .vscode/settings.json
 .claude/
+
 .gradle/
-/build/
-*/build/
-*/*/build/
-!gradle/wrapper/gradle-wrapper.jar
+build/
+# buildSrc has a dev.flagon.build package, and it is source, not output
+!buildSrc/src/**
+.kotlin/
+target/

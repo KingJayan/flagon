@@ -28,10 +28,9 @@ val releaseBuild = providers.gradleProperty("flagon.release").isPresent
 val preserve = providers.gradleProperty("flagon.preserve").orElse("")
 
 val teavmClasspath = configurations.named("teavmClasspath")
-val bundleTools: Configuration by configurations.creating
+val bundleTools = configurations.create("bundleTools")
 
-// the patched jars replace classlib classes as well, so they go in front of the stock classlib
-val teavmPatched: Configuration by configurations.creating {
+val teavmPatched = configurations.create("teavmPatched") {
     isTransitive = false
 }
 
@@ -39,7 +38,8 @@ dependencies {
     bundleTools(project(":toolchain:resource-pack"))
     compileOnly(project(":toolchain:resource-pack"))
     compileOnly("dev.flagon:teavm-core-patched:${project.version}")
-    // the compiler reads this classpath, and the pom put the same jars on it
+    compileOnly("dev.flagon:teavm-jso-impl-patched:${project.version}")
+
     add(teavmClasspath.name, "dev.flagon:teavm-core-patched:${project.version}")
     add(teavmClasspath.name, "dev.flagon:teavm-jso-impl-patched:${project.version}")
     add(teavmClasspath.name, project(":toolchain:resource-pack"))
@@ -89,7 +89,6 @@ teavm {
         strict.set(true)
         sourceMap.set(false)
         debugInformation.set(false)
-        // the loader beside the bundles is copied once, from the patched sources
         copyRuntime.set(false)
         properties.putAll(reflectionProperties)
     }
@@ -105,7 +104,7 @@ tasks.withType<TeaVMTask>().configureEach {
     classpath.setFrom(teavmPatched, *rest)
 }
 
-val writeCatalog by tasks.registering(JavaExec::class) {
+val writeCatalog = tasks.register<JavaExec>("writeCatalog") {
     description = "list the programs the bundle carries"
     val out = bundlesDir.file(bundle.bundleName.map { "$it.catalog.json" })
     classpath = mainSources.runtimeClasspath
@@ -117,7 +116,7 @@ val writeCatalog by tasks.registering(JavaExec::class) {
     )
 }
 
-val writeResourcePack by tasks.registering(JavaExec::class) {
+val writeResourcePack = tasks.register<JavaExec>("writeResourcePack") {
     description = "pack the files the bundle serves beside its classes"
     val out = bundlesDir.file(bundle.bundleName.map { "$it.pack" })
     classpath = mainSources.runtimeClasspath + bundleTools

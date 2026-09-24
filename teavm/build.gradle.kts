@@ -8,7 +8,7 @@ dependencies {
     "api"(libs.teavm.metaprogramming.api)
     "api"(libs.teavm.extension.apis)
     "api"(libs.teavm.hppc)
-    // maven handed these to a consumer at compile time, and the extensions still need them there
+
     "api"(libs.teavm.extension.spi)
     "api"(libs.teavm.asm)
     "api"(libs.teavm.asm.tree)

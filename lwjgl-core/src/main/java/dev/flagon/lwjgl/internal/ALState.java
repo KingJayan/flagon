@@ -52,7 +52,6 @@ public final class ALState {
         return current != null;
     }
 
-    /** @throws IllegalStateException if {@code AL.create()} has not been called */
     public static ALState get() {
         if (current == null) {
             throw new IllegalStateException(

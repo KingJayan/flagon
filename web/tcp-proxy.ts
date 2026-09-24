@@ -16,7 +16,6 @@ export interface TcpProxyOptions {
   origins?: string[];
   token?: string;
   hosts?: string[];
-  /** extra certificate authorities to trust, for a server whose ca the host does not ship */
   tlsCa?: string;
 }
 
@@ -151,11 +150,6 @@ function open(client: WebSocket, asked: URL, allowed: Rule[], authorities: strin
     return;
   }
 
-  /*
-   * a page cannot speak tls down a socket it does not own, so the proxy does the handshake and
-   * checks the certificate here. the page gets plaintext, which is only as private as the hop
-   * between the page and this proxy -- same-origin over https in a hosted build, loopback in dev.
-   */
   const socket = secure
     ? tls.connect({ host, port, servername: host, ca: authorities || undefined })
     : net.createConnection({ host, port });
@@ -185,7 +179,7 @@ function open(client: WebSocket, asked: URL, allowed: Rule[], authorities: strin
   socket.on('error', (error: Error) => refuse(client, `${host}:${port} ${error.message}`));
   socket.on('close', () => client.close());
 
-  // text frames are the page pacing us; everything else is the socket's own bytes
+  // text frames are paced
   client.on('message', (data: Buffer, isBinary: boolean) => {
     if (!isBinary) {
       held = data.toString() === PAUSE;
@@ -200,12 +194,6 @@ function open(client: WebSocket, asked: URL, allowed: Rule[], authorities: strin
   client.on('close', () => socket.destroy());
 }
 
-/**
- * stops reading the page while the socket catches up
- *
- * <p>ws pauses the socket under it; runtimes that answer the same api without that method are
- * given the socket directly, so the shipping server backs off the same way vite's does.
- */
 function hold(client: WebSocket, holding: boolean): void {
   const stream = (client as unknown as { _socket?: NodeJS.ReadWriteStream })._socket;
   const paced = typeof client.pause === 'function' ? client : stream;

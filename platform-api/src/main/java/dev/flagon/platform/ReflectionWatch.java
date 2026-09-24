@@ -6,12 +6,6 @@ import java.lang.reflect.Method;
 import java.util.HashSet;
 import java.util.Set;
 
-/**
- * answers Class's member queries and says when the build stripped what was asked for.
- *
- * <p>the compiler keeps the members of named classes only, and an empty array is what the rest
- * report. code that walks that array does nothing and reports no error, so the warning is here.
- */
 public final class ReflectionWatch {
 
     private static final Set<String> told = new HashSet<>();

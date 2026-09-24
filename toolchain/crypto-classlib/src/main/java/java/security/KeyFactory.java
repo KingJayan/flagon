@@ -8,11 +8,6 @@ import java.security.spec.RSAPublicKeySpec;
 import java.security.spec.X509EncodedKeySpec;
 import java.util.Locale;
 
-/**
- * reads a key out of the form it was written in, and writes one back.
- *
- * <p>rsa only: X.509 for a public key, PKCS#8 for a private one, or the two numbers straight.
- */
 public class KeyFactory {
 
     private final String algorithm;

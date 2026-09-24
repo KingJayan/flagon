@@ -40,7 +40,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-/** {@link GraphicsDevice} on a WebGL2 context. */
+/** {@link GraphicsDevice} on WebGL2 context */
 public final class WebGLGraphicsDevice implements GraphicsDevice {
 
     private final WebGL2 gl;
@@ -52,25 +52,19 @@ public final class WebGLGraphicsDevice implements GraphicsDevice {
 
     private final JSObject defaultVertexArray;
 
-    // gl gives a texture its parameters when the name is first bound, not on every upload.
-    // names are small ints handed out by a table, so a bitset asks nothing of the allocator
     private final BitSet defaulted = new BitSet();
 
-    /** the fields of one attribute pointer */
     private static final int POINTER_FIELDS = 6;
 
     private final boolean[] capabilityOn = new boolean[6];
     private final boolean[] capabilityKnown = new boolean[6];
 
-    // webgl2 guarantees at least 32 combined texture units, and names a unit past its own limit
-    // an error rather than something to be tracked
     private final int[] boundTexture = new int[32];
     private int activeUnit = -1;
 
     private int boundArrayBuffer = NO_BUFFER;
     private int boundFramebuffer = NO_FRAMEBUFFER;
 
-    // enable state, pointers and the element binding live in the vertex array
     private final List<Attributes> arrays = new ArrayList<>();
     private int boundArray = NO_VERTEX_ARRAY;
     private float[] constants = new float[0];
@@ -89,9 +83,6 @@ public final class WebGLGraphicsDevice implements GraphicsDevice {
     private int blendEquationAlpha = WebGL2.FUNC_ADD;
     private final float[] blendColor = new float[4];
 
-    // the rest of the render state, remembered for the same reason the capabilities are: a
-    // program sets these around every batch, almost always to what they already were. the
-    // starting values are gl's own, so the first call that agrees with them is rightly skipped
     private boolean depthWrite = true;
     private int depthFunc = WebGL2.LESS;
     private int blendSourceColor = WebGL2.ONE;
@@ -105,7 +96,6 @@ public final class WebGLGraphicsDevice implements GraphicsDevice {
     private boolean blueMask = true;
     private boolean alphaMask = true;
 
-    /** what one vertex array remembers */
     private static final class Attributes {
 
         private int elementBuffer = NO_BUFFER;
@@ -116,10 +106,9 @@ public final class WebGLGraphicsDevice implements GraphicsDevice {
 
     public WebGLGraphicsDevice(WebGL2 gl) {
         this.gl = gl;
-        // webgl2 core profile requires a bound vertex array object before any attribute is set
         this.defaultVertexArray = gl.createVertexArray();
+
         gl.bindVertexArray(defaultVertexArray);
-        // nothing here wants premultiplied alpha
         gl.pixelStorei(WebGL2.UNPACK_PREMULTIPLY_ALPHA_WEBGL, 0);
 
     }
@@ -175,7 +164,6 @@ public final class WebGLGraphicsDevice implements GraphicsDevice {
         return object;
     }
 
-    // gl makes a new texture when a program binds a deleted or unused name
     private JSObject liveTexture(int name) {
         JSObject texture = handles.get(name);
         if (texture == null) {
@@ -443,8 +431,6 @@ public final class WebGLGraphicsDevice implements GraphicsDevice {
         };
     }
 
-    // programs turn these on and off around every batch they draw, usually to whatever they
-    // already were. the slot is an index of our own, the constant being far too sparse to key on
     private void capability(int slot, int capability, boolean enabled) {
         if (capabilityKnown[slot] && capabilityOn[slot] == enabled) {
             return;
@@ -497,10 +483,11 @@ public final class WebGLGraphicsDevice implements GraphicsDevice {
     public void deleteBuffer(int buffer) {
         gl.deleteBuffer(lookup(buffer, "buffer"));
         handles.remove(buffer);
-        // deleting the bound buffer unbinds it, and the name comes back later
+
         if (boundArrayBuffer == buffer) {
             boundArrayBuffer = NO_BUFFER;
         }
+
         for (Attributes held : arrays) {
             if (held == null) {
                 continue;
@@ -518,8 +505,6 @@ public final class WebGLGraphicsDevice implements GraphicsDevice {
 
     @Override
     public void bindBuffer(BufferTarget target, int buffer) {
-        // ARRAY is context state and worth remembering; ELEMENT belongs to the bound vertex
-        // array and would go stale the moment one was switched
         if (target == BufferTarget.ARRAY) {
             if (buffer == boundArrayBuffer) {
                 return;
@@ -593,12 +578,13 @@ public final class WebGLGraphicsDevice implements GraphicsDevice {
         JSObject vertex = compile(WebGL2.VERTEX_SHADER, vertexSource, "vertex");
         JSObject fragment = compile(WebGL2.FRAGMENT_SHADER, fragmentSource, "fragment");
         JSObject program = gl.createProgram();
+
         gl.attachShader(program, vertex);
         gl.attachShader(program, fragment);
         gl.linkProgram(program);
-        // shaders are reference-counted by the program, so they can go as soon as it links
         gl.deleteShader(vertex);
         gl.deleteShader(fragment);
+
         if (!gl.getProgramParameter(program, WebGL2.LINK_STATUS)) {
             String log = gl.getProgramInfoLog(program);
             gl.deleteProgram(program);
@@ -681,7 +667,6 @@ public final class WebGLGraphicsDevice implements GraphicsDevice {
     @Override
     public void linkProgram(int program) {
         gl.linkProgram(lookup(program, "program"));
-        // locations are assigned by the linker, so anything resolved before it is stale
         forgetUniforms(program);
     }
 
@@ -722,7 +707,6 @@ public final class WebGLGraphicsDevice implements GraphicsDevice {
         forgetUniforms(program);
     }
 
-    // location objects go with the names, or a program's uniforms stay for the life of the page
     private void forgetUniforms(int program) {
         if (program < 0 || program >= uniformNames.size()) {
             return;
@@ -757,7 +741,6 @@ public final class WebGLGraphicsDevice implements GraphicsDevice {
         gl.useProgram(program == NO_PROGRAM ? null : lookup(program, "program"));
     }
 
-    // one map per program, so resolving the same uniform every frame costs one lookup
     @Override
     public int uniformLocation(int program, String name) {
         Map<String, Integer> known = uniformsOf(program);
@@ -771,11 +754,6 @@ public final class WebGLGraphicsDevice implements GraphicsDevice {
         return assigned;
     }
 
-    /**
-     * @return the location object, or null for a uniform the shader does not use — writing to
-     *         one of those is a no-op in gl, which is what makes it safe to resolve a uniform
-     *         once and set it unconditionally
-     */
     private JSObject uniform(int location) {
         if (location == NO_UNIFORM) {
             return null;
@@ -941,8 +919,6 @@ public final class WebGLGraphicsDevice implements GraphicsDevice {
         }
     }
 
-    // checked before the cache is consulted, so a bad argument throws every time it is passed
-    // and not only the first
     private static void requireComponents(int components) {
         if (components < 1 || components > 4) {
             throw new IllegalArgumentException(
@@ -979,7 +955,6 @@ public final class WebGLGraphicsDevice implements GraphicsDevice {
 
     @Override
     public void disableAttribute(int location) {
-        // a vertex array starts with every attribute off
         Attributes held = attributes();
         if (!held.enabled.get(location)) {
             return;
@@ -1001,7 +976,6 @@ public final class WebGLGraphicsDevice implements GraphicsDevice {
                 strideInBytes, offsetInBytes);
     }
 
-    // gl records the array buffer bound at the time
     private boolean described(int location, int components, int type, int normalized,
                               int strideInBytes, int offsetInBytes) {
         Attributes held = attributes();
@@ -1042,11 +1016,6 @@ public final class WebGLGraphicsDevice implements GraphicsDevice {
                 offsetInBytes);
     }
 
-    /**
-     * webgl requires an attribute's offset and stride to be a multiple of its component size,
-     * where desktop gl does not. an interleaved format that pads to an odd width is legal on the
-     * desktop and draws nothing here, so it is named rather than left to a console warning.
-     */
     private static void requireAligned(AttributeType type, int value, String what) {
         int size = type.sizeInBytes();
         if (value % size != 0) {
@@ -1097,7 +1066,7 @@ public final class WebGLGraphicsDevice implements GraphicsDevice {
         gl.deleteTexture(lookup(texture, "texture"));
         handles.remove(texture);
         defaulted.clear(texture);
-        // gl unbinds a deleted texture from every unit it was on, so the record has to follow
+
         for (int unit = 0; unit < boundTexture.length; unit++) {
             if (boundTexture[unit] == texture) {
                 boundTexture[unit] = NO_TEXTURE;
@@ -1120,8 +1089,7 @@ public final class WebGLGraphicsDevice implements GraphicsDevice {
 
     @Override
     public void bindTexture(int unit, int texture) {
-        // the unit is selected either way: what a texture is given next is given to whatever is
-        // bound to the active one, so skipping the bind must not skip the selection
+
         selectUnit(unit);
         boolean tracked = unit < boundTexture.length;
         if (tracked && boundTexture[unit] == texture
@@ -1161,7 +1129,6 @@ public final class WebGLGraphicsDevice implements GraphicsDevice {
                 WebGL2.RGBA, WebGL2.UNSIGNED_BYTE, rgba(argb, count));
     }
 
-    // javascript swizzles into a store this device keeps
     private Uint8Array rgba(int[] argb, int count) {
         if (argb.length < count) {
             throw new IllegalArgumentException("need " + count + " pixels, got " + argb.length);
@@ -1187,8 +1154,6 @@ public final class WebGLGraphicsDevice implements GraphicsDevice {
 
     @Override
     public byte[] readPixels(int x, int y, int width, int height) {
-        // readPixels wants the unsigned view; the signed one over the same buffer is what
-        // crosses back, in one call rather than the one per byte this used to cost
         Uint8Array data = Uint8Array.create(width * height * 4);
         gl.readPixels(x, y, width, height, WebGL2.RGBA, WebGL2.UNSIGNED_BYTE, data);
         return JsArrays.bytesOf(Int8Array.create(data.getBuffer()));
@@ -1226,7 +1191,6 @@ public final class WebGLGraphicsDevice implements GraphicsDevice {
         if (framebuffer == NO_FRAMEBUFFER) {
             return;
         }
-        // gl leaves the surface bound when the framebuffer bound to it goes away
         if (boundFramebuffer == framebuffer) {
             bindFramebuffer(NO_FRAMEBUFFER);
         }
@@ -1315,8 +1279,7 @@ public final class WebGLGraphicsDevice implements GraphicsDevice {
             throw new IllegalArgumentException(
                     "need " + needed + " bytes, got " + rgba.length);
         }
-        // a view where the backend allows one: an atlas upload is megabytes, and copying it
-        // out of the heap first doubles what the upload costs
+
         return JsArrays.unsignedBytes(rgba, needed);
     }
 

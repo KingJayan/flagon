@@ -32,7 +32,6 @@ public final class SpinnerApp {
         new SpinnerApp().run(frameLimit(arguments));
     }
 
-    /** {@code --frames N} keeps the demo finite; without it the window runs until it closes. */
     private static int frameLimit(String[] arguments) {
         for (int i = 0; i + 1 < arguments.length; i++) {
             if (arguments[i].equals("--frames")) {

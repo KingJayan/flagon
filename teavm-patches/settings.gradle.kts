@@ -11,7 +11,6 @@ dependencyResolutionManagement {
     }
 }
 
-// the patched compiler sits in its own build, because gradle reads it before the main build exists
 include("teavm-core-patched")
 project(":teavm-core-patched").projectDir = file("../teavm")
 

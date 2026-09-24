@@ -1,11 +1,5 @@
 package java.util.concurrent.atomic;
 
-/**
- * an array whose slots change one at a time.
- *
- * <p>the green threads under this run one at a time and switch only where a thread suspends,
- * and none of these suspends, so a read and the write after it always see the same slot.
- */
 public class AtomicReferenceArray<E> {
 
     private final Object[] slots;

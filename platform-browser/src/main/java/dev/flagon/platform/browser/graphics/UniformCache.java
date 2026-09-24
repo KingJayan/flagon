@@ -1,8 +1,5 @@
 package dev.flagon.platform.browser.graphics;
 
-/**
- * remembers what each uniform location was last given, so setting it again costs nothing
- */
 final class UniformCache {
 
     private int[][] values = new int[64][];
@@ -54,7 +51,6 @@ final class UniformCache {
         return true;
     }
 
-    /** the vector and matrix form: the first {@code length} floats of {@code source}. */
     boolean changed(int location, float[] source, int length) {
         int[] held = slot(location, length);
         if (known[location]) {
@@ -73,7 +69,6 @@ final class UniformCache {
         return true;
     }
 
-    /** the same for a run of ints. */
     boolean changed(int location, int[] source, int length) {
         int[] held = slot(location, length);
         if (known[location]) {
@@ -90,7 +85,6 @@ final class UniformCache {
         return true;
     }
 
-    /** the location stands for something else now, or for nothing. */
     void forget(int location) {
         if (location >= 0 && location < known.length) {
             known[location] = false;

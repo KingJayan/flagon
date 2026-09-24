@@ -1,4 +1,3 @@
-// the patched compiler must reach the buildscript classpath, so it is built before this one
 includeBuild("../teavm-patches")
 
 dependencyResolutionManagement {

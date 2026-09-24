@@ -4,12 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * a pool of green threads that take work off a queue.
- *
- * <p>the size arguments are kept and answered, but only one worker runs at a time: the threads
- * under this switch where a task suspends, so a pool buys ordering and a place to queue, never
- * more work at once. a program that sizes a pool from the core count gets what it asked for and
- * finishes its work; it just does not finish it sooner.
+ green threads to take work off queue
  */
 public class ThreadPoolExecutor extends AbstractExecutorService {
 

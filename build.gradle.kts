@@ -10,7 +10,7 @@ val bundleProjects = listOf(
 
 val bundlesDir = layout.projectDirectory.dir("web/public/flagon")
 
-val copyWasmRuntime by tasks.registering(Copy::class) {
+val copyWasmRuntime = tasks.register<Copy>("copyWasmRuntime") {
     group = "flagon"
     description = "put the webassembly loader beside the bundles"
     from("teavm/src/main/resources/org/teavm/backend/wasm/wasm-gc-module-runtime.js")
@@ -44,20 +44,21 @@ tasks.register("lintJava") {
     )
 }
 
-// the patched compiler is a build of its own, so its tasks are named through the composite
 val patches = listOf("teavm-core-patched", "teavm-jso-impl-patched")
 
 tasks.named("clean") {
     dependsOn(patches.map { gradle.includedBuild("teavm-patches").task(":$it:clean") })
 }
 
-tasks.register("publish") {
+val publishAll = tasks.register("publish") {
     group = "publishing"
     description = "deploy every module to the package registry"
-    dependsOn(
-        subprojects
-            .filter { it.buildFile.exists() && it.buildFile.readText().contains("flagon.published") }
-            .map { "${it.path}:publish" },
-    )
     dependsOn(patches.map { gradle.includedBuild("teavm-patches").task(":$it:publish") })
+}
+
+subprojects {
+    val module = this
+    plugins.withId("flagon.published") {
+        publishAll.configure { dependsOn(module.tasks.named("publish")) }
+    }
 }

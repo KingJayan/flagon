@@ -9,13 +9,11 @@ import org.teavm.jso.core.JSObjects;
 import org.teavm.jso.dom.html.HTMLCanvasElement;
 import org.teavm.jso.dom.html.HTMLDocument;
 
-/** dom plumbing for the drawing canvas, kept apart from the surface's own logic. */
 final class Canvas {
 
     private Canvas() {
     }
 
-    /** returns the page's canvas, creating and appending one if the page supplied none */
     static JSObject findOrCreate(String id, int width, int height) {
         HTMLDocument page = Window.current().getDocument();
         HTMLCanvasElement canvas = (HTMLCanvasElement) page.getElementById(id);
@@ -40,9 +38,6 @@ final class Canvas {
     @JSBody(params = "canvas", script = "return canvas.dataset.flagonCreated === 'true';")
     private static native boolean wasCreated(JSObject canvas);
 
-    /**
-     * webgl2 context, or null when the browser or gpu refuses one
-     */
     interface ContextOptions extends JSObject {
         @JSProperty
         void setAlpha(boolean wanted);
@@ -65,13 +60,14 @@ final class Canvas {
 
     static WebGL2 context(JSObject canvas) {
         ContextOptions wanted = JSObjects.create();
+
         wanted.setAlpha(false);
         wanted.setDepth(true);
         wanted.setStencil(true);
         wanted.setAntialias(false);
-        // many drivers copy the drawing buffer each frame to keep it
         wanted.setPreserveDrawingBuffer(wantsPreserved());
         wanted.setPowerPreference("high-performance");
+
         return askForContext(canvas, wanted);
     }
 

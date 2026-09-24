@@ -40,7 +40,6 @@ if (file("vendor").listFiles()?.any { it.name.endsWith(".jar") } == true) {
     include("bundle-app")
 }
 
-// the patched compiler runs the build, so it is a build of its own
 includeBuild("teavm-patches")
 
 include("example-app")

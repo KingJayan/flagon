@@ -7,12 +7,6 @@ import java.nio.ByteBuffer;
 import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
 
-/**
- * the glu helpers lwjgl applications lean on, written on top of the gl entry points here.
- *
- * <p>nothing in this class talks to the device directly: every one of these is a matrix an
- * application could have built itself, or an upload {@code GL11} already knows how to do.
- */
 public final class GLU {
 
     public static final int GLU_INVALID_ENUM = 100900;
@@ -22,7 +16,6 @@ public final class GLU {
     private GLU() {
     }
 
-    /** the perspective glFrustum would set up, given a vertical field of view instead of a box. */
     public static void gluPerspective(float fovy, float aspect, float zNear, float zFar) {
         if (aspect == 0.0f || zNear == zFar) {
             throw new IllegalArgumentException(
@@ -34,7 +27,6 @@ public final class GLU {
         GL11.glFrustum(-right, right, -top, top, zNear, zFar);
     }
 
-    /** the view matrix that puts the eye at its point, looking down at the center. */
     public static void gluLookAt(float eyeX, float eyeY, float eyeZ,
                                  float centerX, float centerY, float centerZ,
                                  float upX, float upY, float upZ) {
@@ -57,10 +49,6 @@ public final class GLU {
         GL11.glOrtho(left, right, bottom, top, -1.0, 1.0);
     }
 
-    /**
-     * narrows the projection to the box around a pick point, so a later draw only covers what the
-     * cursor is over.
-     */
     public static void gluPickMatrix(float x, float y, float deltaX, float deltaY,
                                      IntBuffer viewport) {
         if (deltaX <= 0.0f || deltaY <= 0.0f) {
@@ -73,10 +61,6 @@ public final class GLU {
         GL11.glScalef(view[2] / deltaX, view[3] / deltaY, 1.0f);
     }
 
-    /**
-     * @param windowPosition takes the window x, y and depth the object point lands on
-     * @return whether the point has a window position at all
-     */
     public static boolean gluProject(float objectX, float objectY, float objectZ,
                                      FloatBuffer modelView, FloatBuffer projection,
                                      IntBuffer viewport, FloatBuffer windowPosition) {
@@ -98,10 +82,6 @@ public final class GLU {
         return true;
     }
 
-    /**
-     * @param objectPosition takes the object x, y, z the window point came from
-     * @return whether the window point maps back at all
-     */
     public static boolean gluUnProject(float windowX, float windowY, float windowZ,
                                        FloatBuffer modelView, FloatBuffer projection,
                                        IntBuffer viewport, FloatBuffer objectPosition) {
@@ -126,10 +106,6 @@ public final class GLU {
         return true;
     }
 
-    /**
-     * uploads the base level and lets the device build the rest, which is what a driver does with
-     * the levels glu would otherwise scale by hand.
-     */
     public static int gluBuild2DMipmaps(int target, int components, int width, int height,
                                         int format, int type, ByteBuffer data) {
         if (width <= 0 || height <= 0) {
@@ -140,7 +116,6 @@ public final class GLU {
         return 0;
     }
 
-    /** a box filter over rgba bytes; glu's own scaler is bilinear over whatever format it got. */
     public static int gluScaleImage(int format, int widthIn, int heightIn, int typeIn,
                                     ByteBuffer dataIn, int widthOut, int heightOut, int typeOut,
                                     ByteBuffer dataOut) {

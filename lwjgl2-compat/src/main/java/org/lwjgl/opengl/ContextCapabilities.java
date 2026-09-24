@@ -4,13 +4,6 @@ import java.util.HashSet;
 import java.util.Locale;
 import java.util.Set;
 
-/**
- * what this context can do, in the shape lwjgl applications read it.
- *
- * <p>the version flags say which of the {@code GL##} classes here are backed by real entry points;
- * the extension flags are answered from the host's own extension list, so an application that asks
- * before it uses something gets the truth rather than a promise.
- */
 public final class ContextCapabilities {
 
     public final boolean OpenGL11;

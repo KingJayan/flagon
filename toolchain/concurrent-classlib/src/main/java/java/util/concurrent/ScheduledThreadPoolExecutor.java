@@ -4,11 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * a pool that holds work back until its time comes.
- *
- * <p>one green thread watches the list, sleeps until the next task is due, and runs it. sleeping
- * is what hands the page on, so a schedule here keeps the frame loop going rather than blocking
- * it. a repeating task is put back on the list once it has run.
+ holds work back (pool)
  */
 public class ScheduledThreadPoolExecutor extends ThreadPoolExecutor
         implements ScheduledExecutorService {

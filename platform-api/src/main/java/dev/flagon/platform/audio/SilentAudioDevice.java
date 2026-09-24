@@ -7,12 +7,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-/**
- * an {@link AudioDevice} that keeps every book but makes no sound, for hosts without output.
- *
- * <p>playback is still timed off the clock, so a source that has played its buffer out reports
- * itself stopped. code that waits for that is the reason this is not a set of empty methods.
- */
 public final class SilentAudioDevice implements AudioDevice {
 
     private static final class Buffer {
@@ -35,7 +29,6 @@ public final class SilentAudioDevice implements AudioDevice {
         float maxDistance = Float.MAX_VALUE;
         final float[] position = new float[3];
         final float[] velocity = new float[3];
-        /** seconds into the buffer at the moment playback last started, or where it was paused. */
         double offset;
         long startedAt;
     }
@@ -264,8 +257,9 @@ public final class SilentAudioDevice implements AudioDevice {
         if (pitch <= 0.0f) {
             throw new AudioException("pitch must be positive: " + pitch);
         }
+
         Source held = source(source);
-        // the elapsed time so far was played at the old rate, so bank it before the rate changes
+
         if (settle(held) == SourceState.PLAYING) {
             held.offset = elapsed(held);
             held.startedAt = clock.currentTimeMillis();
@@ -427,7 +421,6 @@ public final class SilentAudioDevice implements AudioDevice {
         sources.clear();
     }
 
-    /** @return the state after however much of the buffer has played by now */
     private SourceState settle(Source source) {
         if (source.state != SourceState.PLAYING) {
             return source.state;

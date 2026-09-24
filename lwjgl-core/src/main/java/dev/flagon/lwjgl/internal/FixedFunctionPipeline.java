@@ -295,7 +295,6 @@ public final class FixedFunctionPipeline {
         }
     }
 
-    /** @return a handle to vertices the caller keeps, or {@code NO_CAPTURE} for an empty block */
     public int capture(DrawMode mode, float[] vertices, int floatCount, int vertexCount,
                        int layout) {
         if (mode.usableVertices(vertexCount) == 0) {

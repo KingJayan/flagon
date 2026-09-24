@@ -6,12 +6,12 @@ dependencies {
     api(project(":platform-api"))
 }
 
-val testFixtures by configurations.registering {
+val testFixtures = configurations.register("testFixtures") {
     isCanBeResolved = false
     isCanBeConsumed = true
 }
 
-val testJar by tasks.registering(Jar::class) {
+val testJar = tasks.register<Jar>("testJar") {
     archiveClassifier.set("tests")
     from(sourceSets["test"].output)
 }

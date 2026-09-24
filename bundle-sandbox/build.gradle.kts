@@ -2,7 +2,7 @@ plugins {
     id("flagon.bundle")
 }
 
-val absent by sourceSets.creating {
+val absent = sourceSets.create("absent") {
     java.setSrcDirs(listOf("src/main/java"))
     java.include("org/example/absent/**")
 }

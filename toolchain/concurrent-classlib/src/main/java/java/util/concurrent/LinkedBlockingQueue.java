@@ -6,12 +6,6 @@ import java.util.Collection;
 import java.util.Deque;
 import java.util.Iterator;
 
-/**
- * a queue that holds a taker until something arrives.
- *
- * <p>a taker suspends its green thread, which hands the page on, so a worker waiting here costs
- * the frame loop nothing.
- */
 public class LinkedBlockingQueue<E> extends AbstractQueue<E> implements BlockingQueue<E> {
 
     private final Deque<E> items = new ArrayDeque<>();

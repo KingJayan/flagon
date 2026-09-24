@@ -3,7 +3,6 @@ package dev.flagon.platform.browser;
 import dev.flagon.platform.ConsoleSink;
 import org.teavm.jso.JSBody;
 
-/** writes to the devtools console, and to the page's bridge when one is installed. */
 public final class BrowserConsole implements ConsoleSink {
 
     private final HostBridge bridge;
@@ -39,7 +38,6 @@ public final class BrowserConsole implements ConsoleSink {
         }
     }
 
-    // aot stack traces are only as good as the emitted debug info, so always include type+message
     static String describe(Throwable error) {
         StringBuilder out = new StringBuilder();
         Throwable current = error;

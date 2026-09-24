@@ -157,7 +157,6 @@ public final class Matrix4 {
         out[8] = 1.0f;
     }
 
-    /** @return {@code m * point}, the four components of a point carried into the matrix's space */
     public static float[] transform(float[] m, float x, float y, float z, float w) {
         float[] out = new float[4];
         for (int row = 0; row < 4; row++) {

@@ -5,10 +5,7 @@ import dev.flagon.runtime.FlagonRuntime;
 import dev.flagon.runtime.ProgramRegistry;
 
 /**
- * entry point of the bundle built from whatever jar is in {@code vendor/}
- *
- * <p>the same composition root every bundle has. what changes is that its programs are written by
- * the build from what the jar says about itself, so a jar can be run without writing any java.
+ * entry point of bundle
  */
 public final class AppMain {
 
@@ -19,7 +16,6 @@ public final class AppMain {
         FlagonRuntime.boot(BrowserPlatform.create(arguments), registry());
     }
 
-    /** the bundle's programs, read by the build to write the catalog beside the bundle */
     public static ProgramRegistry registry() {
         return AppEntry.registry();
     }
