@@ -6,12 +6,7 @@ import dev.flagon.platform.input.Scancode;
 import org.lwjgl.LWJGLException;
 
 /**
- * lwjgl's keyboard over the host's input source.
- *
- * <p>the constants are directinput scancodes, so they name physical keys rather than
- * characters — {@link #KEY_Z} is the key where z sits on a us layout whatever it prints
- * elsewhere. text comes from {@link #getEventCharacter()} instead, which is why lwjgl reports
- * both for the same event.
+ * lwjgl keyboard over input source
  */
 public final class Keyboard {
 

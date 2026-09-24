@@ -9,10 +9,7 @@ import java.net.URL;
 import java.nio.ByteBuffer;
 
 /**
- * riff wave pcm, read into what {@code alBufferData} takes.
- *
- * <p>only uncompressed pcm is read, which is all openal ever took. a compressed wave is
- * refused by name rather than played as noise.
+ * riff wave pcm, read into {@code alBufferData}
  */
 public final class WaveData {
 
@@ -26,7 +23,6 @@ public final class WaveData {
         this.samplerate = samplerate;
     }
 
-    /** frees nothing a garbage collector would not, and is here because callers call it. */
     public void dispose() {
         data.clear();
     }
@@ -60,7 +56,6 @@ public final class WaveData {
         }
     }
 
-    /** a path on the classpath, the way a game bundles its sounds. */
     public static WaveData create(String path) {
         if (path == null) {
             return null;
@@ -108,7 +103,6 @@ public final class WaveData {
                 pcm.flip();
                 return new WaveData(pcm, name, rate);
             }
-            // chunks are word aligned, and an odd one carries a pad byte the length does not count
             at = body + size + (size & 1);
         }
         return null;

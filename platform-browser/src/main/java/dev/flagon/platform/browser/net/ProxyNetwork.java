@@ -7,14 +7,13 @@ import dev.flagon.platform.browser.js.JsArrays;
 import org.teavm.jso.typedarrays.Int8Array;
 
 /**
- * connections carried by a websocket to a proxy served alongside the page
+ * connections carried by wss to proxy
  */
 public final class ProxyNetwork implements Network {
 
     private ProxyNetwork() {
     }
 
-    /** @return the network, or null without websockets or without the page half of the tunnel */
     public static ProxyNetwork createIfAvailable() {
         return Tunnel.isAvailable() && Tunnel.isInstalled() ? new ProxyNetwork() : null;
     }
@@ -124,12 +123,6 @@ public final class ProxyNetwork implements Network {
             }
         }
 
-        /**
-         * a frame is copied out of javascript whole, so a read costs one crossing however many
-         * bytes it asks for
-         *
-         * @return false at the end of the stream
-         */
         private boolean refill() {
             Int8Array arrived = Tunnel.receive(handle);
             taken = 0;

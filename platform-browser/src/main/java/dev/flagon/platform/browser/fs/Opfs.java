@@ -19,16 +19,12 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.List;
 
-/**
- * the origin private file system
- */
 final class Opfs {
 
     private static final Map<String, Directory> directories = new HashMap<>();
 
     private static Directory root;
 
-    /** what a stat call returns; absent files answer with {@code exists} false rather than null. */
     interface Entry extends JSObject {
         @JSProperty
         boolean isExists();
@@ -114,7 +110,6 @@ final class Opfs {
         JSString getValue();
     }
 
-    /** the directory a name sits in */
     private record At(Directory directory, String name) {
     }
 
@@ -129,15 +124,17 @@ final class Opfs {
         if ("/".equals(path)) {
             return entry(true, true, 0, 0);
         }
+
         String[] names = parts(path);
         if (names.length == 0) {
             return missing();
         }
-        // an absent parent means an absent path, which is what File.exists() asks
+
         Directory directory = above(names);
         if (directory == null) {
             return missing();
         }
+
         String name = names[names.length - 1];
         Handle handle = orNull(directory.getFileHandle(name));
         if (handle != null) {
@@ -150,7 +147,6 @@ final class Opfs {
                 : entry(true, true, 0, 0);
     }
 
-    /** the parent directory, or null when it is absent */
     private static Directory above(String[] names) {
         Directory at = root();
         for (int name = 0; at != null && name < names.length - 1; name++) {
@@ -213,7 +209,7 @@ final class Opfs {
         if (movesItself(handle)) {
             return settled(handle.move(target.directory(), target.name()));
         }
-        // without FileSystemHandle.move, a rename is a copy and a delete
+
         ArrayBuffer body = settled(settled(handle.getFile()).arrayBuffer());
         put(settled(target.directory().getFileHandle(target.name(), creating())), body);
         return settled(source.directory().removeEntry(source.name()));
@@ -232,7 +228,6 @@ final class Opfs {
                 : new At(descend(names, names.length - 1), names[names.length - 1]);
     }
 
-    // resolve each folder once and keep the handle
     private static Directory descend(String[] names, int count) {
         Directory at = root();
         for (int name = 0; name < count; name++) {
@@ -262,7 +257,6 @@ final class Opfs {
         return key.toString();
     }
 
-    /** forget cached handles under a path */
     private static void forget(String path) {
         String gone = key(parts(path), parts(path).length);
         directories.keySet().removeIf(held -> held.equals(gone) || held.startsWith(gone));
@@ -300,19 +294,13 @@ final class Opfs {
     @JSBody(script = "return navigator.storage;")
     private static native Storage storage();
 
-    /** null in place of a rejection */
     private static <T extends JSObject> T orNull(JSPromise<T> promise) {
         return settled(promise.catchError(refused -> null));
     }
 
-    /** blocks until the promise settles */
     @Async
     private static native <T extends JSObject> T settled(JSPromise<T> promise);
 
-    /**
-     * a rejected promise arrives as a message rather than an exception object: the javascript
-     * side may throw anything at all, and only its text survives the boundary intact.
-     */
     private static <T extends JSObject> void settled(JSPromise<T> promise,
             AsyncCallback<T> callback) {
         promise.then(value -> {

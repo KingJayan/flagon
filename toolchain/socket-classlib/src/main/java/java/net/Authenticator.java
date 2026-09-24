@@ -1,10 +1,7 @@
 package java.net;
 
 /**
- * who to ask for a password, asked by whoever needs one
- *
- * <p>nothing in the runtime challenges a connection, so the one an application installs is only
- * reached when the application asks for it itself.
+ where my password at bro
  */
 public abstract class Authenticator {
 

@@ -6,12 +6,6 @@ import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.List;
 
-/**
- * gl names are ints and webgl hands back objects, so a table maps between them
- *
- * <p>index 0 stays empty so 0 means "none", matching gl's convention. a deleted name is handed out
- * again, as gl does, so a session that churns objects reuses the table rather than growing it.
- */
 final class GlNames {
 
     private final List<JSObject> objects = new ArrayList<>();
@@ -46,7 +40,6 @@ final class GlNames {
         objects.set(name, object);
     }
 
-    /** @return what a name stands for, or null if it stands for nothing live */
     JSObject get(int name) {
         return name > 0 && name < objects.size() ? objects.get(name) : null;
     }
@@ -59,7 +52,6 @@ final class GlNames {
         release(name);
     }
 
-    /** how many names exist at all, live or free: the number that must not grow without bound */
     int size() {
         return objects.size();
     }
@@ -75,7 +67,6 @@ final class GlNames {
         freeNames[tail++] = name;
     }
 
-    /** @return the lowest free name, or 0 when every name is in use */
     private int take() {
         while (head < tail) {
             int name = freeNames[head++];

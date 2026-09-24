@@ -11,13 +11,7 @@ import java.nio.LongBuffer;
 import java.nio.ShortBuffer;
 
 /**
- * allocates the nio buffers desktop code hands to gl.
- *
- * <p>lwjgl allocates direct buffers so the driver can read them without a copy. there is no
- * driver here and nothing outside the vm can see the memory, but the allocation still has to
- * go through {@code allocateDirect} in native order: code reads and writes the same buffer
- * through several typed views, and a heap buffer would default to big-endian and silently
- * scramble every one of them.
+ * allocates the gl nio buffers
  */
 public final class BufferUtils {
 

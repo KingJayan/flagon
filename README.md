@@ -22,22 +22,22 @@ Requires **JDK 25+** and **[Bun](https://bun.sh)**.
 
 ```bash
 make setup   # Install dependencies
-make build   # Compile Java and emit WASM GC / JS bundles
-make dev     # Start development server at http://localhost:5273
+make build   # Compile and output bundles
+make dev     # Start dev server at http://localhost:5273
 ```
 
 To test a standalone JAR without setup, drop it into `vendor/` and run `make app` (see [Running an Existing JAR](DOWNSTREAM.md#quickstart-no-setup)).
 
 * **Dev Shell (`/`):** Console, runtime diagnostics, and program picker.
-* **Fullscreen View (`/play/?bundle=app`):** Edge-to-edge canvas execution.
-* **Networking (`make serve`):** Hosts the static build alongside the required WebSocket-to-TCP bridge (see [Networking Details](COMPATIBILITY.md)).
+* **Fullscreen View (`/play/?bundle=app`):** Full canvas execution.
+* **Networking (`make serve`):** Host static build with the WSS-to-TCP bridge (see [Networking Details](COMPATIBILITY.md)).
 
 ## Testing
 
 ```bash
 make test      # JVM unit tests
-make browser   # Playwright integration tests (Chromium & Firefox across both backends)
-make check     # Full CI verification suite
+make browser   # Playwright tests (Chromium & Firefox on both backends)
+make check     # Full CI run
 ```
 
 ## Comparison
@@ -47,7 +47,7 @@ make check     # Full CI verification suite
 | **Flagon** | Unmodified JAR | Reimplemented on WebGL2 (LWJGL 2 & 3) | OPFS persistence + Proxied TCP | MIT |
 | **TeaVM** | Source / Bytecode | None (core classlib only) | In-memory only | Apache 2.0 |
 | **CheerpJ** | Unmodified JAR | JVM virtualization (no desktop LWJGL) | Emulated virtual FS | Proprietary |
-| **Eaglercraft** | Forked 1.8 Source | Custom WebGL port (Minecraft only) | IndexedDB / Local | Contested |
+| **Eaglercraft** | Forked 1.8/1.12 Source | Custom WebGL port (Minecraft only) | IndexedDB / Local | Contested |
 
 ## License
 

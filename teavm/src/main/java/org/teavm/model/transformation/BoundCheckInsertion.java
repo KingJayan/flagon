@@ -15,11 +15,11 @@
  */
 package org.teavm.model.transformation;
 
-import com.carrotsearch.hppc.IntArrayList;
-import com.carrotsearch.hppc.IntHashSet;
-import com.carrotsearch.hppc.IntSet;
-import com.carrotsearch.hppc.cursors.IntCursor;
 import java.util.Arrays;
+import org.teavm.hppc.IntArrayList;
+import org.teavm.hppc.IntHashSet;
+import org.teavm.hppc.IntSet;
+import org.teavm.hppc.cursors.IntCursor;
 import org.teavm.model.BasicBlock;
 import org.teavm.model.Instruction;
 import org.teavm.model.MethodReference;

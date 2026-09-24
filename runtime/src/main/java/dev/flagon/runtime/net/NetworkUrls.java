@@ -9,11 +9,7 @@ import java.net.URLStreamHandler;
 import java.net.URLStreamHandlerFactory;
 
 /**
- * makes {@code java.net.URL} open http through the platform's network
- *
- * <p>this is the seam an unmodified application already reads through, the way
- * {@code StoreFileSystem} is for {@code java.io}. https goes the same way, with the proxy doing
- * the handshake, because a page cannot speak tls down a socket it does not own.
+ * makes {@code java.net.URL} open http through network
  */
 public final class NetworkUrls {
 
@@ -22,9 +18,6 @@ public final class NetworkUrls {
     private NetworkUrls() {
     }
 
-    /**
-     * installs the handler once per process; a second call, or a host that has none, does nothing.
-     */
     public static void install(Network network, ConsoleSink console) {
         if (installed || network == null || !network.isAvailable()) {
             return;
@@ -33,8 +26,6 @@ public final class NetworkUrls {
         try {
             URL.setURLStreamHandlerFactory(new Handlers(network));
         } catch (Error taken) {
-            // something else got there first, which is its right; http urls keep going wherever
-            // they went before rather than the runtime failing to boot over it
             if (console != null) {
                 console.warn("url handlers were already installed; http urls will not go through "
                         + network.name());

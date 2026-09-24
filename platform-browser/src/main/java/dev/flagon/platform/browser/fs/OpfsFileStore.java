@@ -7,17 +7,11 @@ import org.teavm.jso.core.JSArray;
 import org.teavm.jso.core.JSString;
 import org.teavm.jso.typedarrays.Int8Array;
 
-/**
- * a {@link FileStore} on the origin private file system, which survives a reload.
- *
- * <p>each call suspends the calling green thread until the browser answers; see {@link Opfs}.
- */
 public final class OpfsFileStore implements FileStore {
 
     private OpfsFileStore() {
     }
 
-    /** @return the store, or null when this browser has no origin private file system */
     public static OpfsFileStore createIfAvailable() {
         return Opfs.isAvailable() ? new OpfsFileStore() : null;
     }
@@ -116,8 +110,7 @@ public final class OpfsFileStore implements FileStore {
         if (FilePaths.isRoot(at) || !exists(at)) {
             return false;
         }
-        // opfs removes a directory and everything under it; java.io does not, so the emptiness
-        // check that java.io callers rely on is made here rather than left to the browser
+
         if (isDirectory(at) && list(at).length > 0) {
             return false;
         }

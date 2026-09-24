@@ -1,12 +1,5 @@
 package java.net;
 
-/**
- * a proxy an application may name, none of which a page can route through
- *
- * <p>the socket a page opens already goes through one proxy, named by the shell rather than by
- * the application. an application's own choice is carried faithfully so the code that passes it
- * around still runs; it is {@link #NO_PROXY} that decides anything.
- */
 public class Proxy {
 
     public enum Type {

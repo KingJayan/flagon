@@ -7,11 +7,7 @@ import java.io.PrintStream;
 import java.nio.charset.StandardCharsets;
 
 /**
- * routes {@code System.out} and {@code System.err} into the platform console.
- *
- * <p>an unmodified application reports through the standard streams and has never heard of
- * {@link ConsoleSink}. without this, everything it prints — including a stack trace it caught
- * and printed itself — lands somewhere the host cannot see.
+ * routes {@code System.out} and {@code System.err} into console
  */
 public final class ConsoleStreams {
 
@@ -46,7 +42,7 @@ public final class ConsoleStreams {
         System.err.flush();
         System.setOut(previousOut);
         System.setErr(previousErr);
-        // whatever was printed without a closing newline still has to go somewhere
+
         out.drain();
         err.drain();
         previousOut = null;
@@ -55,11 +51,6 @@ public final class ConsoleStreams {
         err = null;
     }
 
-    /**
-     * a console takes messages, not bytes, so bytes are held until a line ends — a flush cannot
-     * emit a partial line, because there is no such thing as half a console message. decoding
-     * waits for the same point, since a multi-byte character can straddle two writes.
-     */
     private static final class LineStream extends OutputStream {
 
         private static final int MAX_LINE = 8192;
@@ -86,7 +77,7 @@ public final class ConsoleStreams {
             }
             if (length == pending.length) {
                 if (length >= MAX_LINE) {
-                    // a line without an end would otherwise grow until the tab runs out of memory
+
                     emit();
                 } else {
                     byte[] grown = new byte[pending.length * 2];

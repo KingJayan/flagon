@@ -4,12 +4,6 @@ import java.nio.ByteBuffer;
 import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
 
-/**
- * the ARB_shader_objects names for what gl 2.0 took into core.
- *
- * <p>the extension holds programs and shaders in one handle space, so the calls that take either
- * one ask which of the two the handle is and go to the gl 2.0 call for it.
- */
 public final class ARBShaderObjects {
 
     public static final int GL_OBJECT_TYPE_ARB = 0x8B4E;

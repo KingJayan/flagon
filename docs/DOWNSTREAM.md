@@ -44,52 +44,30 @@ your-project/
 
 ### 1. Configure Dependencies
 
-In `bundle-browser/pom.xml`, include your application and Flagon's runtime modules.
+In `bundle-browser/build.gradle.kts`, include your application and Flagon's runtime modules.
 
-> **Important:** Your desktop LWJGL dependencies must be marked as `<scope>provided</scope>` or excluded in `bundle-browser`. Native desktop LWJGL classes will shadow Flagon's compatibility layer and break compilation.
+> **Important:** Your desktop LWJGL dependencies must be `compileOnly` or excluded in `bundle-browser`. Native desktop LWJGL classes will shadow Flagon's compatibility layer and break compilation.
 
-```xml
-<dependencies>
-    <!-- Flagon Core -->
-    <dependency>
-        <groupId>dev.flagon</groupId>
-        <artifactId>runtime</artifactId>
-    </dependency>
-    <dependency>
-        <groupId>dev.flagon</groupId>
-        <artifactId>platform-browser</artifactId>
-    </dependency>
+```kotlin
+dependencies {
+    // Flagon Core
+    implementation("dev.flagon:runtime:0.9.3")
+    implementation("dev.flagon:platform-browser:0.9.3")
 
-    <!-- LWJGL Compat (Choose lwjgl2-compat or lwjgl3-compat) -->
-    <dependency>
-        <groupId>dev.flagon</groupId>
-        <artifactId>lwjgl2-compat</artifactId>
-    </dependency>
+    // LWJGL Compat (Choose lwjgl2-compat or lwjgl3-compat)
+    implementation("dev.flagon:lwjgl2-compat:0.9.3")
 
-    <!-- Optional Classpath Extensions -->
-    <!-- Add if your app uses java.net.Socket -->
-    <dependency>
-        <groupId>dev.flagon</groupId>
-        <artifactId>socket-classlib</artifactId>
-    </dependency>
-    <!-- Add if your app uses reflection over its own members -->
-    <dependency>
-        <groupId>dev.flagon</groupId>
-        <artifactId>reflect-policy</artifactId>
-    </dependency>
+    // Optional Classpath Extensions
+    // Add if your app uses java.net.Socket
+    implementation("dev.flagon:socket-classlib:0.9.3")
+    // Add if your app uses reflection over its own members
+    implementation("dev.flagon:reflect-policy:0.9.3")
 
-    <!-- Your Desktop Application -->
-    <dependency>
-        <groupId>com.example</groupId>
-        <artifactId>your-app</artifactId>
-        <exclusions>
-            <exclusion>
-                <groupId>org.lwjgl.lwjgl</groupId>
-                <artifactId>*</artifactId>
-            </exclusion>
-        </exclusions>
-    </dependency>
-</dependencies>
+    // Your Desktop Application
+    implementation("com.example:your-app:1.0.0") {
+        exclude(group = "org.lwjgl.lwjgl")
+    }
+}
 
 ```
 
@@ -123,27 +101,41 @@ public final class BrowserMain {
 
 ### 3. Build Configuration
 
-If inheriting from `flagon-parent`, declare these properties in `bundle-browser/pom.xml`:
+Apply the TeaVM Gradle plugin and point it at your entry point:
 
-```xml
-<properties>
-    <flagon.bundle.mainClass>com.example.BrowserMain</flagon.bundle.mainClass>
-    <flagon.bundle.name>app</flagon.bundle.name>
-    <flagon.bundleOutput>${project.build.directory}/generated-bundle</flagon.bundleOutput>
-    <!-- Keep strict enabled to preserve JVM NullPointerException semantics -->
-    <flagon.strict>true</flagon.strict>
-</properties>
+```kotlin
+plugins {
+    java
+    id("org.teavm") version "0.15.0"
+}
+
+teavm {
+    all {
+        mainClass.set("com.example.BrowserMain")
+        outputDir.set(layout.buildDirectory.dir("generated-bundle"))
+    }
+    js {
+        targetFileName.set("app.js")
+        moduleType.set(org.teavm.gradle.api.JSModuleType.ES2015)
+        // Keep strict enabled to preserve JVM NullPointerException semantics
+        strict.set(true)
+    }
+    wasmGC {
+        targetFileName.set("app.wasm")
+        strict.set(true)
+    }
+}
 
 ```
 
-*Optional Program Catalog:* To generate an `app.catalog.json` metadata manifest for multi-app pickers prior to runtime boot, point `flagon.bundle.catalogClass` to a class executing `ProgramCatalog.writeTo(registry, args[0])`.
+*Optional Program Catalog:* To generate an `app.catalog.json` metadata manifest for multi-app pickers prior to runtime boot, run a class executing `ProgramCatalog.writeTo(registry, args[0])` from a `JavaExec` task.
 
 ### 4. Compile
 
 Compile the bundles:
 
 ```bash
-./mvnw package
+./gradlew generateWasmGC generateJavaScript
 
 ```
 
@@ -157,30 +149,23 @@ Ship both artifacts for complete browser support. Flagon's web shell automatical
 
 Pre-built releases are hosted on GitHub Packages.
 
-Add the repository to your `pom.xml`:
+Add the repository to your `build.gradle.kts`:
 
-```xml
-<repositories>
-    <repository>
-        <id>flagon</id>
-        <url>https://maven.pkg.github.com/KingJayan/flagon</url>
-    </repository>
-</repositories>
-
-```
-
-Authenticate in `~/.m2/settings.xml` using a GitHub Personal Access Token with `read:packages` permissions:
-
-```xml
-<servers>
-    <server>
-        <id>flagon</id>
-        <username>GITHUB_USERNAME</username>
-        <password>GITHUB_TOKEN</password>
-    </server>
-</servers>
+```kotlin
+repositories {
+    maven {
+        url = uri("https://maven.pkg.github.com/KingJayan/flagon")
+        credentials {
+            username = providers.gradleProperty("githubUser").get()
+            password = providers.gradleProperty("githubToken").get()
+        }
+    }
+}
 
 ```
+
+The token is a GitHub Personal Access Token with `read:packages` permissions. Keep both values in
+`~/.gradle/gradle.properties`, never in the repository.
 
 ---
 
@@ -195,7 +180,7 @@ The following APIs and properties are stable for downstream consumers:
 | `Program`, `ProgramRegistry`, `MainProgram` | Application lifecycle registration |
 | `BrowserPlatform.create` | Platform binding factory |
 | `window.__flagonHost` | Browser host coordination interface |
-| `flagon.bundle.*` | Maven POM configuration properties |
+| `dev.flagon:*` | Published module coordinates |
 | `@Reflectable`, `flagon.reflect.*` | Reflection preservation controls |
 
 All unlisted APIs are internal implementation details subject to change.

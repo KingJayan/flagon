@@ -2,16 +2,8 @@ package java.util.concurrent.locks;
 
 import java.util.concurrent.TimeUnit;
 
-/**
- * a condition queue over a lock that can say how many times it is held.
- *
- * <p>a wait gives up every hold, sleeps, and takes them all back. the green threads under this
- * switch only where a thread suspends, and releasing a lock suspends nothing, so no signal can
- * slip between the release and the sleep.
- */
 final class GreenCondition implements Condition {
 
-    /** what a condition needs from the lock it belongs to */
     interface Held {
 
         void requireHeld();

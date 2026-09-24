@@ -1,14 +1,7 @@
 package dev.flagon.platform.input;
 
-/**
- * one mouse button, movement, or wheel notch.
- *
- * <p>{@link #y()} counts up from the bottom of the surface, which is gl's convention and the
- * one desktop code already expects; hosts that report from the top convert on the way in.
- */
 public final class MouseEvent {
 
-    /** the button of an event that only moved the pointer or turned the wheel. */
     public static final int NO_BUTTON = -1;
 
     private final int button;
@@ -32,7 +25,6 @@ public final class MouseEvent {
         this.nanos = nanos;
     }
 
-    /** @return 0 left, 1 right, 2 middle, or {@link #NO_BUTTON} */
     public int button() {
         return button;
     }
@@ -53,12 +45,10 @@ public final class MouseEvent {
         return deltaX;
     }
 
-    /** @return movement since the previous event, positive upwards */
     public int deltaY() {
         return deltaY;
     }
 
-    /** @return wheel movement in notches of 120, positive away from the user */
     public int wheel() {
         return wheel;
     }

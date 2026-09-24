@@ -1,11 +1,5 @@
 package java.util.concurrent;
 
-/**
- * work and the result it will have, in one object.
- *
- * <p>{@link #run} calls the work and settles the future with what it gave or what it threw.
- * a thread that asks for the result before then suspends, which hands the page on.
- */
 public class FutureTask<V> implements RunnableFuture<V> {
 
     private final GreenFuture<V> future;
@@ -27,7 +21,6 @@ public class FutureTask<V> implements RunnableFuture<V> {
         done();
     }
 
-    /** a subclass hooks in here, the way the real one lets one. */
     protected void done() {
     }
 

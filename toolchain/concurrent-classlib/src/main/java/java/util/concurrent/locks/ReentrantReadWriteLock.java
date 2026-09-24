@@ -4,13 +4,6 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
-/**
- * many green threads may read, one may write, and nobody reads while one writes.
- *
- * <p>a reader that asks for the write lock deadlocks on a desktop jvm. green threads are
- * cooperative, so the same wait would hold the page forever with nothing left to release it.
- * this refuses the upgrade by name instead.
- */
 public class ReentrantReadWriteLock implements ReadWriteLock {
 
     private final Object monitor = new Object();

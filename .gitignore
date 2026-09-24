@@ -1,9 +1,7 @@
-target/
 node_modules/
 dist/
 .DS_Store
 
-# build artifacts served to the browser
 web/public/flagon/
 
 # playwright
@@ -11,10 +9,16 @@ test-results/
 web/playwright-report/
 web/blob-report/
 
-# your own jar
 vendor/*
 !vendor/.gitkeep
 
 .todo.md
 .vscode/settings.json
 .claude/
+
+.gradle/
+build/
+# buildSrc has a dev.flagon.build package, and it is source, not output
+!buildSrc/src/**
+.kotlin/
+target/

@@ -1,7 +1,5 @@
 package dev.flagon.platform.browser;
 
-import org.teavm.jso.JSObject;
-
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
@@ -11,14 +9,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-/**
- * a stand-in for a browser interface, recording what was called on it.
- *
- * <p>{@link JSObject} is a marker, so every browser api this project declares is an ordinary java
- * interface that a jvm test can implement. these implement themselves: calls are recorded, objects
- * an api hands out come back as further fakes, and anything a test cares about the value of is
- * answered by name.
- */
 public final class JsFake {
 
     private final List<String> calls = new ArrayList<>();
@@ -30,13 +20,11 @@ public final class JsFake {
                 new Recorder(type.getSimpleName())));
     }
 
-    /** what {@code method} returns from now on, in place of the default for its type */
     public JsFake answer(String method, Object value) {
         answers.put(method, value);
         return this;
     }
 
-    /** for a browser api that is a class rather than an interface, and so written out by hand */
     public void record(String call) {
         calls.add(call);
     }
@@ -100,7 +88,6 @@ public final class JsFake {
                 if (properties.containsKey(property)) {
                     return properties.get(property);
                 }
-                // a node's parts are the same parts every time it is asked for them
                 return held.computeIfAbsent(name,
                         any -> fallback(method.getReturnType(), name));
             }
@@ -141,7 +128,6 @@ public final class JsFake {
         }
     }
 
-    /** what an unanswered call gives back: a working object, or the success a gl call reports */
     private Object fallback(Class<?> returned, String method) {
         if (returned == void.class) {
             return null;

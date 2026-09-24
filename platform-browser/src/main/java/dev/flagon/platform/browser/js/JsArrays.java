@@ -14,24 +14,11 @@ import java.nio.ByteOrder;
 import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
 
-/**
- * hands the first {@code length} elements of a java array to a browser api as a typed array
- *
- * <p>compiled to javascript a java array is already a typed array, so the browser is given a view
- * over the array's own storage and nothing is copied. compiled to wasm gc it lives in the wasm heap
- * where javascript cannot see it, so exactly the elements being passed are copied out — the
- * reason
- * callers say how many they mean rather than passing a whole growable array.
- *
- * <p>the same boundary runs the other way, where the only thing that matters is that it is crossed
- * once for a whole array rather than once for each of its elements.
- */
 public final class JsArrays {
 
     private JsArrays() {
     }
 
-    /** @return the whole of a typed array as a java array, in one crossing */
     public static byte[] bytesOf(Int8Array values) {
         return values.copyToJavaArray();
     }
@@ -63,7 +50,6 @@ public final class JsArrays {
         return Float32Array.create(whole.getBuffer(), whole.getByteOffset(), length);
     }
 
-    /** the same bytes as {@link #bytes}, typed as the pixel apis want them. */
     public static Uint8Array unsignedBytes(byte[] values, int length) {
         require(length, values.length);
         if (copies()) {
@@ -101,10 +87,6 @@ public final class JsArrays {
         return new Uint32Array(whole.getBuffer(), whole.getByteOffset(), length);
     }
 
-    /**
-     * @param into a store the caller keeps
-     * @return the pixels as r, g, b, a bytes
-     */
     @JSBody(params = {"argb", "count", "into"}, script = """
             for (var at = 0; at < count; at++) {
                 var pixel = argb[at];
@@ -115,10 +97,8 @@ public final class JsArrays {
             """)
     public static native Uint8Array rgbaOf(Uint32Array argb, int count, Uint32Array into);
 
-    /** biggest upload one store serves */
     private static final int STORED = 64 * 1024;
 
-    // javascript reads a direct buffer where it stands
     private static FloatBuffer floatStore;
     private static IntBuffer intStore;
 
@@ -159,7 +139,6 @@ public final class JsArrays {
         }
     }
 
-    // folded to a constant at compile time, so only one of the two paths above is ever emitted
     @PlatformMarker(Platforms.WEBASSEMBLY_GC)
     private static boolean copies() {
         return false;

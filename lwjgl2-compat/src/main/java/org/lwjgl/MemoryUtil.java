@@ -13,12 +13,7 @@ import java.nio.ShortBuffer;
 import java.nio.charset.StandardCharsets;
 
 /**
- * the text encoding half of lwjgl's memory utilities.
- *
- * <p>the other half hands out the addresses of direct buffers so native code can read them.
- * nothing here has an address a caller could use — the buffers live inside the vm's heap and
- * the page has no way to reach them — so those methods refuse rather than invent a number,
- * which would be read as a pointer and corrupt whatever used it.
+ * the text encoding half of lwjgl utils
  */
 public final class MemoryUtil {
 
@@ -71,7 +66,6 @@ public final class MemoryUtil {
         return text.toString();
     }
 
-    /** reads without moving the buffer's position, which lwjgl's decoders also leave alone. */
     private static byte[] copyRemaining(ByteBuffer source) {
         byte[] bytes = new byte[source.remaining()];
         for (int i = 0; i < bytes.length; i++) {

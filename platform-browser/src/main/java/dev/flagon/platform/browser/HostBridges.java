@@ -24,7 +24,6 @@ final class HostBridges {
         JSObject get(String name);
     }
 
-    // a malformed bridge is reported then treated as absent
     static HostBridge installed() {
         HostBridge host = Window.current().<Hosting>cast().getHost();
         if (host == null || JSObjects.isUndefined(host)) {

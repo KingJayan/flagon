@@ -6,9 +6,6 @@ import org.teavm.runtime.fs.VirtualFile;
 import org.teavm.runtime.fs.VirtualFileSystem;
 import org.teavm.runtime.fs.VirtualFileSystemProvider;
 
-/**
- * puts a {@link FileStore} behind {@code java.io}
- */
 public final class StoreFileSystem implements VirtualFileSystem {
 
     private final FileStore store;
@@ -20,7 +17,6 @@ public final class StoreFileSystem implements VirtualFileSystem {
         this.store = store;
     }
 
-    /** replaces the filesystem every {@code java.io} class in the bundle reads through. */
     public static void install(FileStore store) {
         VirtualFileSystemProvider.setInstance(new StoreFileSystem(store));
     }

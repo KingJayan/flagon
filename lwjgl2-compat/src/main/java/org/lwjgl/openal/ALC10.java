@@ -5,13 +5,6 @@ import dev.flagon.platform.Platforms;
 
 import java.nio.IntBuffer;
 
-/**
- * the openal context layer, which a game opens before any al* call.
- *
- * <p>a page has one mixer, so the device a name asks for is the one it gets. attributes that
- * choose a frequency, a refresh rate or a sync mode are accepted and ignored, the browser
- * owning those.
- */
 public final class ALC10 {
 
     public static final int ALC_FALSE = 0;
@@ -63,7 +56,6 @@ public final class ALC10 {
         return new ALCcontext(device);
     }
 
-    /** a null context detaches the mixer, which is what {@code AL.destroy()} does too. */
     public static boolean alcMakeContextCurrent(ALCcontext context) {
         if (context == null) {
             current = null;

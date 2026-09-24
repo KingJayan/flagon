@@ -39,12 +39,6 @@ public final class Audio {
         return (double) frames(format, lengthInBytes) / sampleRate;
     }
 
-    /**
-     * pulls one channel out of interleaved pcm as samples in [-1, 1].
-     *
-     * <p>16-bit samples are little-endian and signed, 8-bit are unsigned with 128 for silence,
-     * which is what openal buffers hold and not what java's own byte reads assume.
-     */
     public static float[] channelSamples(AudioFormat format, byte[] data, int length, int channel) {
         requireWholeFrames(format, length);
         if (channel < 0 || channel >= format.channels()) {

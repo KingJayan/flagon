@@ -5,12 +5,6 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
-/**
- * a bundle's programs as json, so a shell can offer them before the bundle has ever run.
- *
- * <p>written on the jvm at build time from the same registry the bundle boots, which is why
- * the list cannot drift from what the bundle actually holds.
- */
 public final class ProgramCatalog {
 
     private ProgramCatalog() {

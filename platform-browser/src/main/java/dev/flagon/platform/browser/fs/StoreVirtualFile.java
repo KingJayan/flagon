@@ -7,7 +7,6 @@ import org.teavm.runtime.fs.VirtualFileAccessor;
 
 import java.io.IOException;
 
-/** one path in a {@link FileStore}, as {@code java.io.File} sees it. */
 final class StoreVirtualFile implements VirtualFile {
 
     private final FileStore store;
@@ -69,7 +68,6 @@ final class StoreVirtualFile implements VirtualFile {
         return store.delete(path);
     }
 
-    /** a rename arrives here as: move this entry into that directory under that name. */
     @Override
     public boolean adopt(VirtualFile file, String name) {
         if (!(file instanceof StoreVirtualFile source) || !store.isDirectory(path)) {
@@ -93,7 +91,6 @@ final class StoreVirtualFile implements VirtualFile {
         return store.lastModified(path);
     }
 
-    /** no store here lets a caller choose a timestamp, so the attempt reports failure. */
     @Override
     public boolean setLastModified(long lastModified) {
         return false;

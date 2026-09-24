@@ -4,12 +4,6 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
-/**
- * everything an executor can do once it can run a runnable.
- *
- * <p>a subclass writes {@link Executor#execute}, the shutdown calls, and nothing else: submit
- * wraps the work in a {@link FutureTask} and hands it over.
- */
 public abstract class AbstractExecutorService implements ExecutorService {
 
     protected AbstractExecutorService() {

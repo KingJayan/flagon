@@ -18,10 +18,8 @@ jobs:
         with:
           distribution: temurin
           java-version: '25'
-          cache: maven
 
-      - name: Fetch maven
-        run: for attempt in 1 2 3; do ./mvnw -B -v && exit 0; sleep 10; done; exit 1
+      - uses: gradle/actions/setup-gradle@v4
 
       - name: Set version (from tag)
         run: make version VERSION="${GITHUB_REF_NAME#v}"
@@ -97,13 +95,8 @@ jobs:
         with:
           distribution: temurin
           java-version: '25'
-          cache: maven
-          server-id: github
-          server-username: MAVEN_USERNAME
-          server-password: MAVEN_TOKEN
 
-      - name: Fetch maven
-        run: for attempt in 1 2 3; do ./mvnw -B -v && exit 0; sleep 10; done; exit 1
+      - uses: gradle/actions/setup-gradle@v4
 
       - name: Set version from tag
         run: make version VERSION="${GITHUB_REF_NAME#v}"

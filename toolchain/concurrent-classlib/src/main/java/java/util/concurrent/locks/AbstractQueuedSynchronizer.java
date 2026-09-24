@@ -2,13 +2,6 @@ package java.util.concurrent.locks;
 
 import java.util.concurrent.TimeUnit;
 
-/**
- * a counter a subclass gives meaning to, and a queue of threads waiting for it to change.
- *
- * <p>the real one is built on compare-and-swap over parked threads. the green threads under this
- * run one at a time and switch only where a thread suspends, so the state is guarded by a plain
- * monitor and a waiting thread sleeps on it. a subclass sees the same protocol either way.
- */
 public abstract class AbstractQueuedSynchronizer {
 
     private final Object monitor = new Object();
@@ -29,7 +22,6 @@ public abstract class AbstractQueuedSynchronizer {
         }
     }
 
-    /** nothing else runs between the read and the write, so the swap always sees what it read. */
     protected final boolean compareAndSetState(int expected, int value) {
         synchronized (monitor) {
             if (state != expected) {
