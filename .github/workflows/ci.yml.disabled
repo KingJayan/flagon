@@ -44,7 +44,7 @@ jobs:
 
       - name: Build backends
         if: steps.bundles.outputs.cache-hit != 'true'
-        run: make build
+        run: make bundles
 
       - name: Upload bundles
         uses: actions/upload-artifact@v5
@@ -79,7 +79,7 @@ jobs:
         run: make typecheck
 
       - name: Build site
-        run: make site
+        run: make build-site
 
       - name: Upload site
         uses: actions/upload-artifact@v5
@@ -97,18 +97,23 @@ jobs:
       matrix:
         include:
           - project: chromium
+            engine: chromium
             shard: 1
             shards: 3
           - project: chromium
+            engine: chromium
             shard: 2
             shards: 3
           - project: chromium
+            engine: chromium
             shard: 3
             shards: 3
           - project: firefox
+            engine: firefox
             shard: 1
             shards: 1
           - project: served
+            engine: chromium
             shard: 1
             shards: 1
     steps:
@@ -150,7 +155,7 @@ jobs:
           restore-keys: playwright-${{ runner.os }}-
 
       - name: Install browser
-        run: make browser-${{ matrix.project }}
+        run: make browsers ENGINES=${{ matrix.engine }}
 
       - name: Browser tests
         run: make browser ARGS="--project=${{ matrix.project }} --shard=${{ matrix.shard }}/${{ matrix.shards }}"
@@ -183,7 +188,7 @@ jobs:
 
       - name: Build backends as release
         if: steps.bundles.outputs.cache-hit != 'true'
-        run: make build-release
+        run: make bundles-release
 
       - name: Upload release bundles
         uses: actions/upload-artifact@v5

@@ -6,6 +6,7 @@ BUNDLES := $(WEB)/public/flagon
 
 ARGS ?=
 N ?= 3
+ENGINES ?= chromium firefox
 
 VENDOR_JARS := $(wildcard vendor/*.jar)
 
@@ -25,9 +26,9 @@ setup: deps browsers ## install project dependencies and browser test engines
 deps: ## install web dependencies
 	cd $(WEB) && bun install --frozen-lockfile
 
-browsers: ## install Playwright browsers and system dependencies
-	cd $(WEB) && bunx playwright install-deps chromium firefox
-	cd $(WEB) && bunx playwright install chromium firefox
+browsers: ## install Playwright engines and their system dependencies (ENGINES="chromium firefox")
+	cd $(WEB) && bunx playwright install-deps $(ENGINES)
+	cd $(WEB) && bunx playwright install $(ENGINES)
 
 fast: ## compile the fast development bundles
 	@rm -f $(BUNDLES)/*.js.map $(BUNDLES)/*.js.teavmdbg
@@ -141,6 +142,7 @@ check: ## run the same checks used by CI
 	@$(MAKE) bundles
 	@$(MAKE) lint
 	@$(MAKE) typecheck
+	@$(MAKE) test
 	@$(MAKE) browser
 
 report: ## open the latest Playwright report
