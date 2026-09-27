@@ -108,29 +108,28 @@ final class Canvas {
     @JSBody(script = "return document.fullscreenElement != null;")
     static native boolean isFullscreen();
 
-    @JSBody(params = "canvas", script = """
-            try {
-                var result = canvas.requestFullscreen();
-                if (result && typeof result.catch === 'function') {
-                    result.catch(function (error) {
-                        console.warn('[flagon] fullscreen refused: ' + error);
-                    });
-                }
-                return true;
-            } catch (error) {
-                console.warn('[flagon] fullscreen refused: ' + error);
-                return false;
-            }
-            """)
-    static native boolean requestFullscreen(JSObject canvas);
-
-    @JSBody(script = """
-            if (document.fullscreenElement != null) {
-                document.exitFullscreen();
-            }
+    static boolean requestFullscreen(JSObject canvas) {
+        try {
+            Promises.warnIfRefused(askFullscreen(canvas), "fullscreen");
             return true;
-            """)
-    static native boolean exitFullscreen();
+        } catch (RuntimeException refused) {
+            Promises.warn("[flagon] fullscreen refused: " + refused.getMessage());
+            return false;
+        }
+    }
+
+    @JSBody(params = "canvas", script = "return canvas.requestFullscreen();")
+    private static native JSObject askFullscreen(JSObject canvas);
+
+    static boolean exitFullscreen() {
+        if (isFullscreen()) {
+            leaveFullscreen();
+        }
+        return true;
+    }
+
+    @JSBody(script = "document.exitFullscreen();")
+    private static native void leaveFullscreen();
 
     static void remove(JSObject canvas) {
         if (wasCreated(canvas)) {

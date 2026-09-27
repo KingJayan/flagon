@@ -1136,7 +1136,7 @@ public final class WebGLGraphicsDevice implements GraphicsDevice {
         if (swizzled == null || swizzled.getLength() < count) {
             swizzled = new Uint32Array(count);
         }
-        return JsArrays.rgbaOf(JsArrays.unsignedInts(argb, count), count, swizzled);
+        return JsArrays.rgba(argb, count, swizzled);
     }
 
     @Override

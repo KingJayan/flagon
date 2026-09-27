@@ -87,6 +87,25 @@ public final class JsArrays {
         return new Uint32Array(whole.getBuffer(), whole.getByteOffset(), length);
     }
 
+    public static Uint8Array rgba(int[] argb, int count, Uint32Array into) {
+        require(count, argb.length);
+        if (copies()) {
+            Uint32Array swapped = unsignedInts(swapped(argb, count), count);
+            return Uint8Array.create(swapped.getBuffer(), swapped.getByteOffset(), count * 4);
+        }
+        return swappedInJs(unsignedInts(argb, count), count, into);
+    }
+
+    private static int[] swapped(int[] argb, int count) {
+        int[] rgba = new int[count];
+        for (int at = 0; at < count; at++) {
+            int pixel = argb[at];
+            rgba[at] = (pixel & 0xFF00FF00) | ((pixel >>> 16) & 0x000000FF)
+                    | ((pixel & 0x000000FF) << 16);
+        }
+        return rgba;
+    }
+
     @JSBody(params = {"argb", "count", "into"}, script = """
             for (var at = 0; at < count; at++) {
                 var pixel = argb[at];
@@ -95,7 +114,7 @@ public final class JsArrays {
             }
             return new Uint8Array(into.buffer, into.byteOffset, count * 4);
             """)
-    public static native Uint8Array rgbaOf(Uint32Array argb, int count, Uint32Array into);
+    private static native Uint8Array swappedInJs(Uint32Array argb, int count, Uint32Array into);
 
     private static final int STORED = 64 * 1024;
 
