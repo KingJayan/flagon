@@ -184,6 +184,8 @@ publish: ## publish Gradle artifacts to the package registry
 
 clean: ## remove generated build and test output
 	$(GRADLE) clean
+# the java language server still writes classes into target/
+	find . -type d -name target -not -path './web/node_modules/*' -prune -exec rm -rf {} +
 	rm -rf \
 		$(BUNDLES) \
 		$(WEB)/dist \
