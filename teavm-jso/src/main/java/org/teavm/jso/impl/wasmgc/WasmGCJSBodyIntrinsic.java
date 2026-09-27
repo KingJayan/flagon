@@ -55,6 +55,8 @@ class WasmGCJSBodyIntrinsic implements WasmGCInlineIntrinsic {
             }
         }
         if (global == null) {
+            System.err.println("flagon: " + invocation.getMethod()
+                    + " keeps its javascript text, so this bundle needs unsafe-eval");
             global = commonGen.addJSBody(emitter, inlined);
         }
         var caller = jsFunctions.getFunctionCaller(invocation.getArguments().size());

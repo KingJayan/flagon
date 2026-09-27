@@ -315,12 +315,17 @@ final class DomInput {
     private static native void listen(JSObject target, String type, JSObject listener,
                                       JSObject options);
 
-    @JSBody(params = {"element", "watcher"}, script = """
-            var watching = new ResizeObserver(watcher);
-            watching.observe(element);
-            return watching;
-            """)
-    private static native JSObject watchSize(JSObject element, Noticed watcher);
+    private static JSObject watchSize(JSObject element, Noticed watcher) {
+        JSObject watching = observerFor(watcher);
+        observe(watching, element);
+        return watching;
+    }
+
+    @JSBody(params = "watcher", script = "return new ResizeObserver(watcher);")
+    private static native JSObject observerFor(Noticed watcher);
+
+    @JSBody(params = {"watching", "element"}, script = "watching.observe(element);")
+    private static native void observe(JSObject watching, JSObject element);
 
     @JSBody(params = "watching", script = "watching.disconnect();")
     private static native void stopWatching(JSObject watching);
@@ -329,28 +334,30 @@ final class DomInput {
     private static native void focusWithout(JSObject element, JSObject options);
 
     /** pointer lock needs a user gesture and resolves later, so this reports acceptance only. */
-    @JSBody(params = "canvas", script = """
-            try {
-                var result = canvas.requestPointerLock();
-                if (result && typeof result.catch === 'function') {
-                    result.catch(function (error) {
-                        console.warn('[flagon] pointer lock refused: ' + error);
-                    });
-                }
-                return true;
-            } catch (error) {
-                console.warn('[flagon] pointer lock refused: ' + error);
-                return false;
-            }
-            """)
-    static native boolean requestPointerLock(JSObject canvas);
+    static boolean requestPointerLock(JSObject canvas) {
+        try {
+            Promises.warnIfRefused(askPointerLock(canvas), "pointer lock");
+            return true;
+        } catch (RuntimeException refused) {
+            Promises.warn("[flagon] pointer lock refused: " + refused.getMessage());
+            return false;
+        }
+    }
 
-    @JSBody(script = """
-            if (document.pointerLockElement != null) {
-                document.exitPointerLock();
-            }
-            """)
-    static native void exitPointerLock();
+    @JSBody(params = "canvas", script = "return canvas.requestPointerLock();")
+    private static native JSObject askPointerLock(JSObject canvas);
+
+    static void exitPointerLock() {
+        if (isPointerLockHeld()) {
+            leavePointerLock();
+        }
+    }
+
+    @JSBody(script = "return document.pointerLockElement != null;")
+    private static native boolean isPointerLockHeld();
+
+    @JSBody(script = "document.exitPointerLock();")
+    private static native void leavePointerLock();
 
     @JSBody(params = "canvas", script = "return document.pointerLockElement === canvas;")
     static native boolean isPointerLocked(JSObject canvas);
