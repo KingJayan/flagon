@@ -70,7 +70,7 @@ public final class WriteAbsentCode implements TeaVMPlugin, ClassHolderTransforme
 
     @Override
     public void install(TeaVMHost host) {
-        loader = host.getClassLoader();
+        loader = BuildClasspath.of(host);
         host.add(this);
     }
 
