@@ -48,7 +48,7 @@ public final class KeepNamedClasses implements TeaVMPlugin, DependencyListener,
 
     @Override
     public void install(TeaVMHost host) {
-        loader = host.getClassLoader();
+        loader = BuildClasspath.of(host);
         wanted = patterns(host.getProperties().getProperty(PATTERNS, ""));
         if (!wanted.isEmpty()) {
             host.add((DependencyListener) this);

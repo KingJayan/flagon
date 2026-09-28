@@ -5,6 +5,7 @@ import org.gradle.process.CommandLineArgumentProvider
 import org.teavm.gradle.api.JSModuleType
 import org.teavm.gradle.api.OptimizationLevel
 import org.teavm.gradle.tasks.TeaVMTask
+import java.io.File
 
 plugins {
     id("flagon.java")
@@ -102,6 +103,11 @@ tasks.withType<TeaVMTask>().configureEach {
     usesService(compilerLock)
     val rest = classpath.from.toTypedArray()
     classpath.setFrom(teavmPatched, *rest)
+    val listed = classpath
+    properties.put(
+        "flagon.classpath",
+        provider { listed.files.joinToString(File.pathSeparator) { it.absolutePath } },
+    )
 }
 
 val writeCatalog = tasks.register<JavaExec>("writeCatalog") {
