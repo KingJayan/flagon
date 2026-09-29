@@ -1,7 +1,7 @@
 import dev.flagon.build.BundleExtension
 import dev.flagon.build.CompilerLock
+import dev.flagon.build.RunMain
 import org.gradle.accessors.dm.LibrariesForLibs
-import org.gradle.process.CommandLineArgumentProvider
 import org.teavm.gradle.api.JSModuleType
 import org.teavm.gradle.api.OptimizationLevel
 import org.teavm.gradle.tasks.TeaVMTask
@@ -110,32 +110,26 @@ tasks.withType<TeaVMTask>().configureEach {
     )
 }
 
-val writeCatalog = tasks.register<JavaExec>("writeCatalog") {
+val writeCatalog = tasks.register<RunMain>("writeCatalog") {
     description = "list the programs the bundle carries"
     val out = bundlesDir.file(bundle.bundleName.map { "$it.catalog.json" })
-    classpath = mainSources.runtimeClasspath
+    runtimeClasspath.from(mainSources.runtimeClasspath)
     mainClass.set(bundle.catalogClass)
     outputs.file(out)
     outputs.cacheIf { true }
-    argumentProviders.add(
-        CommandLineArgumentProvider { listOf(out.get().asFile.absolutePath) },
-    )
+    arguments.add(out.map { it.asFile.absolutePath })
 }
 
-val writeResourcePack = tasks.register<JavaExec>("writeResourcePack") {
+val writeResourcePack = tasks.register<RunMain>("writeResourcePack") {
     description = "pack the files the bundle serves beside its classes"
     val out = bundlesDir.file(bundle.bundleName.map { "$it.pack" })
-    classpath = mainSources.runtimeClasspath + bundleTools
+    runtimeClasspath.from(mainSources.runtimeClasspath, bundleTools)
     mainClass.set("dev.flagon.pack.WriteResourcePack")
     inputs.files(bundle.resourcesFrom).withPropertyName("resources").optional()
     outputs.file(out)
     outputs.cacheIf { true }
-    val from = bundle.resourcesFrom
-    argumentProviders.add(
-        CommandLineArgumentProvider {
-            listOf(from.get().asFile.absolutePath, out.get().asFile.absolutePath)
-        },
-    )
+    arguments.add(bundle.resourcesFrom.map { it.asFile.absolutePath })
+    arguments.add(out.map { it.asFile.absolutePath })
 }
 
 tasks.register("bundle") {
