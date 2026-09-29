@@ -1,3 +1,4 @@
+includeBuild("../build-logic")
 includeBuild("../teavm-patches")
 
 dependencyResolutionManagement {

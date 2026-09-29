@@ -1,5 +1,17 @@
 plugins {
-    id("flagon.published")
+    `java-library`
+    id("flagon.publishing")
+}
+
+java {
+    toolchain {
+        languageVersion.set(JavaLanguageVersion.of(25))
+    }
+}
+
+tasks.withType<JavaCompile>().configureEach {
+    options.encoding = "UTF-8"
+    options.release.set(25)
 }
 
 val stock = configurations.create("stock") {
@@ -24,8 +36,4 @@ listOf("apiElements", "runtimeElements").forEach { name ->
     configurations.named(name) {
         outgoing.variants.removeIf { it.name == "classes" || it.name == "resources" }
     }
-}
-
-tasks.withType<Checkstyle>().configureEach {
-    enabled = false
 }
