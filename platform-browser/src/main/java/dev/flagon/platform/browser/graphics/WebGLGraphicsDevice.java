@@ -1,5 +1,6 @@
 package dev.flagon.platform.browser.graphics;
 
+import dev.flagon.platform.Names;
 import dev.flagon.platform.graphics.AttributeType;
 import dev.flagon.platform.graphics.BlendEquation;
 import dev.flagon.platform.graphics.BlendFactor;
@@ -45,8 +46,8 @@ public final class WebGLGraphicsDevice implements GraphicsDevice {
 
     private final WebGL2 gl;
 
-    private final GlNames handles = new GlNames();
-    private final GlNames uniforms = new GlNames();
+    private final Names<JSObject> handles = new Names<>();
+    private final Names<JSObject> uniforms = new Names<>();
     private final List<Map<String, Integer>> uniformNames = new ArrayList<>();
     private final UniformCache cache = new UniformCache();
 

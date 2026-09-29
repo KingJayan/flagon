@@ -1,11 +1,10 @@
 package dev.flagon.platform.audio;
 
 import dev.flagon.platform.Clock;
+import dev.flagon.platform.Names;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 public final class SilentAudioDevice implements AudioDevice {
 
@@ -34,8 +33,8 @@ public final class SilentAudioDevice implements AudioDevice {
     }
 
     private final Clock clock;
-    private final Map<Integer, Buffer> buffers = new HashMap<>();
-    private final Map<Integer, Source> sources = new HashMap<>();
+    // al names buffers and sources from one pool, so one table holds both
+    private final Names<Object> objects = new Names<>();
     private final float[] listenerPosition = new float[3];
     private final float[] listenerVelocity = new float[3];
     private final float[] listenerOrientation = {0.0f, 0.0f, -1.0f, 0.0f, 1.0f, 0.0f};
@@ -43,7 +42,6 @@ public final class SilentAudioDevice implements AudioDevice {
     private float dopplerFactor = Doppler.DEFAULT_FACTOR;
     private float speedOfSound = Doppler.DEFAULT_SPEED_OF_SOUND;
     private float listenerGain = 1.0f;
-    private int nextName = 1;
 
     public SilentAudioDevice(Clock clock) {
         if (clock == null) {
@@ -64,9 +62,7 @@ public final class SilentAudioDevice implements AudioDevice {
 
     @Override
     public int createBuffer() {
-        int name = nextName++;
-        buffers.put(name, new Buffer());
-        return name;
+        return objects.add(new Buffer());
     }
 
     @Override
@@ -81,12 +77,14 @@ public final class SilentAudioDevice implements AudioDevice {
 
     @Override
     public void deleteBuffer(int buffer) {
-        buffers.remove(buffer);
+        if (isBuffer(buffer)) {
+            objects.remove(buffer);
+        }
     }
 
     @Override
     public boolean isBuffer(int buffer) {
-        return buffers.containsKey(buffer);
+        return objects.get(buffer) instanceof Buffer;
     }
 
     @Override
@@ -106,19 +104,19 @@ public final class SilentAudioDevice implements AudioDevice {
 
     @Override
     public int createSource() {
-        int name = nextName++;
-        sources.put(name, new Source());
-        return name;
+        return objects.add(new Source());
     }
 
     @Override
     public void deleteSource(int source) {
-        sources.remove(source);
+        if (isSource(source)) {
+            objects.remove(source);
+        }
     }
 
     @Override
     public boolean isSource(int source) {
-        return sources.containsKey(source);
+        return objects.get(source) instanceof Source;
     }
 
     @Override
@@ -417,8 +415,7 @@ public final class SilentAudioDevice implements AudioDevice {
 
     @Override
     public void shutdown() {
-        buffers.clear();
-        sources.clear();
+        objects.clear();
     }
 
     private SourceState settle(Source source) {
@@ -460,27 +457,24 @@ public final class SilentAudioDevice implements AudioDevice {
     }
 
     private double durationOf(int name) {
-        Buffer buffer = buffers.get(name);
-        if (buffer == null) {
+        if (!(objects.get(name) instanceof Buffer buffer)) {
             return 0.0;
         }
         return Audio.durationInSeconds(buffer.format, buffer.sizeInBytes, buffer.sampleRate);
     }
 
     private Buffer buffer(int name) {
-        Buffer buffer = buffers.get(name);
-        if (buffer == null) {
-            throw new AudioException("not a buffer: " + name);
+        if (objects.get(name) instanceof Buffer buffer) {
+            return buffer;
         }
-        return buffer;
+        throw new AudioException("not a buffer: " + name);
     }
 
     private Source source(int name) {
-        Source source = sources.get(name);
-        if (source == null) {
-            throw new AudioException("not a source: " + name);
+        if (objects.get(name) instanceof Source source) {
+            return source;
         }
-        return source;
+        throw new AudioException("not a source: " + name);
     }
 
     private static void set(float[] vector, float x, float y, float z) {
