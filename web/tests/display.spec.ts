@@ -12,7 +12,6 @@ async function start(page: Page, backend: Backend): Promise<void> {
   });
 }
 
-/** the milliseconds the program reported for its paced stretch */
 async function pacedMillis(page: Page): Promise<number> {
   const log = page.getByTestId('log');
   await expect(log).toContainText(/paced \d+ frames at \d+ in \d+ms/, { timeout: 30_000 });

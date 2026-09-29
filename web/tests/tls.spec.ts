@@ -10,7 +10,6 @@ import type { AddressInfo } from 'node:net';
 import WebSocket from 'ws';
 import { attachTcpProxy, TCP_PROXY_PATH } from '../tcp-proxy';
 
-/** a certificate nobody else trusts, so the proxy has to be told to trust it on purpose */
 function selfSigned(): { key: string; cert: string } {
   const at = mkdtempSync(path.join(tmpdir(), 'flagon-tls-'));
   const key = path.join(at, 'key.pem');
@@ -36,7 +35,6 @@ function portOf(server: { address(): AddressInfo | string | null }): number {
   return (server.address() as AddressInfo).port;
 }
 
-/** speaks http down the tunnel and gives back the status line, or whatever went wrong */
 function through(proxy: number, host: string, port: number, tls: boolean): Promise<string> {
   const query = `host=${host}&port=${port}${tls ? '&tls=1' : ''}`;
   const socket = new WebSocket(`ws://localhost:${proxy}${TCP_PROXY_PATH}?${query}`, {

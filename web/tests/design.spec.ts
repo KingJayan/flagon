@@ -2,7 +2,6 @@
 import { test, expect } from '@playwright/test';
 import { open } from './harness';
 
-/** the shell's chrome is the same whichever backend runs underneath it, so this runs once. */
 test.describe('the shell as a designed page', () => {
   test('wears the mark the readme leads with', async ({ page }) => {
     await open(page, 'js', 'program=hello');
@@ -76,7 +75,6 @@ test.describe('the shell as a designed page', () => {
   });
 });
 
-/** both pages pull from one token file, so a colour on one is the same colour on the other. */
 test.describe('one design language across both pages', () => {
   const SHARED = ['--ink', '--muted', '--accent', '--bad', '--ok', '--line', '--serif', '--mono'];
 

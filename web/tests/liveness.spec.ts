@@ -1,10 +1,9 @@
 import { test, expect } from '@playwright/test';
 import { open } from './harness';
 
-/** the shell's chrome is the same whichever backend runs underneath it, so this runs once. */
 test.describe('showing that the shell is working', () => {
   test('shows the bundle being fetched instead of nothing at all', async ({ page }) => {
-    await page.route('**/flagon/sandbox.js', async (route) => {
+    await page.route('**/flagon/js/sandbox.js', async (route) => {
       await new Promise((wait) => setTimeout(wait, 2_000));
       await route.continue();
     });

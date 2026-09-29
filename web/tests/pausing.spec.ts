@@ -14,11 +14,11 @@ test('loads a bundle whose string setup can pause', async ({ page }) => {
 
   const loaded = await page.evaluate(async () => {
     try {
-      const loader = '/flagon/wasm-gc-module-runtime.js';
+      const loader = '/flagon/wasm/wasm-gc-module-runtime.js';
       const { load } = (await import(loader)) as {
         load(path: string): Promise<{ exports: { main(args: string[]): void } }>;
       };
-      const bundle = await load('/flagon/pausing.wasm');
+      const bundle = await load('/flagon/wasm/pausing.wasm');
       bundle.exports.main([]);
       return 'loaded';
     } catch (failure) {

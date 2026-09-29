@@ -9,7 +9,6 @@ import {
   type Backend,
 } from './harness';
 
-/** the application jar, compiled against the real lwjgl and never modified. */
 async function runSpinner(page: Page, backend: Backend, frames = 600): Promise<void> {
   await open(page, backend, `bundle=example&program=spinner&arg=--frames&arg=${frames}`);
   await expect(page.getByTestId('state')).toHaveText('running', { timeout: 30_000 });
@@ -22,7 +21,6 @@ for (const backend of BACKENDS) {
 
       await runSpinner(page, backend);
 
-      // System.out from the application, not from anything Flagon wrote
       await expect(page.getByTestId('log')).toContainText('spinner: 640x360');
       expect(failures).toEqual([]);
     });
@@ -33,7 +31,6 @@ for (const backend of BACKENDS) {
       const background = await readPixel(page, 5, 5);
       expect(Math.abs(background[0] - 18)).toBeLessThanOrEqual(2);
 
-      // the square is 140px across at the center of a 640x360 canvas, whatever its rotation
       const center = await readPixel(page, 320, 180);
       expect(center.slice(0, 3).some((channel) => channel > 40)).toBe(true);
     });
@@ -71,7 +68,6 @@ for (const backend of BACKENDS) {
   });
 }
 
-/** where the bright pixels of the paddle row average out to, in canvas pixels from the left */
 async function paddlecenter(page: Page): Promise<number> {
   return page.evaluate(() => {
     const canvas = document.getElementById('flagon-canvas') as HTMLCanvasElement;
@@ -90,7 +86,6 @@ async function paddlecenter(page: Page): Promise<number> {
   });
 }
 
-/** the leftmost bright pixel below the bricks, which is the ball unless the paddle is under it */
 async function ballAt(page: Page): Promise<number> {
   return page.evaluate(() => {
     const canvas = document.getElementById('flagon-canvas') as HTMLCanvasElement;
@@ -106,7 +101,6 @@ async function ballAt(page: Page): Promise<number> {
   });
 }
 
-/** the same jar's other main: a whole game, with sound, a hud and a saved high score */
 async function runBlocks(page: Page, backend: Backend, frames = 3600): Promise<void> {
   await open(page, backend, `bundle=example&program=blocks&arg=--frames&arg=${frames}`);
   await expect(page.getByTestId('log')).toContainText('blocks: ready 640x360', {
@@ -161,7 +155,6 @@ for (const backend of BACKENDS) {
       expect(after, `the paddle went from ${before} to ${after}`).toBeLessThan(before - 40);
     });
 
-    /** the game stops simulating when the canvas is not the thing being typed at */
     test('pauses itself when it loses the keyboard', async ({ page }) => {
       await runBlocks(page, backend);
       const log = page.getByTestId('log');

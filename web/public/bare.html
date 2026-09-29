@@ -11,11 +11,11 @@
       const backend = new URLSearchParams(location.search).get('backend') ?? 'wasm';
       const args = ['hello', 'bare'];
       if (backend === 'wasm') {
-        const { load } = await import('/flagon/wasm-gc-module-runtime.js');
-        const bundle = await load('/flagon/sandbox.wasm');
+        const { load } = await import('/flagon/wasm/wasm-gc-module-runtime.js');
+        const bundle = await load('/flagon/wasm/sandbox.wasm');
         bundle.exports.main(args);
       } else {
-        const { main } = await import('/flagon/sandbox.js');
+        const { main } = await import('/flagon/js/sandbox.js');
         main(args);
       }
     </script>

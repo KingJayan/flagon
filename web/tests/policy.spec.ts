@@ -1,7 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { BACKENDS, open, watchForFailures } from './harness';
 
-/** the shipping server sends no 'unsafe-eval', so a bundle that needs it fails here */
 for (const backend of BACKENDS) {
   test(`runs on ${backend} under the shipping content policy`, async ({ page }) => {
     const { failures } = watchForFailures(page);

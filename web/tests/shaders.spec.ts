@@ -40,7 +40,6 @@ for (const backend of BACKENDS) {
     test('draws the triangle its own shader colors', async ({ page }) => {
       await runDemo(page, backend);
 
-      // inside the triangle, where the vertex tints interpolate to something bright
       const inside = await readPixel(page, 320, 153);
       expect(
         inside.slice(0, 3).some((channel) => channel > 60),
@@ -53,7 +52,6 @@ for (const backend of BACKENDS) {
       }
     });
 
-    /** the byte tints are normalised, so the corners keep the colors the vertices carry. */
     test('normalises the byte attribute the vertices carry', async ({ page }) => {
       await runDemo(page, backend);
 
@@ -83,7 +81,6 @@ for (const backend of BACKENDS) {
       await expectChanging(signature, 'the scale uniform never changed the triangle');
     });
 
-    /** glUseProgram(0) has to give the fixed-function pipeline its shader back. */
     test('returns to fixed-function drawing when the program is unbound', async ({ page }) => {
       await runDemo(page, backend);
 
