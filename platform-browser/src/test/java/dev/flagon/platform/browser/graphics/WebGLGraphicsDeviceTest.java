@@ -173,9 +173,34 @@ class WebGLGraphicsDeviceTest {
 
     @Test
     void unbindsAProgramWithoutLookingUpZero() {
+        device.useProgram(device.createProgram());
+
         device.useProgram(GraphicsDevice.NO_PROGRAM);
 
         assertEquals("useProgram(null)", context.lastCall("useProgram"));
+    }
+
+    @Test
+    void bindsAProgramOnlyOnce() {
+        int program = device.createProgram();
+
+        device.useProgram(program);
+        device.useProgram(program);
+
+        assertEquals(1, context.count("useProgram"));
+    }
+
+    @Test
+    void bindsAReusedProgramNameAgain() {
+        int program = device.createProgram();
+        device.useProgram(program);
+        device.deleteProgram(program);
+
+        int reused = device.createProgram();
+        assertEquals(program, reused, "the name has to come back for this to be a test");
+        device.useProgram(reused);
+
+        assertEquals(2, context.count("useProgram"));
     }
 
     @Test

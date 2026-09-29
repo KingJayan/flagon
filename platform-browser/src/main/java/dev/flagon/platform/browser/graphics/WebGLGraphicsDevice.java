@@ -64,6 +64,7 @@ public final class WebGLGraphicsDevice implements GraphicsDevice {
 
     private int boundArrayBuffer = NO_BUFFER;
     private int boundFramebuffer = NO_FRAMEBUFFER;
+    private int boundProgram = NO_PROGRAM;
 
     private final List<Attributes> arrays = new ArrayList<>();
     private int boundArray = NO_VERTEX_ARRAY;
@@ -705,6 +706,9 @@ public final class WebGLGraphicsDevice implements GraphicsDevice {
         gl.deleteProgram(lookup(program, "program"));
         handles.remove(program);
         forgetUniforms(program);
+        if (boundProgram == program) {
+            boundProgram = NO_PROGRAM;
+        }
     }
 
     private void forgetUniforms(int program) {
@@ -738,6 +742,10 @@ public final class WebGLGraphicsDevice implements GraphicsDevice {
 
     @Override
     public void useProgram(int program) {
+        if (boundProgram == program) {
+            return;
+        }
+        boundProgram = program;
         gl.useProgram(program == NO_PROGRAM ? null : lookup(program, "program"));
     }
 
