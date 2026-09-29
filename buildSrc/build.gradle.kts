@@ -7,6 +7,7 @@ dependencies {
         exclude(group = "org.teavm", module = "teavm-core")
         exclude(group = "org.teavm", module = "teavm-jso-impl")
     }
+    implementation("dev.flagon.build:build-logic:0")
     implementation("dev.flagon:teavm-core-patched")
     implementation("dev.flagon:teavm-jso-impl-patched")
 
