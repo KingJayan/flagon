@@ -1,6 +1,7 @@
 package dev.flagon.platform.browser.audio;
 
 import dev.flagon.platform.ConsoleSink;
+import dev.flagon.platform.Names;
 import dev.flagon.platform.audio.Audio;
 import dev.flagon.platform.audio.AudioDevice;
 import dev.flagon.platform.audio.DistanceModel;
@@ -17,9 +18,7 @@ import org.teavm.jso.webaudio.GainNode;
 import org.teavm.jso.webaudio.PannerNode;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 /**
  * an {@link AudioDevice} on web audio: one node graph per source, built when it plays
@@ -137,15 +136,14 @@ public final class WebAudioDevice implements AudioDevice {
 
     private final AudioContext context;
     private final GainNode master;
-    private final Map<Integer, Buffer> buffers = new HashMap<>();
-    private final Map<Integer, Source> sources = new HashMap<>();
+    // al hands buffers and sources names from one pool here, so one table holds both
+    private final Names<Object> objects = new Names<>();
     private DistanceModel distanceModel = DistanceModel.INVERSE_CLAMPED;
     private float dopplerFactor = Doppler.DEFAULT_FACTOR;
     private float speedOfSound = Doppler.DEFAULT_SPEED_OF_SOUND;
     private final float[] listenerPosition = new float[3];
     private final float[] listenerVelocity = new float[3];
     private final float[] listenerOrientation = {0.0f, 0.0f, -1.0f, 0.0f, 1.0f, 0.0f};
-    private int nextName = 1;
 
     private WebAudioDevice(AudioContext context) {
         this.context = context;
@@ -196,9 +194,7 @@ public final class WebAudioDevice implements AudioDevice {
 
     @Override
     public int createBuffer() {
-        int name = nextName++;
-        buffers.put(name, new Buffer());
-        return name;
+        return objects.add(new Buffer());
     }
 
     @Override
@@ -220,12 +216,14 @@ public final class WebAudioDevice implements AudioDevice {
 
     @Override
     public void deleteBuffer(int buffer) {
-        buffers.remove(buffer);
+        if (isBuffer(buffer)) {
+            objects.remove(buffer);
+        }
     }
 
     @Override
     public boolean isBuffer(int buffer) {
-        return buffers.containsKey(buffer);
+        return objects.get(buffer) instanceof Buffer;
     }
 
     @Override
@@ -245,22 +243,20 @@ public final class WebAudioDevice implements AudioDevice {
 
     @Override
     public int createSource() {
-        int name = nextName++;
-        sources.put(name, new Source());
-        return name;
+        return objects.add(new Source());
     }
 
     @Override
     public void deleteSource(int source) {
-        Source held = sources.remove(source);
-        if (held != null) {
+        if (objects.get(source) instanceof Source held) {
+            objects.remove(source);
             held.dispose();
         }
     }
 
     @Override
     public boolean isSource(int source) {
-        return sources.containsKey(source);
+        return objects.get(source) instanceof Source;
     }
 
     @Override
@@ -371,8 +367,7 @@ public final class WebAudioDevice implements AudioDevice {
             playQueue(held);
             return;
         }
-        Buffer buffer = buffers.get(held.buffer);
-        if (buffer == null || buffer.audio == null) {
+        if (!(objects.get(held.buffer) instanceof Buffer buffer) || buffer.audio == null) {
             throw new AudioException("source " + source + " has no buffer to play");
         }
         double from = held.state == SourceState.PAUSED ? held.offset : 0.0;
@@ -521,8 +516,10 @@ public final class WebAudioDevice implements AudioDevice {
     @Override
     public void setDistanceModel(DistanceModel model) {
         distanceModel = model;
-        for (int name : sources.keySet()) {
-            applyAttenuation(name);
+        for (int name = 1; name < objects.size(); name++) {
+            if (objects.get(name) instanceof Source) {
+                applyAttenuation(name);
+            }
         }
     }
 
@@ -537,8 +534,10 @@ public final class WebAudioDevice implements AudioDevice {
             throw new AudioException("doppler factor must not be negative: " + factor);
         }
         dopplerFactor = factor;
-        for (Source source : sources.values()) {
-            source.rate();
+        for (Object held : objects) {
+            if (held instanceof Source source) {
+                source.rate();
+            }
         }
     }
 
@@ -553,8 +552,10 @@ public final class WebAudioDevice implements AudioDevice {
             throw new AudioException("speed of sound must be positive: " + speed);
         }
         speedOfSound = speed;
-        for (Source source : sources.values()) {
-            source.rate();
+        for (Object held : objects) {
+            if (held instanceof Source source) {
+                source.rate();
+            }
         }
     }
 
@@ -624,11 +625,13 @@ public final class WebAudioDevice implements AudioDevice {
         set(listenerPosition, x, y, z);
         context.getListener().setPosition(x, y, z);
         // every source moved relative to the listener, which is what the shift is measured along
-        for (Source source : sources.values()) {
-            if (source.relative) {
-                source.place();
-            } else {
-                source.rate();
+        for (Object held : objects) {
+            if (held instanceof Source source) {
+                if (source.relative) {
+                    source.place();
+                } else {
+                    source.rate();
+                }
             }
         }
     }
@@ -636,8 +639,10 @@ public final class WebAudioDevice implements AudioDevice {
     @Override
     public void setListenerVelocity(float x, float y, float z) {
         set(listenerVelocity, x, y, z);
-        for (Source source : sources.values()) {
-            source.rate();
+        for (Object held : objects) {
+            if (held instanceof Source source) {
+                source.rate();
+            }
         }
     }
 
@@ -670,11 +675,12 @@ public final class WebAudioDevice implements AudioDevice {
 
     @Override
     public void shutdown() {
-        for (Source source : sources.values()) {
-            source.dispose();
+        for (Object held : objects) {
+            if (held instanceof Source source) {
+                source.dispose();
+            }
         }
-        sources.clear();
-        buffers.clear();
+        objects.clear();
         master.disconnect();
         context.close();
     }
@@ -693,19 +699,17 @@ public final class WebAudioDevice implements AudioDevice {
     }
 
     private Buffer buffer(int name) {
-        Buffer buffer = buffers.get(name);
-        if (buffer == null) {
-            throw new AudioException("not a buffer: " + name);
+        if (objects.get(name) instanceof Buffer buffer) {
+            return buffer;
         }
-        return buffer;
+        throw new AudioException("not a buffer: " + name);
     }
 
     private Source source(int name) {
-        Source source = sources.get(name);
-        if (source == null) {
-            throw new AudioException("not a source: " + name);
+        if (objects.get(name) instanceof Source source) {
+            return source;
         }
-        return source;
+        throw new AudioException("not a source: " + name);
     }
 
     private static void set(float[] vector, float x, float y, float z) {
