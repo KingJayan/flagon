@@ -18,7 +18,7 @@ function onDisk(): string[] {
 
 test('the server is serving the bundles that are on disk', async ({ request }) => {
   const names = onDisk();
-  expect(names, `no bundles in ${BUNDLES} — run 'make build'`).not.toHaveLength(0);
+  expect(names, `no bundles in ${BUNDLES} — run 'make bundles'`).not.toHaveLength(0);
 
   for (const name of names) {
     // identity, so a compressed response cannot be mistaken for a different bundle

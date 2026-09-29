@@ -150,7 +150,7 @@ function missing(url: string): string {
   return bundle === 'app'
     ? 'No application has been built yet. Put a jar in vendor/ -- any jar -- and run make app. '
       + 'See docs/DOWNSTREAM.md.'
-    : `The bundle at ${url} is not being served. Run make build.`;
+    : `The bundle at ${url} is not being served. Run make bundles.`;
 }
 
 async function start(): Promise<void> {
