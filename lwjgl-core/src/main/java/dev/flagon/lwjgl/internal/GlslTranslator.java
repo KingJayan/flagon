@@ -42,24 +42,27 @@ public final class GlslTranslator {
 
     private static String finishGlslEs300(String stripped, ShaderStage stage) {
         String body = renameSamplerCalls(stripped);
+        String bare = withoutComments(body);
         StringBuilder injected = new StringBuilder();
-        if (stage == ShaderStage.FRAGMENT) {
-            if (!declaresFloatPrecision(withoutComments(body))) {
+        boolean fragment = stage == ShaderStage.FRAGMENT;
+        if (fragment) {
+            if (!declaresFloatPrecision(bare)) {
                 injected.append("precision highp float;\n");
             }
-            injected.append(fragmentOutput(body));
-            body = replaceWord(body, "gl_FragColor", FRAGMENT_OUT);
+            injected.append(fragmentOutput(bare));
         }
         // an #extension directive has to stay ahead of any declaration
-        int after = afterExtensions(body);
-        return "#version 300 es\n" + body.substring(0, after) + injected + body.substring(after);
+        int after = afterExtensions(body, bare);
+        String assembled = "#version 300 es\n" + body.substring(0, after) + injected
+                + body.substring(after);
+        // last: the indexes above are offsets into the body
+        return fragment ? replaceWord(assembled, "gl_FragColor", FRAGMENT_OUT) : assembled;
     }
 
-    private static int afterExtensions(String body) {
-        String code = withoutComments(body);
+    private static int afterExtensions(String body, String bare) {
         int after = 0;
         int at = 0;
-        while ((at = code.indexOf("#extension", at)) >= 0) {
+        while ((at = bare.indexOf("#extension", at)) >= 0) {
             int end = lineEnd(body, at);
             after = end < body.length() ? end + 1 : end;
             at = end;
@@ -79,8 +82,7 @@ public final class GlslTranslator {
      * es 3.00 dropped gl_FragColor, so the shader gets an output of its own. a shader that already
      * declares one is left alone.
      */
-    private static String fragmentOutput(String source) {
-        String code = withoutComments(source);
+    private static String fragmentOutput(String code) {
         if (indexOfWord(code, "gl_FragData", 0) >= 0) {
             throw new UnsupportedOperationException(
                     "shader writes gl_FragData, which es 3.00 dropped and webgl2 draws to one "
@@ -93,13 +95,18 @@ public final class GlslTranslator {
     }
 
     static String replaceWord(String source, String word, String replacement) {
-        StringBuilder rewritten = new StringBuilder(source);
-        int at = indexOfWord(rewritten.toString(), word, 0);
-        while (at >= 0) {
-            rewritten.replace(at, at + word.length(), replacement);
-            at = indexOfWord(rewritten.toString(), word, at + replacement.length());
+        int at = indexOfWord(source, word, 0);
+        if (at < 0) {
+            return source;
         }
-        return rewritten.toString();
+        StringBuilder rewritten = new StringBuilder(source.length());
+        int copied = 0;
+        while (at >= 0) {
+            rewritten.append(source, copied, at).append(replacement);
+            copied = at + word.length();
+            at = indexOfWord(source, word, copied);
+        }
+        return rewritten.append(source, copied, source.length()).toString();
     }
 
     /** @return whether this shader is written against gl's fixed-function state */
