@@ -159,4 +159,43 @@ class MemoryFileStoreTest {
         assertFalse(store.isDirectory("/notes"));
         assertEquals(0, store.list("/notes").length);
     }
+
+    @Test
+    void aWrittenFileCarriesAModifiedTime() {
+        store.write("/notes", bytes("x"));
+
+        assertTrue(store.lastModified("/notes") > 0L);
+    }
+
+    @Test
+    void aDeletedFileTakesItsMetadataWithIt() {
+        store.write("/notes", bytes("x"));
+
+        assertTrue(store.delete("/notes"));
+
+        assertEquals(0L, store.lastModified("/notes"));
+        assertEquals(0, store.size("/notes"));
+        assertFalse(store.isFile("/notes"));
+    }
+
+    @Test
+    void aMovedFileLeavesNothingBehind() {
+        store.write("/one", bytes("1"));
+
+        assertTrue(store.move("/one", "/two"));
+
+        assertEquals(0L, store.lastModified("/one"));
+        assertFalse(store.exists("/one"));
+        assertArrayEquals(bytes("1"), store.read("/two"));
+        assertTrue(store.lastModified("/two") > 0L);
+    }
+
+    @Test
+    void aDirectoryReportsNoBytesAndIsNotAFile() {
+        store.createDirectory("/saves");
+
+        assertEquals(0, store.size("/saves"));
+        assertFalse(store.isFile("/saves"));
+        assertThrows(FileStoreException.class, () -> store.read("/saves"));
+    }
 }
