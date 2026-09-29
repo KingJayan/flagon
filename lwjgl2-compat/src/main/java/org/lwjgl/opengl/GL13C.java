@@ -1,6 +1,7 @@
 package org.lwjgl.opengl;
 
 import dev.flagon.lwjgl.internal.GLState;
+import dev.flagon.lwjgl.internal.Ops;
 
 /**
  * the core-profile half of gl 1.3: multitexture without the client-side units
@@ -25,7 +26,7 @@ public class GL13C {
     /** selects the unit that {@code glBindTexture} and the texture parameters act on. */
     public static void glActiveTexture(int unit) {
         int selected = unitOf(unit, "glActiveTexture");
-        if (state().isRecording() && state().record(() -> state().activeTexture(selected))) {
+        if (state().isRecording() && state().record(Ops.ACTIVE_TEXTURE, selected)) {
             return;
         }
         state().activeTexture(selected);
