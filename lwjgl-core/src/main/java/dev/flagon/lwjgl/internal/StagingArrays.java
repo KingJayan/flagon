@@ -16,16 +16,21 @@ public final class StagingArrays {
     /** upload every element */
     public static final int WHOLE = -1;
 
+    private static final long HASH_BASE = 0xcbf29ce484222325L;
+    private static final long HASH_PRIME = 0x100000001b3L;
+
     private final GraphicsDevice device;
     private final int[] buffers;
     private final int[] sizes;
     private final Object[] scratch;
+    private final long[] uploaded;
 
     public StagingArrays(GraphicsDevice device, int slots) {
         this.device = device;
         this.buffers = new int[slots];
         this.sizes = new int[slots];
         this.scratch = new Object[slots];
+        this.uploaded = new long[slots];
     }
 
     /**
@@ -53,6 +58,7 @@ public final class StagingArrays {
         if (buffers[slot] == GraphicsDevice.NO_BUFFER) {
             buffers[slot] = device.createBuffer();
             sizes[slot] = 0;
+            uploaded[slot] = 0L;
         }
         return buffers[slot];
     }
@@ -61,7 +67,9 @@ public final class StagingArrays {
         Buffer client = array.client();
         int elementSize = Buffers.elementSize(client);
         int size = client.limit() * elementSize;
-        if (sizes[slot] != size) {
+        // a resize drops what the buffer held, so the next upload cannot be skipped
+        boolean emptied = sizes[slot] != size;
+        if (emptied) {
             device.bufferData(BufferTarget.ARRAY, size, BufferUsage.STREAM);
             sizes[slot] = size;
         }
@@ -83,11 +91,17 @@ public final class StagingArrays {
         int offset = fromElement * elementSize;
         if (client instanceof FloatBuffer floats) {
             float[] data = floats(slot, elements);
-            floats.duplicate().position(fromElement).get(data, 0, elements);
+            floats.get(fromElement, data, 0, elements);
+            if (skip(slot, hash(data, elements, offset), emptied)) {
+                return;
+            }
             device.bufferSubData(BufferTarget.ARRAY, offset, data, elements);
         } else if (client instanceof ByteBuffer raw) {
             byte[] data = bytes(slot, elements);
-            raw.duplicate().position(fromElement).get(data, 0, elements);
+            raw.get(fromElement, data, 0, elements);
+            if (skip(slot, hash(data, elements, offset), emptied)) {
+                return;
+            }
             device.bufferSubData(BufferTarget.ARRAY, offset, data, elements);
         } else {
             throw new IllegalArgumentException(
@@ -95,18 +109,66 @@ public final class StagingArrays {
         }
     }
 
-    private float[] floats(int slot, int needed) {
-        if (!(scratch[slot] instanceof float[] held) || held.length < needed) {
-            scratch[slot] = new float[needed];
+    /**
+     * a draw that hands the device the same bytes again needs no upload. the client buffer is
+     * written through references this class never sees, so the content itself is the only test.
+     */
+    private boolean skip(int slot, long fingerprint, boolean emptied) {
+        if (!emptied && uploaded[slot] == fingerprint) {
+            return true;
         }
-        return (float[]) scratch[slot];
+        uploaded[slot] = fingerprint;
+        return false;
+    }
+
+    private static long hash(float[] data, int elements, int offset) {
+        long mixed = seed(elements, offset);
+        for (int at = 0; at < elements; at++) {
+            mixed = (mixed ^ Float.floatToRawIntBits(data[at])) * HASH_PRIME;
+        }
+        return mixed;
+    }
+
+    private static long hash(byte[] data, int elements, int offset) {
+        long mixed = seed(elements, offset);
+        for (int at = 0; at < elements; at++) {
+            mixed = (mixed ^ data[at]) * HASH_PRIME;
+        }
+        return mixed;
+    }
+
+    /** the range counts too: the same bytes at another offset are another upload */
+    private static long seed(int elements, int offset) {
+        return ((HASH_BASE ^ elements) * HASH_PRIME ^ offset) * HASH_PRIME;
+    }
+
+    private float[] floats(int slot, int needed) {
+        if (scratch[slot] instanceof float[] held && held.length >= needed) {
+            return held;
+        }
+        float[] grown = new float[room(scratch[slot], needed)];
+        scratch[slot] = grown;
+        return grown;
     }
 
     private byte[] bytes(int slot, int needed) {
-        if (!(scratch[slot] instanceof byte[] held) || held.length < needed) {
-            scratch[slot] = new byte[needed];
+        if (scratch[slot] instanceof byte[] held && held.length >= needed) {
+            return held;
         }
-        return (byte[]) scratch[slot];
+        byte[] grown = new byte[room(scratch[slot], needed)];
+        scratch[slot] = grown;
+        return grown;
+    }
+
+    /** doubles, so a slot that grows a little at a time stops reallocating */
+    private static int room(Object held, int needed) {
+        int had = 0;
+        if (held instanceof float[] floats) {
+            had = floats.length;
+        } else if (held instanceof byte[] bytes) {
+            had = bytes.length;
+        }
+        return Math.max(needed, had * 2);
     }
 
     public void dispose() {
@@ -117,6 +179,7 @@ public final class StagingArrays {
             }
             sizes[slot] = 0;
             scratch[slot] = null;
+            uploaded[slot] = 0L;
         }
     }
 }
