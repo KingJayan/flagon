@@ -1,25 +1,36 @@
 package dev.flagon.lwjgl.internal;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.function.IntConsumer;
 
 /**
- * gl display lists as commands
+ * gl display lists as flat arrays
  */
 public final class DisplayLists {
 
     public static final int COMPILE = 0x1300;
     public static final int COMPILE_AND_EXECUTE = 0x1301;
 
-    /** what a list name holds */
+    /** runs one recorded call. its ints start at {@code at}, and its floats at {@code from} */
+    public interface Player {
+        void play(int op, int[] codes, int at, float[] values, int from);
+    }
+
+    private static final int[] NO_CODES = {};
+    private static final float[] NO_VALUES = {};
+
+    /** what a list name holds. one record is op, int count, float count, then its ints */
     private static final class Held {
 
-        private final List<Runnable> commands;
-        private List<Integer> blocks;
+        private final int[] codes;
+        private final float[] values;
+        private int[] blocks;
 
-        Held(List<Runnable> commands, List<Integer> blocks) {
-            this.commands = commands;
+        Held(int[] codes, float[] values, int[] blocks) {
+            this.codes = codes;
+            this.values = values;
             this.blocks = blocks;
         }
     }
@@ -27,8 +38,15 @@ public final class DisplayLists {
     // a list name is its index
     private final List<Held> lists = new ArrayList<>();
     private IntConsumer release = block -> { };
-    private List<Runnable> recording;
-    private List<Integer> recordingBlocks;
+    private Player player = (op, codes, at, values, from) -> { };
+
+    private int[] codes = NO_CODES;
+    private int codeCount;
+    private float[] values = NO_VALUES;
+    private int valueCount;
+    private int[] blocks = NO_CODES;
+    private int blockCount;
+    private boolean recording;
     private int recordingInto;
     private boolean executeWhileRecording;
     private int nextName = 1;
@@ -38,9 +56,14 @@ public final class DisplayLists {
         this.release = release;
     }
 
+    public void onPlay(Player player) {
+        this.player = player;
+    }
+
     public void own(int block) {
-        if (recordingBlocks != null) {
-            recordingBlocks.add(block);
+        if (recording) {
+            blocks = grow(blocks, blockCount, 1);
+            blocks[blockCount++] = block;
         }
     }
 
@@ -54,7 +77,7 @@ public final class DisplayLists {
         int first = nextName;
         nextName += count;
         for (int name = first; name < nextName; name++) {
-            put(name, new Held(new ArrayList<>(), null));
+            put(name, new Held(NO_CODES, NO_VALUES, null));
         }
         return first;
     }
@@ -64,7 +87,7 @@ public final class DisplayLists {
     }
 
     public void begin(int name, int mode) {
-        if (recording != null) {
+        if (recording) {
             throw new IllegalStateException("glNewList called inside glNewList/glEndList");
         }
         if (name <= 0) {
@@ -74,33 +97,211 @@ public final class DisplayLists {
             throw new IllegalArgumentException(
                     "glNewList: unknown mode 0x" + Integer.toHexString(mode));
         }
-        recording = new ArrayList<>();
-        recordingBlocks = new ArrayList<>();
+        codeCount = 0;
+        valueCount = 0;
+        blockCount = 0;
+        recording = true;
         recordingInto = name;
         executeWhileRecording = mode == COMPILE_AND_EXECUTE;
         nextName = Math.max(nextName, name + 1);
     }
 
     public void end() {
-        if (recording == null) {
+        if (!recording) {
             throw new IllegalStateException("glEndList called without glNewList");
         }
         free(recordingInto);
-        put(recordingInto, new Held(recording, recordingBlocks));
-        recording = null;
-        recordingBlocks = null;
+        put(recordingInto, new Held(Arrays.copyOf(codes, codeCount),
+                Arrays.copyOf(values, valueCount), Arrays.copyOf(blocks, blockCount)));
+        recording = false;
         executeWhileRecording = false;
     }
 
     public boolean isRecording() {
-        return recording != null;
+        return recording;
     }
 
-    public boolean record(Runnable call) {
-        if (recording == null) {
+    public boolean record(int op) {
+        if (!recording) {
             return false;
         }
-        recording.add(call);
+        boolean held = open(op, 0, 0);
+        return held;
+    }
+
+    public boolean record(int op, int first) {
+        if (!recording) {
+            return false;
+        }
+        boolean held = open(op, 1, 0);
+        codes[codeCount++] = first;
+        return held;
+    }
+
+    public boolean record(int op, int first, int second) {
+        if (!recording) {
+            return false;
+        }
+        boolean held = open(op, 2, 0);
+        codes[codeCount++] = first;
+        codes[codeCount++] = second;
+        return held;
+    }
+
+    public boolean record(int op, int first, int second, int third) {
+        if (!recording) {
+            return false;
+        }
+        boolean held = open(op, 3, 0);
+        codes[codeCount++] = first;
+        codes[codeCount++] = second;
+        codes[codeCount++] = third;
+        return held;
+    }
+
+    public boolean record(int op, int first, int second, int third, int fourth) {
+        if (!recording) {
+            return false;
+        }
+        boolean held = open(op, 4, 0);
+        codes[codeCount++] = first;
+        codes[codeCount++] = second;
+        codes[codeCount++] = third;
+        codes[codeCount++] = fourth;
+        return held;
+    }
+
+    public boolean record(int op, float a) {
+        if (!recording) {
+            return false;
+        }
+        boolean held = open(op, 0, 1);
+        values[valueCount++] = a;
+        return held;
+    }
+
+    public boolean record(int op, int first, float a) {
+        if (!recording) {
+            return false;
+        }
+        boolean held = open(op, 1, 1);
+        codes[codeCount++] = first;
+        values[valueCount++] = a;
+        return held;
+    }
+
+    public boolean record(int op, int first, int second, float a) {
+        if (!recording) {
+            return false;
+        }
+        boolean held = open(op, 2, 1);
+        codes[codeCount++] = first;
+        codes[codeCount++] = second;
+        values[valueCount++] = a;
+        return held;
+    }
+
+    public boolean record(int op, float a, float b) {
+        if (!recording) {
+            return false;
+        }
+        boolean held = open(op, 0, 2);
+        values[valueCount++] = a;
+        values[valueCount++] = b;
+        return held;
+    }
+
+    public boolean record(int op, int first, float a, float b) {
+        if (!recording) {
+            return false;
+        }
+        boolean held = open(op, 1, 2);
+        codes[codeCount++] = first;
+        values[valueCount++] = a;
+        values[valueCount++] = b;
+        return held;
+    }
+
+    public boolean record(int op, float a, float b, float c) {
+        if (!recording) {
+            return false;
+        }
+        boolean held = open(op, 0, 3);
+        values[valueCount++] = a;
+        values[valueCount++] = b;
+        values[valueCount++] = c;
+        return held;
+    }
+
+    public boolean record(int op, float a, float b, float c, float d) {
+        if (!recording) {
+            return false;
+        }
+        boolean held = open(op, 0, 4);
+        values[valueCount++] = a;
+        values[valueCount++] = b;
+        values[valueCount++] = c;
+        values[valueCount++] = d;
+        return held;
+    }
+
+    public boolean record(int op, int first, float a, float b, float c, float d) {
+        if (!recording) {
+            return false;
+        }
+        boolean held = open(op, 1, 4);
+        codes[codeCount++] = first;
+        values[valueCount++] = a;
+        values[valueCount++] = b;
+        values[valueCount++] = c;
+        values[valueCount++] = d;
+        return held;
+    }
+
+    public boolean record(int op, int first, int second, float a, float b, float c, float d) {
+        if (!recording) {
+            return false;
+        }
+        boolean held = open(op, 2, 4);
+        codes[codeCount++] = first;
+        codes[codeCount++] = second;
+        values[valueCount++] = a;
+        values[valueCount++] = b;
+        values[valueCount++] = c;
+        values[valueCount++] = d;
+        return held;
+    }
+
+    public boolean record(int op, float a, float b, float c, float d, float e, float g) {
+        if (!recording) {
+            return false;
+        }
+        boolean held = open(op, 0, 6);
+        values[valueCount++] = a;
+        values[valueCount++] = b;
+        values[valueCount++] = c;
+        values[valueCount++] = d;
+        values[valueCount++] = e;
+        values[valueCount++] = g;
+        return held;
+    }
+
+    public boolean record(int op, float[] many) {
+        if (!recording) {
+            return false;
+        }
+        boolean held = open(op, 0, many.length);
+        System.arraycopy(many, 0, values, valueCount, many.length);
+        valueCount += many.length;
+        return held;
+    }
+
+    private boolean open(int op, int ints, int floats) {
+        codes = grow(codes, codeCount, 3 + ints);
+        codes[codeCount++] = op;
+        codes[codeCount++] = ints;
+        codes[codeCount++] = floats;
+        values = grow(values, valueCount, floats);
         return !executeWhileRecording;
     }
 
@@ -109,9 +310,17 @@ public final class DisplayLists {
         if (found == null) {
             return;
         }
-        List<Runnable> commands = found.commands;
-        for (int at = 0; at < commands.size(); at++) {
-            commands.get(at).run();
+        int[] code = found.codes;
+        float[] value = found.values;
+        int at = 0;
+        int from = 0;
+        while (at < code.length) {
+            int op = code[at];
+            int ints = code[at + 1];
+            int floats = code[at + 2];
+            player.play(op, code, at + 3, value, from);
+            at += 3 + ints;
+            from += floats;
         }
     }
 
@@ -144,5 +353,17 @@ public final class DisplayLists {
             release.accept(block);
         }
         found.blocks = null;
+    }
+
+    private static int[] grow(int[] held, int used, int more) {
+        return used + more <= held.length
+                ? held
+                : Arrays.copyOf(held, Math.max(16, Math.max(used + more, held.length * 2)));
+    }
+
+    private static float[] grow(float[] held, int used, int more) {
+        return used + more <= held.length
+                ? held
+                : Arrays.copyOf(held, Math.max(16, Math.max(used + more, held.length * 2)));
     }
 }

@@ -1,6 +1,7 @@
 package org.lwjgl.opengl;
 
 import dev.flagon.lwjgl.internal.ClientArray;
+import dev.flagon.lwjgl.internal.Ops;
 import dev.flagon.lwjgl.internal.VertexArrays;
 import dev.flagon.platform.graphics.AttributeType;
 import dev.flagon.platform.graphics.CompareFunc;
@@ -69,7 +70,7 @@ public final class GL11 extends GL11C {
     public static final int GL_ALL_ATTRIB_BITS = 0x000FFFFF;
     public static void glAlphaFunc(int func, float reference) {
         CompareFunc compare = compareFunc(func, "glAlphaFunc");
-        if (recording() && state().record(() -> state().alphaFunc(compare, reference))) {
+        if (recording() && state().record(Ops.ALPHA_FUNC, compare.ordinal(), reference)) {
             return;
         }
         state().alphaFunc(compare, reference);
@@ -80,13 +81,14 @@ public final class GL11 extends GL11C {
         return state().lists().generate(count);
     }
     public static void glNewList(int list, int mode) {
+        state().lists().onPlay(GL11C::play);
         state().lists().begin(list, mode);
     }
     public static void glEndList() {
         state().lists().end();
     }
     public static void glCallList(int list) {
-        if (recording() && state().record(() -> state().lists().call(list))) {
+        if (recording() && state().record(Ops.CALL_LIST, list)) {
             return;
         }
         state().lists().call(list);
@@ -100,37 +102,37 @@ public final class GL11 extends GL11C {
     // matrices
 
     public static void glMatrixMode(int mode) {
-        if (recording() && state().record(() -> state().matrixMode(mode))) {
+        if (recording() && state().record(Ops.MATRIX_MODE, mode)) {
             return;
         }
         state().matrixMode(mode);
     }
     public static void glLoadIdentity() {
-        if (recording() && state().record(() -> state().loadIdentity())) {
+        if (recording() && state().record(Ops.LOAD_IDENTITY)) {
             return;
         }
         state().loadIdentity();
     }
     public static void glPushMatrix() {
-        if (recording() && state().record(() -> state().pushMatrix())) {
+        if (recording() && state().record(Ops.PUSH_MATRIX)) {
             return;
         }
         state().pushMatrix();
     }
     public static void glPopMatrix() {
-        if (recording() && state().record(() -> state().popMatrix())) {
+        if (recording() && state().record(Ops.POP_MATRIX)) {
             return;
         }
         state().popMatrix();
     }
     public static void glTranslatef(float x, float y, float z) {
-        if (recording() && state().record(() -> state().translate(x, y, z))) {
+        if (recording() && state().record(Ops.TRANSLATE, x, y, z)) {
             return;
         }
         state().translate(x, y, z);
     }
     public static void glRotatef(float degrees, float x, float y, float z) {
-        if (recording() && state().record(() -> state().rotate(degrees, x, y, z))) {
+        if (recording() && state().record(Ops.ROTATE, degrees, x, y, z)) {
             return;
         }
         state().rotate(degrees, x, y, z);
@@ -142,7 +144,7 @@ public final class GL11 extends GL11C {
         glScalef((float) x, (float) y, (float) z);
     }
     public static void glScalef(float x, float y, float z) {
-        if (recording() && state().record(() -> state().scale(x, y, z))) {
+        if (recording() && state().record(Ops.SCALE, x, y, z)) {
             return;
         }
         state().scale(x, y, z);
@@ -155,7 +157,7 @@ public final class GL11 extends GL11C {
         float tp = (float) top;
         float n = (float) near;
         float f = (float) far;
-        if (recording() && state().record(() -> state().ortho(l, r, b, tp, n, f))) {
+        if (recording() && state().record(Ops.ORTHO, l, r, b, tp, n, f)) {
             return;
         }
         state().ortho(l, r, b, tp, n, f);
@@ -168,7 +170,7 @@ public final class GL11 extends GL11C {
         float tp = (float) top;
         float n = (float) near;
         float f = (float) far;
-        if (recording() && state().record(() -> state().frustum(l, r, b, tp, n, f))) {
+        if (recording() && state().record(Ops.FRUSTUM, l, r, b, tp, n, f)) {
             return;
         }
         state().frustum(l, r, b, tp, n, f);
@@ -189,13 +191,13 @@ public final class GL11 extends GL11C {
     // the attribute stack
 
     public static void glPushAttrib(int mask) {
-        if (recording() && state().record(() -> state().pushAttrib(mask))) {
+        if (recording() && state().record(Ops.PUSH_ATTRIB, mask)) {
             return;
         }
         state().pushAttrib(mask);
     }
     public static void glPopAttrib() {
-        if (recording() && state().record(() -> state().popAttrib())) {
+        if (recording() && state().record(Ops.POP_ATTRIB)) {
             return;
         }
         state().popAttrib();
@@ -219,7 +221,7 @@ public final class GL11 extends GL11C {
     }
     public static void glColor4f(float red, float green, float blue, float alpha) {
         if (recording() && !state().isBuilding()
-                && state().record(() -> state().color(red, green, blue, alpha))) {
+                && state().record(Ops.COLOR, red, green, blue, alpha)) {
             return;
         }
         state().color(red, green, blue, alpha);
@@ -229,7 +231,7 @@ public final class GL11 extends GL11C {
     }
     public static void glNormal3f(float x, float y, float z) {
         if (recording() && !state().isBuilding()
-                && state().record(() -> state().normal(x, y, z))) {
+                && state().record(Ops.NORMAL, x, y, z)) {
             return;
         }
         state().normal(x, y, z);
@@ -238,7 +240,7 @@ public final class GL11 extends GL11C {
 
     public static void glLightf(int light, int parameter, float value) {
         int index = lightIndex(light, "glLightf");
-        if (recording() && state().record(() -> lightScalar(index, parameter, value))) {
+        if (recording() && state().record(Ops.LIGHT_SCALAR, index, parameter, value)) {
             return;
         }
         lightScalar(index, parameter, value);
@@ -254,7 +256,8 @@ public final class GL11 extends GL11C {
     }
     private static void glLight(int light, int parameter, float[] values) {
         int index = lightIndex(light, "glLight");
-        if (recording() && state().record(() -> lightVector(index, parameter, values))) {
+        if (recording() && state().record(Ops.LIGHT_VECTOR, index, parameter,
+                values[0], values[1], values[2], values[3])) {
             return;
         }
         lightVector(index, parameter, values);
@@ -271,7 +274,8 @@ public final class GL11 extends GL11C {
                     "glLightModel emulates GL_LIGHT_MODEL_AMBIENT only, got 0x"
                             + Integer.toHexString(parameter));
         }
-        if (recording() && state().record(() -> state().lighting().setModelAmbient(values))) {
+        if (recording() && state().record(Ops.MODEL_AMBIENT,
+                values[0], values[1], values[2], values[3])) {
             return;
         }
         state().lighting().setModelAmbient(values);
@@ -283,7 +287,7 @@ public final class GL11 extends GL11C {
                     "glMaterialf emulates GL_SHININESS only, got 0x"
                             + Integer.toHexString(parameter));
         }
-        if (recording() && state().record(() -> state().lighting().setShininess(value))) {
+        if (recording() && state().record(Ops.SHININESS, value)) {
             return;
         }
         state().lighting().setShininess(value);
@@ -303,7 +307,8 @@ public final class GL11 extends GL11C {
             glMaterialf(face, parameter, values[0]);
             return;
         }
-        if (recording() && state().record(() -> material(parameter, values))) {
+        if (recording() && state().record(Ops.MATERIAL, parameter,
+                values[0], values[1], values[2], values[3])) {
             return;
         }
         material(parameter, values);
@@ -327,7 +332,7 @@ public final class GL11 extends GL11C {
         }
     }
     public static void glFogf(int parameter, float value) {
-        if (recording() && state().record(() -> fog(parameter, value))) {
+        if (recording() && state().record(Ops.FOG, parameter, value)) {
             return;
         }
         fog(parameter, value);
@@ -346,7 +351,8 @@ public final class GL11 extends GL11C {
             glFogf(parameter, values[0]);
             return;
         }
-        if (recording() && state().record(() -> state().lighting().setFogColor(values))) {
+        if (recording() && state().record(Ops.FOG_COLOR,
+                values[0], values[1], values[2], values[3])) {
             return;
         }
         state().lighting().setFogColor(values);
@@ -445,7 +451,7 @@ public final class GL11 extends GL11C {
                             + "; GL_MODULATE, GL_REPLACE and GL_ADD are the modes the "
                             + "compatibility shader implements");
         };
-        if (recording() && state().record(() -> state().setTextureEnv(mode))) {
+        if (recording() && state().record(Ops.TEXTURE_ENV, mode)) {
             return;
         }
         state().setTextureEnv(mode);

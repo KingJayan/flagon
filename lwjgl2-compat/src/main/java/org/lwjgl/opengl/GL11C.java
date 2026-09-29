@@ -5,6 +5,7 @@ import dev.flagon.lwjgl.internal.DrawMode;
 import dev.flagon.lwjgl.internal.GLState;
 import dev.flagon.lwjgl.internal.Lighting;
 import dev.flagon.lwjgl.internal.Matrix4;
+import dev.flagon.lwjgl.internal.Ops;
 import dev.flagon.platform.graphics.AttributeType;
 import dev.flagon.platform.graphics.BlendEquation;
 import dev.flagon.platform.graphics.BlendFactor;
@@ -225,19 +226,19 @@ public class GL11C {
     // framebuffer
 
     public static void glClearColor(float red, float green, float blue, float alpha) {
-        if (recording() && state().record(() -> state().clearColor(red, green, blue, alpha))) {
+        if (recording() && state().record(Ops.CLEAR_COLOR, red, green, blue, alpha)) {
             return;
         }
         state().clearColor(red, green, blue, alpha);
     }
     public static void glClearDepth(double depth) {
-        if (recording() && state().record(() -> state().clearDepth(depth))) {
+        if (recording() && state().record(Ops.CLEAR_DEPTH, (float) depth)) {
             return;
         }
         state().clearDepth(depth);
     }
     public static void glClear(int mask) {
-        if (recording() && state().record(() -> clear(mask))) {
+        if (recording() && state().record(Ops.CLEAR, mask)) {
             return;
         }
         clear(mask);
@@ -249,7 +250,7 @@ public class GL11C {
                 (mask & GL_STENCIL_BUFFER_BIT) != 0);
     }
     public static void glViewport(int x, int y, int width, int height) {
-        if (recording() && state().record(() -> state().viewport(x, y, width, height))) {
+        if (recording() && state().record(Ops.VIEWPORT, x, y, width, height)) {
             return;
         }
         state().viewport(x, y, width, height);
@@ -259,7 +260,7 @@ public class GL11C {
         if (width < 0 || height < 0) {
             throw new IllegalArgumentException("glScissor: negative size " + width + "x" + height);
         }
-        if (recording() && state().record(() -> state().setScissor(x, y, width, height))) {
+        if (recording() && state().record(Ops.SCISSOR, x, y, width, height)) {
             return;
         }
         state().setScissor(x, y, width, height);
@@ -272,7 +273,7 @@ public class GL11C {
             default -> throw new UnsupportedOperationException(
                     "glCullFace: unknown face 0x" + Integer.toHexString(face));
         };
-        if (recording() && state().record(() -> state().setCulledFaces(faces))) {
+        if (recording() && state().record(Ops.CULLED_FACES, faces.ordinal())) {
             return;
         }
         state().setCulledFaces(faces);
@@ -284,26 +285,27 @@ public class GL11C {
             default -> throw new UnsupportedOperationException(
                     "glFrontFace: unknown winding 0x" + Integer.toHexString(winding));
         };
-        if (recording() && state().record(() -> state().setFrontFace(front))) {
+        if (recording() && state().record(Ops.FRONT_FACE, front.ordinal())) {
             return;
         }
         state().setFrontFace(front);
     }
     public static void glColorMask(boolean red, boolean green, boolean blue, boolean alpha) {
-        if (recording() && state().record(() -> state().setColorMask(red, green, blue, alpha))) {
+        if (recording() && state().record(Ops.COLOR_MASK, red ? 1 : 0, green ? 1 : 0,
+                blue ? 1 : 0, alpha ? 1 : 0)) {
             return;
         }
         state().setColorMask(red, green, blue, alpha);
     }
     public static void glDepthMask(boolean enabled) {
-        if (recording() && state().record(() -> state().setDepthWrite(enabled))) {
+        if (recording() && state().record(Ops.DEPTH_WRITE, enabled ? 1 : 0)) {
             return;
         }
         state().setDepthWrite(enabled);
     }
     public static void glDepthFunc(int func) {
         CompareFunc compare = compareFunc(func, "glDepthFunc");
-        if (recording() && state().record(() -> state().setDepthFunc(compare))) {
+        if (recording() && state().record(Ops.DEPTH_FUNC, compare.ordinal())) {
             return;
         }
         state().setDepthFunc(compare);
@@ -311,7 +313,7 @@ public class GL11C {
     public static void glBlendFunc(int source, int destination) {
         BlendFactor from = blendFactor(source, "glBlendFunc");
         BlendFactor to = blendFactor(destination, "glBlendFunc");
-        if (recording() && state().record(() -> state().setBlendFunc(from, to))) {
+        if (recording() && state().record(Ops.BLEND_FUNC, from.ordinal(), to.ordinal())) {
             return;
         }
         state().setBlendFunc(from, to);
@@ -319,13 +321,13 @@ public class GL11C {
     // capabilities
 
     public static void glEnable(int capability) {
-        if (recording() && state().record(() -> setCapability(capability, true))) {
+        if (recording() && state().record(Ops.CAPABILITY, capability, 1)) {
             return;
         }
         setCapability(capability, true);
     }
     public static void glDisable(int capability) {
-        if (recording() && state().record(() -> setCapability(capability, false))) {
+        if (recording() && state().record(Ops.CAPABILITY, capability, 0)) {
             return;
         }
         setCapability(capability, false);
@@ -361,7 +363,7 @@ public class GL11C {
     public static void glStencilFunc(int func, int reference, int mask) {
         CompareFunc compare = compareFunc(func, "glStencilFunc");
         if (recording()
-                && state().record(() -> device().setStencilFunc(compare, reference, mask))) {
+                && state().record(Ops.STENCIL_FUNC, compare.ordinal(), reference, mask)) {
             return;
         }
         device().setStencilFunc(compare, reference, mask);
@@ -371,20 +373,20 @@ public class GL11C {
         StencilOp onDepthFail = stencilOp(depthFail);
         StencilOp onPass = stencilOp(pass);
         if (recording()
-                && state().record(() -> device().setStencilOp(onStencilFail, onDepthFail,
-                        onPass))) {
+                && state().record(Ops.STENCIL_OP, onStencilFail.ordinal(),
+                        onDepthFail.ordinal(), onPass.ordinal())) {
             return;
         }
         device().setStencilOp(onStencilFail, onDepthFail, onPass);
     }
     public static void glStencilMask(int mask) {
-        if (recording() && state().record(() -> device().setStencilMask(mask))) {
+        if (recording() && state().record(Ops.STENCIL_MASK, mask)) {
             return;
         }
         device().setStencilMask(mask);
     }
     public static void glClearStencil(int value) {
-        if (recording() && state().record(() -> device().clearStencil(value))) {
+        if (recording() && state().record(Ops.CLEAR_STENCIL, value)) {
             return;
         }
         device().clearStencil(value);
@@ -404,7 +406,7 @@ public class GL11C {
     // rasterisation
 
     public static void glPolygonOffset(float factor, float units) {
-        if (recording() && state().record(() -> device().setPolygonOffset(factor, units))) {
+        if (recording() && state().record(Ops.POLYGON_OFFSET, factor, units)) {
             return;
         }
         device().setPolygonOffset(factor, units);
@@ -413,7 +415,7 @@ public class GL11C {
         if (width <= 0.0f) {
             throw new IllegalArgumentException("glLineWidth: width must be positive, got " + width);
         }
-        if (recording() && state().record(() -> device().setLineWidth(width))) {
+        if (recording() && state().record(Ops.LINE_WIDTH, width)) {
             return;
         }
         device().setLineWidth(width);
@@ -423,7 +425,7 @@ public class GL11C {
         if (size <= 0.0f) {
             throw new IllegalArgumentException("glPointSize: size must be positive, got " + size);
         }
-        if (recording() && state().record(() -> state().pointSize(size))) {
+        if (recording() && state().record(Ops.POINT_SIZE, size)) {
             return;
         }
         state().pointSize(size);
@@ -672,13 +674,13 @@ public class GL11C {
         };
     }
     static void loadMatrix(float[] matrix) {
-        if (recording() && state().record(() -> state().loadMatrix(matrix))) {
+        if (recording() && state().record(Ops.LOAD_MATRIX, matrix)) {
             return;
         }
         state().loadMatrix(matrix);
     }
     static void multMatrix(float[] matrix) {
-        if (recording() && state().record(() -> state().multMatrix(matrix))) {
+        if (recording() && state().record(Ops.MULT_MATRIX, matrix)) {
             return;
         }
         state().multMatrix(matrix);
@@ -699,7 +701,7 @@ public class GL11C {
             throw new IllegalArgumentException(
                     call + " needs 16 floats, got " + matrix.remaining());
         }
-        return read(matrix, recording() ? new float[16] : SIXTEEN, 16);
+        return read(matrix, SIXTEEN, 16);
     }
     private static float[] read(FloatBuffer values, float[] into, int count) {
         int at = values.position();
@@ -711,11 +713,34 @@ public class GL11C {
     /** the coordinate belongs to a unit; {@link GL13#glMultiTexCoord2f} names a different one. */
     static void texCoord(int unit, float s, float t) {
         if (recording() && !state().isBuilding()
-                && state().record(() -> state().texCoord(unit, s, t))) {
+                && state().record(Ops.TEX_COORD, unit, s, t)) {
             return;
         }
         state().texCoord(unit, s, t);
     }
+    private static final float[] PLAYED = new float[4];
+
+    /** runs one call a display list holds. the state takes the calls it owns first */
+    static void play(int op, int[] codes, int at, float[] values, int from) {
+        if (state().play(op, codes, at, values, from)) {
+            return;
+        }
+        switch (op) {
+            case Ops.LIGHT_SCALAR -> lightScalar(codes[at], codes[at + 1], values[from]);
+            case Ops.LIGHT_VECTOR -> lightVector(codes[at], codes[at + 1], four(values, from));
+            case Ops.MATERIAL -> material(codes[at], four(values, from));
+            case Ops.FOG -> fog(codes[at], values[from]);
+            case Ops.CLEAR -> clear(codes[at]);
+            case Ops.CAPABILITY -> setCapability(codes[at], codes[at + 1] != 0);
+            default -> throw new IllegalStateException("display list holds unknown call " + op);
+        }
+    }
+
+    private static float[] four(float[] values, int from) {
+        System.arraycopy(values, from, PLAYED, 0, 4);
+        return PLAYED;
+    }
+
     static void lightScalar(int light, int parameter, float value) {
         Lighting lighting = state().lighting();
         switch (parameter) {
@@ -842,7 +867,7 @@ public class GL11C {
     }
     public static void glBindTexture(int target, int texture) {
         requireTexture2D(target, "glBindTexture");
-        if (recording() && state().record(() -> state().bindTexture(texture))) {
+        if (recording() && state().record(Ops.BIND_TEXTURE, texture)) {
             return;
         }
         state().bindTexture(texture);

@@ -1,5 +1,7 @@
 package org.lwjgl.opengl;
 
+import dev.flagon.lwjgl.internal.Ops;
+
 /**
  * gl 1.3 over webgl2: the core profile of {@link GL13C}, and the fixed-function half here
  */
@@ -13,7 +15,7 @@ public final class GL13 extends GL13C {
     /** selects the unit that {@code glTexCoordPointer} and the coordinate array act on. */
     public static void glClientActiveTexture(int unit) {
         int selected = unitOf(unit, "glClientActiveTexture");
-        if (state().isRecording() && state().record(() -> state().clientActiveTexture(selected))) {
+        if (state().isRecording() && state().record(Ops.CLIENT_ACTIVE_TEXTURE, selected)) {
             return;
         }
         state().clientActiveTexture(selected);

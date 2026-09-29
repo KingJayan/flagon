@@ -8,6 +8,7 @@ import dev.flagon.platform.graphics.CullFace;
 import dev.flagon.platform.graphics.GraphicsDevice;
 import dev.flagon.platform.graphics.IndexType;
 import dev.flagon.platform.graphics.ShaderStage;
+import dev.flagon.platform.graphics.StencilOp;
 import dev.flagon.platform.graphics.Winding;
 
 import java.util.ArrayList;
@@ -38,6 +39,13 @@ public final class GLState implements RenderState {
     private int clientActiveTexture;
     private boolean alphaTestEnabled;
     private float alphaTestThreshold;
+    private static final CompareFunc[] COMPARES = CompareFunc.values();
+    private static final BlendFactor[] FACTORS = BlendFactor.values();
+    private static final BlendEquation[] EQUATIONS = BlendEquation.values();
+    private static final CullFace[] CULL_FACES = CullFace.values();
+    private static final Winding[] WINDINGS = Winding.values();
+    private static final StencilOp[] STENCIL_OPS = StencilOp.values();
+
     private CompareFunc alphaTestFunc = CompareFunc.ALWAYS;
 
     private boolean normalize;
@@ -287,11 +295,7 @@ public final class GLState implements RenderState {
             int block = pipeline.capture(immediate.mode(), immediate.vertices(),
                     immediate.floatCount(), immediate.vertexCount(), immediate.layout());
             displayLists.own(block);
-            int lent = lent();
-            if (record(() -> {
-                pipeline.drawCaptured(block, this, lent);
-                restoreBindings();
-            })) {
+            if (record(Ops.DRAW_BLOCK, block, lent())) {
                 return;
             }
         }
@@ -1042,11 +1046,140 @@ public final class GLState implements RenderState {
         return displayLists;
     }
 
-    /**
-     * @return true when the call belongs in the list being recorded and must not also run now
-     */
-    public boolean record(Runnable call) {
-        return displayLists.record(call);
+    public boolean record(int op) {
+        return displayLists.record(op);
+    }
+    public boolean record(int op, int first) {
+        return displayLists.record(op, first);
+    }
+    public boolean record(int op, int first, int second) {
+        return displayLists.record(op, first, second);
+    }
+    public boolean record(int op, int first, int second, int third) {
+        return displayLists.record(op, first, second, third);
+    }
+    public boolean record(int op, int first, int second, int third, int fourth) {
+        return displayLists.record(op, first, second, third, fourth);
+    }
+    public boolean record(int op, float a) {
+        return displayLists.record(op, a);
+    }
+    public boolean record(int op, int first, float a) {
+        return displayLists.record(op, first, a);
+    }
+    public boolean record(int op, int first, int second, float a) {
+        return displayLists.record(op, first, second, a);
+    }
+    public boolean record(int op, float a, float b) {
+        return displayLists.record(op, a, b);
+    }
+    public boolean record(int op, int first, float a, float b) {
+        return displayLists.record(op, first, a, b);
+    }
+    public boolean record(int op, float a, float b, float c) {
+        return displayLists.record(op, a, b, c);
+    }
+    public boolean record(int op, float a, float b, float c, float d) {
+        return displayLists.record(op, a, b, c, d);
+    }
+    public boolean record(int op, int first, float a, float b, float c, float d) {
+        return displayLists.record(op, first, a, b, c, d);
+    }
+    public boolean record(int op, int first, int second, float a, float b, float c, float d) {
+        return displayLists.record(op, first, second, a, b, c, d);
+    }
+    public boolean record(int op, float a, float b, float c, float d, float e, float g) {
+        return displayLists.record(op, a, b, c, d, e, g);
+    }
+    public boolean record(int op, float[] many) {
+        return displayLists.record(op, many);
+    }
+
+    /** replays the calls this state owns, and leaves the rest to the compatibility layer */
+    public boolean play(int op, int[] codes, int at, float[] values, int from) {
+        switch (op) {
+            case Ops.CALL_LIST -> displayLists.call(codes[at]);
+            case Ops.MATRIX_MODE -> matrixMode(codes[at]);
+            case Ops.LOAD_IDENTITY -> loadIdentity();
+            case Ops.PUSH_MATRIX -> pushMatrix();
+            case Ops.POP_MATRIX -> popMatrix();
+            case Ops.TRANSLATE -> translate(values[from], values[from + 1], values[from + 2]);
+            case Ops.ROTATE -> rotate(values[from], values[from + 1], values[from + 2],
+                    values[from + 3]);
+            case Ops.SCALE -> scale(values[from], values[from + 1], values[from + 2]);
+            case Ops.ORTHO -> ortho(values[from], values[from + 1], values[from + 2],
+                    values[from + 3], values[from + 4], values[from + 5]);
+            case Ops.FRUSTUM -> frustum(values[from], values[from + 1], values[from + 2],
+                    values[from + 3], values[from + 4], values[from + 5]);
+            case Ops.PUSH_ATTRIB -> pushAttrib(codes[at]);
+            case Ops.POP_ATTRIB -> popAttrib();
+            case Ops.COLOR -> color(values[from], values[from + 1], values[from + 2],
+                    values[from + 3]);
+            case Ops.NORMAL -> normal(values[from], values[from + 1], values[from + 2]);
+            case Ops.ALPHA_FUNC -> alphaFunc(COMPARES[codes[at]], values[from]);
+            case Ops.TEXTURE_ENV -> setTextureEnv(codes[at]);
+            case Ops.MODEL_AMBIENT -> lighting.setModelAmbient(four(values, from));
+            case Ops.SHININESS -> lighting.setShininess(values[from]);
+            case Ops.FOG_COLOR -> lighting.setFogColor(four(values, from));
+            case Ops.DRAW_BLOCK -> drawBlock(codes[at], codes[at + 1]);
+            case Ops.CLIENT_ACTIVE_TEXTURE -> clientActiveTexture(codes[at]);
+            case Ops.ACTIVE_TEXTURE -> activeTexture(codes[at]);
+            case Ops.BLEND_FUNC -> setBlendFunc(FACTORS[codes[at]], FACTORS[codes[at + 1]]);
+            case Ops.BLEND_FUNC_SEPARATE -> setBlendFuncSeparate(FACTORS[codes[at]],
+                    FACTORS[codes[at + 1]], FACTORS[codes[at + 2]], FACTORS[codes[at + 3]]);
+            case Ops.BLEND_EQUATION -> setBlendEquation(EQUATIONS[codes[at]]);
+            case Ops.BLEND_EQUATION_SEPARATE -> setBlendEquationSeparate(EQUATIONS[codes[at]],
+                    EQUATIONS[codes[at + 1]]);
+            case Ops.BLEND_COLOR -> setBlendColor(values[from], values[from + 1],
+                    values[from + 2], values[from + 3]);
+            case Ops.CLEAR_COLOR -> clearColor(values[from], values[from + 1],
+                    values[from + 2], values[from + 3]);
+            case Ops.CLEAR_DEPTH -> clearDepth(values[from]);
+            case Ops.VIEWPORT -> viewport(codes[at], codes[at + 1], codes[at + 2],
+                    codes[at + 3]);
+            case Ops.SCISSOR -> setScissor(codes[at], codes[at + 1], codes[at + 2],
+                    codes[at + 3]);
+            case Ops.CULLED_FACES -> setCulledFaces(CULL_FACES[codes[at]]);
+            case Ops.FRONT_FACE -> setFrontFace(WINDINGS[codes[at]]);
+            case Ops.COLOR_MASK -> setColorMask(codes[at] != 0, codes[at + 1] != 0,
+                    codes[at + 2] != 0, codes[at + 3] != 0);
+            case Ops.DEPTH_WRITE -> setDepthWrite(codes[at] != 0);
+            case Ops.DEPTH_FUNC -> setDepthFunc(COMPARES[codes[at]]);
+            case Ops.STENCIL_FUNC -> device().setStencilFunc(COMPARES[codes[at]],
+                    codes[at + 1], codes[at + 2]);
+            case Ops.STENCIL_OP -> device().setStencilOp(STENCIL_OPS[codes[at]],
+                    STENCIL_OPS[codes[at + 1]], STENCIL_OPS[codes[at + 2]]);
+            case Ops.STENCIL_MASK -> device().setStencilMask(codes[at]);
+            case Ops.CLEAR_STENCIL -> device().clearStencil(codes[at]);
+            case Ops.POLYGON_OFFSET -> device().setPolygonOffset(values[from], values[from + 1]);
+            case Ops.LINE_WIDTH -> device().setLineWidth(values[from]);
+            case Ops.POINT_SIZE -> pointSize(values[from]);
+            case Ops.LOAD_MATRIX -> loadMatrix(sixteen(values, from));
+            case Ops.MULT_MATRIX -> multMatrix(sixteen(values, from));
+            case Ops.TEX_COORD -> texCoord(codes[at], values[from], values[from + 1]);
+            case Ops.BIND_TEXTURE -> bindTexture(codes[at]);
+            default -> {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private void drawBlock(int block, int lent) {
+        pipeline.drawCaptured(block, this, lent);
+        restoreBindings();
+    }
+
+    private final float[] played = new float[16];
+
+    private float[] four(float[] values, int from) {
+        System.arraycopy(values, from, played, 0, 4);
+        return played;
+    }
+
+    private float[] sixteen(float[] values, int from) {
+        System.arraycopy(values, from, played, 0, 16);
+        return played;
     }
 
     public boolean isRecording() {

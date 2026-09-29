@@ -1,6 +1,7 @@
 package org.lwjgl.opengl;
 
 import dev.flagon.lwjgl.internal.GLState;
+import dev.flagon.lwjgl.internal.Ops;
 import dev.flagon.platform.graphics.BlendEquation;
 import dev.flagon.platform.graphics.BlendFactor;
 
@@ -51,14 +52,15 @@ public class GL14C {
         BlendFactor dc = GL11.blendFactor(destinationColor, "glBlendFuncSeparate");
         BlendFactor sa = GL11.blendFactor(sourceAlpha, "glBlendFuncSeparate");
         BlendFactor da = GL11.blendFactor(destinationAlpha, "glBlendFuncSeparate");
-        if (recording() && state().record(() -> state().setBlendFuncSeparate(sc, dc, sa, da))) {
+        if (recording() && state().record(Ops.BLEND_FUNC_SEPARATE, sc.ordinal(), dc.ordinal(),
+                sa.ordinal(), da.ordinal())) {
             return;
         }
         state().setBlendFuncSeparate(sc, dc, sa, da);
     }
     public static void glBlendEquation(int mode) {
         BlendEquation equation = equation(mode, "glBlendEquation");
-        if (recording() && state().record(() -> state().setBlendEquation(equation))) {
+        if (recording() && state().record(Ops.BLEND_EQUATION, equation.ordinal())) {
             return;
         }
         state().setBlendEquation(equation);
@@ -66,13 +68,14 @@ public class GL14C {
     public static void glBlendEquationSeparate(int color, int alpha) {
         BlendEquation rgb = equation(color, "glBlendEquationSeparate");
         BlendEquation a = equation(alpha, "glBlendEquationSeparate");
-        if (recording() && state().record(() -> state().setBlendEquationSeparate(rgb, a))) {
+        if (recording()
+                && state().record(Ops.BLEND_EQUATION_SEPARATE, rgb.ordinal(), a.ordinal())) {
             return;
         }
         state().setBlendEquationSeparate(rgb, a);
     }
     public static void glBlendColor(float red, float green, float blue, float alpha) {
-        if (recording() && state().record(() -> state().setBlendColor(red, green, blue, alpha))) {
+        if (recording() && state().record(Ops.BLEND_COLOR, red, green, blue, alpha)) {
             return;
         }
         state().setBlendColor(red, green, blue, alpha);
