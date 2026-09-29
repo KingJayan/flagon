@@ -2,7 +2,6 @@
 import { test, expect } from '@playwright/test';
 import { open } from './harness';
 
-/** the shell's chrome is the same whichever backend runs underneath it, so this runs once. */
 test.describe('reaching the shell without a mouse', () => {
   test('shows every control the keyboard lands on', async ({ page }) => {
     await open(page, 'js', 'program=hello');

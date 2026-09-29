@@ -31,13 +31,6 @@ browsers: ## install Playwright engines and their system dependencies (ENGINES="
 	cd $(WEB) && bunx playwright install $(ENGINES)
 
 fast: ## compile the fast development bundles
-	@rm -f $(BUNDLES)/*.js.map $(BUNDLES)/*.js.teavmdbg
-	@for js in $(BUNDLES)/*.js; do \
-		case $$js in \
-			*wasm-gc-module-runtime.js) ;; \
-			*) rm -f "$$js" ;; \
-		esac \
-	done
 	$(GRADLE) $(PRESERVE) bundlesFast
 	@$(MAKE) verify-bundles
 	@echo "Fast bundles built. Run 'make bundles' for the full build."
@@ -57,10 +50,7 @@ app: ## build the JARs in vendor/ as runnable app bundles
 	@echo "Run 'make dev' and open http://localhost:5273/"
 
 verify-bundles: ## verify generated bundles contain compiled output
-	@for bundle in $(BUNDLES)/*.js $(BUNDLES)/*.wasm; do \
-		case $$bundle in \
-			*wasm-gc-module-runtime.js) continue ;; \
-		esac; \
+	@for bundle in $(BUNDLES)/js/*.js $(BUNDLES)/wasm/*.wasm; do \
 		test -f "$$bundle" || continue; \
 		size=$$(wc -c < "$$bundle" | tr -d " "); \
 		test $$size -ge 100000 || { \

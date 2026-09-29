@@ -15,7 +15,6 @@ import java.io.ByteArrayOutputStream;
 
 import javax.imageio.ImageIO;
 
-/** shows what an image is in a bundle: pixels, a png round trip, and the page's own clipboard. */
 public final class ImageProgram implements Program {
 
     @Override
@@ -68,7 +67,6 @@ public final class ImageProgram implements Program {
         console.info("image: the clipboard hands back " + back);
     }
 
-    /** a png this program wrote by hand, to read a colour type our own writer never writes */
     private static void readWritten(ConsoleSink console, String what, byte[] file)
             throws Exception {
         BufferedImage image = ImageIO.read(new ByteArrayInputStream(file));
@@ -77,13 +75,11 @@ public final class ImageProgram implements Program {
                 + " last 0x" + hex(image.getRGB(image.getWidth() - 1, image.getHeight() - 1)));
     }
 
-    /** four grey pixels, then four more written as the step up from the one to the left */
     private static byte[] grey() throws java.io.IOException {
         byte[] rows = {0, 10, 20, 30, 40, 1, 50, 10, 10, 10};
         return png(4, 2, 0, rows, null);
     }
 
-    /** red, green and blue by number, the second row written as the step down from the one above */
     private static byte[] palette() throws java.io.IOException {
         byte[] rows = {0, 0, 1, 2, 0, 2, 0, 1, 0, 1};
         return png(4, 2, 3, rows, new byte[] {(byte) 255, 0, 0, 0, (byte) 255, 0, 0, 0,

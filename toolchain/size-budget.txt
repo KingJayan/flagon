@@ -1,6 +1,6 @@
 # release bundle size limits, in bytes
-sandbox.wasm 2100000
-sandbox.js 1175000
-example.wasm 705000
-example.js 442000
-pausing.wasm 165000
+wasm/sandbox.wasm 2100000
+js/sandbox.js 1175000
+wasm/example.wasm 705000
+js/example.js 442000
+wasm/pausing.wasm 165000

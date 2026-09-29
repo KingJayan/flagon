@@ -183,7 +183,6 @@ for (const backend of BACKENDS) {
       const log = page.getByTestId('log');
       await expect(log).toContainText('line 1');
 
-      // the reader scrolls up while the program is still writing
       await log.evaluate((node) => {
         node.scrollTop = 0;
       });
@@ -216,8 +215,7 @@ test.describe("the shell's own jar bundle", () => {
   });
 
   test('says what to do when no jar has been built yet', async ({ page }) => {
-    // a dev server answers an unknown path with the page itself, so the type decides
-    const built = await page.request.head('/flagon/app.wasm');
+    const built = await page.request.head('/flagon/wasm/app.wasm');
     const isBundle = built.ok() && !(built.headers()['content-type'] ?? '').includes('text/html');
     test.skip(isBundle, 'a jar has been built here, so there is nothing to report');
     await page.goto('/?bundle=app');
