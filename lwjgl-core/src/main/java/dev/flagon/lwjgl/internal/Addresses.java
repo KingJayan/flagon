@@ -22,8 +22,15 @@ public final class Addresses {
     private static final long SLOT_MASK = (1L << SLOT_BITS) - 1;
     private static final int GENERATIONS = 1 << 8;
 
+    /** how many buffers the memo holds */
+    private static final int MEMO = 8;
+
+    /** how many misses one sweep covers */
+    private static final int SWEEP_EVERY = 64;
+
     private static final ReferenceQueue<Buffer> COLLECTED = new ReferenceQueue<>();
     private static final List<Held> REGISTERED = new ArrayList<>();
+    private static final Held[] MEMOED = new Held[MEMO];
 
     private static Held[] slots = new Held[64];
     private static int[] ages = new int[64];
@@ -35,7 +42,7 @@ public final class Addresses {
     private static Held[] table = new Held[64];
     private static int tableCount;
 
-    private static Held last;
+    private static int missed;
     private static int gone;
     private static int sequence;
 
@@ -86,12 +93,16 @@ public final class Addresses {
     }
 
     private static long base(Buffer buffer) {
-        Held memo = last;
-        if (memo != null && memo.get() == buffer) {
-            return memo.handle;
-        }
-        sweep();
         int identity = System.identityHashCode(buffer);
+        int seat = memoSeat(identity);
+        Held remembered = MEMOED[seat];
+        if (remembered != null && remembered.get() == buffer) {
+            return remembered.handle;
+        }
+        if (++missed >= SWEEP_EVERY) {
+            missed = 0;
+            sweep();
+        }
         Held known = find(identity, buffer);
         if (known == null) {
             int slot = takeSlot();
@@ -100,11 +111,22 @@ public final class Addresses {
             slots[slot] = known;
             add(known);
         }
-        last = known;
+        MEMOED[seat] = known;
         return known.handle;
     }
 
+    private static int memoSeat(int identity) {
+        return spread(identity) & (MEMO - 1);
+    }
+
     private static int takeSlot() {
+        if (freeCount > 0) {
+            return free[--freeCount];
+        }
+        if (slotCount >= SLOT_MASK) {
+            // the sweep runs on a counter, so a freed slot may not be back yet
+            sweep();
+        }
         if (freeCount > 0) {
             return free[--freeCount];
         }
@@ -119,9 +141,13 @@ public final class Addresses {
         return slotCount++;
     }
 
+    private static int spread(int identity) {
+        int mixed = identity * 0x9E3779B9;
+        return mixed ^ (mixed >>> 16);
+    }
+
     private static int start(int identity) {
-        int spread = identity * 0x9E3779B9;
-        return (spread ^ (spread >>> 16)) & (table.length - 1);
+        return spread(identity) & (table.length - 1);
     }
 
     private static int after(int at) {
@@ -231,8 +257,9 @@ public final class Addresses {
 
     private static void drop(Held held) {
         held.dropped = true;
-        if (last == held) {
-            last = null;
+        int seat = memoSeat(held.identity);
+        if (MEMOED[seat] == held) {
+            MEMOED[seat] = null;
         }
         unmap(held);
         if (held.slot >= 0 && slots[held.slot] == held) {
@@ -261,13 +288,19 @@ public final class Addresses {
         return window(slot, (int) address, slot.capacity());
     }
 
+    /** slices the slot in place and puts it back: a duplicate would cost a second buffer */
     private static ByteBuffer window(ByteBuffer slot, int from, int to) {
-        ByteBuffer view = slot.duplicate();
-        view.position(from);
-        view.limit(to);
-        ByteBuffer sliced = view.slice();
-        sliced.order(slot.order());
-        return sliced;
+        int position = slot.position();
+        int limit = slot.limit();
+        slot.limit(slot.capacity());
+        slot.position(from);
+        slot.limit(to);
+        ByteBuffer view = slot.slice();
+        view.order(slot.order());
+        slot.limit(slot.capacity());
+        slot.position(position);
+        slot.limit(limit);
+        return view;
     }
 
     private static ByteBuffer byteSlot(long address) {
