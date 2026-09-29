@@ -21,9 +21,9 @@ import java.util.List;
 
 final class Opfs {
 
-    private static final Map<String, Directory> directories = new HashMap<>();
+    private final Map<String, Directory> directories = new HashMap<>();
 
-    private static Directory root;
+    private Directory root;
 
     interface Entry extends JSObject {
         @JSProperty
@@ -113,14 +113,14 @@ final class Opfs {
     private record At(Directory directory, String name) {
     }
 
-    private Opfs() {
+    Opfs() {
     }
 
     static boolean isAvailable() {
         return hasNavigator() && hasStorage() && offersDirectory();
     }
 
-    static Entry stat(String path) {
+    Entry stat(String path) {
         if ("/".equals(path)) {
             return entry(true, true, 0, 0);
         }
@@ -147,7 +147,7 @@ final class Opfs {
                 : entry(true, true, 0, 0);
     }
 
-    private static Directory above(String[] names) {
+    private Directory above(String[] names) {
         Directory at = root();
         for (int name = 0; at != null && name < names.length - 1; name++) {
             String key = key(names, name + 1);
@@ -163,7 +163,7 @@ final class Opfs {
         return at;
     }
 
-    static JSArray<JSString> list(String path) {
+    JSArray<JSString> list(String path) {
         String[] names = parts(path);
         Directory directory = descend(names, names.length);
         JSArray<JSString> found = JSArray.create();
@@ -174,33 +174,33 @@ final class Opfs {
         return found;
     }
 
-    static Int8Array read(String path) {
+    Int8Array read(String path) {
         At at = walk(path);
         Handle handle = settled(at.directory().getFileHandle(at.name()));
         return new Int8Array(settled(settled(handle.getFile()).arrayBuffer()));
     }
 
-    static JSObject write(String path, Int8Array data) {
+    JSObject write(String path, Int8Array data) {
         At at = walk(path);
         Handle handle = settled(at.directory().getFileHandle(at.name(), creating()));
         return put(handle, data);
     }
 
-    static JSObject create(String path, boolean directory) {
+    JSObject create(String path, boolean directory) {
         At at = walk(path);
         return directory
                 ? settled(at.directory().getDirectoryHandle(at.name(), creating())).cast()
                 : settled(at.directory().getFileHandle(at.name(), creating())).cast();
     }
 
-    static JSObject delete(String path) {
+    JSObject delete(String path) {
         At at = walk(path);
         JSObject done = settled(at.directory().removeEntry(at.name()));
         forget(path);
         return done;
     }
 
-    static JSObject move(String from, String to) {
+    JSObject move(String from, String to) {
         At source = walk(from);
         At target = walk(to);
         forget(from);
@@ -221,14 +221,14 @@ final class Opfs {
         return settled(writable.close());
     }
 
-    private static At walk(String path) {
+    private At walk(String path) {
         String[] names = parts(path);
         return names.length == 0
                 ? new At(descend(names, 0), "")
                 : new At(descend(names, names.length - 1), names[names.length - 1]);
     }
 
-    private static Directory descend(String[] names, int count) {
+    private Directory descend(String[] names, int count) {
         Directory at = root();
         for (int name = 0; name < count; name++) {
             String key = key(names, name + 1);
@@ -242,7 +242,7 @@ final class Opfs {
         return at;
     }
 
-    private static Directory root() {
+    private Directory root() {
         if (root == null) {
             root = settled(storage().getDirectory());
         }
@@ -257,7 +257,7 @@ final class Opfs {
         return key.toString();
     }
 
-    private static void forget(String path) {
+    private void forget(String path) {
         String gone = key(parts(path), parts(path).length);
         directories.keySet().removeIf(held -> held.equals(gone) || held.startsWith(gone));
     }

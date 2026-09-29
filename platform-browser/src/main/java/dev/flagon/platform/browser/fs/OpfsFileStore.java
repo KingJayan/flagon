@@ -9,6 +9,8 @@ import org.teavm.jso.typedarrays.Int8Array;
 
 public final class OpfsFileStore implements FileStore {
 
+    private final Opfs opfs = new Opfs();
+
     private OpfsFileStore() {
     }
 
@@ -23,18 +25,18 @@ public final class OpfsFileStore implements FileStore {
 
     @Override
     public boolean exists(String path) {
-        return Opfs.stat(FilePaths.normalize(path)).isExists();
+        return opfs.stat(FilePaths.normalize(path)).isExists();
     }
 
     @Override
     public boolean isDirectory(String path) {
-        Opfs.Entry entry = Opfs.stat(FilePaths.normalize(path));
+        Opfs.Entry entry = opfs.stat(FilePaths.normalize(path));
         return entry.isExists() && entry.isDirectory();
     }
 
     @Override
     public boolean isFile(String path) {
-        Opfs.Entry entry = Opfs.stat(FilePaths.normalize(path));
+        Opfs.Entry entry = opfs.stat(FilePaths.normalize(path));
         return entry.isExists() && !entry.isDirectory();
     }
 
@@ -43,7 +45,7 @@ public final class OpfsFileStore implements FileStore {
         if (!isDirectory(path)) {
             return new String[0];
         }
-        JSArray<JSString> names = Opfs.list(FilePaths.normalize(path));
+        JSArray<JSString> names = opfs.list(FilePaths.normalize(path));
         String[] listed = new String[names.getLength()];
         for (int at = 0; at < listed.length; at++) {
             listed[at] = names.get(at).stringValue();
@@ -53,13 +55,13 @@ public final class OpfsFileStore implements FileStore {
 
     @Override
     public int size(String path) {
-        Opfs.Entry entry = Opfs.stat(FilePaths.normalize(path));
+        Opfs.Entry entry = opfs.stat(FilePaths.normalize(path));
         return entry.isExists() && !entry.isDirectory() ? entry.getSize() : 0;
     }
 
     @Override
     public long lastModified(String path) {
-        return (long) Opfs.stat(FilePaths.normalize(path)).getModified();
+        return (long) opfs.stat(FilePaths.normalize(path)).getModified();
     }
 
     @Override
@@ -68,7 +70,7 @@ public final class OpfsFileStore implements FileStore {
         if (!isFile(at)) {
             throw new FileStoreException("no such file: " + at);
         }
-        Int8Array data = Opfs.read(at);
+        Int8Array data = opfs.read(at);
         byte[] bytes = new byte[data.getLength()];
         for (int index = 0; index < bytes.length; index++) {
             bytes[index] = data.get(index);
@@ -80,7 +82,7 @@ public final class OpfsFileStore implements FileStore {
     public void write(String path, byte[] data) {
         String at = FilePaths.normalize(path);
         requireParent(at);
-        Opfs.write(at, Int8Array.copyFromJavaArray(data));
+        opfs.write(at, Int8Array.copyFromJavaArray(data));
     }
 
     @Override
@@ -90,7 +92,7 @@ public final class OpfsFileStore implements FileStore {
             return false;
         }
         requireParent(at);
-        Opfs.create(at, false);
+        opfs.create(at, false);
         return true;
     }
 
@@ -100,7 +102,7 @@ public final class OpfsFileStore implements FileStore {
         if (exists(at) || !isDirectory(FilePaths.parent(at))) {
             return false;
         }
-        Opfs.create(at, true);
+        opfs.create(at, true);
         return true;
     }
 
@@ -114,7 +116,7 @@ public final class OpfsFileStore implements FileStore {
         if (isDirectory(at) && list(at).length > 0) {
             return false;
         }
-        Opfs.delete(at);
+        opfs.delete(at);
         return true;
     }
 
@@ -125,7 +127,7 @@ public final class OpfsFileStore implements FileStore {
         if (!isFile(source) || exists(target) || !isDirectory(FilePaths.parent(target))) {
             return false;
         }
-        Opfs.move(source, target);
+        opfs.move(source, target);
         return true;
     }
 
