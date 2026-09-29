@@ -139,6 +139,23 @@ for (const backend of BACKENDS) {
       await expect(page.locator('#program option')).toHaveCount(await programCount('example'));
     });
 
+    test('keeps the picker on the bundle the user chose while a program boots', async ({
+      page,
+    }) => {
+      await open(page, backend, 'bundle=example&program=spinner');
+      await page.locator('#bundle').selectOption('sandbox');
+      await expect(page.locator('#program option')).toHaveCount(await programCount('sandbox'));
+
+      // the running program reports its own catalog as it boots
+      await expect(page.getByTestId('phases').locator('li')).toHaveText(
+        ['platform: browser', 'select: spinner', 'program: spinner'],
+        { timeout: 30_000 },
+      );
+
+      await expect(page.locator('#program option')).toHaveCount(await programCount('sandbox'));
+      await expect(page.locator('#program option').nth(1)).toContainText('hello — ');
+    });
+
     test('keeps the log bounded while a program floods it', async ({ page }) => {
       const { failures } = watchForFailures(page);
       await open(page, backend, 'program=chatty');

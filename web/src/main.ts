@@ -209,7 +209,9 @@ const host: HostBridge = {
   catalog(ids, descriptions) {
     const entries = ids.map((id, index) => ({ id, description: descriptions[index] ?? id }));
     remember(request.bundle, entries);
-    showPrograms(entries, request.program);
+    if (bundleSelect.value === request.bundle) {
+      showPrograms(entries, request.program);
+    }
   },
   status(phase, detail) {
     addPhase(phase, detail);
