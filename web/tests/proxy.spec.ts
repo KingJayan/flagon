@@ -10,6 +10,9 @@ import { BULK_PROBE, BULK_PROBE_SIZE, FLOOD } from '../net-probes';
 
 const VITE = 'ws://localhost:5273/__flagon/tcp?host=localhost&port=5273';
 
+// one address family. 'localhost' resolves to both, and a browser may pick the one nothing binds
+const LOOPBACK = '127.0.0.1';
+
 let elsewhere: http.Server;
 let elsewhereUrl: string;
 
@@ -18,8 +21,8 @@ test.beforeAll(async () => {
     response.writeHead(200, { 'content-type': 'text/html' });
     response.end('<title>elsewhere</title>');
   });
-  await new Promise<void>((listening) => elsewhere.listen(0, 'localhost', listening));
-  elsewhereUrl = `http://localhost:${portOf(elsewhere)}/`;
+  await new Promise<void>((listening) => elsewhere.listen(0, LOOPBACK, listening));
+  elsewhereUrl = `http://${LOOPBACK}:${portOf(elsewhere)}/`;
 });
 
 test.afterAll(async () => {
@@ -73,18 +76,19 @@ test.describe('the proxy a hosted build runs for itself', () => {
     await fs.writeFile(path.join(root, 'assets', 'main-0a1b2c3d4e.js'), 'export {};');
     await fs.writeFile(path.join(root, 'pixel.png'), Buffer.alloc(64));
     server = await startProxyServer({
-      host: 'localhost',
+      host: LOOPBACK,
       port: 0,
       root,
-      allow: ['localhost:*'],
+      allow: [`${LOOPBACK}:*`],
       origins: [],
       token: '',
       hosts: [],
       probes: false,
       tlsCa: '',
     });
-    site = `http://localhost:${portOf(server)}/`;
-    target = `ws://localhost:${portOf(server)}/__flagon/tcp?host=localhost&port=${portOf(server)}`;
+    site = `http://${LOOPBACK}:${portOf(server)}/`;
+    target = `ws://${LOOPBACK}:${portOf(server)}/__flagon/tcp`
+      + `?host=${LOOPBACK}&port=${portOf(server)}`;
   });
 
   test.afterAll(async () => {
@@ -150,10 +154,10 @@ test.describe('what the proxy will open a socket to', () => {
 
   test('holds a scoped entry to its own port', async ({ page }) => {
     const server = await startProxyServer({
-      host: 'localhost',
+      host: LOOPBACK,
       port: 0,
       root: '.',
-      allow: [`localhost:${portOf(elsewhere)}`],
+      allow: [`${LOOPBACK}:${portOf(elsewhere)}`],
       origins: [],
       token: '',
       hosts: [],
@@ -161,9 +165,9 @@ test.describe('what the proxy will open a socket to', () => {
       tlsCa: '',
     });
     const at = portOf(server);
-    await page.goto(`http://localhost:${at}/`);
+    await page.goto(`http://${LOOPBACK}:${at}/`);
 
-    const tcp = `ws://localhost:${at}/__flagon/tcp?host=localhost`;
+    const tcp = `ws://${LOOPBACK}:${at}/__flagon/tcp?host=${LOOPBACK}`;
     expect(await ask(page, `${tcp}&port=${portOf(elsewhere)}`)).toBe('open');
     expect(await ask(page, `${tcp}&port=${at}`)).toContain('not in this proxy');
 
@@ -180,10 +184,10 @@ test.describe('a proxy the network can reach', () => {
 
   test('grants the socket only to a page carrying the token', async ({ page }) => {
     const server = await startProxyServer({
-      host: 'localhost',
+      host: LOOPBACK,
       port: 0,
       root: '.',
-      allow: ['localhost:*'],
+      allow: [`${LOOPBACK}:*`],
       origins: [],
       token: 'hunter2',
       hosts: [],
@@ -191,9 +195,9 @@ test.describe('a proxy the network can reach', () => {
       tlsCa: '',
     });
     const at = portOf(server);
-    await page.goto(`http://localhost:${at}/`);
+    await page.goto(`http://${LOOPBACK}:${at}/`);
 
-    const tcp = `ws://localhost:${at}/__flagon/tcp?host=localhost&port=${at}`;
+    const tcp = `ws://${LOOPBACK}:${at}/__flagon/tcp?host=${LOOPBACK}&port=${at}`;
     expect(await ask(page, tcp)).toBe('refused');
     expect(await ask(page, `${tcp}&token=wrong`)).toBe('refused');
     expect(await ask(page, `${tcp}&token=hunter2`)).toBe('open');
@@ -204,10 +208,10 @@ test.describe('a proxy the network can reach', () => {
 
 async function probeOn(probes: boolean, route: string): Promise<number> {
   const server = await startProxyServer({
-    host: 'localhost',
+    host: LOOPBACK,
     port: 0,
     root: '.',
-    allow: ['localhost:*'],
+    allow: [`${LOOPBACK}:*`],
     origins: [],
     token: '',
     hosts: [],
@@ -215,7 +219,7 @@ async function probeOn(probes: boolean, route: string): Promise<number> {
     tlsCa: '',
   });
   const at = (server.address() as AddressInfo).port;
-  const answer = await fetch(`http://localhost:${at}${route}`);
+  const answer = await fetch(`http://${LOOPBACK}:${at}${route}`);
   const status = answer.ok ? (await answer.arrayBuffer()).byteLength : answer.status;
   await new Promise<void>((closed) => server.close(() => closed()));
   return status;
@@ -237,9 +241,9 @@ test.describe('the net fixtures on the server that ships', () => {
 function upgradeAs(at: number, host: string): Promise<number> {
   return new Promise((resolve) => {
     const asked = http.request({
-      host: 'localhost',
+      host: LOOPBACK,
       port: at,
-      path: `${'/__flagon/tcp'}?host=localhost&port=${at}`,
+      path: `${'/__flagon/tcp'}?host=${LOOPBACK}&port=${at}`,
       headers: {
         host,
         origin: `http://${host}`,
@@ -267,10 +271,10 @@ test.describe('the proxy and the name it was reached by', () => {
 
   test.beforeAll(async () => {
     server = await startProxyServer({
-      host: 'localhost',
+      host: LOOPBACK,
       port: 0,
       root: '.',
-      allow: ['localhost:*'],
+      allow: [`${LOOPBACK}:*`],
       origins: [],
       token: '',
       hosts: ['game.example.com'],
@@ -287,7 +291,7 @@ test.describe('the proxy and the name it was reached by', () => {
     const at = portOf(server);
 
     expect(await upgradeAs(at, `attacker.example:${at}`)).toBe(403);
-    expect(await upgradeAs(at, `localhost:${at}`)).toBe(101);
+    expect(await upgradeAs(at, `${LOOPBACK}:${at}`)).toBe(101);
     expect(await upgradeAs(at, `game.example.com:${at}`)).toBe(101);
   });
 
@@ -299,7 +303,7 @@ test.describe('the proxy and the name it was reached by', () => {
   });
 
   test('says what the pages it serves are allowed to reach', async () => {
-    const answered = await fetch(`http://localhost:${portOf(server)}/`).catch(() => null);
+    const answered = await fetch(`http://${LOOPBACK}:${portOf(server)}/`).catch(() => null);
     const policy = answered?.headers.get('content-security-policy') ?? '';
 
     expect(policy).toContain("default-src 'self'");
