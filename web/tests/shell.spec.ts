@@ -1,5 +1,5 @@
 // needs a display
-import { test, expect } from '@playwright/test';
+import { test, expect, type Locator } from '@playwright/test';
 import { BACKENDS, open, programCount, watchForFailures } from './harness';
 
 for (const backend of BACKENDS) {
@@ -169,7 +169,39 @@ for (const backend of BACKENDS) {
       expect(first.trim()).not.toBe('line 1');
       expect(failures).toEqual([]);
     });
+
+    test('follows the log to the end while a program writes', async ({ page }) => {
+      await open(page, backend, 'program=chatty');
+      await expect(page.getByTestId('state')).toHaveText('exited', { timeout: 60_000 });
+
+      const place = await placeOf(page.getByTestId('log'));
+      expect(place.top + place.shown).toBeGreaterThanOrEqual(place.height - 8);
+    });
+
+    test('leaves the log where a reader scrolled it', async ({ page }) => {
+      await open(page, backend, 'program=chatty');
+      const log = page.getByTestId('log');
+      await expect(log).toContainText('line 1');
+
+      // the reader scrolls up while the program is still writing
+      await log.evaluate((node) => {
+        node.scrollTop = 0;
+      });
+      await expect(page.getByTestId('state')).toHaveText('exited', { timeout: 60_000 });
+
+      const place = await placeOf(log);
+      expect(place.top + place.shown).toBeLessThan(place.height - 100);
+    });
   });
+}
+
+/** where the log is scrolled */
+async function placeOf(log: Locator): Promise<{ top: number; height: number; shown: number }> {
+  return log.evaluate((node) => ({
+    top: node.scrollTop,
+    height: node.scrollHeight,
+    shown: node.clientHeight,
+  }));
 }
 
 test.describe("the shell's own jar bundle", () => {

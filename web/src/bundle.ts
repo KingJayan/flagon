@@ -153,7 +153,7 @@ async function whyItIsNotThere(absolute: string): Promise<Error | undefined> {
   return new Error(
     absolute.includes('/flagon/app.')
       ? "there is no application bundle yet: put a jar in vendor/ and run 'make app'"
-      : `there is no bundle at ${absolute}: run 'make build'`,
+      : `there is no bundle at ${absolute}: run 'make bundles'`,
   );
 }
 
