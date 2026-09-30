@@ -23,14 +23,12 @@ for (const backend of BACKENDS) {
       expect(failures).toEqual([]);
     });
 
-    /** 0xAARRGGBB has to survive the trip to the typed array in that order. */
     test('keeps the channel order the pixels were given in', async ({ page }) => {
       await runDemo(page, backend);
 
       const red = await readPixel(page, 120, 260);
       expect(red[3], `top left alpha was ${red}`).toBe(255);
 
-      // half-opaque white blended over the clear color
       expectColor(await readPixel(page, 560, 260), [135, 135, 141], 'faded quad');
     });
 
@@ -40,7 +38,6 @@ for (const backend of BACKENDS) {
       expectColor(await readPixel(page, 420, 260), [128, 0, 0], 'tinted quad');
     });
 
-    /** GL_REPEAT: coordinates past 1 wrap round instead of smearing the edge texel. */
     test('tiles a texture whose coordinates run past its edge', async ({ page }) => {
       await runDemo(page, backend);
 
@@ -71,7 +68,6 @@ for (const backend of BACKENDS) {
       expectColor(await readPixel(page, 900, 180), [128, 128, 128], 'the luminance texture');
     });
 
-    /** GL_BGRA with the packed int type: what an application uploads its own images with */
     test('takes a texture uploaded as packed ints', async ({ page }) => {
       await runDemo(page, backend);
 

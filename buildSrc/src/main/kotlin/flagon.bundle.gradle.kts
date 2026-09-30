@@ -67,7 +67,7 @@ val reflectionProperties = provider {
 teavm {
     js {
         mainClass.set(bundle.mainClass)
-        outputDir.set(bundlesDir)
+        outputDir.set(bundlesDir.dir("js"))
         relativePathInOutputDir.set("")
         targetFileName.set(bundle.bundleName.map { "$it.js" })
         moduleType.set(JSModuleType.ES2015)
@@ -80,7 +80,7 @@ teavm {
     }
     wasmGC {
         mainClass.set(bundle.mainClass)
-        outputDir.set(bundlesDir)
+        outputDir.set(bundlesDir.dir("wasm"))
         relativePathInOutputDir.set("")
         targetFileName.set(bundle.bundleName.map { "$it.wasm" })
         optimization.set(

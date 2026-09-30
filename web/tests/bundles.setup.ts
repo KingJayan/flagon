@@ -5,15 +5,18 @@ import { fileURLToPath } from 'node:url';
 
 const BUNDLES = join(dirname(fileURLToPath(import.meta.url)), '..', 'public', 'flagon');
 
-/** teavm's loader sits beside the bundles and is not one */
 const LOADER = 'wasm-gc-module-runtime.js';
 
 function onDisk(): string[] {
-  try {
-    return readdirSync(BUNDLES).filter((name) => name !== LOADER && /\.(js|wasm)$/.test(name));
-  } catch {
-    return [];
-  }
+  return ['js', 'wasm'].flatMap((backend) => {
+    try {
+      return readdirSync(join(BUNDLES, backend))
+        .filter((name) => name !== LOADER && /\.(js|wasm)$/.test(name))
+        .map((name) => `${backend}/${name}`);
+    } catch {
+      return [];
+    }
+  });
 }
 
 test('the server is serving the bundles that are on disk', async ({ request }) => {

@@ -33,7 +33,7 @@ for (const backend of BACKENDS) {
 }
 
 test('says how to make the app bundle when there is none', async ({ page }) => {
-  await page.route('**/flagon/app.*', (route) => route.fulfill({ status: 404 }));
+  await page.route('**/flagon/*/app.*', (route) => route.fulfill({ status: 404 }));
   await page.goto('/play/');
 
   await expect(page.getByTestId('headline')).toHaveText('Nothing to run', { timeout: 30_000 });
@@ -42,7 +42,7 @@ test('says how to make the app bundle when there is none', async ({ page }) => {
 
 test('runs the bundle built from a jar in vendor/', async ({ page, request }) => {
   // a served page is not a bundle: the server answers an unknown path with html
-  const built = await request.head('/flagon/app.js');
+  const built = await request.head('/flagon/js/app.js');
   const html = built.headers()['content-type']?.includes('text/html') ?? false;
   const empty = built.headers()['content-length'] === '0';
   test.skip(!built.ok() || html || empty,

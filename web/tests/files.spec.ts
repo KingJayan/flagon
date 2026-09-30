@@ -25,7 +25,6 @@ for (const backend of BACKENDS) {
       await expect(page.getByTestId('log')).toContainText('read back: hello from java.io');
     });
 
-    /** a whole-file store still has to make a seek look like a seek. */
     test('overwrites in place through RandomAccessFile', async ({ page }) => {
       await runDemo(page, backend);
 
@@ -41,7 +40,6 @@ for (const backend of BACKENDS) {
       await expect(page.getByTestId('log')).toContainText('deleted kept.dat: true');
     });
 
-    /** the point of OPFS over the in-memory default: the file is still there next load. */
     test('keeps files across a reload', async ({ page }) => {
       await runDemo(page, backend);
       await expect(page.getByTestId('log')).toContainText('run 1');

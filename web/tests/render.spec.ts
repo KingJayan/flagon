@@ -12,7 +12,6 @@ import {
   type Backend,
 } from './harness';
 
-/** ~12fps: far below anything playable, so only a real regression trips it */
 const FRAME_FLOOR_MS = 80;
 
 async function runDemo(page: Page, backend: Backend): Promise<void> {

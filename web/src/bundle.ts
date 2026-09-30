@@ -18,7 +18,6 @@ declare global {
   }
 }
 
-/** only bundles this site ships may be imported; the name comes from the url. */
 export const BUNDLES = ['sandbox', 'example', 'app'];
 
 export type Backend = 'js' | 'wasm';
@@ -35,12 +34,10 @@ export function supportsWasmGc(): boolean {
   return typeof WebAssembly !== 'undefined' && WebAssembly.validate(GC_PROBE);
 }
 
-/** wasm gc where the engine has it, javascript everywhere else. */
 export function defaultBackend(): Backend {
   return supportsWasmGc() ? 'wasm' : 'js';
 }
 
-/** what the url asked for. both pages read the same parameters; only the default bundle differs. */
 export interface Request {
   bundle: string;
   backend: string;
@@ -65,12 +62,11 @@ export function readRequest(fallback: string): Request {
   };
 }
 
-/** the same bundle is emitted once per backend, under the extension that backend produces. */
 export function bundleUrlOf(bundle: string, backend: string): string | undefined {
   if (!BUNDLES.includes(bundle) || !isBackend(backend)) {
     return undefined;
   }
-  return `/flagon/${bundle}.${backend === 'wasm' ? 'wasm' : 'js'}`;
+  return backend === 'wasm' ? `/flagon/wasm/${bundle}.wasm` : `/flagon/js/${bundle}.js`;
 }
 
 export function whyNot(bundle: string, backend: string): string {
@@ -91,12 +87,10 @@ interface WasmLoader {
   load(path: string): Promise<WasmBundle>;
 }
 
-// teavm's own loader, unpacked beside the bundles by the wasm build
-const WASM_LOADER = '/flagon/wasm-gc-module-runtime.js';
+const WASM_LOADER = '/flagon/wasm/wasm-gc-module-runtime.js';
 
-/** the files the bundle's jar carried. a bundle with no resources ships no pack. */
 export function packUrlOf(bundleUrl: string): string {
-  return bundleUrl.replace(/\.(js|wasm)$/, '.pack');
+  return bundleUrl.replace(/\/(?:js|wasm)\/([^/]+)\.(?:js|wasm)$/, '/$1.pack');
 }
 
 async function fetchPack(bundleUrl: string): Promise<void> {
@@ -111,9 +105,7 @@ async function fetchPack(bundleUrl: string): Promise<void> {
     if (pack.byteLength > 0) {
       window.__flagonResources = pack;
     }
-  } catch {
-    // a page with no pack reads no resources, which the bundle says for itself
-  }
+  } catch {}
 }
 
 export async function runBundle(url: string, host: HostBridge, args: string[]): Promise<void> {
@@ -136,10 +128,6 @@ export async function runBundle(url: string, host: HostBridge, args: string[]): 
   }
 }
 
-/**
- * a bundle nobody built fails as an opaque import error, so say what is actually missing. a dev
- * server answers an unknown path with the page itself, so the type matters as much as the status.
- */
 async function whyItIsNotThere(absolute: string): Promise<Error | undefined> {
   try {
     const response = await fetch(absolute, { method: 'HEAD' });
@@ -151,7 +139,7 @@ async function whyItIsNotThere(absolute: string): Promise<Error | undefined> {
     return undefined;
   }
   return new Error(
-    absolute.includes('/flagon/app.')
+    absolute.includes('/app.')
       ? "there is no application bundle yet: put a jar in vendor/ and run 'make app'"
       : `there is no bundle at ${absolute}: run 'make bundles'`,
   );

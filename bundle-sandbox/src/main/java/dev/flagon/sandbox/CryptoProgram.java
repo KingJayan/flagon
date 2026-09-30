@@ -46,7 +46,6 @@ public final class CryptoProgram implements Program {
         refusals(console);
     }
 
-    /** what a page cannot do, said by name rather than half done */
     private void refusals(ConsoleSink console) {
         try {
             new java.net.DatagramSocket(0);
@@ -62,7 +61,6 @@ public final class CryptoProgram implements Program {
         }
     }
 
-    /** the answers in FIPS 180-4 and RFC 1321 for the message "abc" and for nothing at all */
     private void digests(ConsoleSink console) throws Exception {
         byte[] abc = "abc".getBytes(StandardCharsets.UTF_8);
         console.info("crypto: sha-1 of abc is " + hex(digest("SHA-1", abc)));
@@ -82,7 +80,6 @@ public final class CryptoProgram implements Program {
         console.info("crypto: sha-1 of a million a's is " + hex(digest("SHA-1", long1)));
     }
 
-    /** the answer in FIPS 197 appendix B for one block under one 128 bit key */
     private void aes(ConsoleSink console) throws Exception {
         byte[] key = bytes("000102030405060708090a0b0c0d0e0f");
         byte[] block = bytes("00112233445566778899aabbccddeeff");

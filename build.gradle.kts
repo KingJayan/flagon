@@ -14,7 +14,7 @@ val copyWasmRuntime = tasks.register<Copy>("copyWasmRuntime") {
     group = "flagon"
     description = "put the webassembly loader beside the bundles"
     from("teavm/src/main/resources/org/teavm/backend/wasm/wasm-gc-module-runtime.js")
-    into(bundlesDir)
+    into(bundlesDir.dir("wasm"))
 }
 
 fun bundlesOf(task: String) =

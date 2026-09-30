@@ -1,7 +1,6 @@
 import { test, expect, type Page } from '@playwright/test';
 import { BACKENDS, open, watchForFailures, type Backend } from './harness';
 
-/** the demo talks to the server the page came from, whichever server that is */
 function hostOf(baseURL: string | undefined): string {
   return new URL(baseURL ?? 'http://localhost:5273').host;
 }
@@ -36,7 +35,6 @@ for (const backend of BACKENDS) {
       await expect(page.getByTestId('log')).toContainText('closed: true');
     });
 
-    /** the socket a desktop program opens, on a page that has none of its own */
     test('carries an unmodified java.net.Socket through the same proxy', async ({ page, baseURL }) => {
       const host = hostOf(baseURL);
       await runDemo(page, backend, host);
@@ -59,7 +57,6 @@ for (const backend of BACKENDS) {
       );
     });
 
-    /** a proxy of the application's own choosing, which the runtime carries but does not route by */
     test('takes the proxy and the authenticator a desktop program installs', async ({
       page,
       baseURL,
@@ -91,10 +88,6 @@ for (const backend of BACKENDS) {
       );
     });
 
-    /**
-     a body nobody is reading stops arriving, and starts again where it left off. a host that
-     buffers the whole flood never has to hold back, so only the settling is asserted here
-     */
     test('holds the proxy off while the reader is behind', async ({ page, baseURL }) => {
       const host = hostOf(baseURL);
       await runDemo(page, backend, host);
@@ -103,7 +96,6 @@ for (const backend of BACKENDS) {
       await expect(page.getByTestId('log')).toContainText('paced: sending resumed: true');
     });
 
-    /** the other direction: a write larger than the browser will hold loses nothing */
     test('waits for a large write to go out', async ({ page, baseURL }) => {
       const host = hostOf(baseURL);
       await runDemo(page, backend, host);
