@@ -1,6 +1,7 @@
 rootProject.name = "flagon"
 
 pluginManagement {
+    includeBuild("build-logic")
     repositories {
         gradlePluginPortal()
         mavenCentral()

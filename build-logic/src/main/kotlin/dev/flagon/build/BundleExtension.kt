@@ -20,4 +20,6 @@ interface BundleExtension {
     val reflectConstructed: RegularFileProperty
 
     val reflectConverted: Property<String>
+
+    val compilerMemory: Property<Int>
 }

@@ -1,5 +1,4 @@
 import dev.flagon.build.BundleExtension
-import dev.flagon.build.CompilerLock
 import dev.flagon.build.RunMain
 import org.gradle.accessors.dm.LibrariesForLibs
 import org.teavm.gradle.api.JSModuleType
@@ -23,8 +22,9 @@ bundle.resourcesFrom.convention(
 bundle.reflectClasses.convention("")
 bundle.reflectProxies.convention("")
 bundle.reflectConverted.convention("")
+bundle.compilerMemory.convention(1024)
 
-val bundlesDir = rootProject.layout.projectDirectory.dir("web/public/flagon")
+val bundlesDir = layout.buildDirectory.dir("flagon")
 val releaseBuild = providers.gradleProperty("flagon.release").isPresent
 val preserve = providers.gradleProperty("flagon.preserve").orElse("")
 
@@ -33,6 +33,11 @@ val bundleTools = configurations.create("bundleTools")
 
 val teavmPatched = configurations.create("teavmPatched") {
     isTransitive = false
+}
+
+val teavmCompiler = configurations.create("teavmCompiler") {
+    exclude(group = "org.teavm", module = "teavm-core")
+    exclude(group = "org.teavm", module = "teavm-jso-impl")
 }
 
 dependencies {
@@ -46,6 +51,10 @@ dependencies {
     add(teavmClasspath.name, project(":toolchain:resource-pack"))
     teavmPatched("dev.flagon:teavm-core-patched:${project.version}")
     teavmPatched("dev.flagon:teavm-jso-impl-patched:${project.version}")
+
+    teavmCompiler("org.teavm:teavm-tooling:${libs.versions.teavm.get()}")
+    teavmCompiler("dev.flagon:teavm-core-patched:${project.version}")
+    teavmCompiler("dev.flagon:teavm-jso-impl-patched:${project.version}")
 }
 
 teavmClasspath.configure {
@@ -67,7 +76,7 @@ val reflectionProperties = provider {
 teavm {
     js {
         mainClass.set(bundle.mainClass)
-        outputDir.set(bundlesDir.dir("js"))
+        outputDir.set(bundlesDir.map { it.dir("js") })
         relativePathInOutputDir.set("")
         targetFileName.set(bundle.bundleName.map { "$it.js" })
         moduleType.set(JSModuleType.ES2015)
@@ -80,7 +89,7 @@ teavm {
     }
     wasmGC {
         mainClass.set(bundle.mainClass)
-        outputDir.set(bundlesDir.dir("wasm"))
+        outputDir.set(bundlesDir.map { it.dir("wasm") })
         relativePathInOutputDir.set("")
         targetFileName.set(bundle.bundleName.map { "$it.wasm" })
         optimization.set(
@@ -95,12 +104,12 @@ teavm {
     }
 }
 
-val compilerLock = gradle.sharedServices.registerIfAbsent("teavmCompiler", CompilerLock::class) {
-    maxParallelUsages.set(1)
-}
-
 tasks.withType<TeaVMTask>().configureEach {
-    usesService(compilerLock)
+    outOfProcess.set(true)
+    processMemory.set(bundle.compilerMemory)
+    daemonClasspath.setFrom(teavmCompiler)
+    inputs.files(bundle.reflectConstructed).withPropertyName("reflectConstructed").optional()
+    outputs.cacheIf { true }
     val rest = classpath.from.toTypedArray()
     classpath.setFrom(teavmPatched, *rest)
     val listed = classpath
@@ -112,7 +121,7 @@ tasks.withType<TeaVMTask>().configureEach {
 
 val writeCatalog = tasks.register<RunMain>("writeCatalog") {
     description = "list the programs the bundle carries"
-    val out = bundlesDir.file(bundle.bundleName.map { "$it.catalog.json" })
+    val out = layout.buildDirectory.file(bundle.bundleName.map { "flagon/$it.catalog.json" })
     runtimeClasspath.from(mainSources.runtimeClasspath)
     mainClass.set(bundle.catalogClass)
     outputs.file(out)
@@ -122,7 +131,7 @@ val writeCatalog = tasks.register<RunMain>("writeCatalog") {
 
 val writeResourcePack = tasks.register<RunMain>("writeResourcePack") {
     description = "pack the files the bundle serves beside its classes"
-    val out = bundlesDir.file(bundle.bundleName.map { "$it.pack" })
+    val out = layout.buildDirectory.file(bundle.bundleName.map { "flagon/$it.pack" })
     runtimeClasspath.from(mainSources.runtimeClasspath, bundleTools)
     mainClass.set("dev.flagon.pack.WriteResourcePack")
     inputs.files(bundle.resourcesFrom).withPropertyName("resources").optional()
@@ -130,6 +139,16 @@ val writeResourcePack = tasks.register<RunMain>("writeResourcePack") {
     outputs.cacheIf { true }
     arguments.add(bundle.resourcesFrom.map { it.asFile.absolutePath })
     arguments.add(out.map { it.asFile.absolutePath })
+}
+
+val built = listOf(writeCatalog, writeResourcePack)
+
+configurations.consumable("bundleFull")
+configurations.consumable("bundleFast")
+
+artifacts {
+    add("bundleFull", bundlesDir) { builtBy(built, "generateWasmGC", "generateJavaScript") }
+    add("bundleFast", bundlesDir) { builtBy(built, "generateWasmGC") }
 }
 
 tasks.register("bundle") {
