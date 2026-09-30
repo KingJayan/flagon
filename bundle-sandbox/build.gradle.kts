@@ -1,3 +1,4 @@
+import dev.flagon.build.RunMain
 plugins {
     id("flagon.bundle")
 }
@@ -33,6 +34,6 @@ bundle {
     reflectConverted.set("java.lang.Integer")
 }
 
-tasks.named<JavaExec>("writeCatalog") {
-    classpath += absent.output
+tasks.named<RunMain>("writeCatalog") {
+    runtimeClasspath.from(absent.output)
 }

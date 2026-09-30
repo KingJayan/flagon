@@ -24,8 +24,11 @@ jobs:
       - name: Set version (from tag)
         run: make version VERSION="${GITHUB_REF_NAME#v}"
 
-      - name: Build & test as release
-        run: make build-release
+      - name: Test
+        run: make test
+
+      - name: Build release bundles
+        run: make bundles-release
 
       - name: Upload the bundles
         uses: actions/upload-artifact@v5
@@ -64,7 +67,7 @@ jobs:
         run: make deps
 
       - name: Typecheck & build
-        run: make site
+        run: make typecheck build-site
 
       - name: Cache browsers
         uses: actions/cache@v5
@@ -100,9 +103,6 @@ jobs:
 
       - name: Set version from tag
         run: make version VERSION="${GITHUB_REF_NAME#v}"
-
-      - name: Build
-        run: make bundles-release
 
       - name: Publish
         run: make publish
