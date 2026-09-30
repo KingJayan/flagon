@@ -10,6 +10,8 @@ import dev.flagon.platform.audio.AudioException;
 import dev.flagon.platform.audio.AudioFormat;
 import dev.flagon.platform.audio.SourceState;
 import org.teavm.jso.browser.Window;
+import org.teavm.jso.dom.events.Event;
+import org.teavm.jso.dom.events.EventListener;
 import org.teavm.jso.dom.html.HTMLDocument;
 import org.teavm.jso.webaudio.AudioBuffer;
 import org.teavm.jso.webaudio.AudioBufferSourceNode;
@@ -144,6 +146,7 @@ public final class WebAudioDevice implements AudioDevice {
     private final float[] listenerPosition = new float[3];
     private final float[] listenerVelocity = new float[3];
     private final float[] listenerOrientation = {0.0f, 0.0f, -1.0f, 0.0f, 1.0f, 0.0f};
+    private EventListener<Event> gesture;
 
     private WebAudioDevice(AudioContext context) {
         this.context = context;
@@ -177,9 +180,21 @@ public final class WebAudioDevice implements AudioDevice {
             return;
         }
         console.warn("audio is suspended until the page gets a click or a key press");
+        // resume() reports nothing back, so the gesture stays until shutdown
+        gesture = event -> context.resume();
         HTMLDocument document = Window.current().getDocument();
-        document.addEventListener("pointerdown", event -> context.resume());
-        document.addEventListener("keydown", event -> context.resume());
+        document.addEventListener("pointerdown", gesture);
+        document.addEventListener("keydown", gesture);
+    }
+
+    private void forgetGesture() {
+        if (gesture == null) {
+            return;
+        }
+        HTMLDocument document = Window.current().getDocument();
+        document.removeEventListener("pointerdown", gesture);
+        document.removeEventListener("keydown", gesture);
+        gesture = null;
     }
 
     @Override
@@ -681,6 +696,7 @@ public final class WebAudioDevice implements AudioDevice {
             }
         }
         objects.clear();
+        forgetGesture();
         master.disconnect();
         context.close();
     }
