@@ -131,6 +131,44 @@ class AddressesTest {
     }
 
     @Test
+    void leavesTheSlotAsItWas() {
+        ByteBuffer buffer = bytes(16);
+        buffer.position(4);
+        buffer.limit(12);
+
+        Addresses.bytes(Addresses.of(buffer, 8), 4);
+
+        assertEquals(4, buffer.position());
+        assertEquals(12, buffer.limit());
+    }
+
+    @Test
+    void readsPastTheLimitOfTheSlot() {
+        ByteBuffer buffer = bytes(8);
+        buffer.put(6, (byte) 3);
+        buffer.limit(2);
+
+        assertEquals((byte) 3, Addresses.bytes(Addresses.of(buffer, 6), 2).get(0));
+    }
+
+    @Test
+    void answersForEveryBufferItRemembers() {
+        List<ByteBuffer> buffers = new ArrayList<>();
+        List<Long> addresses = new ArrayList<>();
+        for (int at = 0; at < 16; at++) {
+            ByteBuffer buffer = bytes(4);
+            buffers.add(buffer);
+            addresses.add(Addresses.of(buffer));
+        }
+
+        for (int round = 0; round < 3; round++) {
+            for (int at = 0; at < buffers.size(); at++) {
+                assertEquals(addresses.get(at), Addresses.of(buffers.get(at)));
+            }
+        }
+    }
+
+    @Test
     void keepsManyBuffersApartAsSlotsComeAndGo() {
         List<ByteBuffer> kept = new ArrayList<>();
         Set<Long> addresses = new HashSet<>();
