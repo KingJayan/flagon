@@ -153,3 +153,33 @@ test.describe('a browser without wasm gc', () => {
     await expect(page.getByTestId('log')).toContainText('no WebAssembly GC support');
   });
 });
+
+test('runs the jspi build when the browser has jspi', async ({ page }) => {
+  const fetched: string[] = [];
+  page.on('request', (request) => fetched.push(new URL(request.url()).pathname));
+  await open(page, 'wasm', 'program=selftest');
+
+  await expect(page.getByTestId('state')).toHaveText('exited', { timeout: 30_000 });
+  await expect(page.getByTestId('log')).not.toContainText('selftest failure');
+  expect(fetched).toContain('/flagon/jspi/sandbox.wasm');
+  expect(fetched).not.toContain('/flagon/wasm/sandbox.wasm');
+});
+
+test.describe('a browser without jspi', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => {
+      Object.defineProperty(WebAssembly, 'Suspending', { value: undefined });
+    });
+  });
+
+  test('runs the coroutine build and keeps java semantics', async ({ page }) => {
+    const fetched: string[] = [];
+    page.on('request', (request) => fetched.push(new URL(request.url()).pathname));
+    await open(page, 'wasm', 'program=selftest');
+
+    await expect(page.getByTestId('state')).toHaveText('exited', { timeout: 30_000 });
+    await expect(page.getByTestId('log')).not.toContainText('selftest failure');
+    expect(fetched).toContain('/flagon/wasm/sandbox.wasm');
+    expect(fetched).not.toContain('/flagon/jspi/sandbox.wasm');
+  });
+});

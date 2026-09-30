@@ -73,3 +73,22 @@ for (const backend of BACKENDS) {
     });
   });
 }
+
+test.describe('a browser without jspi', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => {
+      Object.defineProperty(WebAssembly, 'Suspending', { value: undefined });
+    });
+  });
+
+  test('keeps drawing while a worker thread sleeps on the coroutine build', async ({ page }) => {
+    const { failures } = watchForFailures(page);
+    await open(page, 'wasm', 'program=threading');
+
+    const log = page.getByTestId('log');
+    await expect(page.getByTestId('state')).toHaveText('exited', { timeout: 30_000 });
+    await expect(log).toContainText('threading: worker ticked 5 over true frames drawn beside it');
+    await expect(log).toContainText('threading: done');
+    expect(failures).toEqual([]);
+  });
+});

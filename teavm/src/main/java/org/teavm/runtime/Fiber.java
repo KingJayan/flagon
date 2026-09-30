@@ -13,11 +13,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-// flagon: the checks allow a missing fiber, and saved objects grow without code that can pause
+// flagon: the checks allow a missing fiber, saved objects grow without code that can pause, and a
+// jspi build parks the wasm stack on a promise in place of the coroutine rewrite
 package org.teavm.runtime;
 
 import java.util.Arrays;
 import org.teavm.interop.AsyncCallback;
+import org.teavm.interop.Export;
+import org.teavm.interop.Import;
 import org.teavm.interop.StaticInit;
 import org.teavm.interop.Unmanaged;
 
@@ -44,13 +47,20 @@ public class Fiber {
     private Throwable exception;
     private boolean isPendingResume;
     private boolean daemon;
+    private int id;
+    private boolean launching;
+    private RuntimeException failure;
+    private Error fault;
 
     private static Fiber current;
     private static PendingCall lastPendingCall;
+    private static Fiber starting;
+    private static int lastId;
 
     private Fiber(FiberRunner runner, boolean daemon) {
         this.runner = runner;
         this.daemon = daemon;
+        id = ++lastId;
     }
 
     public void push(int value) {
@@ -240,6 +250,9 @@ public class Fiber {
     }
 
     public static Object suspend(AsyncCall call) throws Throwable {
+        if (jspi()) {
+            return park(call);
+        }
         Fiber fiber = current();
         Thread javaThread = Thread.currentThread();
         if (fiber.isResuming()) {
@@ -261,6 +274,37 @@ public class Fiber {
         return null;
     }
 
+    private static Object park(AsyncCall call) throws Throwable {
+        Fiber fiber = current();
+        Thread javaThread = Thread.currentThread();
+        PendingCall pendingCall = new PendingCall(call, lastPendingCall);
+        if (lastPendingCall != null) {
+            lastPendingCall.next = pendingCall;
+        }
+        lastPendingCall = pendingCall;
+
+        fiber.state = STATE_SUSPENDING;
+        pendingCall.callback = new AsyncCallbackImpl(pendingCall, javaThread, fiber);
+        call.run(pendingCall.callback);
+        if (!fiber.isPendingResume) {
+            // a callback that sees no current fiber wakes this one
+            current = null;
+            parkOn(fiber.id);
+            current = fiber;
+            setCurrentThread(javaThread);
+        }
+        fiber.isPendingResume = false;
+        fiber.state = STATE_RUNNING;
+        Throwable exception = fiber.exception;
+        Object result = fiber.result;
+        fiber.exception = null;
+        fiber.result = null;
+        if (exception != null) {
+            throw exception;
+        }
+        return result;
+    }
+
     static class AsyncCallbackImpl implements AsyncCallback<Object> {
         PendingCall pendingCall;
         Thread javaThread;
@@ -278,6 +322,9 @@ public class Fiber {
                 fiber.result = result;
                 fiber.isPendingResume = true;
                 removePendingCall();
+            } else if (jspi()) {
+                fiber.result = result;
+                wakeUp();
             } else {
                 setCurrentThread(javaThread);
                 javaThread = null;
@@ -295,6 +342,9 @@ public class Fiber {
                 fiber.exception = e;
                 fiber.isPendingResume = true;
                 removePendingCall();
+            } else if (jspi()) {
+                fiber.exception = e;
+                wakeUp();
             } else {
                 setCurrentThread(javaThread);
                 javaThread = null;
@@ -304,6 +354,14 @@ public class Fiber {
                 removePendingCall();
                 fiber.resume();
             }
+        }
+
+        private void wakeUp() {
+            int id = fiber.id;
+            fiber = null;
+            javaThread = null;
+            removePendingCall();
+            wakeOn(id);
         }
 
         private void removePendingCall() {
@@ -333,6 +391,10 @@ public class Fiber {
     public static native void runMain(String[] args);
 
     private void start() {
+        if (jspi()) {
+            launch();
+            return;
+        }
         Fiber former = current;
         current = this;
         while (true) {
@@ -348,6 +410,63 @@ public class Fiber {
             EventQueue.stop();
         }
     }
+
+    // the fiber runs on a stack of its own until it first parks or ends
+    private void launch() {
+        Fiber former = current;
+        starting = this;
+        launching = true;
+        startOnStack();
+        launching = false;
+        current = former;
+        RuntimeException failure = this.failure;
+        Error fault = this.fault;
+        this.failure = null;
+        this.fault = null;
+        if (failure != null) {
+            throw failure;
+        }
+        if (fault != null) {
+            throw fault;
+        }
+    }
+
+    @Export(name = "teavm.runFiber")
+    public static void runFiber() {
+        Fiber fiber = starting;
+        starting = null;
+        current = fiber;
+        try {
+            fiber.runner.run();
+        } catch (RuntimeException e) {
+            if (!fiber.launching) {
+                throw e;
+            }
+            fiber.failure = e;
+        } catch (Error e) {
+            if (!fiber.launching) {
+                throw e;
+            }
+            fiber.fault = e;
+        } finally {
+            current = null;
+            if (!fiber.daemon && --userThreadCount == 0) {
+                EventQueue.stop();
+            }
+        }
+    }
+
+    /** the build replaces this with a constant */
+    static native boolean jspi();
+
+    @Import(module = "teavmFiber", name = "start")
+    private static native void startOnStack();
+
+    @Import(module = "teavmFiber", name = "park")
+    private static native void parkOn(int id);
+
+    @Import(module = "teavmFiber", name = "wake")
+    private static native void wakeOn(int id);
 
     void resume() {
         state = STATE_RESUMING;

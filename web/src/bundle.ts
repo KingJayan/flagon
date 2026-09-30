@@ -16,6 +16,12 @@ declare global {
     __flagonCloseRequested?: boolean;
     __flagonFrames?: number;
   }
+
+  // lib.dom has no jspi yet
+  namespace WebAssembly {
+    const Suspending: unknown;
+    const promising: unknown;
+  }
 }
 
 export const BUNDLES = ['sandbox', 'example', 'app'];
@@ -32,6 +38,15 @@ const GC_PROBE = new Uint8Array([0, 97, 115, 109, 1, 0, 0, 0, 1, 5, 1, 80, 0, 95
 
 export function supportsWasmGc(): boolean {
   return typeof WebAssembly !== 'undefined' && WebAssembly.validate(GC_PROBE);
+}
+
+/** jspi parks the wasm stack, so its build skips the coroutine rewrite */
+export function supportsJspi(): boolean {
+  return (
+    typeof WebAssembly !== 'undefined' &&
+    typeof WebAssembly.Suspending === 'function' &&
+    typeof WebAssembly.promising === 'function'
+  );
 }
 
 export function defaultBackend(): Backend {
@@ -66,7 +81,10 @@ export function bundleUrlOf(bundle: string, backend: string): string | undefined
   if (!BUNDLES.includes(bundle) || !isBackend(backend)) {
     return undefined;
   }
-  return backend === 'wasm' ? `/flagon/wasm/${bundle}.wasm` : `/flagon/js/${bundle}.js`;
+  if (backend === 'js') {
+    return `/flagon/js/${bundle}.js`;
+  }
+  return supportsJspi() ? `/flagon/jspi/${bundle}.wasm` : `/flagon/wasm/${bundle}.wasm`;
 }
 
 export function whyNot(bundle: string, backend: string): string {
@@ -90,7 +108,7 @@ interface WasmLoader {
 const WASM_LOADER = '/flagon/wasm/wasm-gc-module-runtime.js';
 
 export function packUrlOf(bundleUrl: string): string {
-  return bundleUrl.replace(/\/(?:js|wasm)\/([^/]+)\.(?:js|wasm)$/, '/$1.pack');
+  return bundleUrl.replace(/\/(?:js|wasm|jspi)\/([^/]+)\.(?:js|wasm)$/, '/$1.pack');
 }
 
 async function fetchPack(bundleUrl: string): Promise<void> {

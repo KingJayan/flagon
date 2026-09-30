@@ -28,6 +28,7 @@ function defaults(imports, userExports, stringBuiltins) {
   consoleImports(imports);
   coreImports(imports, context);
   asyncImports(imports);
+  fiberImports(imports, context);
   jsoImports(imports, context, stringBuiltins);
   imports.teavmMath = Math;
   return {
@@ -358,6 +359,31 @@ function asyncImports(imports) {
     },
     kill(id) {
       clearTimeout(id);
+    }
+  };
+}
+function fiberImports(imports, context) {
+  if (typeof WebAssembly.Suspending !== "function") {
+    const absent = () => {
+      throw new Error("this browser has no JSPI");
+    };
+    imports.teavmFiber = { start: absent, park: absent, wake: absent };
+    return;
+  }
+  const parked = /* @__PURE__ */ new Map();
+  let run = null;
+  imports.teavmFiber = {
+    start() {
+      run ??= WebAssembly.promising(context.exports["teavm.runFiber"]);
+      run().catch((error) => setTimeout(() => {
+        throw error;
+      }));
+    },
+    park: new WebAssembly.Suspending((id) => new Promise((resolve) => parked.set(id, resolve))),
+    wake(id) {
+      const resolve = parked.get(id);
+      parked.delete(id);
+      resolve();
     }
   };
 }
