@@ -25,7 +25,6 @@ public final class Resources {
     /** how many inflated bytes to keep */
     private static final int CACHE_BYTES = 4 * 1024 * 1024;
 
-    private static final Inflater INFLATER = new Inflater();
     private static final LinkedHashMap<String, byte[]> inflated =
             new LinkedHashMap<>(16, 0.75f, true);
 
@@ -61,31 +60,54 @@ public final class Resources {
         return index.containsKey(clean(name));
     }
 
+    /** @return a copy the reader may change */
     public static byte[] read(String name) {
-        String clean = clean(name);
-        At at = index.get(clean);
+        At at = index.get(clean(name));
         if (at == null) {
             return null;
         }
+        byte[] bytes = new byte[at.raw()];
+        readInto(name, bytes);
+        return bytes;
+    }
+
+    /** @return bytes written into {@code into}, or -1 when the pack has no such resource */
+    public static int readInto(String name, byte[] into) {
+        String clean = clean(name);
+        At at = index.get(clean);
+        if (at == null) {
+            return -1;
+        }
+        if (into.length < at.raw()) {
+            throw new IllegalArgumentException(clean + " is " + at.raw() + " bytes, and the array "
+                    + "holds " + into.length);
+        }
         if (at.packing() == STORED) {
-            byte[] bytes = new byte[at.raw()];
-            System.arraycopy(pack, at.offset(), bytes, 0, at.raw());
-            return bytes;
+            System.arraycopy(pack, at.offset(), into, 0, at.raw());
+            return at.raw();
         }
         byte[] known = inflated.get(clean);
         if (known == null) {
-            known = new byte[at.raw()];
-            INFLATER.reset();
-            INFLATER.setInput(pack, at.offset(), at.stored());
-            try {
-                INFLATER.inflate(known);
-            } catch (DataFormatException broken) {
-                throw new IllegalStateException("the pack cannot unpack " + name, broken);
-            }
+            known = inflate(at, clean);
             remember(clean, known);
         }
-        // hand each reader its own copy
-        return known.clone();
+        System.arraycopy(known, 0, into, 0, at.raw());
+        return at.raw();
+    }
+
+    /** a shared inflater is not safe to re-enter */
+    private static byte[] inflate(At at, String name) {
+        byte[] raw = new byte[at.raw()];
+        Inflater inflater = new Inflater();
+        try {
+            inflater.setInput(pack, at.offset(), at.stored());
+            inflater.inflate(raw);
+        } catch (DataFormatException broken) {
+            throw new IllegalStateException("the pack cannot unpack " + name, broken);
+        } finally {
+            inflater.end();
+        }
+        return raw;
     }
 
     private static void remember(String name, byte[] bytes) {

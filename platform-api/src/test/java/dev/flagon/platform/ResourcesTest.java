@@ -167,6 +167,50 @@ class ResourcesTest {
         assertArrayEquals("one".getBytes(StandardCharsets.UTF_8), Resources.read("a/one.txt"));
     }
 
+    @Test
+    void fillsAnArrayTheCallerBrought() throws IOException {
+        Resources.install(deflated(Map.of("a/one.txt", "one")));
+        byte[] into = new byte[8];
+
+        assertEquals(3, Resources.readInto("a/one.txt", into));
+        assertEquals("one", new String(into, 0, 3, StandardCharsets.UTF_8));
+    }
+
+    @Test
+    void fillsAnArrayFromAStoredFile() throws IOException {
+        Resources.install(pack(Map.of("a/one.txt", "one")));
+        byte[] into = new byte[3];
+
+        assertEquals(3, Resources.readInto("a/one.txt", into));
+        assertArrayEquals("one".getBytes(StandardCharsets.UTF_8), into);
+    }
+
+    @Test
+    void keepsTheCachedBytesWhenTheReaderChangesItsArray() throws IOException {
+        Resources.install(deflated(Map.of("a/one.txt", "one")));
+        byte[] into = new byte[3];
+        Resources.readInto("a/one.txt", into);
+
+        into[0] = 'X';
+
+        assertArrayEquals("one".getBytes(StandardCharsets.UTF_8), Resources.read("a/one.txt"));
+    }
+
+    @Test
+    void refusesAnArrayTooSmallToHoldTheFile() throws IOException {
+        Resources.install(deflated(Map.of("a/one.txt", "one")));
+
+        assertThrows(IllegalArgumentException.class,
+                () -> Resources.readInto("a/one.txt", new byte[2]));
+    }
+
+    @Test
+    void readsNothingIntoAnArrayForAFileNobodyPacked() throws IOException {
+        Resources.install(pack(Map.of("a/one.txt", "one")));
+
+        assertEquals(-1, Resources.readInto("missing.txt", new byte[8]));
+    }
+
     private static byte[] deflated(Map<String, String> files) throws IOException {
         ByteArrayOutputStream bytes = new ByteArrayOutputStream();
         DataOutputStream out = new DataOutputStream(bytes);
