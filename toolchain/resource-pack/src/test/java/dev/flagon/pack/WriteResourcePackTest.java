@@ -6,9 +6,11 @@ import org.junit.jupiter.api.io.TempDir;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
@@ -95,6 +97,52 @@ class WriteResourcePackTest {
 
         byte[] written = bytes.toByteArray();
         assertEquals(WriteResourcePack.STORED, written[written.length - noisy.length - 1]);
+    }
+
+    @Test
+    void storesAFileItsOwnFormatAlreadyCompressed(@TempDir Path work) throws IOException {
+        Files.writeString(work.resolve("tile.png"), "abcdefgh".repeat(400));
+
+        ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+        WriteResourcePack.write(WriteResourcePack.collect(work), bytes);
+
+        assertEquals(WriteResourcePack.STORED, packingOf(bytes.toByteArray()).get("tile.png"));
+    }
+
+    @Test
+    void tellsTheFormatsApartAcrossEveryBatch(@TempDir Path work) throws IOException {
+        for (int at = 0; at < 200; at++) {
+            String name = at % 2 == 0 ? "file" + at + ".txt" : "file" + at + ".png";
+            Files.writeString(work.resolve(name), "abcdefgh".repeat(40));
+        }
+
+        ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+        WriteResourcePack.write(WriteResourcePack.collect(work), bytes);
+
+        Map<String, Integer> packing = packingOf(bytes.toByteArray());
+        assertEquals(200, packing.size());
+        for (Map.Entry<String, Integer> entry : packing.entrySet()) {
+            int wanted = entry.getKey().endsWith(".png")
+                    ? WriteResourcePack.STORED
+                    : WriteResourcePack.DEFLATED;
+            assertEquals(wanted, entry.getValue(), entry.getKey());
+        }
+    }
+
+    /** @return how each resource in the pack was packed, by name */
+    private static Map<String, Integer> packingOf(byte[] pack) {
+        ByteBuffer read = ByteBuffer.wrap(pack);
+        read.position(WriteResourcePack.MAGIC.length);
+        Map<String, Integer> packing = new LinkedHashMap<>();
+        for (int count = read.getInt(); count > 0; count--) {
+            byte[] name = new byte[read.getInt()];
+            read.get(name);
+            read.getInt();
+            int stored = read.getInt();
+            packing.put(new String(name, StandardCharsets.UTF_8), (int) read.get());
+            read.position(read.position() + stored);
+        }
+        return packing;
     }
 
     private static Path jar(Path at, Map<String, String> files) throws IOException {
