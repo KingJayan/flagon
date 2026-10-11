@@ -58,6 +58,12 @@ tasks.named("clean") {
     dependsOn(patches.map { gradle.includedBuild("teavm-patches").task(":$it:clean") })
 }
 
+tasks.register("test") {
+    group = "verification"
+    description = "run the tests of the teavm patches"
+    dependsOn(patches.map { gradle.includedBuild("teavm-patches").task(":$it:test") })
+}
+
 val publishAll = tasks.register("publish") {
     group = "publishing"
     description = "deploy every module to the package registry"

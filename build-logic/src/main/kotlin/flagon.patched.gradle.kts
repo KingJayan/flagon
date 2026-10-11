@@ -1,12 +1,25 @@
 import dev.flagon.build.replaces
+import org.gradle.accessors.dm.LibrariesForLibs
 
 plugins {
     id("flagon.toolchain")
     id("flagon.publishing")
 }
 
+val libs = the<LibrariesForLibs>()
+
 val stock = configurations.create("stock") {
     isTransitive = false
+}
+
+dependencies {
+    "testImplementation"(platform(libs.junit.bom))
+    "testImplementation"(libs.junit.jupiter)
+    "testRuntimeOnly"("org.junit.platform:junit-platform-launcher")
+}
+
+tasks.withType<Test>().configureEach {
+    useJUnitPlatform()
 }
 
 val main = the<SourceSetContainer>()["main"]
