@@ -2,10 +2,12 @@ package dev.flagon.build
 
 import org.gradle.api.DefaultTask
 import org.gradle.api.file.ConfigurableFileCollection
+import org.gradle.api.file.FileSystemLocation
 import org.gradle.api.provider.ListProperty
 import org.gradle.api.provider.Property
 import org.gradle.api.tasks.Classpath
 import org.gradle.api.tasks.Input
+import org.gradle.api.tasks.Internal
 import org.gradle.api.tasks.TaskAction
 import org.gradle.workers.WorkAction
 import org.gradle.workers.WorkParameters
@@ -38,6 +40,9 @@ abstract class RunMain : DefaultTask() {
     @get:Input
     abstract val mainClass: Property<String>
 
+    @get:Internal
+    abstract val paths: ListProperty<FileSystemLocation>
+
     @get:Input
     abstract val arguments: ListProperty<String>
 
@@ -46,7 +51,10 @@ abstract class RunMain : DefaultTask() {
         workers.classLoaderIsolation { classpath.from(runtimeClasspath) }
             .submit(RunMainAction::class.java) {
                 mainClass.set(this@RunMain.mainClass)
-                arguments.set(this@RunMain.arguments)
+                arguments.set(
+                    this@RunMain.paths.get().map { it.asFile.absolutePath } +
+                        this@RunMain.arguments.get(),
+                )
             }
     }
 }

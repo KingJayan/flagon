@@ -1,13 +1,13 @@
 import dev.flagon.build.BundleExtension
 import dev.flagon.build.RunMain
+import dev.flagon.build.UntrackedArguments
 import dev.flagon.build.WASM_FEATURES
 import org.gradle.accessors.dm.LibrariesForLibs
-import org.gradle.process.CommandLineArgumentProvider
 import org.teavm.gradle.api.JSModuleType
 import org.teavm.gradle.api.OptimizationLevel
+import org.teavm.gradle.tasks.GenerateJavaScriptTask
 import org.teavm.gradle.tasks.GenerateWasmGCTask
 import org.teavm.gradle.tasks.TeaVMTask
-import java.io.File
 
 plugins {
     id("flagon.java")
@@ -37,7 +37,13 @@ fun shrinks(variant: String): Provider<Boolean> =
 fun wasmDir(variant: String) = shrinks(variant).flatMap {
     if (it) layout.buildDirectory.dir("teavm/$variant") else bundlesDir.map { dir -> dir.dir(variant) }
 }
-val preserve = providers.gradleProperty("flagon.preserve").orElse("")
+val preserve = providers.gradleProperty("flagon.preserve").orElse(
+    providers.fileContents(rootProject.layout.projectDirectory.file("vendor/preserve.txt")).asText
+        .map { text ->
+            text.lines().map { it.trim() }.filter { it.isNotEmpty() && !it.startsWith("#") }
+                .joinToString(",")
+        },
+).orElse("")
 
 val teavmClasspath = configurations.named("teavmClasspath")
 val bundleTools = configurations.create("bundleTools")
@@ -77,8 +83,6 @@ val reflectionProperties = provider {
     mapOf(
         "flagon.reflect.classes" to bundle.reflectClasses.get(),
         "flagon.reflect.proxies" to bundle.reflectProxies.get(),
-        "flagon.reflect.constructed" to
-            bundle.reflectConstructed.orNull?.asFile?.absolutePath.orEmpty(),
         "flagon.reflect.converted" to bundle.reflectConverted.get(),
         "flagon.preserve" to preserve.get(),
     )
@@ -119,6 +123,10 @@ teavm {
 
 val generateWasmGC = tasks.named<GenerateWasmGCTask>("generateWasmGC")
 
+// sources only feed source maps, which these builds leave off, and teavm keys them by absolute path
+tasks.withType<GenerateWasmGCTask>().configureEach { sourceFiles.setFrom() }
+tasks.withType<GenerateJavaScriptTask>().configureEach { sourceFiles.setFrom() }
+
 // the same program again, for browsers that park the wasm stack with jspi
 val generateWasmJspi = tasks.register<GenerateWasmGCTask>("generateWasmJspi") {
     description = "compile this module to webassembly gc that pauses with jspi"
@@ -139,15 +147,9 @@ tasks.withType<TeaVMTask>().configureEach {
     outOfProcess.set(true)
     processMemory.set(bundle.compilerMemory)
     daemonClasspath.setFrom(teavmCompiler)
-    inputs.files(bundle.reflectConstructed).withPropertyName("reflectConstructed").optional()
     outputs.cacheIf { true }
     val rest = classpath.from.toTypedArray()
     classpath.setFrom(teavmPatched, *rest)
-    val listed = classpath
-    properties.put(
-        "flagon.classpath",
-        provider { listed.files.joinToString(File.pathSeparator) { it.absolutePath } },
-    )
 }
 
 val writeCatalog = tasks.register<RunMain>("writeCatalog") {
@@ -157,7 +159,7 @@ val writeCatalog = tasks.register<RunMain>("writeCatalog") {
     mainClass.set(bundle.catalogClass)
     outputs.file(out)
     outputs.cacheIf { true }
-    arguments.add(out.map { it.asFile.absolutePath })
+    paths.add(out)
 }
 
 val writeResourcePack = tasks.register<RunMain>("writeResourcePack") {
@@ -166,10 +168,11 @@ val writeResourcePack = tasks.register<RunMain>("writeResourcePack") {
     runtimeClasspath.from(mainSources.runtimeClasspath, bundleTools)
     mainClass.set("dev.flagon.pack.WriteResourcePack")
     inputs.files(bundle.resourcesFrom).withPropertyName("resources").optional()
+        .withPathSensitivity(PathSensitivity.RELATIVE)
     outputs.file(out)
     outputs.cacheIf { true }
-    arguments.add(bundle.resourcesFrom.map { it.asFile.absolutePath })
-    arguments.add(out.map { it.asFile.absolutePath })
+    paths.add(bundle.resourcesFrom)
+    paths.add(out)
 }
 
 fun optimizing(variant: String, compile: TaskProvider<GenerateWasmGCTask>): Provider<out Task> {
@@ -184,15 +187,20 @@ fun optimizing(variant: String, compile: TaskProvider<GenerateWasmGCTask>): Prov
         val emitted = wasmDir(variant).zip(name) { dir, file -> dir.file(file) }
         val optimized = bundlesDir.zip(name) { dir, file -> dir.dir(variant).file(file) }
         dependsOn(compile)
-        inputs.file(emitted).withPropertyName("emitted")
+        inputs.file(emitted).withPropertyName("emitted").withPathSensitivity(PathSensitivity.NONE)
         inputs.file(web.file("node_modules/binaryen/package.json")).withPropertyName("binaryen")
-            .optional()
+            .withPathSensitivity(PathSensitivity.NONE).optional()
+        inputs.property("features", WASM_FEATURES)
         outputs.file(optimized)
         outputs.cacheIf { true }
         executable = wasmOpt.absolutePath
-        argumentProviders.add(CommandLineArgumentProvider {
-            listOf(emitted.get().asFile.absolutePath, "-o", optimized.get().asFile.absolutePath) +
-                WASM_FEATURES + "-Os"
+        argumentProviders.add(objects.newInstance<UntrackedArguments>().apply {
+            arguments.set(
+                emitted.zip(optimized) { from, to ->
+                    listOf(from.asFile.absolutePath, "-o", to.asFile.absolutePath) +
+                        WASM_FEATURES + "-Os"
+                },
+            )
         })
         doFirst {
             check(wasmOpt.exists()) { "wasm-opt is missing. Run make deps." }

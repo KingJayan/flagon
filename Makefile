@@ -10,8 +10,6 @@ ENGINES ?= chromium firefox
 
 VENDOR_JARS := $(wildcard vendor/*.jar)
 
-PRESERVE_FILE := vendor/preserve.txt
-PRESERVE := $(if $(wildcard $(PRESERVE_FILE)),-Pflagon.preserve='$(shell grep -v '^\#' $(PRESERVE_FILE) | paste -sd, -)',)
 
 .PHONY: help setup deps browsers fast bundles app verify-bundles \
         bundles-release size test browser flake typecheck lint build-site \
@@ -31,12 +29,12 @@ browsers: ## install Playwright engines and their system dependencies (ENGINES="
 	cd $(WEB) && bunx playwright install $(ENGINES)
 
 fast: ## compile the fast development bundles
-	$(GRADLE) $(PRESERVE) bundlesFast
+	$(GRADLE) bundlesFast
 	@$(MAKE) verify-bundles
 	@echo "Fast bundles built. Run 'make bundles' for the full build."
 
 bundles: ## compile Java to WebAssembly and JavaScript
-	$(GRADLE) $(PRESERVE) bundles
+	$(GRADLE) bundles
 	@$(MAKE) verify-bundles
 
 app: ## build the JARs in vendor/ as runnable app bundles
@@ -44,7 +42,7 @@ app: ## build the JARs in vendor/ as runnable app bundles
 		echo "no JARs found in vendor/"; \
 		exit 1; \
 	}
-	$(GRADLE) $(PRESERVE) bundles
+	$(GRADLE) bundles
 	@$(MAKE) verify-bundles
 	@echo "App bundles are available in $(BUNDLES)/"
 	@echo "Run 'make dev' and open http://localhost:5273/"
@@ -71,7 +69,7 @@ verify-bundles: ## verify generated bundles contain compiled output
 	done
 
 bundles-release: ## build release bundles and check their size budgets
-	$(GRADLE) -Pflagon.release $(PRESERVE) bundles
+	$(GRADLE) -Pflagon.release bundles
 	@$(MAKE) verify-bundles
 	@$(MAKE) size
 
