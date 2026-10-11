@@ -76,6 +76,7 @@ bundle {
     mainClass.set("dev.flagon.app.AppMain")
     catalogClass.set("dev.flagon.app.AppCatalog")
     resourcesFrom.set(vendorDir)
+    compilerMemory.set(4096)
     reflectConstructed.set(constructed)
     reflectConverted.set(
         "java.lang.Boolean, java.lang.Byte, java.lang.Short, java.lang.Integer, "

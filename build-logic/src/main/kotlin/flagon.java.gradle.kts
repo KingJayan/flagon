@@ -1,21 +1,13 @@
 import org.gradle.accessors.dm.LibrariesForLibs
 
 plugins {
-    `java-library`
+    id("flagon.toolchain")
     checkstyle
 }
 
 val libs = the<LibrariesForLibs>()
 
-java {
-    toolchain {
-        languageVersion.set(JavaLanguageVersion.of(25))
-    }
-}
-
 tasks.withType<JavaCompile>().configureEach {
-    options.encoding = "UTF-8"
-    options.release.set(25)
     options.compilerArgs.add("-Xlint:all,-serial,-processing")
 }
 
