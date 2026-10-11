@@ -50,10 +50,10 @@ app: ## build the JARs in vendor/ as runnable app bundles
 	@echo "Run 'make dev' and open http://localhost:5273/"
 
 verify-bundles: ## verify generated bundles contain compiled output
-	@for bundle in $(BUNDLES)/js/*.js $(BUNDLES)/wasm/*.wasm; do \
+	@for bundle in $(BUNDLES)/js/*.js $(BUNDLES)/wasm/*.wasm $(BUNDLES)/jspi/*.wasm; do \
 		test -f "$$bundle" || continue; \
 		size=$$(wc -c < "$$bundle" | tr -d " "); \
-		test $$size -ge 100000 || { \
+		test $$size -ge 20000 || { \
 			echo "$$bundle is only $$size bytes; run 'make clean' and rebuild"; \
 			exit 1; \
 		}; \

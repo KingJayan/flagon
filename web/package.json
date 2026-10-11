@@ -17,6 +17,7 @@
     "@playwright/test": "^1.49.1",
     "@types/node": "^22.10.5",
     "@types/ws": "^8.18.1",
+    "binaryen": "132.0.0",
     "oxlint": "^1.82.0",
     "typescript": "^5.7.2",
     "vite": "^6.0.7",
