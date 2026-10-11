@@ -3,6 +3,7 @@ import dev.flagon.build.RunMain
 import org.gradle.accessors.dm.LibrariesForLibs
 import org.teavm.gradle.api.JSModuleType
 import org.teavm.gradle.api.OptimizationLevel
+import org.teavm.gradle.tasks.GenerateWasmGCTask
 import org.teavm.gradle.tasks.TeaVMTask
 import java.io.File
 
@@ -104,6 +105,24 @@ teavm {
     }
 }
 
+val generateWasmGC = tasks.named<GenerateWasmGCTask>("generateWasmGC")
+
+// the same program again, for browsers that park the wasm stack with jspi
+val generateWasmJspi = tasks.register<GenerateWasmGCTask>("generateWasmJspi") {
+    description = "compile this module to webassembly gc that pauses with jspi"
+    classpath.from(generateWasmGC.map { it.classpath })
+    mainClass.set(generateWasmGC.flatMap { it.mainClass })
+    outputDir.set(bundlesDir.map { it.dir("jspi").asFile })
+    targetFileName.set(bundle.bundleName.map { "$it.wasm" })
+    optimization.set(generateWasmGC.flatMap { it.optimization })
+    obfuscated.set(generateWasmGC.flatMap { it.obfuscated })
+    strict.set(generateWasmGC.flatMap { it.strict })
+    sourceMap.set(false)
+    debugInformation.set(false)
+    properties.putAll(generateWasmGC.flatMap { it.properties })
+    properties.put("flagon.jspi", "true")
+}
+
 tasks.withType<TeaVMTask>().configureEach {
     outOfProcess.set(true)
     processMemory.set(bundle.compilerMemory)
@@ -147,18 +166,20 @@ configurations.consumable("bundleFull")
 configurations.consumable("bundleFast")
 
 artifacts {
-    add("bundleFull", bundlesDir) { builtBy(built, "generateWasmGC", "generateJavaScript") }
-    add("bundleFast", bundlesDir) { builtBy(built, "generateWasmGC") }
+    add("bundleFull", bundlesDir) {
+        builtBy(built, "generateWasmGC", generateWasmJspi, "generateJavaScript")
+    }
+    add("bundleFast", bundlesDir) { builtBy(built, "generateWasmGC", generateWasmJspi) }
 }
 
 tasks.register("bundle") {
     group = "flagon"
     description = "compile this module to webassembly gc and to javascript"
-    dependsOn("generateWasmGC", "generateJavaScript", writeCatalog, writeResourcePack)
+    dependsOn("generateWasmGC", generateWasmJspi, "generateJavaScript", writeCatalog, writeResourcePack)
 }
 
 tasks.register("bundleFast") {
     group = "flagon"
     description = "compile this module to webassembly gc only"
-    dependsOn("generateWasmGC", writeCatalog, writeResourcePack)
+    dependsOn("generateWasmGC", generateWasmJspi, writeCatalog, writeResourcePack)
 }
