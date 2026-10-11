@@ -22,4 +22,7 @@ interface BundleExtension {
     val reflectConverted: Property<String>
 
     val compilerMemory: Property<Int>
+
+    /** release wasm-opt on the coroutine build; binaryen crashes on the app's */
+    val shrinkCoroutineWasm: Property<Boolean>
 }

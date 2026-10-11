@@ -13,7 +13,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-// flagon: backports the null check of konsoletyper/teavm@23cee487e onto 0.15.0
+// flagon: backports the null check of konsoletyper/teavm@23cee487e onto 0.15.0, and lists no abstract class
+// among the simple constructors
 package org.teavm.backend.javascript.intrinsics.reflection;
 
 import java.lang.reflect.Array;
@@ -239,7 +240,8 @@ public class ClassInfoGenerator implements Injector, Generator {
             if (type instanceof ValueType.Object) {
                 var className = ((ValueType.Object) type).getClassName();
                 var cls = context.getClassSource().get(className);
-                if (cls == null) {
+                // an abstract class gets no allocating constructor to point at
+                if (cls == null || cls.hasModifier(ElementModifier.ABSTRACT)) {
                     continue;
                 }
                 var ctor = cls.getMethod(new MethodDescriptor("<init>", void.class));

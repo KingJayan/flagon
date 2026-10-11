@@ -77,6 +77,7 @@ bundle {
     catalogClass.set("dev.flagon.app.AppCatalog")
     resourcesFrom.set(vendorDir)
     compilerMemory.set(4096)
+    shrinkCoroutineWasm.set(false)
     reflectConstructed.set(constructed)
     reflectConverted.set(
         "java.lang.Boolean, java.lang.Byte, java.lang.Short, java.lang.Integer, "
