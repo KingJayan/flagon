@@ -2,7 +2,6 @@ package dev.flagon.lwjgl.internal;
 
 import dev.flagon.platform.input.Scancode;
 
-/** glfw's key numbering, which is its own, against the {@link Scancode} hosts report */
 public final class GlfwKeys {
 
     public static final int UNKNOWN = -1;
@@ -131,7 +130,6 @@ public final class GlfwKeys {
         TO_KEY[scancode] = key;
     }
 
-    /** @return the glfw key for a host scancode, or {@link #UNKNOWN} for a key glfw cannot name */
     public static int keyOf(int scancode) {
         if (scancode <= 0 || scancode >= TO_KEY.length || TO_KEY[scancode] == 0) {
             return UNKNOWN;
@@ -139,7 +137,6 @@ public final class GlfwKeys {
         return TO_KEY[scancode];
     }
 
-    /** @return the host scancode for a glfw key, or {@link Scancode#NONE} when there is none */
     public static int scancodeOf(int key) {
         if (key < 0 || key > HIGHEST) {
             return Scancode.NONE;

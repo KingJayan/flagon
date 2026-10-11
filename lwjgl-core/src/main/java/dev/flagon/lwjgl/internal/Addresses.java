@@ -22,10 +22,8 @@ public final class Addresses {
     private static final long SLOT_MASK = (1L << SLOT_BITS) - 1;
     private static final int GENERATIONS = 1 << 8;
 
-    /** how many buffers the memo holds */
     private static final int MEMO = 8;
 
-    /** how many misses one sweep covers */
     private static final int SWEEP_EVERY = 64;
 
     private static final ReferenceQueue<Buffer> COLLECTED = new ReferenceQueue<>();
@@ -67,13 +65,11 @@ public final class Addresses {
     private Addresses() {
     }
 
-    /** @return the address of the buffer's current position */
     public static long of(Buffer buffer) {
         return buffer == null ? NULL : base(buffer)
                 + (long) buffer.position() * elementSize(buffer);
     }
 
-    /** @return the address of {@code index} elements into the buffer, counted from zero */
     public static long of(Buffer buffer, int index) {
         return buffer == null ? NULL : base(buffer) + (long) index * elementSize(buffer);
     }
@@ -124,7 +120,6 @@ public final class Addresses {
             return free[--freeCount];
         }
         if (slotCount >= SLOT_MASK) {
-            // the sweep runs on a counter, so a freed slot may not be back yet
             sweep();
         }
         if (freeCount > 0) {
@@ -288,7 +283,6 @@ public final class Addresses {
         return window(slot, (int) address, slot.capacity());
     }
 
-    /** slices the slot in place and puts it back: a duplicate would cost a second buffer */
     private static ByteBuffer window(ByteBuffer slot, int from, int to) {
         int position = slot.position();
         int limit = slot.limit();

@@ -7,13 +7,11 @@ import dev.flagon.platform.graphics.ShaderStage;
  */
 public final class GlslTranslator {
 
-    /** the lowest desktop version written against in/out rather than attribute/varying */
     private static final int LOWEST_CORE = 130;
     private static final int HIGHEST_CORE = 330;
 
     private static final String FRAGMENT_OUT = "flagon_FragColor";
 
-    /** sampler calls the core profile replaced with the overloaded texture(). */
     private static final String[][] SAMPLER_CALLS = {
             {"texture2DProjLod", "textureProjLod"},
             {"texture2DLodEXT", "textureLod"},
@@ -32,10 +30,6 @@ public final class GlslTranslator {
     private GlslTranslator() {
     }
 
-    /**
-     * glsl 1.30 to 3.30 already say in and out, so the version line, the sampler calls and the
-     * fragment output are what separate them from glsl es 3.00.
-     */
     private static String toGlslEs300(String source, int directive, int end, ShaderStage stage) {
         return finishGlslEs300(source.substring(0, directive) + source.substring(end), stage);
     }
@@ -51,11 +45,11 @@ public final class GlslTranslator {
             }
             injected.append(fragmentOutput(bare));
         }
-        // an #extension directive has to stay ahead of any declaration
+
         int after = afterExtensions(body, bare);
         String assembled = "#version 300 es\n" + body.substring(0, after) + injected
                 + body.substring(after);
-        // last: the indexes above are offsets into the body
+
         return fragment ? replaceWord(assembled, "gl_FragColor", FRAGMENT_OUT) : assembled;
     }
 
@@ -78,10 +72,6 @@ public final class GlslTranslator {
         return renamed;
     }
 
-    /**
-     * es 3.00 dropped gl_FragColor, so the shader gets an output of its own. a shader that already
-     * declares one is left alone.
-     */
     private static String fragmentOutput(String code) {
         if (indexOfWord(code, "gl_FragData", 0) >= 0) {
             throw new UnsupportedOperationException(
@@ -109,7 +99,6 @@ public final class GlslTranslator {
         return rewritten.append(source, copied, source.length()).toString();
     }
 
-    /** @return whether this shader is written against gl's fixed-function state */
     public static boolean readsFixedFunction(String source) {
         return source != null && FixedFunctionGlsl.isUsedIn(withoutComments(source));
     }
@@ -147,12 +136,11 @@ public final class GlslTranslator {
         if (number >= LOWEST_CORE) {
             return toGlslEs300(source, directive, end, stage);
         }
-        // 1.10 and 1.20 are read as es 1.00, which is what an absent directive already means
+
         String stripped = source.substring(0, directive) + source.substring(end);
         return withPrecision(stripped, code.substring(0, directive) + code.substring(end), stage);
     }
 
-    /** blanks comments out, keeping every index and line break, so scans line up with the source */
     static String withoutComments(String source) {
         char[] code = source.toCharArray();
         int at = 0;
@@ -239,16 +227,11 @@ public final class GlslTranslator {
         return false;
     }
 
-    /**
-     * a shader written against the fixed-function state reads the same attributes and uniforms
-     * the built-in pipeline does, so it is promoted to es 3.00 whatever version it declared.
-     */
     private static String toFixedFunction(String stripped, ShaderStage stage) {
         String modern = asInAndOut(stripped, stage);
         return finishGlslEs300(FixedFunctionGlsl.rewrite(modern, stage), stage);
     }
 
-    /** glsl 1.20 says attribute and varying where es 3.00 says in and out */
     private static String asInAndOut(String source, ShaderStage stage) {
         String rewritten = replaceWord(source, "attribute", "in");
         return replaceWord(rewritten, "varying", stage == ShaderStage.VERTEX ? "out" : "in");

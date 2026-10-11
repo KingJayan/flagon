@@ -11,13 +11,12 @@ import java.util.Arrays;
 import java.util.List;
 
 /**
- * reproduces gl 1.x fixed-function output with a single shader.
+  reproduces gl 1.x fixed-function output w/ one shader
  */
 public final class FixedFunctionPipeline {
 
     public static final int NO_CAPTURE = -1;
 
-    /** the widest immediate layout: every attribute at once */
     public static final int VERTEX_FLOATS = 10 + 2 * VertexArrays.UNITS;
 
     private static final String VERTEX_SHADER = """
@@ -202,7 +201,6 @@ public final class FixedFunctionPipeline {
 
     private static final int NOTHING_WRITTEN = -1;
 
-    /** vertices a display list owns, uploaded once and drawn from there on every replay */
     private record Captured(int buffer, int array, DrawMode mode, int vertexCount, int layout) {
     }
 
@@ -244,7 +242,6 @@ public final class FixedFunctionPipeline {
     private final int fogStartUniform;
     private final int fogEndUniform;
 
-    /** what a translated fixed-function shader of the application's own reads, per program */
     private Borrowed[] borrowed = new Borrowed[16];
 
     public FixedFunctionPipeline(GraphicsDevice device) {
@@ -353,7 +350,6 @@ public final class FixedFunctionPipeline {
         device.bindVertexArray(GraphicsDevice.NO_VERTEX_ARRAY);
     }
 
-    /** the store grows to a high-water mark, so a block writes into it instead of replacing it */
     private void stream(float[] vertices, int floatCount) {
         if (floatCount > bufferFloats) {
             bufferFloats = Math.max(floatCount, bufferFloats * 2);
@@ -362,7 +358,6 @@ public final class FixedFunctionPipeline {
         device.bufferSubData(BufferTarget.ARRAY, 0, vertices, floatCount);
     }
 
-    /** an attribute the block never set is the same for every vertex, so it is not uploaded */
     private void constants(int layout, RenderState render) {
         if (!ImmediateLayout.has(layout, ImmediateLayout.COLOR)) {
             device.constantAttribute(VertexArrays.COLOR,
@@ -606,7 +601,6 @@ public final class FixedFunctionPipeline {
         return where;
     }
 
-    /** a lent program declares some subset of these; the rest come back as no location */
     private static final class Borrowed {
         private final int[] written = new int[Revision.GROUPS];
         private int modelView;

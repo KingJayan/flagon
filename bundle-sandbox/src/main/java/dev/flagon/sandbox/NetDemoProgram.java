@@ -70,7 +70,6 @@ public final class NetDemoProgram implements Program {
         console.info("net: done");
     }
 
-    /** http by hand, because what is being proved is that the bytes went both ways */
     private void fetch(ConsoleSink console, Network network, String host, int port) {
         Connection connection = network.connect(host, port);
         console.info("connected to " + connection.host() + ":" + connection.port());
@@ -115,7 +114,6 @@ public final class NetDemoProgram implements Program {
         }
     }
 
-    /** the same file once more, through the java.net.Socket a desktop program would have opened */
     private void fetchBySocket(ConsoleSink console, String host, int port) throws Exception {
         try (Socket socket = new Socket(InetAddress.getByName(host), port)) {
             socket.setSoTimeout(30_000);
@@ -142,7 +140,6 @@ public final class NetDemoProgram implements Program {
         }
     }
 
-    /** a page cannot be dialled in to, and says so rather than failing to link */
     private void listening(ConsoleSink console) {
         try {
             new ServerSocket(25_565);
@@ -152,7 +149,6 @@ public final class NetDemoProgram implements Program {
         }
     }
 
-    /** a program picks its own proxy, and the one it picks is carried rather than obeyed */
     private void proxied(ConsoleSink console) {
         Proxy socks = new Proxy(Proxy.Type.SOCKS, new InetSocketAddress("localhost", 1080));
         console.info("proxy: " + socks + ", direct: " + Proxy.NO_PROXY.type()
@@ -167,7 +163,6 @@ public final class NetDemoProgram implements Program {
         }
     }
 
-    /** nothing challenges a connection here, so the authenticator answers whoever asks it */
     private void authenticated(ConsoleSink console) {
         Authenticator.setDefault(new Authenticator() {
             @Override
@@ -181,7 +176,6 @@ public final class NetDemoProgram implements Program {
         console.info("auth: " + answer.getUserName() + " " + new String(answer.getPassword()));
     }
 
-    /** the same file again, this time through code that has never heard of a proxy */
     private void fetchByUrl(ConsoleSink console, String address) throws Exception {
         URLConnection connection = new URL(address).openConnection();
         console.info("url type: " + connection.getContentType());
@@ -230,7 +224,6 @@ public final class NetDemoProgram implements Program {
         }
     }
 
-    /** a body larger than the browser will hold for a socket, which the write has to wait out */
     private void pacedWrite(ConsoleSink console, Network network, String host, int port) {
         Connection connection = network.connect(host, port);
         try {
@@ -255,7 +248,6 @@ public final class NetDemoProgram implements Program {
         }
     }
 
-    /** reads what is already here and nothing more, so the queue falls back under the low mark */
     private void drain(Connection connection, int waiting) {
         byte[] chunk = new byte[8192];
         int left = waiting;
@@ -268,7 +260,6 @@ public final class NetDemoProgram implements Program {
         }
     }
 
-    /** nothing is listening on port 1, and a connection that cannot be made has to say so */
     private void refused(ConsoleSink console, Network network, String host) {
         try {
             network.connect(host, 1).close();
@@ -278,7 +269,6 @@ public final class NetDemoProgram implements Program {
         }
     }
 
-    /** the proxy decides who may be reached, and it was told only about this host */
     private void disallowed(ConsoleSink console, Network network) {
         try {
             network.connect("example.com", 80).close();
@@ -288,7 +278,6 @@ public final class NetDemoProgram implements Program {
         }
     }
 
-    /** @return how many bytes the request took */
     private int get(Connection connection, String path, String host, int port) {
         String request = "GET " + path + " HTTP/1.1\r\n"
                 + "Host: " + host + ":" + port + "\r\n"
@@ -315,7 +304,6 @@ public final class NetDemoProgram implements Program {
         return collected.toByteArray();
     }
 
-    /** @return the offset just past the blank line that ends the response head */
     private static int headEnd(byte[] response) {
         for (int at = 0; at + 3 < response.length; at++) {
             if (response[at] == '\r' && response[at + 1] == '\n'

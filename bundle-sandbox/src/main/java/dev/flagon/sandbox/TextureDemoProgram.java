@@ -8,25 +8,19 @@ import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL12;
 import org.lwjgl.opengl.GL13;
 
-/**
- uploads a texture whose texels are known, then draws it back at known places
- */
 public final class TextureDemoProgram implements Program {
 
     private static final int WIDTH = 940;
     private static final int HEIGHT = 360;
     private static final int MAX_FRAMES = 900;
 
-    /** 0xAARRGGBB, the order glTexImage2D takes. row 0 is the top of the quad. */
     private static final int[] TEXELS = {
             0xFFFF0000, 0xFF00FF00,
             0xFF0000FF, 0xFF000000,
     };
 
-    /** the bottom right texel, patched in afterwards rather than uploaded with the rest */
     private static final int[] CORNER = {0xFFFFFF00};
 
-    /** half-opaque white, so the alpha byte has to land in the right place to blend. */
     private static final int[] FADED = {0x80FFFFFF};
 
     private int texture;
@@ -100,13 +94,12 @@ public final class TextureDemoProgram implements Program {
         GL11.glBindTexture(GL11.GL_TEXTURE_2D, name);
         GL11.glTexImage2D(GL11.GL_TEXTURE_2D, 0, GL11.GL_RGBA, width, height, 0,
                 GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, pixels);
-        // nearest, so every screen pixel of the quad is exactly one texel
+
         GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_NEAREST);
         GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_NEAREST);
         return name;
     }
 
-    /** one int a texel, the packed type and channel order applications upload images with */
     private static int uploadPacked(int argb) {
         int name = GL11.glGenTextures();
         GL11.glBindTexture(GL11.GL_TEXTURE_2D, name);
@@ -129,10 +122,6 @@ public final class TextureDemoProgram implements Program {
         return name;
     }
 
-    /**
-     the base level is red and every level below it is blue, so which level was sampled is
-     visible in the color rather than in the sharpness
-     */
     private static int uploadMipmapped() {
         int name = GL11.glGenTextures();
         GL11.glBindTexture(GL11.GL_TEXTURE_2D, name);
@@ -164,46 +153,36 @@ public final class TextureDemoProgram implements Program {
         GL11.glBindTexture(GL11.GL_TEXTURE_2D, texture);
         texturedQuad(40.0f, 40.0f, 360.0f, 320.0f);
 
-        // the same texels tinted, so the sampler feeds the fixed-function color too
         GL11.glColor4f(0.5f, 0.5f, 0.5f, 1.0f);
         texturedQuad(400.0f, 40.0f, 480.0f, 320.0f);
 
-        // half-opaque white over the clear color
         GL11.glEnable(GL11.GL_BLEND);
         GL11.glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
         GL11.glBindTexture(GL11.GL_TEXTURE_2D, faded);
         texturedQuad(520.0f, 40.0f, 600.0f, 320.0f);
         GL11.glDisable(GL11.GL_BLEND);
 
-        // texture coordinates past 1, so the wrap mode decides what is sampled
         GL11.glBindTexture(GL11.GL_TEXTURE_2D, tiled);
         tiledQuad(620.0f, 40.0f, 700.0f, 320.0f, 2.0f);
 
-        // one to one, so the base level is sampled; then minified, so a lower level is
         GL11.glBindTexture(GL11.GL_TEXTURE_2D, mipmapped);
         texturedQuad(720.0f, 40.0f, 784.0f, 104.0f);
         texturedQuad(720.0f, 150.0f, 728.0f, 158.0f);
 
         multiTextured();
 
-        // uploaded three bytes and one byte a texel, widened to the rgba the device takes
         GL11.glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
         GL11.glBindTexture(GL11.GL_TEXTURE_2D, rgb);
         texturedQuad(800.0f, 150.0f, 860.0f, 210.0f);
         GL11.glBindTexture(GL11.GL_TEXTURE_2D, luminance);
         texturedQuad(870.0f, 150.0f, 930.0f, 210.0f);
 
-        // the packed type an application uploads its own images with
         GL11.glBindTexture(GL11.GL_TEXTURE_2D, packed);
         texturedQuad(800.0f, 220.0f, 860.0f, 280.0f);
 
         GL11.glDisable(GL11.GL_TEXTURE_2D);
     }
 
-    /**
-     two units at once: the second modulates the first, then replaces it, so which mode was in
-     force is visible in the color
-     */
     private void multiTextured() {
         GL13.glActiveTexture(GL13.GL_TEXTURE1);
         GL11.glEnable(GL11.GL_TEXTURE_2D);

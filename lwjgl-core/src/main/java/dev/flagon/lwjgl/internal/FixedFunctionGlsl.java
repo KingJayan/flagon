@@ -5,13 +5,8 @@ import dev.flagon.platform.graphics.ShaderStage;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * desktop glsl written against gl's fixed-function state, rewritten to read the same attributes
- * and uniforms the fixed-function pipeline already feeds
- */
 final class FixedFunctionGlsl {
 
-    /** what a shader has to name for the fixed-function pipeline to draw it */
     static final String[] BUILTINS = {
             "gl_ModelViewMatrix",
             "gl_ProjectionMatrix",
@@ -32,7 +27,6 @@ final class FixedFunctionGlsl {
             "ftransform",
     };
 
-    /** state with no equivalent here, named so the message can say which one was asked for */
     private static final String[][] UNSUPPORTED = {
             {"gl_LightSource", "per-light state; glLight* feeds the built-in pipeline, but a "
                     + "shader of your own has to take the lights as uniforms it declares"},
@@ -63,10 +57,6 @@ final class FixedFunctionGlsl {
         }
     }
 
-    /**
-     * @param body the shader with its version directive already removed
-     * @return the same shader reading flagon's attributes and uniforms instead of gl's
-     */
     static String rewrite(String body, ShaderStage stage) {
         String code = GlslTranslator.withoutComments(body);
         List<String> declared = new ArrayList<>();

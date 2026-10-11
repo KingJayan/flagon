@@ -54,7 +54,6 @@ class GlslTranslatorTest {
         assertFalse(translated.contains("mediump"), translated);
     }
 
-    /** the vertex stage has a default precision of its own, so adding one would be noise. */
     @Test
     void aVertexShaderIsNotGivenAPrecision() {
         String translated = GlslTranslator.toGlslEs(
@@ -146,7 +145,6 @@ class GlslTranslatorTest {
         assertTrue(vertex.contains("out vec2 uv;"), vertex);
     }
 
-    /** a name that merely contains a built-in is not that built-in. */
     @Test
     void anIdentifierThatOnlyLooksLikeABuiltinIsKept() {
         String source = "attribute vec4 gl_VertexOfMine;\nvoid main() { gl_Position = vec4(0.0); }";
@@ -180,7 +178,6 @@ class GlslTranslatorTest {
         assertEquals(source, GlslTranslator.toGlslEs(source, ShaderStage.VERTEX));
     }
 
-    /** a comment carried onto the next line by a backslash is still a comment */
     @Test
     void aBuiltinNamedInAContinuedLineCommentIsNotUsed() {
         String source = "// the original read \\\ngl_Vertex\n"
@@ -202,7 +199,6 @@ class GlslTranslatorTest {
         assertTrue(translated.contains("#version 330 core"), translated);
     }
 
-    /** the precision a comment mentions is not one the shader declares */
     @Test
     void aCommentedOutPrecisionDoesNotCount() {
         String translated = GlslTranslator.toGlslEs("""
@@ -220,7 +216,6 @@ class GlslTranslatorTest {
         assertEquals(source, GlslTranslator.toGlslEs(source, ShaderStage.VERTEX));
     }
 
-    /** a division is not the start of a comment */
     @Test
     void aSlashBetweenOperandsIsLeftAlone() {
         String translated = GlslTranslator.toGlslEs(

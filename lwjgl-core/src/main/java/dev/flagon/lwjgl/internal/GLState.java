@@ -187,7 +187,6 @@ public final class GLState implements RenderState {
         return matrixMode == PROJECTION ? projection : modelView;
     }
 
-    /** @return the matrix a caller is about to change */
     private float[] mutable() {
         revision.bump(Revision.MATRIX);
         return active();
@@ -423,7 +422,6 @@ public final class GLState implements RenderState {
         restoreBindings();
     }
 
-    /** a bound program whose shaders were written against gl's fixed-function state */
     public boolean readsFixedFunction() {
         return program != GraphicsDevice.NO_PROGRAM && fixedFunctionPrograms.get(program);
     }
@@ -535,7 +533,6 @@ public final class GLState implements RenderState {
         writtenStages[target] = written;
     }
 
-    /** @return the program the fixed-function pipeline should draw through, if not its own */
     private int lent() {
         return readsFixedFunction() ? program : GraphicsDevice.NO_PROGRAM;
     }
@@ -560,7 +557,6 @@ public final class GLState implements RenderState {
         }
     }
 
-    /** a program reads the fixed-function state when either shader it linked did */
     public void linkedProgram(int linked) {
         BitSet attached = at(attachedShaders, linked);
         boolean reads = false;
@@ -694,7 +690,6 @@ public final class GLState implements RenderState {
         return lighting;
     }
 
-    /** the normal gl carries until the next glNormal3f, in object space. */
     public void normal(float x, float y, float z) {
         immediate.touch(ImmediateLayout.NORMAL);
         normalX = x;
@@ -725,7 +720,6 @@ public final class GLState implements RenderState {
         pointSize = size;
     }
 
-    /** the clamp gl applies to a point's size, not the size itself. */
     public void setPointSizeMin(float size) {
         pointSizeMin = size;
     }
@@ -747,10 +741,6 @@ public final class GLState implements RenderState {
         return Math.min(Math.max(pointSize, pointSizeMin), pointSizeMax);
     }
 
-    /**
-     * the shader implements GL_GREATER, which is what desktop code uses the alpha test for.
-     * any other comparison would silently render the wrong thing, so it is rejected instead.
-     */
     public void alphaFunc(CompareFunc func, float reference) {
         if (func != CompareFunc.GREATER) {
             throw new UnsupportedOperationException(
@@ -927,7 +917,6 @@ public final class GLState implements RenderState {
         device.deleteTexture(texture);
     }
 
-    /** gl answers glGetTexLevelParameter from the last upload, so the size is remembered here. */
     public void recordLevelSize(int level, int width, int height) {
         Texture known = texture(boundTexture(), true);
         if (known.levels.length < (level + 1) * 2) {
@@ -937,18 +926,15 @@ public final class GLState implements RenderState {
         known.levels[level * 2 + 1] = height;
     }
 
-    /** a proxy request does not change the texture that is bound, so its size is kept here */
     public void recordProxySize(int width, int height) {
         proxySize[0] = width;
         proxySize[1] = height;
     }
 
-    /** @return the size of the last proxy request, or zeroes if the device does not take it */
     public int[] proxySize() {
         return proxySize;
     }
 
-    /** @return the width and height of the level, or zeroes if nothing was uploaded to it */
     public int[] levelSize(int level) {
         Texture known = texture(boundTexture(), false);
         if (known == null || known.levels.length < (level + 1) * 2) {
@@ -993,7 +979,6 @@ public final class GLState implements RenderState {
         return known;
     }
 
-    /** what gl remembers about one texture name */
     private static final class Texture {
 
         private boolean automaticMipmaps;
@@ -1095,7 +1080,6 @@ public final class GLState implements RenderState {
         return displayLists.record(op, many);
     }
 
-    /** replays the calls this state owns, and leaves the rest to the compatibility layer */
     public boolean play(int op, int[] codes, int at, float[] values, int from) {
         switch (op) {
             case Ops.CALL_LIST -> displayLists.call(codes[at]);
