@@ -150,8 +150,14 @@ function open(client: WebSocket, asked: URL, allowed: Rule[], authorities: strin
     return;
   }
 
+  // sni carries a name, never an address: rfc 6066 forbids an ip there
   const socket = secure
-    ? tls.connect({ host, port, servername: host, ca: authorities || undefined })
+    ? tls.connect({
+      host,
+      port,
+      servername: net.isIP(host) === 0 ? host : undefined,
+      ca: authorities || undefined,
+    })
     : net.createConnection({ host, port });
 
   let flushing = false;
