@@ -27,11 +27,14 @@ function netProbes(): Plugin {
 
 export default defineConfig({
   plugins: [tcpProxy({ allow: ['localhost:*', '127.0.0.1:*'] }), netProbes()],
+  // one literal for bind and address; 'localhost' is ::1 alone on some hosts
   server: {
+    host: '127.0.0.1',
     port: 5273,
     strictPort: true,
   },
   preview: {
+    host: '127.0.0.1',
     port: 4273,
     strictPort: true,
   },

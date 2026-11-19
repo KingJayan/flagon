@@ -13,7 +13,7 @@ export default defineConfig({
   workers: process.env.CI ? '100%' : undefined,
   reporter: process.env.CI ? [['github'], ['blob']] : 'list',
   use: {
-    baseURL: 'http://localhost:5273',
+    baseURL: 'http://127.0.0.1:5273',
     trace: 'on-first-retry',
   },
   projects: [
@@ -59,13 +59,13 @@ export default defineConfig({
       name: 'served',
       dependencies: ['bundles'],
       testMatch: /(net|policy)\.spec\.ts/,
-      use: { ...devices['Desktop Chrome'], baseURL: 'http://localhost:4273' },
+      use: { ...devices['Desktop Chrome'], baseURL: 'http://127.0.0.1:4273' },
     },
   ],
   webServer: [
     {
       command: process.env.CI ? 'bun run preview -- --port 5273' : 'bun run dev',
-      url: 'http://localhost:5273',
+      url: 'http://127.0.0.1:5273',
       reuseExistingServer: !process.env.CI,
       timeout: 60_000,
     },
@@ -74,8 +74,8 @@ export default defineConfig({
           {
             // ci builds dist in an earlier job
             command: (process.env.CI ? '' : 'bun run build && ')
-              + 'bun run proxy -- --root dist --port 4273 --probes',
-            url: 'http://localhost:4273',
+              + 'bun run proxy -- --root dist --host 127.0.0.1 --port 4273 --probes',
+            url: 'http://127.0.0.1:4273',
             reuseExistingServer: !process.env.CI,
             timeout: 180_000,
           },

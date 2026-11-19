@@ -44,7 +44,7 @@ export { isLoopback };
 
 export function settingsFrom(argv: string[]): Settings {
   const settings: Settings = {
-    host: 'localhost',
+    host: '127.0.0.1',
     port: 8080,
     root: 'dist',
     allow: [...DEFAULT_ALLOW],

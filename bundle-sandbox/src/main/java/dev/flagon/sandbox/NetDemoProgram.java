@@ -27,7 +27,7 @@ import java.nio.charset.StandardCharsets;
  */
 public final class NetDemoProgram implements Program {
 
-    private static final String DEFAULT_ADDRESS = "localhost:5273";
+    private static final String DEFAULT_ADDRESS = "127.0.0.1:5273";
     private static final String PROBE = "/flagon-net-probe.txt";
     private static final String BULK_PROBE = "/flagon-net-bulk.bin";
     private static final String BULK = "/flagon-net-flood.bin";
