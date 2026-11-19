@@ -79,7 +79,7 @@ export function expectColorSoft(actual: number[], expected: number[], label: str
 }
 
 export async function programCount(bundle: string): Promise<number> {
-  const response = await fetch(`http://localhost:5273/flagon/${bundle}.catalog.json`);
+  const response = await fetch(`http://127.0.0.1:5273/flagon/${bundle}.catalog.json`);
   if (!response.ok) {
     throw new Error(`no catalog for ${bundle}: run 'make bundles'`);
   }

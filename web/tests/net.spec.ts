@@ -2,7 +2,7 @@ import { test, expect, type Page } from '@playwright/test';
 import { BACKENDS, open, watchForFailures, type Backend } from './harness';
 
 function hostOf(baseURL: string | undefined): string {
-  return new URL(baseURL ?? 'http://localhost:5273').host;
+  return new URL(baseURL ?? 'http://127.0.0.1:5273').host;
 }
 
 async function runDemo(page: Page, backend: Backend, host: string): Promise<void> {
@@ -107,7 +107,8 @@ for (const backend of BACKENDS) {
       const host = hostOf(baseURL);
       await runDemo(page, backend, host);
 
-      await expect(page.getByTestId('log')).toContainText('refused: localhost:1');
+      const name = new URL(baseURL ?? 'http://127.0.0.1:5273').hostname;
+      await expect(page.getByTestId('log')).toContainText(`refused: ${name}:1`);
     });
 
     test('refuses a host the proxy was not told to allow', async ({ page, baseURL }) => {

@@ -23,7 +23,7 @@ Requires **JDK 25+** and **[Bun](https://bun.sh)**.
 ```bash
 make setup   # Install dependencies
 make build   # Compile and output bundles
-make dev     # Start dev server at http://localhost:5273
+make dev     # Start dev server at http://127.0.0.1:5273
 ```
 
 To test a standalone JAR without setup, drop it into `vendor/` and run `make app` (see [Running an Existing JAR](DOWNSTREAM.md#quickstart-no-setup)).
