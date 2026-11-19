@@ -8,7 +8,7 @@ import { settingsFrom, startProxyServer } from '../proxy-server';
 import { ruleOf } from '../tcp-proxy';
 import { BULK_PROBE, BULK_PROBE_SIZE, FLOOD } from '../net-probes';
 
-const VITE = 'ws://localhost:5273/__flagon/tcp?host=localhost&port=5273';
+const VITE = 'ws://127.0.0.1:5273/__flagon/tcp?host=127.0.0.1&port=5273';
 
 // 'localhost' resolves to both families; a browser may pick the one nothing binds
 const LOOPBACK = '127.0.0.1';
