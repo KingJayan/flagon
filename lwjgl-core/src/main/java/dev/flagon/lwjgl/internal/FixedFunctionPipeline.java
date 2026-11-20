@@ -53,6 +53,8 @@ public final class FixedFunctionPipeline {
             uniform bool u_colorMaterial;
 
             out vec4 v_color;
+            // gl es takes a flat value from the last vertex, as gl does by default
+            flat out vec4 v_flatColor;
             out vec2 v_texCoord[4];
             out float v_eyeDistance;
 
@@ -111,6 +113,7 @@ public final class FixedFunctionPipeline {
                 v_color = u_lightingEnabled
                         ? lit(eye.xyz, normalize(u_normalMatrix * in_normal))
                         : in_color;
+                v_flatColor = v_color;
 
                 gl_PointSize = u_pointSize;
                 gl_Position = u_projection * eye;
@@ -122,6 +125,7 @@ public final class FixedFunctionPipeline {
             precision highp float;
 
             in vec4 v_color;
+            flat in vec4 v_flatColor;
             in vec2 v_texCoord[4];
             in float v_eyeDistance;
 
@@ -133,6 +137,7 @@ public final class FixedFunctionPipeline {
             uniform int u_textureEnv[4];
             uniform bool u_alphaTestEnabled;
             uniform float u_alphaTestThreshold;
+            uniform bool u_flatShading;
             uniform bool u_fogEnabled;
             uniform int u_fogMode;
             uniform vec4 u_fogColor;
@@ -165,7 +170,7 @@ public final class FixedFunctionPipeline {
             }
 
             void main() {
-                vec4 color = v_color;
+                vec4 color = u_flatShading ? v_flatColor : v_color;
                 if (u_textureEnabled[0]) {
                     color = combine(color, texture(u_texture0, v_texCoord[0]), u_textureEnv[0]);
                 }
@@ -219,6 +224,7 @@ public final class FixedFunctionPipeline {
     private final int[] textureEnvUniforms = new int[VertexArrays.UNITS];
     private final int alphaTestEnabledUniform;
     private final int alphaTestThresholdUniform;
+    private final int flatShadingUniform;
 
     private final int normalMatrixUniform;
     private final int lightingEnabledUniform;
@@ -263,6 +269,7 @@ public final class FixedFunctionPipeline {
         }
         alphaTestEnabledUniform = device.uniformLocation(program, "u_alphaTestEnabled");
         alphaTestThresholdUniform = device.uniformLocation(program, "u_alphaTestThreshold");
+        flatShadingUniform = device.uniformLocation(program, "u_flatShading");
 
         normalMatrixUniform = device.uniformLocation(program, "u_normalMatrix");
         lightingEnabledUniform = device.uniformLocation(program, "u_lightingEnabled");
@@ -646,6 +653,7 @@ public final class FixedFunctionPipeline {
     private void light(RenderState render) {
         Lighting lighting = render.lighting();
         device.uniform1i(lightingEnabledUniform, lighting.isEnabled() ? 1 : 0);
+        device.uniform1i(flatShadingUniform, lighting.isFlatShading() ? 1 : 0);
         if (!lighting.isEnabled()) {
             return;
         }

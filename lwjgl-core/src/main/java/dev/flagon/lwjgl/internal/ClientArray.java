@@ -3,6 +3,10 @@ package dev.flagon.lwjgl.internal;
 import dev.flagon.platform.graphics.AttributeType;
 
 import java.nio.Buffer;
+import java.nio.ByteBuffer;
+import java.nio.FloatBuffer;
+import java.nio.IntBuffer;
+import java.nio.ShortBuffer;
 
 /**
  * loc that a vertex attribute reads from
@@ -73,6 +77,48 @@ public final class ClientArray {
         this.normalized = normalized;
 
         this.stride = stride == 0 ? components * type.sizeInBytes() : stride;
+    }
+
+    /** one component of a vertex in client memory, converted to float as gl converts it */
+    public float read(int vertex, int component) {
+        int at = offset + vertex * stride + component * type.sizeInBytes();
+        double value;
+        if (client instanceof ByteBuffer bytes) {
+            value = switch (type) {
+                case BYTE -> bytes.get(at);
+                case UNSIGNED_BYTE -> bytes.get(at) & 0xFF;
+                case SHORT -> bytes.getShort(at);
+                case UNSIGNED_SHORT -> bytes.getShort(at) & 0xFFFF;
+                case INT -> bytes.getInt(at);
+                case UNSIGNED_INT -> bytes.getInt(at) & 0xFFFFFFFFL;
+                case FLOAT -> bytes.getFloat(at);
+            };
+        } else if (client instanceof FloatBuffer floats) {
+            value = floats.get(at / Float.BYTES);
+        } else if (client instanceof ShortBuffer shorts) {
+            short raw = shorts.get(at / Short.BYTES);
+            value = type == AttributeType.UNSIGNED_SHORT ? raw & 0xFFFF : raw;
+        } else if (client instanceof IntBuffer ints) {
+            int raw = ints.get(at / Integer.BYTES);
+            value = type == AttributeType.UNSIGNED_INT ? raw & 0xFFFFFFFFL : raw;
+        } else {
+            throw new UnsupportedOperationException(
+                    "a display list reads vertex arrays from client memory; this array is in a "
+                            + "buffer object, so draw it outside glNewList/glEndList");
+        }
+        if (!normalized || type == AttributeType.FLOAT) {
+            return (float) value;
+        }
+        double largest = switch (type) {
+            case BYTE -> Byte.MAX_VALUE;
+            case UNSIGNED_BYTE -> 0xFF;
+            case SHORT -> Short.MAX_VALUE;
+            case UNSIGNED_SHORT -> 0xFFFF;
+            case INT -> Integer.MAX_VALUE;
+            case UNSIGNED_INT -> 0xFFFFFFFFL;
+            case FLOAT -> 1;
+        };
+        return (float) Math.max(-1, value / largest);
     }
 
     public int buffer() {

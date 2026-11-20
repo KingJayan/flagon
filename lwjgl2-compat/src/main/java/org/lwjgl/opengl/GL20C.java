@@ -32,6 +32,11 @@ public class GL20C {
     public static final int GL_ATTACHED_SHADERS = 0x8B85;
     public static final int GL_CURRENT_PROGRAM = 0x8B8D;
     public static final int GL_MAX_VERTEX_ATTRIBS = 0x8869;
+    public static final int GL_MAX_FRAGMENT_UNIFORM_COMPONENTS = 0x8B49;
+    public static final int GL_MAX_VERTEX_UNIFORM_COMPONENTS = 0x8B4A;
+    public static final int GL_MAX_VARYING_FLOATS = 0x8B4B;
+    public static final int GL_MAX_VERTEX_TEXTURE_IMAGE_UNITS = 0x8B4C;
+    public static final int GL_MAX_COMBINED_TEXTURE_IMAGE_UNITS = 0x8B4D;
     static GLState state() {
         return GLState.get();
     }

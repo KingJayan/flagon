@@ -677,6 +677,12 @@ final class RecordingGraphicsDevice implements GraphicsDevice {
             case MAX_TEXTURE_SIZE -> 4096;
             case MAX_TEXTURE_UNITS -> 16;
             case MAX_VERTEX_ATTRIBUTES -> 8;
+            case MAX_VERTEX_UNIFORM_COMPONENTS -> 1024;
+            case MAX_FRAGMENT_UNIFORM_COMPONENTS -> 896;
+            case MAX_VARYING_COMPONENTS -> 60;
+            case MAX_VERTEX_TEXTURE_UNITS -> 16;
+            case MAX_COMBINED_TEXTURE_UNITS -> 32;
+            case MAX_ARRAY_TEXTURE_LAYERS -> 256;
         };
     }
 

@@ -16,6 +16,10 @@
 ##
 Flagon compiles desktop Java bytecode into browser-native WebAssembly GC and JavaScript using TeaVM, reimplementing LWJGL 2 & 3, OpenGL, OpenAL, OPFS filesystem persistence, and socket networking over browser APIs.
 
+## Status
+
+The target is Minecraft 1.8.9. It reaches the main menu in Chromium; next is loading a singleplayer world. With its jars in `vendor/`, `make app` then `make browser ARGS=minecraft.spec.ts` checks the menu.
+
 ## Quickstart
 
 Requires **JDK 25+** and **[Bun](https://bun.sh)**.

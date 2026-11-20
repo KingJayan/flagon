@@ -145,6 +145,8 @@ public class GL11C {
     public static final int GL_MAX_TEXTURE_UNITS = 0x84E2;
     public static final int GL_MAX_TEXTURE_IMAGE_UNITS = 0x8872;
     public static final int GL_MAX_VERTEX_ATTRIBS = 0x8869;
+    // gl 3.0, which minecraft asks for whatever the context version
+    static final int GL_MAX_ARRAY_TEXTURE_LAYERS = 0x88FF;
     public static final int GL_STENCIL_TEST = 0x0B90;
     public static final int GL_KEEP = 0x1E00;
     public static final int GL_REPLACE = 0x1E01;
@@ -540,6 +542,18 @@ public class GL11C {
             case GL_MAX_TEXTURE_UNITS, GL_MAX_TEXTURE_IMAGE_UNITS ->
                     device().limit(GraphicsLimit.MAX_TEXTURE_UNITS);
             case GL_MAX_VERTEX_ATTRIBS -> device().limit(GraphicsLimit.MAX_VERTEX_ATTRIBUTES);
+            case GL20C.GL_MAX_VERTEX_UNIFORM_COMPONENTS ->
+                    device().limit(GraphicsLimit.MAX_VERTEX_UNIFORM_COMPONENTS);
+            case GL20C.GL_MAX_FRAGMENT_UNIFORM_COMPONENTS ->
+                    device().limit(GraphicsLimit.MAX_FRAGMENT_UNIFORM_COMPONENTS);
+            case GL20C.GL_MAX_VARYING_FLOATS ->
+                    device().limit(GraphicsLimit.MAX_VARYING_COMPONENTS);
+            case GL20C.GL_MAX_VERTEX_TEXTURE_IMAGE_UNITS ->
+                    device().limit(GraphicsLimit.MAX_VERTEX_TEXTURE_UNITS);
+            case GL20C.GL_MAX_COMBINED_TEXTURE_IMAGE_UNITS ->
+                    device().limit(GraphicsLimit.MAX_COMBINED_TEXTURE_UNITS);
+            case GL_MAX_ARRAY_TEXTURE_LAYERS ->
+                    device().limit(GraphicsLimit.MAX_ARRAY_TEXTURE_LAYERS);
             // a hint about what one draw call should carry; webgl has no such ceiling of its own
             case GL12.GL_MAX_ELEMENTS_VERTICES, GL12.GL_MAX_ELEMENTS_INDICES -> Integer.MAX_VALUE;
             case GL_MATRIX_MODE -> state().matrixMode();
@@ -833,7 +847,6 @@ public class GL11C {
         return read(values, recording() ? new float[4] : FOUR, 4);
     }
     public static void glDrawArrays(int mode, int first, int count) {
-        state().refuseWhileRecording("glDrawArrays");
         state().drawArrays(primitive(mode), first, count);
     }
     public static void glDrawElements(int mode, int count, int type, long offset) {

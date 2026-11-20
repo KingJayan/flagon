@@ -29,6 +29,7 @@ public final class Lighting {
     private final float[] materialEmission = {0.0f, 0.0f, 0.0f, 1.0f};
     private float shininess;
     private boolean colorMaterial;
+    private boolean flatShading;
 
     private boolean fogEnabled;
     private int fogMode = EXP;
@@ -177,6 +178,15 @@ public final class Lighting {
     public void setShininess(float value) {
         revision.bump(Revision.LIGHTING);
         shininess = value;
+    }
+
+    public boolean isFlatShading() {
+        return flatShading;
+    }
+
+    public void setFlatShading(boolean value) {
+        flatShading = value;
+        revision.bump(Revision.LIGHTING);
     }
 
     public boolean isColorMaterial() {

@@ -69,6 +69,7 @@ for (const backend of BACKENDS) {
 
         [240, 240, [0, 204, 204], 'the display list quad, recorded before the loop'],
         [240, 210, green, 'below the display list quad, the panel'],
+        [60, 200, [204, 0, 102], 'the display list compiled from vertex arrays'],
 
         [320, 50, [51, 102, 255], 'after the glPushAttrib pop'],
 

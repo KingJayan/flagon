@@ -56,6 +56,7 @@ public final class Ops {
     public static final int MULT_MATRIX = 51;
     public static final int TEX_COORD = 52;
     public static final int BIND_TEXTURE = 53;
+    public static final int SHADE_MODEL = 54;
 
     private Ops() {
     }
