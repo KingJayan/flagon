@@ -5,13 +5,15 @@ import org.teavm.extension.introspect.IntrospectMethod;
 import org.teavm.extension.spi.GlobMatch;
 import org.teavm.extension.spi.reflection.SimpleReflectionPolicy;
 
+import org.teavm.extension.resource.Resource;
+
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.UncheckedIOException;
 import java.lang.reflect.Modifier;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
@@ -24,7 +26,8 @@ public final class ReflectableClasses extends SimpleReflectionPolicy {
 
     public static final String PATTERNS = "flagon.reflect.classes";
     public static final String PROXIES = "flagon.reflect.proxies";
-    public static final String CONSTRUCTED = "flagon.reflect.constructed";
+    /** a classpath resource that lists one class per line */
+    public static final String CONSTRUCTED = "META-INF/flagon/constructed.txt";
     public static final String CONVERTED = "flagon.reflect.converted";
 
     @Override
@@ -88,19 +91,19 @@ public final class ReflectableClasses extends SimpleReflectionPolicy {
     }
 
     private Set<String> constructed() {
-        String named = environment().property(CONSTRUCTED);
-        if (named == null || named.isBlank() || !Files.isRegularFile(Path.of(named))) {
-            return Set.of();
-        }
         Set<String> classes = new LinkedHashSet<>();
-        try {
-            for (String line : Files.readAllLines(Path.of(named), StandardCharsets.UTF_8)) {
-                if (!line.isBlank()) {
-                    classes.add(line.trim());
+        Iterator<Resource> lists = environment().resources(CONSTRUCTED);
+        while (lists.hasNext()) {
+            try (InputStream list = lists.next().open()) {
+                for (String line : new String(list.readAllBytes(), StandardCharsets.UTF_8)
+                        .split("\\R")) {
+                    if (!line.isBlank()) {
+                        classes.add(line.trim());
+                    }
                 }
+            } catch (IOException unreadable) {
+                throw new UncheckedIOException("cannot read " + CONSTRUCTED, unreadable);
             }
-        } catch (IOException unreadable) {
-            throw new UncheckedIOException("cannot read " + named, unreadable);
         }
         return classes;
     }

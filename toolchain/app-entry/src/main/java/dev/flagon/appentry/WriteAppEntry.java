@@ -75,7 +75,7 @@ public final class WriteAppEntry {
             if (classes.size() > LIMIT) {
                 throw new IllegalStateException(classes.size() + " classes is more than the "
                         + LIMIT + " this will name for reflection. narrow it with"
-                        + " -Dflagon.app.reflect=your.game.**,your.other.pack.**");
+                        + " -Pflagon.app.reflect=your.game.**,your.other.pack.**");
             }
 
             Path listed = Path.of(args[2]).toAbsolutePath();
@@ -87,7 +87,7 @@ public final class WriteAppEntry {
             if (classes.size() > WARN_ABOVE) {
                 System.out.println("that is a lot to keep constructors for, and it costs compile"
                         + " time and bundle size. if the game only reflects over its own"
-                        + " packages, say so with -Dflagon.app.reflect=your.game.**");
+                        + " packages, say so with -Pflagon.app.reflect=your.game.**");
             }
         }
     }

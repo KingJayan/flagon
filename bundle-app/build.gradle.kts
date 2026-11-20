@@ -1,4 +1,4 @@
-import org.gradle.process.CommandLineArgumentProvider
+import dev.flagon.build.UntrackedArguments
 
 plugins {
     id("flagon.bundle")
@@ -43,34 +43,36 @@ dependencies {
 }
 
 val generatedSources = layout.buildDirectory.dir("generated/app")
-val constructed = layout.buildDirectory.file("app-classes.txt")
+val generatedResources = layout.buildDirectory.dir("generated/appResources")
+val constructed = generatedResources.map { it.file("META-INF/flagon/constructed.txt") }
 
 val writeAppEntry = tasks.register<JavaExec>("writeAppEntry") {
     description = "write the entry point from what the jars in vendor/ say about themselves"
     classpath = appEntry
     mainClass.set("dev.flagon.appentry.WriteAppEntry")
     inputs.files(vendorDir.asFileTree.matching { include("*.jar") }).withPropertyName("vendor")
+        .withPathSensitivity(PathSensitivity.NAME_ONLY)
     outputs.dir(generatedSources)
-    outputs.file(constructed)
+    outputs.dir(generatedResources)
     outputs.cacheIf { true }
 
-    val vendor = vendorDir.asFile.absolutePath
-    val generated = generatedSources
-    val classList = constructed
     val reflect = providers.gradleProperty("flagon.app.reflect").orElse("")
-    argumentProviders.add(
-        CommandLineArgumentProvider {
-            listOf(
-                vendor,
-                generated.get().asFile.absolutePath,
-                classList.get().asFile.absolutePath,
-                reflect.get(),
-            )
-        },
-    )
+    inputs.property("reflect", reflect)
+    argumentProviders.add(objects.newInstance<UntrackedArguments>().apply {
+        arguments.set(
+            generatedSources.zip(constructed) { generated, classList ->
+                listOf(
+                    vendorDir.asFile.absolutePath,
+                    generated.asFile.absolutePath,
+                    classList.asFile.absolutePath,
+                )
+            }.zip(reflect) { paths, narrowing -> paths + narrowing },
+        )
+    })
 }
 
 sourceSets["main"].java.srcDir(writeAppEntry.map { generatedSources })
+sourceSets["main"].resources.srcDir(writeAppEntry.map { generatedResources })
 
 bundle {
     mainClass.set("dev.flagon.app.AppMain")
@@ -78,7 +80,6 @@ bundle {
     resourcesFrom.set(vendorDir)
     compilerMemory.set(4096)
     shrinkCoroutineWasm.set(false)
-    reflectConstructed.set(constructed)
     reflectConverted.set(
         "java.lang.Boolean, java.lang.Byte, java.lang.Short, java.lang.Integer, "
             + "java.lang.Long, java.lang.Float, java.lang.Double, java.lang.String, java.io.File",

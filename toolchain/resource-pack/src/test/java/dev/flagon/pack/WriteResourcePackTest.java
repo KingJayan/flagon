@@ -156,4 +156,19 @@ class WriteResourcePackTest {
         }
         return at;
     }
+
+    @Test
+    void leavesOutNativesAndFilesNoProgramReads() {
+        for (String junk : new String[] {"linux/x64/liblwjgl.so", "windows/lwjgl.dll",
+                "macos/liblwjgl.jnilib", "Thing.class", "META-INF/MANIFEST.MF",
+                "META-INF/CODESIGN.SF", "META-INF/LICENSE", "META-INF/NOTICE.txt",
+                "LICENSE-junit.txt", "about.html", "lang/.en_us.lang.swp",
+                "META-INF/flagon/constructed.txt", "META-INF/maven/a/b/pom.xml"}) {
+            assertFalse(WriteResourcePack.wanted(junk), junk);
+        }
+        for (String kept : new String[] {"assets/minecraft/lang/en_us.lang", "pack.png",
+                "META-INF/services/java.nio.file.spi.FileSystemProvider", "licensed.txt"}) {
+            assertTrue(WriteResourcePack.wanted(kept), kept);
+        }
+    }
 }

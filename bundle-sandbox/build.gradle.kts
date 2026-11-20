@@ -30,7 +30,6 @@ bundle {
     catalogClass.set("dev.flagon.sandbox.SandboxCatalog")
     reflectClasses.set("dev.flagon.sandbox.ReflectedBy*")
     reflectProxies.set("dev.flagon.sandbox.Proxied")
-    reflectConstructed.set(layout.projectDirectory.file("src/main/reflect/constructed.txt"))
     reflectConverted.set("java.lang.Integer")
 }
 

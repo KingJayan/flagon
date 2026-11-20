@@ -111,16 +111,25 @@ public final class WriteResourcePack {
         }
     }
 
-    private static boolean wanted(String name) {
-        if (name.endsWith(".class")) {
-            return false;
-        }
-        String upper = name.toUpperCase(Locale.ROOT);
-        return !upper.equals("META-INF/MANIFEST.MF")
-                && !upper.endsWith(".SF")
-                && !upper.endsWith(".DSA")
-                && !upper.endsWith(".RSA")
-                && !upper.endsWith(".EC");
+    /** native libraries, signatures, editor files and license texts no program reads */
+    private static final Set<String> UNWANTED = Set.of(
+            "class", "so", "dll", "dylib", "jnilib", "a", "lib", "pdb", "sha1", "md5",
+            "sf", "dsa", "rsa", "ec", "swp", "swo", "bak", "orig", "html", "htm");
+
+    static boolean wanted(String name) {
+        String lower = name.toLowerCase(Locale.ROOT);
+        int slash = lower.lastIndexOf('/');
+        String file = lower.substring(slash + 1);
+        int dot = file.lastIndexOf('.');
+        String base = dot > 0 ? file.substring(0, dot) : file;
+        return !UNWANTED.contains(dot >= 0 ? file.substring(dot + 1) : "")
+                && !file.endsWith("~")
+                && !file.equals(".ds_store")
+                && !lower.equals("meta-inf/manifest.mf")
+                && !lower.startsWith("meta-inf/flagon/")
+                && !lower.startsWith("meta-inf/maven/")
+                && !base.equals("license") && !base.equals("notice")
+                && !base.startsWith("license-") && !base.startsWith("notice-");
     }
 
     static void write(Map<String, Item> files, OutputStream out) throws IOException {

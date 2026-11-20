@@ -1,7 +1,6 @@
 package dev.flagon.build
 
 import org.gradle.api.file.DirectoryProperty
-import org.gradle.api.file.RegularFileProperty
 import org.gradle.api.provider.Property
 
 interface BundleExtension {
@@ -16,8 +15,6 @@ interface BundleExtension {
     val reflectClasses: Property<String>
 
     val reflectProxies: Property<String>
-
-    val reflectConstructed: RegularFileProperty
 
     val reflectConverted: Property<String>
 
