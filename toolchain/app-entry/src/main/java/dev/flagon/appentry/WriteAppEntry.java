@@ -59,7 +59,8 @@ public final class WriteAppEntry {
             throws IOException {
         List<String> mains = runnableIn(jars);
         List<String> named = namedByResources(jars);
-        Files.writeString(into.resolve("AppEntry.java"), source(mains, named));
+        Files.writeString(into.resolve("AppEntry.java"),
+                source(mains, named, launcherArguments(jars)));
         if (!named.isEmpty()) {
             System.out.println("loading " + named.size()
                     + " classes that only a resource names: " + named);
@@ -277,6 +278,23 @@ public final class WriteAppEntry {
         return pattern.toString();
     }
 
+    private static final String MINECRAFT = "net.minecraft.client.main.Main";
+
+    private static final Pattern VERSION = Pattern.compile("\\d+(?:\\.\\d+)+");
+
+    /** what a game's launcher passes; the main exits without it */
+    static Map<String, List<String>> launcherArguments(OpenJars jars) {
+        Map<String, List<String>> given = new HashMap<>();
+        for (OpenJars.Opened opened : jars.all()) {
+            if (opened.jar().getEntry(MINECRAFT.replace('.', '/') + ".class") != null) {
+                String name = opened.path().getFileName().toString().replaceFirst("\\.jar$", "");
+                String version = VERSION.matcher(name).matches() ? name : "unknown";
+                given.put(MINECRAFT, List.of("--accessToken", "0", "--version", version));
+            }
+        }
+        return given;
+    }
+
     private static List<Path> jarsIn(Path given) throws IOException {
         if (Files.isRegularFile(given)) {
             return List.of(given);
@@ -431,6 +449,17 @@ public final class WriteAppEntry {
         return (dot < 0 ? type : type.substring(dot + 1)).toLowerCase(Locale.ROOT);
     }
 
+    private static String passed(List<String> defaults) {
+        if (defaults == null) {
+            return "arguments";
+        }
+        StringBuilder literals = new StringBuilder();
+        for (String value : defaults) {
+            literals.append(literals.isEmpty() ? "" : ", ").append('"').append(value).append('"');
+        }
+        return "arguments.length == 0 ? new String[] {" + literals + "} : arguments";
+    }
+
     private static String loads(List<String> named) {
         if (named.isEmpty()) {
             return "";
@@ -447,7 +476,8 @@ public final class WriteAppEntry {
                 + "    }\n";
     }
 
-    private static String source(List<String> mains, List<String> named) {
+    static String source(List<String> mains, List<String> named,
+            Map<String, List<String>> launcher) {
         List<String> ids = idsFor(mains);
         StringBuilder registrations = new StringBuilder();
         StringBuilder calls = new StringBuilder();
@@ -461,14 +491,14 @@ public final class WriteAppEntry {
                         private static void run%d(String[] arguments) {
                             // a main may declare a checked exception; Program.run may not
                             try {
-                                %s.main(arguments);
+                                %s.main(%s);
                             } catch (RuntimeException | Error thrown) {
                                 throw thrown;
                             } catch (Exception failed) {
                                 throw new IllegalStateException(failed);
                             }
                         }
-                    """.formatted(at, mains.get(at)));
+                    """.formatted(at, mains.get(at), passed(launcher.get(mains.get(at)))));
         }
 
         if (mains.isEmpty()) {

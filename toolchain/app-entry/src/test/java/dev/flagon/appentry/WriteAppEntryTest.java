@@ -34,6 +34,15 @@ class WriteAppEntryTest {
     }
 
     @Test
+    void givesMinecraftWhatItsLauncherWouldWhenTheRunHasNoArguments() throws Exception {
+        Path built = jar("net.minecraft.client.main.Main", "net.minecraft.client.main.Main");
+        Path jar = Files.move(built, built.resolveSibling("1.8.9.jar"));
+
+        assertTrue(entryFor(jar).contains("net.minecraft.client.main.Main.main(arguments.length == 0"
+                + " ? new String[] {\"--accessToken\", \"0\", \"--version\", \"1.8.9\"} : arguments)"));
+    }
+
+    @Test
     void findsTheRealMainWhenTheManifestNamesAClassTheJarLacks() throws Exception {
         Path jar = jar("real.deep.Entry", "real.Entry");
 
