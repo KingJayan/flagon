@@ -126,6 +126,8 @@ public final class WriteResourcePack {
                 && !file.endsWith("~")
                 && !file.equals(".ds_store")
                 && !lower.equals("meta-inf/manifest.mf")
+                // log4j 2.0 loads every class this lists, used or not; without it, log4j scans
+                && !lower.equals("org/apache/logging/log4j/core/config/plugins/log4j2plugins.dat")
                 && !lower.startsWith("meta-inf/flagon/")
                 && !lower.startsWith("meta-inf/maven/")
                 && !base.equals("license") && !base.equals("notice")

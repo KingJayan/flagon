@@ -77,6 +77,11 @@ public final class WriteAbsentCode implements TeaVMPlugin, ClassHolderTransforme
     @Override
     public void transformClass(ClassHolder type, ClassHolderTransformerContext context) {
         boolean theirs = !ours(type.getName().replace('.', '/'));
+        if (theirs) {
+            for (String implemented : type.getInterfaces()) {
+                standIn(implemented, true, context);
+            }
+        }
         for (MethodHolder method : type.getMethods()) {
             Program program = method.getProgram();
             if (program == null) {
@@ -127,6 +132,10 @@ public final class WriteAbsentCode implements TeaVMPlugin, ClassHolderTransforme
     }
 
     private void standIn(String name, ClassHolderTransformerContext context) {
+        standIn(name, false, context);
+    }
+
+    private void standIn(String name, boolean contract, ClassHolderTransformerContext context) {
         scan();
         if (written.contains(name) || defined.contains(name) || ours(name.replace('.', '/'))
                 || context.getHierarchy().getClassSource().get(name) != null
@@ -136,6 +145,13 @@ public final class WriteAbsentCode implements TeaVMPlugin, ClassHolderTransforme
         written.add(name);
         ClassHolder stand = new ClassHolder(name);
         stand.setLevel(AccessLevel.PUBLIC);
+        if (contract) {
+            stand.getModifiers().add(ElementModifier.INTERFACE);
+            stand.getModifiers().add(ElementModifier.ABSTRACT);
+            stand.setParent("java.lang.Object");
+            context.submit(stand);
+            return;
+        }
         stand.setParent(caught.contains(name) ? "java.lang.RuntimeException" : "java.lang.Object");
         stand.addMethod(method(name, new Member("<init>", "()V", false)));
         for (Member member : reached.getOrDefault(name, Map.of()).values()) {

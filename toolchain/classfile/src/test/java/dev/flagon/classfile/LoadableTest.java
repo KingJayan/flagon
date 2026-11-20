@@ -44,6 +44,31 @@ class LoadableTest {
         assertFalse(loadable.test(Loadable.class.getName()));
     }
 
+    static final class Absent {
+    }
+
+    static final class Helper {
+        Absent needed;
+    }
+
+    static final class User {
+        Helper helper;
+    }
+
+    @Test
+    void refusesAClassWhoseHelperNamesAMissingClass() {
+        Loadable loadable = new Loadable(new Hiding(Set.of(Absent.class.getName())));
+        assertTrue(loadable.test(User.class.getName()));
+        assertFalse(loadable.test(User.class.getName(), 1));
+    }
+
+    @Test
+    void readsWhetherAClassIsPublic() {
+        Loadable loadable = new Loadable(new Hiding(Set.of()));
+        assertTrue(loadable.isPublic(Loadable.class.getName()));
+        assertFalse(loadable.isPublic(User.class.getName()));
+    }
+
     @Test
     void refusesAClassNothingCarries() {
         assertFalse(new Loadable(new Hiding(Set.of())).test("nothing.At.All"));

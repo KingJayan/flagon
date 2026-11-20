@@ -165,7 +165,7 @@ class WriteAppEntryTest {
         Path jar = jarNaming("real.Entry", "LoggerFactory = real.Entry\n");
 
         String written = entryFor(jar);
-        assertTrue(written.contains("Class.forName(\"real.Entry\");"), written);
+        assertTrue(written.contains("real.Entry.class,"), written);
         assertTrue(written.contains("loadNamedClasses();"), written);
     }
 

@@ -57,6 +57,29 @@ public final class Loadable {
         return false;
     }
 
+    /** like test, and so is every non-jdk class this one names, down to depth */
+    public boolean test(String name, int depth) {
+        if (!test(name)) {
+            return false;
+        }
+        Bytes code = depth > 0 ? read(name) : null;
+        if (code == null) {
+            return true;
+        }
+        for (String referenced : code.classes()) {
+            if (!referenced.startsWith("java") && !referenced.equals(name)
+                    && source.read(referenced) != null && !test(referenced, depth - 1)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    public boolean isPublic(String name) {
+        Bytes code = read(name);
+        return code != null && (code.access() & 1) != 0;
+    }
+
     private Bytes read(String name) {
         byte[] code = source.read(name);
         if (code == null) {
