@@ -139,10 +139,10 @@ final class DomInput {
             onWindow(page, "scroll", whenMoved);
             EventListener<Event> onMove = event -> {
                 MouseEvent moved = event.cast();
-                Box box = box();
+                double scale = scale();
                 move.onMove(atX(moved.getClientX()), atY(moved.getClientY()),
-                        scaled(moved.getMovementX(), canvas.getWidth(), box.getWidth()),
-                        scaled(moved.getMovementY(), canvas.getHeight(), box.getHeight()),
+                        (int) Math.round(moved.getMovementX() * scale),
+                        (int) Math.round(moved.getMovementY() * scale),
                         isLocked());
             };
             onWindow(page, "mousemove", onMove);
@@ -285,17 +285,28 @@ final class DomInput {
             return false;
         }
 
-        // css pixels are not backing-store pixels: the canvas is sized by the page
+        // css pixels are not backing-store pixels, and object-fit: contain letterboxes the picture
         private int atX(double clientX) {
             Box box = box();
-            double scale = box.getWidth() > 0 ? canvas.getWidth() / box.getWidth() : 1;
-            return (int) Math.round((clientX - box.getLeft()) * scale);
+            double scale = scale();
+            double bars = (box.getWidth() - canvas.getWidth() / scale) / 2;
+            return (int) Math.round((clientX - box.getLeft() - bars) * scale);
         }
 
         private int atY(double clientY) {
             Box box = box();
-            double scale = box.getHeight() > 0 ? canvas.getHeight() / box.getHeight() : 1;
-            return (int) Math.round((clientY - box.getTop()) * scale);
+            double scale = scale();
+            double bars = (box.getHeight() - canvas.getHeight() / scale) / 2;
+            return (int) Math.round((clientY - box.getTop() - bars) * scale);
+        }
+
+        private double scale() {
+            Box box = box();
+            if (box.getWidth() <= 0 || box.getHeight() <= 0) {
+                return 1;
+            }
+            return Math.max(canvas.getWidth() / box.getWidth(),
+                    canvas.getHeight() / box.getHeight());
         }
 
         private Box box() {
@@ -303,10 +314,6 @@ final class DomInput {
                 measured = canvas.getBoundingClientRect().cast();
             }
             return measured;
-        }
-
-        private static int scaled(double movement, double size, double boxSize) {
-            return (int) Math.round((long) movement * (boxSize > 0 ? size / boxSize : 1));
         }
     }
 

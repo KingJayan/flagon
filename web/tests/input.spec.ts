@@ -15,7 +15,15 @@ async function canvasPoint(page: Page, x: number, y: number): Promise<{ x: numbe
   if (!box) {
     throw new Error('the canvas has no box');
   }
-  return { x: box.x + x, y: box.y + y };
+  const [width, height] = await page
+    .locator(CANVAS)
+    .evaluate((canvas: HTMLCanvasElement) => [canvas.width, canvas.height]);
+  // the page scales the canvas and object-fit: contain centres the picture in its box
+  const scale = Math.max(width / box.width, height / box.height);
+  return {
+    x: box.x + (box.width - width / scale) / 2 + x / scale,
+    y: box.y + (box.height - height / scale) / 2 + y / scale,
+  };
 }
 
 for (const backend of BACKENDS) {
