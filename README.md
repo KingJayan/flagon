@@ -19,7 +19,7 @@ Flagon compiles desktop Java bytecode into browser-native WebAssembly GC and Jav
 
 ## Status
 
-Try the demos at [flagon-nu.vercel.app](https://flagon-nu.vercel.app).
+Try the demos at [flagon-nu.vercel.app](https://flagon-nu.vercel.app). `make deploy-private` deploys your own `make app` bundle to a preview that only your Vercel login can open.
 
 The target is Minecraft 1.8.9. It reaches the main menu in Chromium; next is loading a singleplayer world. With its jars in `vendor/`, `make app` then `make browser ARGS=minecraft.spec.ts` checks the menu.
 

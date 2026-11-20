@@ -13,7 +13,7 @@ VENDOR_JARS := $(wildcard vendor/*.jar)
 
 .PHONY: help setup deps browsers fast bundles app verify-bundles \
         bundles-release size test browser flake typecheck lint build-site \
-        dev serve check report merge-reports watch version release publish clean
+        deploy-private dev serve check report merge-reports watch version release publish clean
 
 help: ## show available commands
 	@grep -hE '^[a-z-]+:.*## ' $(MAKEFILE_LIST) \
@@ -119,6 +119,14 @@ lint: ## run Java and web linters
 
 build-site: ## build the web application for deployment
 	cd $(WEB) && bun run build
+
+deploy-private: ## deploy the site and app bundle behind Vercel login
+	@test -f $(BUNDLES)/js/app.js || { \
+		echo "app bundle not found; run 'make app' first"; \
+		exit 1; \
+	}
+	cd $(WEB) && bunx vite build --outDir ../build/private --emptyOutDir
+	cd build/private && vercel link --yes --project flagon > /dev/null && vercel deploy --yes
 
 dev: ## start the development server on port 5273
 	cd $(WEB) && bun run dev
