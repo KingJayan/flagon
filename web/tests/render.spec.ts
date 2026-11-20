@@ -87,6 +87,8 @@ for (const backend of BACKENDS) {
         [620, 240, [0, 255, 0], 'the capability quad'],
 
         [620, 190, [0, 153, 204], 'the gluProject and gluUnProject quad'],
+
+        [215, 325, [230, 128, 0], 'the quad copied from the window into a texture'],
       ];
 
       const seen = await readPixels(

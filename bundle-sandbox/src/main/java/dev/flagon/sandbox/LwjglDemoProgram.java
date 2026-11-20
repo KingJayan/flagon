@@ -26,6 +26,7 @@ public final class LwjglDemoProgram implements Program {
 
     private int panelList;
     private int arraysList;
+    private int copyTexture;
 
     @Override
     public String id() {
@@ -65,6 +66,12 @@ public final class LwjglDemoProgram implements Program {
                 + ", textures up to " + GL11.glGetInteger(GL11.GL_MAX_TEXTURE_SIZE));
 
         buildPanelList();
+        copyTexture = GL11.glGenTextures();
+        GL11.glBindTexture(GL11.GL_TEXTURE_2D, copyTexture);
+        GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_NEAREST);
+        GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_NEAREST);
+        GL11.glTexImage2D(GL11.GL_TEXTURE_2D, 0, GL11.GL_RGBA, 8, 8, 0,
+                GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, (ByteBuffer) null);
 
         int frame = 0;
         while (!Display.isCloseRequested() && frame < frameLimit) {
@@ -178,6 +185,26 @@ public final class LwjglDemoProgram implements Program {
         drawBlendedQuad();
         drawCapabilityQuad();
         drawProjectedQuad();
+        drawCopiedQuad();
+    }
+
+    // the window has no alpha and the texture does, the way minecraft blurs its panorama
+    private void drawCopiedQuad() {
+        GL11.glBindTexture(GL11.GL_TEXTURE_2D, copyTexture);
+        GL11.glCopyTexSubImage2D(GL11.GL_TEXTURE_2D, 0, 0, 0, 571, 241, 8, 8);
+        GL11.glEnable(GL11.GL_TEXTURE_2D);
+        GL11.glColor3f(1.0f, 1.0f, 1.0f);
+        GL11.glBegin(GL11.GL_QUADS);
+        GL11.glTexCoord2f(0.0f, 1.0f);
+        GL11.glVertex2f(200.0f, 20.0f);
+        GL11.glTexCoord2f(0.0f, 0.0f);
+        GL11.glVertex2f(200.0f, 50.0f);
+        GL11.glTexCoord2f(1.0f, 0.0f);
+        GL11.glVertex2f(230.0f, 50.0f);
+        GL11.glTexCoord2f(1.0f, 1.0f);
+        GL11.glVertex2f(230.0f, 20.0f);
+        GL11.glEnd();
+        GL11.glDisable(GL11.GL_TEXTURE_2D);
     }
 
     // green only when a point survives the round trip out to the window and back through glu

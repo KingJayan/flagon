@@ -14,6 +14,7 @@ import org.teavm.jso.typedarrays.Uint32Array;
 public interface WebGL2 extends JSObject {
 
     int FRAMEBUFFER = 0x8D40;
+    int DRAW_FRAMEBUFFER = 0x8CA9;
     int RENDERBUFFER = 0x8D41;
     int COLOR_ATTACHMENT0 = 0x8CE0;
     int DEPTH_ATTACHMENT = 0x8D00;
@@ -332,6 +333,10 @@ public interface WebGL2 extends JSObject {
                            int framebufferX, int framebufferY, int width, int height);
 
     void readPixels(int x, int y, int width, int height, int format, int type, Uint8Array pixels);
+
+    void blitFramebuffer(int sourceX0, int sourceY0, int sourceX1, int sourceY1,
+                         int targetX0, int targetY0, int targetX1, int targetY1,
+                         int mask, int filter);
 
     JSObject createFramebuffer();
 

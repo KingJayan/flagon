@@ -65,6 +65,7 @@ public final class WebGLGraphicsDevice implements GraphicsDevice {
 
     private int boundArrayBuffer = NO_BUFFER;
     private int boundFramebuffer = NO_FRAMEBUFFER;
+    private JSObject copyTarget;
     private int boundProgram = NO_PROGRAM;
 
     private final List<Attributes> arrays = new ArrayList<>();
@@ -1158,7 +1159,30 @@ public final class WebGLGraphicsDevice implements GraphicsDevice {
     @Override
     public void copyTextureSubImage(int x, int y, int framebufferX, int framebufferY,
                                     int width, int height) {
-        gl.copyTexSubImage2D(WebGL2.TEXTURE_2D, 0, x, y, framebufferX, framebufferY, width, height);
+        int texture = activeUnit >= 0 && activeUnit < boundTexture.length
+                ? boundTexture[activeUnit] : NO_TEXTURE;
+        if (boundFramebuffer != NO_FRAMEBUFFER || texture == NO_TEXTURE) {
+            gl.copyTexSubImage2D(WebGL2.TEXTURE_2D, 0, x, y, framebufferX, framebufferY,
+                    width, height);
+            return;
+        }
+        // the canvas has no alpha, so webgl refuses a copy into an rgba texture; a blit converts
+        if (copyTarget == null) {
+            copyTarget = gl.createFramebuffer();
+        }
+        boolean scissored = capabilityKnown[3] && capabilityOn[3];
+        if (scissored) {
+            gl.disable(WebGL2.SCISSOR_TEST);
+        }
+        gl.bindFramebuffer(WebGL2.DRAW_FRAMEBUFFER, copyTarget);
+        gl.framebufferTexture2D(WebGL2.DRAW_FRAMEBUFFER, WebGL2.COLOR_ATTACHMENT0,
+                WebGL2.TEXTURE_2D, liveTexture(texture), 0);
+        gl.blitFramebuffer(framebufferX, framebufferY, framebufferX + width, framebufferY + height,
+                x, y, x + width, y + height, WebGL2.COLOR_BUFFER_BIT, WebGL2.NEAREST);
+        gl.bindFramebuffer(WebGL2.DRAW_FRAMEBUFFER, null);
+        if (scissored) {
+            gl.enable(WebGL2.SCISSOR_TEST);
+        }
     }
 
     @Override
