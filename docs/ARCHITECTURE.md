@@ -142,7 +142,7 @@ Reflection Target            Retention Mechanism                       Metadata 
 Class Identity / Types       Automatic (always retained)               Preserves getClass(), isInstance(), cast()
 Class Members                @Reflectable or flagon.reflect.classes     Retains fields, methods, constructors
 Dynamic Proxy Interfaces     flagon.reflect.proxies                    Synthesizes proxy class at compile time
-vendor/ Constructors         flagon.reflect.constructed                Retains constructors only for registries
+vendor/ Constructors         META-INF/flagon/constructed.txt           Retains constructors; -Pflagon.app.reflect narrows
 Classpath Scan Targets       flagon.preserve (vendor/preserve.txt)     Retains classes that only a scan names
 
 ```

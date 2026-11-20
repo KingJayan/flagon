@@ -56,13 +56,12 @@ Ahead-of-time (AOT) tree-shaking strips unreferenced class members by default. `
 <!-- Retain interface proxies for Proxy.newProxyInstance -->
 <flagon.reflect.proxies>com.example.Listener*</flagon.reflect.proxies>
 
-<!-- Retain constructors for unannotated/obfuscated jars -->
-<flagon.reflect.constructed>target/app-classes.txt</flagon.reflect.constructed>
-
 <!-- Retain valueOf(String) and the (String) constructor, which option parsers call -->
 <flagon.reflect.converted>java.lang.Integer, java.io.File</flagon.reflect.converted>
 
 ```
+
+* **vendor/ constructors:** `make app` keeps constructors for every class in the jar and logs the count. Past 10,000 it warns; past 50,000 it stops. Narrow it with `-Pflagon.app.reflect=your.game.**`.
 
 ### ClassLoader & Resource Lookup
 

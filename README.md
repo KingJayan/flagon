@@ -4,7 +4,8 @@
     <a href="#quickstart">Quickstart</a> &nbsp;•&nbsp;
     <a href="docs/COMPATIBILITY.md">Compatibility</a> &nbsp;•&nbsp;
     <a href="docs/DOWNSTREAM.md">Packaging</a> &nbsp;•&nbsp;
-    <a href="docs/ARCHITECTURE.md">Architecture</a>
+    <a href="docs/ARCHITECTURE.md">Architecture</a> &nbsp;•&nbsp;
+    <a href="docs/ROADMAP.md">Roadmap</a>
   </p>
 
 [![TeaVM](https://img.shields.io/badge/TeaVM-434c5e?style=flat-square&logo=webassembly&logoColor=eceff4)](https://teavm.org)
