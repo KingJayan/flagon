@@ -8,7 +8,7 @@ import java.util.List;
 import java.util.Set;
 
 public record Bytes(Set<String> classes, List<String[]> calls, Set<String> members,
-        String[] parents) {
+        String[] parents, int access) {
 
     private static final int UTF8 = 1;
     private static final int CLASS = 7;
@@ -61,7 +61,8 @@ public record Bytes(Set<String> classes, List<String[]> calls, Set<String> membe
             }
         }
 
-        in.skipBytes(4);
+        int access = in.readUnsignedShort();
+        in.skipBytes(2);
         String parent = text[first[in.readUnsignedShort()]];
         List<String> parents = new ArrayList<>();
         if (parent != null) {
@@ -80,7 +81,7 @@ public record Bytes(Set<String> classes, List<String[]> calls, Set<String> membe
             members.add(text[in.readUnsignedShort()] + text[in.readUnsignedShort()]);
             skipAttributes(in);
         }
-        return new Bytes(classes, calls, members, parents.toArray(new String[0]));
+        return new Bytes(classes, calls, members, parents.toArray(new String[0]), access);
     }
 
     private static void named(String raw, Set<String> into) {

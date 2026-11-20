@@ -20,14 +20,18 @@ import org.teavm.vm.spi.TeaVMHost;
 import org.teavm.vm.spi.TeaVMPlugin;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.UncheckedIOException;
 import java.net.URL;
 import java.net.URLClassLoader;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Enumeration;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.regex.Pattern;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
@@ -37,6 +41,10 @@ public final class KeepNamedClasses implements TeaVMPlugin, DependencyListener,
         ClassHolderTransformer {
 
     public static final String PATTERNS = "flagon.preserve";
+    /** a classpath resource that lists one class per line */
+    public static final String PRESERVED = "META-INF/flagon/preserved.txt";
+    /** a class that only reaches its helpers through an absent library is left out */
+    private static final int DEPTH = 1;
 
     private static final String INDEX = "dev.flagon.platform.KeptClasses";
     private static final MethodDescriptor NAMES =
@@ -44,13 +52,15 @@ public final class KeepNamedClasses implements TeaVMPlugin, DependencyListener,
 
     private ClassLoader loader;
     private List<Pattern> wanted = List.of();
+    private Set<String> listed = Set.of();
     private final List<String> kept = new ArrayList<>();
 
     @Override
     public void install(TeaVMHost host) {
         loader = BuildClasspath.of(host);
         wanted = patterns(host.getProperties().getProperty(PATTERNS, ""));
-        if (!wanted.isEmpty()) {
+        listed = listed(loader);
+        if (!wanted.isEmpty() || !listed.isEmpty()) {
             host.add((DependencyListener) this);
             host.add((ClassHolderTransformer) this);
         }
@@ -62,10 +72,11 @@ public final class KeepNamedClasses implements TeaVMPlugin, DependencyListener,
                 new CompiledClasses(loader, agent.getClassSource()));
         int skipped = 0;
         for (String name : classpath()) {
-            if (wanted.stream().noneMatch(one -> one.matcher(name).matches())) {
+            if (!listed.contains(name)
+                    && wanted.stream().noneMatch(one -> one.matcher(name).matches())) {
                 continue;
             }
-            if (runnable.test(name)) {
+            if (runnable.test(name, DEPTH)) {
                 agent.linkClass(name);
                 kept.add(name);
             } else {
@@ -122,6 +133,26 @@ public final class KeepNamedClasses implements TeaVMPlugin, DependencyListener,
 
     @Override
     public void complete() {
+    }
+
+    private static Set<String> listed(ClassLoader loader) {
+        Set<String> names = new HashSet<>();
+        try {
+            Enumeration<URL> lists = loader.getResources(PRESERVED);
+            while (lists.hasMoreElements()) {
+                try (InputStream list = lists.nextElement().openStream()) {
+                    for (String line : new String(list.readAllBytes(), StandardCharsets.UTF_8)
+                            .split("\\R")) {
+                        if (!line.isBlank()) {
+                            names.add(line.trim());
+                        }
+                    }
+                }
+            }
+        } catch (IOException unreadable) {
+            throw new UncheckedIOException("cannot read " + PRESERVED, unreadable);
+        }
+        return names;
     }
 
     // * stops at a package boundary, ** does not

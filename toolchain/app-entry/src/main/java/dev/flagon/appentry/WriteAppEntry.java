@@ -40,6 +40,8 @@ public final class WriteAppEntry {
 
     private static final int RESOURCE_LIMIT = 1 << 20;
 
+    private static final String PLUGIN = "Lorg/apache/logging/log4j/core/config/plugins/Plugin;";
+
     private static final Pattern TYPE_NAME = Pattern.compile(
             "[A-Za-z_$][A-Za-z0-9_$]*(?:\\.[A-Za-z_$][A-Za-z0-9_$]*)+");
 
@@ -81,6 +83,7 @@ public final class WriteAppEntry {
             Path listed = Path.of(args[2]).toAbsolutePath();
             Files.createDirectories(listed.getParent());
             Files.write(listed, classes);
+            Files.write(listed.resolveSibling("preserved.txt"), log4jPlugins(jars));
 
             System.out.println(classes.size() + " classes may be constructed by reflection");
 
@@ -116,7 +119,42 @@ public final class WriteAppEntry {
             }
         }
         Loadable loadable = new Loadable(new JarClasses(carriers));
-        return named.stream().sorted().filter(loadable::test).toList();
+        return named.stream().sorted().filter(loadable::test)
+                .filter(type -> type.indexOf('$') < 0 && loadable.isPublic(type)).toList();
+    }
+
+    /** log4j scans for these by name; it cannot find a class the compiler dropped */
+    static List<String> log4jPlugins(OpenJars jars) throws IOException {
+        byte[] marker = PLUGIN.getBytes(StandardCharsets.UTF_8);
+        List<String> plugins = new ArrayList<>();
+        for (OpenJars.Opened opened : jars.all()) {
+            for (JarEntry entry : opened.entries()) {
+                String name = entry.getName();
+                if (!name.endsWith(".class")) {
+                    continue;
+                }
+                try (var in = opened.jar().getInputStream(entry)) {
+                    if (contains(in.readAllBytes(), marker)) {
+                        plugins.add(name.substring(0, name.length() - ".class".length())
+                                .replace('/', '.'));
+                    }
+                }
+            }
+        }
+        return plugins.stream().distinct().sorted().toList();
+    }
+
+    private static boolean contains(byte[] bytes, byte[] wanted) {
+        outer:
+        for (int at = 0; at + wanted.length <= bytes.length; at++) {
+            for (int index = 0; index < wanted.length; index++) {
+                if (bytes[at + index] != wanted[index]) {
+                    continue outer;
+                }
+            }
+            return true;
+        }
+        return false;
     }
 
     private static Map<String, JarClasses.Where> carriersIn(OpenJars jars) {
@@ -397,16 +435,15 @@ public final class WriteAppEntry {
         if (named.isEmpty()) {
             return "";
         }
-        StringBuilder lookups = new StringBuilder();
+        StringBuilder literals = new StringBuilder();
         for (String type : named) {
-            lookups.append("                Class.forName(\"").append(type).append("\");\n");
+            literals.append("            ").append(type).append(".class,\n");
         }
-        return "\n    // no code calls these, so load them or the compiler drops them\n"
+        // a literal keeps the class; Class.forName would run its static i/o where it cannot suspend
+        return "\n    static Class<?>[] named;\n\n"
                 + "    private static void loadNamedClasses() {\n"
-                + "        try {\n" + lookups
-                + "        } catch (ClassNotFoundException absent) {\n"
-                + "            // the jars changed after the build\n"
-                + "        }\n"
+                + "        named = new Class<?>[] {\n" + literals
+                + "        };\n"
                 + "    }\n";
     }
 

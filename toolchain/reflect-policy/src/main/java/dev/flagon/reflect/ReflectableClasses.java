@@ -29,6 +29,8 @@ public final class ReflectableClasses extends SimpleReflectionPolicy {
     /** a classpath resource that lists one class per line */
     public static final String CONSTRUCTED = "META-INF/flagon/constructed.txt";
     public static final String CONVERTED = "flagon.reflect.converted";
+    /** classes found by name and built through a static factory, like log4j plugins */
+    public static final String PRESERVED = "META-INF/flagon/preserved.txt";
 
     @Override
     protected void setup() {
@@ -49,7 +51,14 @@ public final class ReflectableClasses extends SimpleReflectionPolicy {
                     .reflectableMethods(ReflectableClasses::convertsFromText);
         }
 
-        Set<String> constructed = constructed();
+        Set<String> preserved = listed(PRESERVED);
+        if (!preserved.isEmpty()) {
+            selectClasses(present(type -> preserved.contains(type.name())))
+                    .foundByName()
+                    .reflectableMethods(method -> Modifier.isStatic(method.modifiers()));
+        }
+
+        Set<String> constructed = listed(CONSTRUCTED);
         if (!constructed.isEmpty()) {
             selectClasses(present(type -> constructed.contains(type.name())))
                     .foundByName()
@@ -90,9 +99,9 @@ public final class ReflectableClasses extends SimpleReflectionPolicy {
         return patterns;
     }
 
-    private Set<String> constructed() {
+    private Set<String> listed(String resource) {
         Set<String> classes = new LinkedHashSet<>();
-        Iterator<Resource> lists = environment().resources(CONSTRUCTED);
+        Iterator<Resource> lists = environment().resources(resource);
         while (lists.hasNext()) {
             try (InputStream list = lists.next().open()) {
                 for (String line : new String(list.readAllBytes(), StandardCharsets.UTF_8)
@@ -102,7 +111,7 @@ public final class ReflectableClasses extends SimpleReflectionPolicy {
                     }
                 }
             } catch (IOException unreadable) {
-                throw new UncheckedIOException("cannot read " + CONSTRUCTED, unreadable);
+                throw new UncheckedIOException("cannot read " + resource, unreadable);
             }
         }
         return classes;

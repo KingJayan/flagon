@@ -22,6 +22,8 @@ import java.util.List;
 public final class SendLoggerCalls implements TeaVMPlugin, ClassHolderTransformer {
 
     private static final String LOG_MANAGER = "org.apache.logging.log4j.LogManager";
+    private static final String STATUS_LISTENER =
+            "org.apache.logging.log4j.status.StatusConsoleListener";
     private static final ValueType LOGGER = ValueType.object("org.apache.logging.log4j.Logger");
     private static final ValueType FACTORY =
             ValueType.object("org.apache.logging.log4j.message.MessageFactory");
@@ -44,16 +46,27 @@ public final class SendLoggerCalls implements TeaVMPlugin, ClassHolderTransforme
             }
             for (BasicBlock block : program.getBasicBlocks()) {
                 List<InvokeInstruction> asks = new ArrayList<>();
+                List<InvokeInstruction> filters = new ArrayList<>();
                 for (Instruction instruction : block) {
                     if (instruction instanceof InvokeInstruction invoke && asksByStack(invoke)) {
                         asks.add(invoke);
+                    } else if (instruction instanceof InvokeInstruction invoke
+                            && filtersByStack(invoke)) {
+                        filters.add(invoke);
                     }
                 }
+                filters.forEach(Instruction::delete);
                 for (InvokeInstruction invoke : asks) {
                     name(program, invoke, type.getName());
                 }
             }
         }
+    }
+
+    // a status filter matches the caller's frame, which a page cannot name
+    private static boolean filtersByStack(InvokeInstruction invoke) {
+        MethodReference asked = invoke.getMethod();
+        return STATUS_LISTENER.equals(asked.getClassName()) && "setFilters".equals(asked.getName());
     }
 
     private static boolean asksByStack(InvokeInstruction invoke) {
