@@ -38,8 +38,9 @@ class WriteAppEntryTest {
         Path built = jar("net.minecraft.client.main.Main", "net.minecraft.client.main.Main");
         Path jar = Files.move(built, built.resolveSibling("1.8.9.jar"));
 
-        assertTrue(entryFor(jar).contains("net.minecraft.client.main.Main.main(arguments.length == 0"
-                + " ? new String[] {\"--accessToken\", \"0\", \"--version\", \"1.8.9\"} : arguments)"));
+        String defaults = "{\"--accessToken\", \"0\", \"--version\", \"1.8.9\"}";
+        assertTrue(entryFor(jar).contains("net.minecraft.client.main.Main.main("
+                + "arguments.length == 0 ? new String[] " + defaults + " : arguments)"));
     }
 
     @Test
