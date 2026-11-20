@@ -180,11 +180,19 @@ class LightingTest {
     }
 
     @Test
-    void flatShadingSaysWhyItIsNotHere() {
+    void flatShadingTellsTheShaderToTakeTheLastVertex() {
+        GL11.glShadeModel(GL11.GL_FLAT);
+        drawATriangle();
+        assertArrayEquals(new int[] {1}, device.uniformInts("u_flatShading"));
+
         GL11.glShadeModel(GL11.GL_SMOOTH);
-        UnsupportedOperationException failure = assertThrows(UnsupportedOperationException.class,
-                () -> GL11.glShadeModel(GL11.GL_FLAT));
-        assertTrue(failure.getMessage().contains("provoking"), failure.getMessage());
+        drawATriangle();
+        assertArrayEquals(new int[] {0}, device.uniformInts("u_flatShading"));
+    }
+
+    @Test
+    void aShadeModelThatIsNotOneSaysSo() {
+        assertThrows(IllegalArgumentException.class, () -> GL11.glShadeModel(GL11.GL_LIGHTING));
     }
 
     @Test

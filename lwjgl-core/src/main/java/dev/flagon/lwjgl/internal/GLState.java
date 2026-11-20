@@ -412,6 +412,10 @@ public final class GLState implements RenderState {
 
     public void drawArrays(DrawMode mode, int first, int count) {
         requireNotBuilding("glDrawArrays");
+        if (displayLists.isRecording()) {
+            compileArrays(mode, first, count);
+            return;
+        }
         if (readsFixedFunction()) {
             pipeline.drawArrays(mode, first, count, arrays, this, program);
         } else if (program != GraphicsDevice.NO_PROGRAM) {
@@ -420,6 +424,48 @@ public final class GLState implements RenderState {
             pipeline.drawArrays(mode, first, count, arrays, this, GraphicsDevice.NO_PROGRAM);
         }
         restoreBindings();
+    }
+
+    // a list keeps what the arrays held when it was compiled, so it builds a block from them
+    private void compileArrays(DrawMode mode, int first, int count) {
+        ClientArray position = arrays.position();
+        if (!position.isEnabled() || count <= 0) {
+            return;
+        }
+        float[] held = {red, green, blue, alpha, normalX, normalY, normalZ};
+        float[] heldS = s.clone();
+        float[] heldT = t.clone();
+        begin(mode);
+        ClientArray colors = arrays.color();
+        ClientArray normals = arrays.normal();
+        for (int vertex = first; vertex < first + count; vertex++) {
+            if (colors.isEnabled()) {
+                color(colors.read(vertex, 0), colors.read(vertex, 1), colors.read(vertex, 2),
+                        colors.components() > 3 ? colors.read(vertex, 3) : 1);
+            }
+            for (int unit = 0; unit < VertexArrays.UNITS; unit++) {
+                ClientArray coords = arrays.texCoord(unit);
+                if (coords.isEnabled()) {
+                    texCoord(unit, coords.read(vertex, 0),
+                            coords.components() > 1 ? coords.read(vertex, 1) : 0);
+                }
+            }
+            if (normals.isEnabled()) {
+                normal(normals.read(vertex, 0), normals.read(vertex, 1), normals.read(vertex, 2));
+            }
+            vertex(position.read(vertex, 0), position.read(vertex, 1),
+                    position.components() > 2 ? position.read(vertex, 2) : 0);
+        }
+        end();
+        red = held[0];
+        green = held[1];
+        blue = held[2];
+        alpha = held[3];
+        normalX = held[4];
+        normalY = held[5];
+        normalZ = held[6];
+        System.arraycopy(heldS, 0, s, 0, s.length);
+        System.arraycopy(heldT, 0, t, 0, t.length);
     }
 
     public boolean readsFixedFunction() {
@@ -1104,6 +1150,7 @@ public final class GLState implements RenderState {
             case Ops.TEXTURE_ENV -> setTextureEnv(codes[at]);
             case Ops.MODEL_AMBIENT -> lighting.setModelAmbient(four(values, from));
             case Ops.SHININESS -> lighting.setShininess(values[from]);
+            case Ops.SHADE_MODEL -> lighting.setFlatShading(codes[at] != 0);
             case Ops.FOG_COLOR -> lighting.setFogColor(four(values, from));
             case Ops.DRAW_BLOCK -> drawBlock(codes[at], codes[at + 1]);
             case Ops.CLIENT_ACTIVE_TEXTURE -> clientActiveTexture(codes[at]);

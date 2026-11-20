@@ -2,6 +2,7 @@ package dev.flagon.sandbox;
 
 import dev.flagon.platform.Platforms;
 import dev.flagon.runtime.Program;
+import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.ContextCapabilities;
 import org.lwjgl.opengl.Display;
 import org.lwjgl.opengl.DisplayMode;
@@ -24,6 +25,7 @@ public final class LwjglDemoProgram implements Program {
     private static final int MAX_FRAMES = 900;
 
     private int panelList;
+    private int arraysList;
 
     @Override
     public String id() {
@@ -88,6 +90,26 @@ public final class LwjglDemoProgram implements Program {
         GL11.glNewList(panelList, GL11.GL_COMPILE);
         quads(200.0f, 100.0f, 280.0f, 140.0f, 0.0f, 0.8f, 0.8f);
         GL11.glEndList();
+
+        // interleaved position and byte colour, the way minecraft's tessellator lays them out
+        float[][] corners = {{40, 140}, {40, 180}, {80, 180}, {80, 140}};
+        ByteBuffer vertices = BufferUtils.createByteBuffer(corners.length * 16);
+        for (float[] corner : corners) {
+            vertices.putFloat(corner[0]).putFloat(corner[1]).putFloat(0.0f);
+            vertices.put((byte) 204).put((byte) 0).put((byte) 102).put((byte) 255);
+        }
+        arraysList = GL11.glGenLists(1);
+        vertices.position(0);
+        GL11.glVertexPointer(3, GL11.GL_FLOAT, 16, vertices);
+        vertices.position(12);
+        GL11.glColorPointer(4, GL11.GL_UNSIGNED_BYTE, 16, vertices);
+        GL11.glEnableClientState(GL11.GL_VERTEX_ARRAY);
+        GL11.glEnableClientState(GL11.GL_COLOR_ARRAY);
+        GL11.glNewList(arraysList, GL11.GL_COMPILE);
+        GL11.glDrawArrays(GL11.GL_QUADS, 0, corners.length);
+        GL11.glEndList();
+        GL11.glDisableClientState(GL11.GL_COLOR_ARRAY);
+        GL11.glDisableClientState(GL11.GL_VERTEX_ARRAY);
     }
 
     private void drawFrame(int frame) {
@@ -123,6 +145,7 @@ public final class LwjglDemoProgram implements Program {
         GL11.glDisable(GL11.GL_CULL_FACE);
 
         GL11.glCallList(panelList);
+        GL11.glCallList(arraysList);
 
         GL11.glPushAttrib(GL11.GL_ENABLE_BIT | GL11.GL_SCISSOR_BIT);
         GL11.glEnable(GL11.GL_SCISSOR_TEST);

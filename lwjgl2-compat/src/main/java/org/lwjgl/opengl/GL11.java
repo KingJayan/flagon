@@ -321,15 +321,15 @@ public final class GL11 extends GL11C {
                             + Integer.toHexString(mode));
         }
     }
-    /**
-     * gl's flat shading needs a provoking vertex the shader cannot pick, so only smooth is here.
-     */
     public static void glShadeModel(int model) {
-        if (model != GL_SMOOTH) {
-            throw new UnsupportedOperationException(
-                    "glShadeModel emulates GL_SMOOTH only: flat shading would need a provoking "
-                            + "vertex, which gl es does not expose");
+        if (model != GL_SMOOTH && model != GL_FLAT) {
+            throw new IllegalArgumentException(
+                    "glShadeModel takes GL_SMOOTH or GL_FLAT, got 0x" + Integer.toHexString(model));
         }
+        if (recording() && state().record(Ops.SHADE_MODEL, model == GL_FLAT ? 1 : 0)) {
+            return;
+        }
+        state().lighting().setFlatShading(model == GL_FLAT);
     }
     public static void glFogf(int parameter, float value) {
         if (recording() && state().record(Ops.FOG, parameter, value)) {

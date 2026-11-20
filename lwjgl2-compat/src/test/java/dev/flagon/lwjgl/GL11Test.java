@@ -7,6 +7,7 @@ import org.junit.jupiter.api.Test;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL12;
 import org.lwjgl.opengl.GL14;
+import org.lwjgl.opengl.GL20;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -631,6 +632,16 @@ class GL11Test {
     }
 
     @Test
+    void answersTheShaderLimitsAProgramSizesItselfBy() {
+        assertEquals(1024, GL11.glGetInteger(GL20.GL_MAX_VERTEX_UNIFORM_COMPONENTS));
+        assertEquals(896, GL11.glGetInteger(GL20.GL_MAX_FRAGMENT_UNIFORM_COMPONENTS));
+        assertEquals(60, GL11.glGetInteger(GL20.GL_MAX_VARYING_FLOATS));
+        assertEquals(16, GL11.glGetInteger(GL20.GL_MAX_VERTEX_TEXTURE_IMAGE_UNITS));
+        assertEquals(32, GL11.glGetInteger(GL20.GL_MAX_COMBINED_TEXTURE_IMAGE_UNITS));
+        assertEquals(256, GL11.glGetInteger(0x88FF));
+    }
+
+    @Test
     void aDisplayListReplaysTheCallsItRecorded() {
         int list = GL11.glGenLists(1);
         GL11.glNewList(list, GL11.GL_COMPILE);
@@ -658,6 +669,32 @@ class GL11Test {
 
         assertEquals(uploads, device.calls("bufferData").size());
         assertEquals(2, device.calls("drawArrays").size());
+    }
+
+    /** gl reads the arrays when the list is compiled, so a later change to them does not show */
+    @Test
+    void aDisplayListKeepsTheVerticesItsArraysHeldWhenCompiled() {
+        java.nio.ByteBuffer vertices = org.lwjgl.BufferUtils.createByteBuffer(3 * 16);
+        for (int corner = 0; corner < 3; corner++) {
+            vertices.putFloat(corner).putFloat(corner % 2).putFloat(0.0f);
+            vertices.put((byte) 255).put((byte) 0).put((byte) 0).put((byte) 255);
+        }
+        vertices.position(0);
+        GL11.glVertexPointer(3, GL11.GL_FLOAT, 16, vertices);
+        vertices.position(12);
+        GL11.glColorPointer(4, GL11.GL_UNSIGNED_BYTE, 16, vertices);
+        GL11.glEnableClientState(GL11.GL_VERTEX_ARRAY);
+        GL11.glEnableClientState(GL11.GL_COLOR_ARRAY);
+
+        int list = GL11.glGenLists(1);
+        GL11.glNewList(list, GL11.GL_COMPILE);
+        GL11.glDrawArrays(GL11.GL_TRIANGLES, 0, 3);
+        GL11.glEndList();
+        assertEquals(java.util.List.of(), device.calls("drawArrays"));
+
+        vertices.clear();
+        GL11.glCallList(list);
+        assertEquals(1, device.calls("drawArrays").size());
     }
 
     @Test
@@ -725,8 +762,6 @@ class GL11Test {
     void refusesToCompileACallWhoseDataWouldHaveMovedOnByTheReplay() {
         int list = GL11.glGenLists(1);
         GL11.glNewList(list, GL11.GL_COMPILE);
-        assertThrows(UnsupportedOperationException.class,
-                () -> GL11.glDrawArrays(GL11.GL_TRIANGLES, 0, 3));
         assertThrows(UnsupportedOperationException.class,
                 () -> GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_S,
                         GL11.GL_REPEAT));
