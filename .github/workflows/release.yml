@@ -152,6 +152,8 @@ jobs:
           echo '{ "git": { "deploymentEnabled": true } }' > vercel.json
           git init -q -b site
           git add .
-          git -c user.name=github-actions -c user.email=github-actions@users.noreply.github.com \
+          # vercel's hobby plan deploys only commits by a linked account, so the tag's pusher signs it
+          git -c user.name='${{ github.actor }}' \
+            -c user.email='${{ github.actor_id }}+${{ github.actor }}@users.noreply.github.com' \
             commit -q -m "site $GITHUB_REF_NAME"
           git push -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" site
