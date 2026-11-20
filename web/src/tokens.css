@@ -1,25 +1,30 @@
+/* pewter from the flagon, flame orange from its steam */
 :root {
-  --paper: #fbfaf8;
-  --paper-panel: #ffffff;
-  --paper-sunk: #f4f1ec;
-  --paper-ink: #1d1b18;
-  --paper-muted: #6b6660;
-  --paper-line: #e2ded7;
-  --paper-accent: #8a5a2b;
+  --paper: #e9e7e3;
+  --paper-panel: #f6f5f2;
+  --paper-sunk: #dfdcd6;
+  --paper-ink: #24252b;
+  --paper-muted: #66645e;
+  --paper-line: #cfcbc4;
+  --paper-accent: #b5490f;
   --paper-ok: #2f7a3f;
   --paper-bad: #b3261e;
-  --paper-shadow: 0 1px 2px rgb(29 27 24 / 0.06), 0 10px 30px rgb(29 27 24 / 0.07);
+  --paper-glass: rgb(246 245 242 / 0.72);
+  --paper-edge: rgb(255 255 255 / 0.85);
+  --paper-umbra: rgb(36 37 43 / 0.16);
 
-  --night: #171614;
-  --night-panel: #201e1b;
-  --night-sunk: #1c1b18;
-  --night-ink: #ece8e1;
-  --night-muted: #9c958a;
-  --night-line: #322e29;
-  --night-accent: #d69f68;
+  --night: #1a1b1f;
+  --night-panel: #24262b;
+  --night-sunk: #151619;
+  --night-ink: #e9e7e3;
+  --night-muted: #9b988f;
+  --night-line: #34363c;
+  --night-accent: #f08a3c;
   --night-ok: #7cc48b;
   --night-bad: #f2857c;
-  --night-shadow: 0 1px 2px rgb(0 0 0 / 0.4), 0 10px 30px rgb(0 0 0 / 0.35);
+  --night-glass: rgb(36 38 43 / 0.72);
+  --night-edge: rgb(255 255 255 / 0.07);
+  --night-umbra: rgb(0 0 0 / 0.5);
 
   --stage: #000000;
 
@@ -29,7 +34,7 @@
   --small: 0.75rem;
   --detail: 0.875rem;
   --body: 1rem;
-  --title: 1.75rem;
+  --title: 1.375rem;
 
   color-scheme: light dark;
   --bg: var(--paper);
@@ -41,7 +46,14 @@
   --accent: var(--paper-accent);
   --ok: var(--paper-ok);
   --bad: var(--paper-bad);
-  --shadow: var(--paper-shadow);
+  --glass: var(--paper-glass);
+  --edge: var(--paper-edge);
+  --umbra: var(--paper-umbra);
+
+  /* three heights: pressed into the page, resting on it, and lifted off it */
+  --pressed: inset 0 1px 2px var(--umbra), inset 0 0 0 1px var(--line);
+  --resting: inset 0 1px 0 var(--edge), 0 1px 2px var(--umbra);
+  --lifted: inset 0 1px 0 var(--edge), 0 2px 4px var(--umbra), 0 18px 40px -12px var(--umbra);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -56,7 +68,9 @@
     --accent: var(--night-accent);
     --ok: var(--night-ok);
     --bad: var(--night-bad);
-    --shadow: var(--night-shadow);
+    --glass: var(--night-glass);
+    --edge: var(--night-edge);
+    --umbra: var(--night-umbra);
   }
 }
 
@@ -71,5 +85,7 @@
   --accent: var(--night-accent);
   --ok: var(--night-ok);
   --bad: var(--night-bad);
-  --shadow: var(--night-shadow);
+  --glass: var(--night-glass);
+  --edge: var(--night-edge);
+  --umbra: var(--night-umbra);
 }

@@ -123,7 +123,7 @@ for (const backend of BACKENDS) {
     test('says so when arguments were given with no program to take them', async ({ page }) => {
       await open(page, backend, 'arg=lonely');
 
-      await expect(page.getByTestId('log')).toContainText('they were dropped', { timeout: 30_000 });
+      await expect(page.getByTestId('log')).toContainText('dropped because empty', { timeout: 30_000 });
     });
 
     test('offers a bundle its programs without having run it', async ({ page }) => {

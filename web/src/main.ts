@@ -159,10 +159,6 @@ function showPrograms(entries: Entry[], selected: string): void {
   programSelect.value = selected;
 }
 
-/**
- * what the shell's argument field means: words, with a quoted run counting as one word, the way
- * a shell would hand them to a jvm.
- */
 function splitArgs(line: string): string[] {
   const found = line.match(/"[^"]*"|'[^']*'|\S+/g) ?? [];
   return found.map((word) =>
@@ -178,6 +174,11 @@ bundleSelect.value = request.bundle;
 backendSelect.value = request.backend;
 argsInput.value = request.args.join(' ');
 offer(request.bundle, request.program);
+
+const playing = new URLSearchParams(location.search);
+playing.set('bundle', request.bundle);
+playing.delete('preserve');
+document.querySelector<HTMLAnchorElement>('#player')!.search = playing.toString();
 
 bundleSelect.addEventListener('change', () => {
   offer(bundleSelect.value, '');
@@ -244,15 +245,15 @@ if (!bundleUrl) {
   runButton.disabled = false;
 } else if (request.backend === 'wasm' && !supportsWasmGc()) {
   setState('failed');
-  append('this browser has no WebAssembly GC support; run this bundle with backend=js', 'error');
+  append('this browser has no WASM-GC support. Re-run this bundle with backend=js', 'error');
   runButton.disabled = false;
 } else {
   if (!request.asked && request.backend !== 'wasm') {
-    append('WebAssembly GC is unavailable here, so the javascript bundle is running', 'warn');
+    append('WASM-GC is unavailable - defaulting to JS', 'warn');
   }
   announceDownload(bundleUrl);
   if (request.args.length > 0 && !request.program) {
-    append('arguments are handed to a named program; none was named, so they were dropped', 'warn');
+    append('args are handed to a named program; dropped because empty', 'warn');
   }
   const argv = request.program ? [request.program, ...request.args] : [];
   runBundle(bundleUrl, host, argv)
