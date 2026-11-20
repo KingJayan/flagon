@@ -11,6 +11,7 @@ permissions:
 jobs:
   bundles:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v5
 
@@ -21,28 +22,18 @@ jobs:
 
       - uses: gradle/actions/setup-gradle@v4
 
-      - uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: latest
-
-      - name: Cache bun pckgs
-        uses: actions/cache@v5
-        with:
-          path: ~/.bun/install/cache
-          key: bun-${{ runner.os }}-${{ hashFiles('web/bun.lock') }}
-
       # wasm-opt comes from the binaryen package
-      - name: Install web deps
-        run: make deps
+      - uses: ./.github/actions/web-deps
 
-      - name: Set version (from tag)
+      - name: Set version from tag
         run: make version VERSION="${GITHUB_REF_NAME#v}"
-
-      - name: Test
-        run: make test
 
       - name: Build release bundles
         run: make bundles-release
+
+      - name: Weigh bundles
+        run: |
+          { echo '```'; make -s size; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload the bundles
         uses: actions/upload-artifact@v5
@@ -51,13 +42,41 @@ jobs:
           path: web/public/flagon/
           retention-days: 1
 
-  browser:
-    needs: bundles
+  site:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: ./.github/actions/web-deps
+
+      - name: Typecheck and build
+        run: make typecheck build-site
+
+      - name: Upload site
+        uses: actions/upload-artifact@v5
+        with:
+          name: site
+          path: web/dist/
+          retention-days: 1
+
+  browser:
+    needs: [bundles, site]
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    # keep the tag in step with @playwright/test in web/bun.lock
+    container:
+      image: mcr.microsoft.com/playwright:v1.62.0-noble
+      options: --user 1001
     strategy:
       fail-fast: false
       matrix:
-        shard: [1, 2, 3, 4]
+        include:
+          - { project: chromium, shard: 1, shards: 3 }
+          - { project: chromium, shard: 2, shards: 3 }
+          - { project: chromium, shard: 3, shards: 3 }
+          - { project: firefox, shard: 1, shards: 1 }
+          - { project: served, shard: 1, shards: 1 }
     steps:
       - uses: actions/checkout@v5
 
@@ -67,38 +86,24 @@ jobs:
           name: release-bundles
           path: web/public/flagon/
 
-      - uses: oven-sh/setup-bun@v2
+      - name: Download site
+        uses: actions/download-artifact@v5
         with:
-          bun-version: latest
+          name: site
+          path: web/dist/
 
-      - name: Cache bun pckgs
-        uses: actions/cache@v5
-        with:
-          path: ~/.bun/install/cache
-          key: bun-${{ runner.os }}-${{ hashFiles('web/bun.lock') }}
+      - name: Put the bundles in the site
+        run: mkdir -p web/dist/flagon && cp -R web/public/flagon/. web/dist/flagon/
 
-      - name: Install web deps
-        run: make deps
-
-      - name: Typecheck & build
-        run: make typecheck build-site
-
-      - name: Cache browsers
-        uses: actions/cache@v5
-        with:
-          path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ hashFiles('web/bun.lock') }}
-
-      - name: Install browsers
-        run: make browsers
+      - uses: ./.github/actions/web-deps
 
       - name: Browser tests
-        run: make browser ARGS="--shard=${{ matrix.shard }}/${{ strategy.job-total }}"
+        run: cd web && bunx playwright test --project=${{ matrix.project }} --shard=${{ matrix.shard }}/${{ matrix.shards }}
 
       - uses: actions/upload-artifact@v5
         if: failure()
         with:
-          name: blob-report-${{ matrix.shard }}
+          name: blob-report-${{ matrix.project }}-${{ matrix.shard }}
           path: web/blob-report/
           retention-days: 7
 

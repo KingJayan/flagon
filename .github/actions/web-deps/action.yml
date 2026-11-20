@@ -1,0 +1,22 @@
+name: web deps
+description: install the pinned bun and the web dependencies
+
+runs:
+  using: composite
+  steps:
+    # npm needs no unzip, which the playwright image lacks
+    - name: Install bun
+      shell: bash
+      run: |
+        npm install --silent --prefix "$RUNNER_TEMP/bun" bun@1.4.0
+        echo "$RUNNER_TEMP/bun/node_modules/.bin" >> "$GITHUB_PATH"
+
+    - name: Cache bun pckgs
+      uses: actions/cache@v5
+      with:
+        path: ~/.bun/install/cache
+        key: bun-${{ runner.os }}-${{ hashFiles('web/bun.lock') }}
+
+    - name: Install web deps
+      shell: bash
+      run: cd web && bun install --frozen-lockfile

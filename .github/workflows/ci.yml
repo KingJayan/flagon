@@ -12,9 +12,6 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
-env:
-  BUN_VERSION: 1.4.0
-
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -51,18 +48,7 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
-      - uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: ${{ env.BUN_VERSION }}
-
-      - name: Cache bun pckgs
-        uses: actions/cache@v5
-        with:
-          path: ~/.bun/install/cache
-          key: bun-${{ runner.os }}-${{ hashFiles('web/bun.lock') }}
-
-      - name: Install web deps
-        run: make deps
+      - uses: ./.github/actions/web-deps
 
       - name: Lint
         run: cd web && bun run lint
@@ -84,30 +70,19 @@ jobs:
     needs: [build, web]
     runs-on: ubuntu-latest
     timeout-minutes: 25
+    # keep the tag in step with @playwright/test in web/bun.lock
+    container:
+      image: mcr.microsoft.com/playwright:v1.62.0-noble
+      options: --user 1001
     strategy:
       fail-fast: false
       matrix:
         include:
-          - project: chromium
-            engine: chromium
-            shard: 1
-            shards: 3
-          - project: chromium
-            engine: chromium
-            shard: 2
-            shards: 3
-          - project: chromium
-            engine: chromium
-            shard: 3
-            shards: 3
-          - project: firefox
-            engine: firefox
-            shard: 1
-            shards: 1
-          - project: served
-            engine: chromium
-            shard: 1
-            shards: 1
+          - { project: chromium, shard: 1, shards: 3 }
+          - { project: chromium, shard: 2, shards: 3 }
+          - { project: chromium, shard: 3, shards: 3 }
+          - { project: firefox, shard: 1, shards: 1 }
+          - { project: served, shard: 1, shards: 1 }
     steps:
       - uses: actions/checkout@v5
 
@@ -126,31 +101,10 @@ jobs:
       - name: Put the bundles in the site
         run: mkdir -p web/dist/flagon && cp -R web/public/flagon/. web/dist/flagon/
 
-      - uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: ${{ env.BUN_VERSION }}
-
-      - name: Cache bun pckgs
-        uses: actions/cache@v5
-        with:
-          path: ~/.bun/install/cache
-          key: bun-${{ runner.os }}-${{ hashFiles('web/bun.lock') }}
-
-      - name: Install web deps
-        run: make deps
-
-      - name: Cache browsers
-        uses: actions/cache@v5
-        with:
-          path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ hashFiles('web/bun.lock') }}
-          restore-keys: playwright-${{ runner.os }}-
-
-      - name: Install browser
-        run: make browsers ENGINES=${{ matrix.engine }}
+      - uses: ./.github/actions/web-deps
 
       - name: Browser tests
-        run: make browser ARGS="--project=${{ matrix.project }} --shard=${{ matrix.shard }}/${{ matrix.shards }}"
+        run: cd web && bunx playwright test --project=${{ matrix.project }} --shard=${{ matrix.shard }}/${{ matrix.shards }}
 
       - uses: actions/upload-artifact@v5
         if: failure()
@@ -158,57 +112,6 @@ jobs:
           name: blob-report-${{ matrix.project }}-${{ matrix.shard }}
           path: web/blob-report/
           retention-days: 7
-
-  release:
-    if: github.event_name != 'pull_request'
-    runs-on: ubuntu-latest
-    timeout-minutes: 25
-    steps:
-      - uses: actions/checkout@v5
-
-      - uses: actions/setup-java@v5
-        with:
-          distribution: temurin
-          java-version: '25'
-
-      - name: Cache release bundles
-        id: bundles
-        uses: actions/cache@v5
-        with:
-          path: web/public/flagon
-          key: release-${{ hashFiles('**/*.gradle.kts', 'gradle/libs.versions.toml', '**/src/main/**', 'vendor/*.jar', 'Makefile') }}
-
-      - name: Build backends as release
-        if: steps.bundles.outputs.cache-hit != 'true'
-        run: make bundles-release
-
-      - name: Upload release bundles
-        uses: actions/upload-artifact@v5
-        with:
-          name: bundles-release
-          path: web/public/flagon/
-          retention-days: 1
-
-  size:
-    needs: release
-    if: github.event_name != 'pull_request'
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    steps:
-      - uses: actions/checkout@v5
-
-      - name: Download release bundles
-        uses: actions/download-artifact@v5
-        with:
-          name: bundles-release
-          path: web/public/flagon/
-
-      - name: Weigh bundles
-        run: |
-          set -o pipefail
-          echo '```' >> "$GITHUB_STEP_SUMMARY"
-          make size | tee -a "$GITHUB_STEP_SUMMARY"
-          echo '```' >> "$GITHUB_STEP_SUMMARY"
 
   report:
     needs: browser
@@ -218,16 +121,6 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
-      - uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: ${{ env.BUN_VERSION }}
-
-      - name: Cache bun pckgs
-        uses: actions/cache@v5
-        with:
-          path: ~/.bun/install/cache
-          key: bun-${{ runner.os }}-${{ hashFiles('web/bun.lock') }}
-
       - name: Download reports
         uses: actions/download-artifact@v5
         with:
@@ -235,8 +128,7 @@ jobs:
           pattern: blob-report-*
           merge-multiple: true
 
-      - name: Install web deps
-        run: make deps
+      - uses: ./.github/actions/web-deps
 
       - name: Merge reports
         run: make merge-reports
