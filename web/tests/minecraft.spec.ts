@@ -1,3 +1,4 @@
+// needs a display
 // 1.8.9 boots to main menu
 // runs only where vendor/ holds the game
 import { test, expect } from '@playwright/test';
