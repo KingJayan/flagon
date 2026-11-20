@@ -141,7 +141,7 @@ test.describe('a browser without wasm gc', () => {
 
     await expect(page.getByTestId('state')).toHaveText('exited', { timeout: 30_000 });
     await expect(page.locator('#backend')).toHaveValue('js');
-    await expect(page.getByTestId('log')).toContainText('WebAssembly GC is unavailable here');
+    await expect(page.getByTestId('log')).toContainText('WASM-GC is unavailable');
     await expect(page.getByTestId('log')).toContainText('Hello, world!');
     expect(failures).toEqual([]);
   });
@@ -150,7 +150,7 @@ test.describe('a browser without wasm gc', () => {
     await page.goto('/?backend=wasm&program=hello');
 
     await expect(page.getByTestId('state')).toHaveText('failed', { timeout: 30_000 });
-    await expect(page.getByTestId('log')).toContainText('no WebAssembly GC support');
+    await expect(page.getByTestId('log')).toContainText('no WASM-GC support');
   });
 });
 

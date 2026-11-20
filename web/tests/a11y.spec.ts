@@ -21,7 +21,7 @@ test.describe('reaching the shell without a mouse', () => {
       });
 
     // stop is disabled once the program has exited, so the console follows run
-    for (const id of ['bundle', 'backend', 'program', 'args', 'run', 'log']) {
+    for (const id of ['source', 'bundle', 'backend', 'program', 'args', 'run', 'log']) {
       await page.keyboard.press('Tab');
       expect(await outlined()).toEqual({ id, shown: true });
     }
@@ -69,6 +69,6 @@ test.describe('what a screen reader is told', () => {
 
     await expect(canvas).toBeVisible({ timeout: 30_000 });
     await expect(canvas).toHaveAccessibleName("the program's display");
-    await expect(canvas).toContainText('cannot show its display');
+    await expect(canvas).toContainText('unable to show its display');
   });
 });

@@ -3,42 +3,68 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Flagon — runtime sandbox</title>
+    <title>Flagon runtime</title>
     <link rel="icon" href="/favicon.ico" type="image/x-icon" />
     <link rel="stylesheet" href="/src/shell.css" />
   </head>
   <body>
-    <main id="app" data-state="loading">
-      <header class="masthead">
-        <img class="mark" src="/logo.png" alt="" width="44" height="44" />
-        <div>
-          <h1>Flagon</h1>
-          <p class="tagline">A desktop Java/LWJGL environment for the browser.</p>
-        </div>
-      </header>
+    <header class="topbar">
+      <img class="mark" src="/logo.png" alt="" width="36" height="36" />
+      <div class="brand">
+        <h1>Flagon</h1>
+        <p class="tagline">Desktop Java and LWJGL in the browser.</p>
+      </div>
+      <a
+        id="source"
+        class="tool"
+        href="https://github.com/KingJayan/flagon"
+        aria-label="Source on GitHub"
+        title="Source on GitHub"
+      >
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 .3a12 12 0 0 0-3.8 23.38c.6.12.82-.26.82-.57v-2.04c-3.34.72-4.04-1.61-4.04-1.61-.55-1.39-1.33-1.76-1.33-1.76-1.09-.74.08-.73.08-.73 1.2.08 1.84 1.24 1.84 1.24 1.07 1.83 2.8 1.3 3.49 1 .11-.78.42-1.31.76-1.61-2.66-.3-5.47-1.33-5.47-5.93 0-1.31.47-2.38 1.24-3.22-.14-.3-.54-1.52.1-3.18 0 0 1.01-.32 3.3 1.23a11.5 11.5 0 0 1 6 0c2.28-1.55 3.29-1.23 3.29-1.23.64 1.66.24 2.88.12 3.18a4.65 4.65 0 0 1 1.23 3.22c0 4.61-2.8 5.63-5.48 5.92.43.37.82 1.1.82 2.22v3.29c0 .32.21.7.82.58A12 12 0 0 0 12 .3"/></svg>
+      </a>
+    </header>
 
-      <section class="controls" aria-label="Run controls">
-        <div class="row">
+    <main id="app" class="workbench" data-state="loading">
+      <section class="controls" aria-labelledby="controls-heading">
+        <h2 id="controls-heading">Run</h2>
+        <div class="field">
           <label for="bundle">Bundle</label>
           <select id="bundle">
             <option value="sandbox">sandbox</option>
             <option value="example">example</option>
-            <option value="app">app (your jar, after make app)</option>
+            <option value="app">app (JAR after make app)</option>
           </select>
+        </div>
+        <div class="field">
           <label for="backend">Backend</label>
           <select id="backend">
             <option value="wasm">wasm</option>
             <option value="js">js</option>
           </select>
+        </div>
+        <div class="field">
           <label for="program">Program</label>
           <select id="program">
-            <option value="">the bundle's first program</option>
+            <option value="">first program</option>
           </select>
+        </div>
+        <div class="field">
           <label for="args">Arguments</label>
           <input id="args" type="text" placeholder="--frames 300" spellcheck="false" />
-          <button id="run" type="button">Run</button>
-          <button id="stop" type="button" title="asks the program to close at its next frame" disabled>Stop</button>
-          <span id="state" class="badge" data-testid="state" role="status" aria-label="run state: loading">loading</span>
+        </div>
+        <div class="actions">
+          <button id="run" class="primary" type="button">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><polygon points="6 3 20 12 6 21 6 3" /></svg>
+            Run
+          </button>
+          <button id="stop" type="button" title="asks the program to close at its next frame" disabled>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><rect width="16" height="16" x="4" y="4" rx="2" /></svg>
+            Stop
+          </button>
+        </div>
+        <div class="status">
+          <span id="state" class="badge" data-testid="state" role="status" aria-label="run state: loading">loading...</span>
           <span id="rate" class="badge" data-testid="rate" hidden></span>
         </div>
         <p
@@ -52,25 +78,35 @@
         <ol id="phases" class="phases" data-testid="phases"></ol>
       </section>
 
-      <section class="stage" id="display" aria-labelledby="display-heading">
-        <h2 id="display-heading">Display</h2>
-        <canvas id="flagon-canvas" width="640" height="360" aria-label="the program's display">
-          The program is drawing here; this browser cannot show its display.
-        </canvas>
-      </section>
+      <div class="output">
+        <section class="stage" id="display" aria-labelledby="display-heading">
+          <div class="heading">
+            <h2 id="display-heading">Display</h2>
+            <a id="player" class="tool" href="/play/" title="Open in the full-window player">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 3h6v6" /><path d="M10 14 21 3" /><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" /></svg>
+              Player
+            </a>
+          </div>
+          <canvas id="flagon-canvas" width="640" height="360" aria-label="the program's display">
+            This browser is unable to show its display.
+          </canvas>
+        </section>
 
-      <section class="console" aria-labelledby="console-heading">
-        <h2 id="console-heading">Console</h2>
-        <pre
-          id="log"
-          class="log"
-          data-testid="log"
-          tabindex="0"
-          role="log"
-          aria-live="polite"
-          aria-atomic="false"
-        ></pre>
-      </section>
+        <section class="console" aria-labelledby="console-heading">
+          <div class="heading">
+            <h2 id="console-heading">Console</h2>
+          </div>
+          <pre
+            id="log"
+            class="log"
+            data-testid="log"
+            tabindex="0"
+            role="log"
+            aria-live="polite"
+            aria-atomic="false"
+          ></pre>
+        </section>
+      </div>
     </main>
     <script type="module" src="/src/main.ts"></script>
   </body>
