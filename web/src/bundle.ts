@@ -119,24 +119,36 @@ async function fetchPack(bundleUrl: string): Promise<void> {
     if (!response.ok || type.includes('text/html')) {
       return;
     }
-    const pack = await response.arrayBuffer();
+    if (!response.body) {
+      return;
+    }
+    // the pack is gzipped whole, and unzips here as it downloads
+    const unzipped = response.body.pipeThrough(new DecompressionStream('gzip'));
+    const pack = await new Response(unzipped).arrayBuffer();
     if (pack.byteLength > 0) {
       window.__flagonResources = pack;
     }
   } catch {}
 }
 
+/** the bundle is not being served */
+export class MissingBundle extends Error {}
+
 export async function runBundle(url: string, host: HostBridge, args: string[]): Promise<void> {
   window.__flagonHost = host;
   installTunnel();
   const absolute = new URL(url, location.origin).href;
-  await fetchPack(absolute);
+  // the pack and the bundle come down together; the program starts once both are in
+  const pack = fetchPack(absolute);
   try {
     if (absolute.endsWith('.wasm')) {
-      await runWasmBundle(absolute, args);
+      await runWasmBundle(absolute, args, pack);
       return;
     }
-    const module = (await import(/* @vite-ignore */ absolute)) as JsBundle;
+    const [module] = await Promise.all([
+      import(/* @vite-ignore */ absolute) as Promise<JsBundle>,
+      pack,
+    ]);
     if (typeof module.main !== 'function') {
       throw new Error(`bundle at ${url} does not export main()`);
     }
@@ -146,7 +158,7 @@ export async function runBundle(url: string, host: HostBridge, args: string[]): 
   }
 }
 
-async function whyItIsNotThere(absolute: string): Promise<Error | undefined> {
+async function whyItIsNotThere(absolute: string): Promise<MissingBundle | undefined> {
   try {
     const response = await fetch(absolute, { method: 'HEAD' });
     const type = response.headers.get('content-type') ?? '';
@@ -156,20 +168,24 @@ async function whyItIsNotThere(absolute: string): Promise<Error | undefined> {
   } catch {
     return undefined;
   }
-  return new Error(
+  return new MissingBundle(
     absolute.includes('/app.')
       ? "there is no application bundle yet: put a jar in vendor/ and run 'make app'"
       : `there is no bundle at ${absolute}: run 'make bundles'`,
   );
 }
 
-async function runWasmBundle(absolute: string, args: string[]): Promise<void> {
+async function runWasmBundle(
+  absolute: string,
+  args: string[],
+  pack: Promise<void>,
+): Promise<void> {
   const url = new URL(WASM_LOADER, location.origin).href;
   const loader = (await import(/* @vite-ignore */ url)) as WasmLoader;
   if (typeof loader.load !== 'function') {
     throw new Error(`the wasm loader at ${WASM_LOADER} does not export load()`);
   }
-  const bundle = await loader.load(absolute);
+  const [bundle] = await Promise.all([loader.load(absolute), pack]);
   if (typeof bundle.exports?.main !== 'function') {
     throw new Error(`bundle at ${absolute} does not export main()`);
   }

@@ -60,6 +60,8 @@ public final class Ops {
     public static final int TEXTURE_COMBINE = 56;
     public static final int TEXTURE_ENV_COLOR = 57;
     public static final int TEXTURE_SCALE = 58;
+    public static final int TEXTURE_GEN_MODE = 59;
+    public static final int TEXTURE_GEN_PLANE = 60;
 
     private Ops() {
     }

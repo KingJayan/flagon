@@ -1,7 +1,6 @@
 package dev.flagon.pack;
 
 import java.io.BufferedOutputStream;
-import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -15,32 +14,15 @@ import java.util.Locale;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.zip.Deflater;
-import java.util.zip.DeflaterOutputStream;
+import java.util.zip.GZIPOutputStream;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
-import java.util.stream.IntStream;
 
 public final class WriteResourcePack {
 
-    static final byte[] MAGIC = "FLGNPK02".getBytes(StandardCharsets.US_ASCII);
-
-    static final int STORED = 0;
-    static final int DEFLATED = 1;
-
-    /** how many entries one batch holds */
-    private static final int BATCH = 64;
+    static final byte[] MAGIC = "FLGNPK03".getBytes(StandardCharsets.US_ASCII);
 
     private static final int BUFFER = 1 << 16;
-
-    /** already compressed, so deflating only costs time */
-    private static final Set<String> ALREADY_PACKED = Set.of(
-            "png", "jpg", "jpeg", "gif", "webp", "avif", "ico",
-            "ogg", "oga", "mp3", "wav", "opus", "webm", "mp4",
-            "zip", "jar", "gz", "xz", "zst", "woff", "woff2");
-
-    private static final ThreadLocal<Deflater> DEFLATERS =
-            ThreadLocal.withInitial(() -> new Deflater(Deflater.BEST_COMPRESSION));
 
     /** where one resource comes from */
     record Item(Path source, String entry) {
@@ -54,7 +36,10 @@ public final class WriteResourcePack {
         Path pack = Path.of(args[1]);
         Map<String, Item> files = collect(given);
         Files.createDirectories(pack.getParent());
-        try (OutputStream out = new BufferedOutputStream(Files.newOutputStream(pack), BUFFER)) {
+        // the whole pack is gzipped, and the browser unzips it natively as it arrives; each
+        // resource then sits in it as is, ready to read
+        try (OutputStream out = new GZIPOutputStream(
+                new BufferedOutputStream(Files.newOutputStream(pack), BUFFER), BUFFER)) {
             write(files, out);
         }
         System.out.println(files.isEmpty()
@@ -151,35 +136,17 @@ public final class WriteResourcePack {
         DataOutputStream data = new DataOutputStream(out);
         data.write(MAGIC);
         data.writeInt(files.size());
-        List<String> names = new ArrayList<>(files.keySet());
-        byte[][] raw = new byte[BATCH][];
-        byte[][] packed = new byte[BATCH][];
         try (Jars open = new Jars()) {
-            for (int first = 0; first < names.size(); first += BATCH) {
-                int count = Math.min(BATCH, names.size() - first);
-                for (int at = 0; at < count; at++) {
-                    raw[at] = open.read(files.get(names.get(first + at)));
-                }
-                deflateBatch(count, names.subList(first, first + count), raw, packed);
-                for (int at = 0; at < count; at++) {
-                    writeOne(data, names.get(first + at), raw[at], packed[at]);
-                }
+            for (Map.Entry<String, Item> file : files.entrySet()) {
+                byte[] label = file.getKey().getBytes(StandardCharsets.UTF_8);
+                byte[] raw = open.read(file.getValue());
+                data.writeInt(label.length);
+                data.write(label);
+                data.writeInt(raw.length);
+                data.write(raw);
             }
         }
         data.flush();
-    }
-
-    private static void deflateBatch(int count, List<String> names, byte[][] raw,
-            byte[][] packed) {
-        IntStream.range(0, count).parallel().forEach(at -> {
-            packed[at] = alreadyPacked(names.get(at)) ? null : deflate(raw[at]);
-        });
-    }
-
-    private static boolean alreadyPacked(String name) {
-        int dot = name.lastIndexOf('.');
-        return dot >= 0
-                && ALREADY_PACKED.contains(name.substring(dot + 1).toLowerCase(Locale.ROOT));
     }
 
     /** holds one jar open across its resources */
@@ -210,30 +177,5 @@ public final class WriteResourcePack {
                 at = null;
             }
         }
-    }
-
-    private static void writeOne(DataOutputStream data, String name, byte[] raw, byte[] packed)
-            throws IOException {
-        byte[] label = name.getBytes(StandardCharsets.UTF_8);
-        boolean smaller = packed != null && packed.length < raw.length;
-        data.writeInt(label.length);
-        data.write(label);
-        data.writeInt(raw.length);
-        data.writeInt(smaller ? packed.length : raw.length);
-        data.writeByte(smaller ? DEFLATED : STORED);
-        data.write(smaller ? packed : raw);
-    }
-
-    /** one deflater per thread, reset between resources */
-    private static byte[] deflate(byte[] raw) {
-        Deflater deflater = DEFLATERS.get();
-        deflater.reset();
-        ByteArrayOutputStream packed = new ByteArrayOutputStream(raw.length);
-        try (DeflaterOutputStream out = new DeflaterOutputStream(packed, deflater)) {
-            out.write(raw);
-        } catch (IOException impossible) {
-            throw new IllegalStateException("a resource would not deflate", impossible);
-        }
-        return packed.toByteArray();
     }
 }

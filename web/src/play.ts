@@ -1,6 +1,7 @@
 import {
   bundleUrlOf,
   readRequest,
+  MissingBundle,
   runBundle,
   supportsWasmGc,
   whyNot,
@@ -171,16 +172,16 @@ async function start(): Promise<void> {
     console.warn('WebAssembly GC is unavailable here, so the javascript bundle is running');
   }
 
-  const found = await fetch(url, { method: 'HEAD' }).catch(() => undefined);
-  const html = found?.headers.get('content-type')?.includes('text/html') ?? false;
-  if (!found?.ok || html) {
-    show('failed', 'Nothing to run', missing(url));
-    return;
-  }
-
   show('starting', 'Starting', 'loading the bundle');
   const argv = program ? [program, ...args] : [];
-  await runBundle(url, host, argv);
+  try {
+    await runBundle(url, host, argv);
+  } catch (failure) {
+    if (!(failure instanceof MissingBundle)) {
+      throw failure;
+    }
+    show('failed', 'Nothing to run', missing(url));
+  }
 }
 
 start().catch((error: unknown) => {

@@ -26,6 +26,7 @@ for (const backend of BACKENDS) {
 
       // a uniform the shader does not declare is -1, and writing to it is allowed
       await expect(page.getByTestId('log')).toContainText('missing uniform reports -1');
+      await expect(page.getByTestId('log')).toContainText('a program is a shader false');
       expect(failures).toEqual([]);
     });
 

@@ -16,6 +16,8 @@ public interface RenderState {
 
     TextureEnvironment textureEnvironment();
 
+    TextureGeneration textureGeneration();
+
     boolean isAlphaTestEnabled();
 
     float alphaTestThreshold();

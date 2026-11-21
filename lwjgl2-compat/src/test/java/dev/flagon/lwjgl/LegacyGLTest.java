@@ -163,6 +163,6 @@ class LegacyGLTest {
     @Test
     void whatWebglHasNoStageForIsRefusedByName() {
         assertThrows(UnsupportedOperationException.class,
-                () -> GL11.glTexGeni(GL11.GL_S, GL11.GL_TEXTURE_GEN_MODE, GL11.GL_OBJECT_LINEAR));
+                () -> GL11.glTexGeni(GL11.GL_S, GL11.GL_TEXTURE_GEN_MODE, 0x8511));
     }
 }

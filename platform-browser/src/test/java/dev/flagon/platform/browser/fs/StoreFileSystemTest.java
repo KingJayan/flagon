@@ -1,5 +1,6 @@
 package dev.flagon.platform.browser.fs;
 
+import dev.flagon.platform.fs.FileStore;
 import dev.flagon.platform.fs.MemoryFileStore;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -8,14 +9,19 @@ import org.teavm.runtime.fs.VirtualFileAccessor;
 import org.teavm.runtime.fs.VirtualFileSystem;
 
 import java.io.IOException;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Proxy;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -76,27 +82,63 @@ class StoreFileSystemTest {
         accessor.close();
     }
 
-    /**
-     * teavm's RandomAccessFile.close() drops its accessor without flushing it, so a file opened
-     * both readable and writable has to be written through on every write or the data is lost.
-     */
+    /** a read-write file is written once, when it is closed, so a chunk of writes never yields */
     @Test
-    void aReadWriteFileIsWrittenThroughWithoutBeingClosed() throws IOException {
+    void aReadWriteFileReachesTheStoreOnClose() throws IOException {
         store.write("/notes.txt", bytes("hello world"));
         VirtualFileAccessor accessor = fs.getFile("/notes.txt").createAccessor(true, true, false);
         accessor.seek(6);
         accessor.write(bytes("there"), 0, 5);
+        accessor.resize(9);
 
-        assertArrayEquals(bytes("hello there"), store.read("/notes.txt"));
+        assertArrayEquals(bytes("hello world"), store.read("/notes.txt"));
+        accessor.close();
+        assertArrayEquals(bytes("hello the"), store.read("/notes.txt"));
+        assertThrows(IOException.class, () -> accessor.write(bytes("!"), 0, 1));
     }
 
+    /** until the writer runs, an open or a length sees what was closed, not the store */
     @Test
-    void aReadWriteResizeIsWrittenThroughToo() throws IOException {
-        store.write("/notes.txt", bytes("hello"));
-        VirtualFileAccessor accessor = fs.getFile("/notes.txt").createAccessor(true, true, false);
-        accessor.resize(2);
+    void aClosedFileIsReadBackBeforeItIsWritten() throws IOException {
+        List<Runnable> writer = new ArrayList<>();
+        VirtualFileSystem behind = new StoreFileSystem(store, writer::add);
+        store.write("/notes.txt", bytes("old"));
+        VirtualFileAccessor accessor =
+                behind.getFile("/notes.txt").createAccessor(true, true, false);
+        accessor.write(bytes("newer"), 0, 5);
+        accessor.close();
 
-        assertArrayEquals(bytes("he"), store.read("/notes.txt"));
+        assertArrayEquals(bytes("old"), store.read("/notes.txt"));
+        assertEquals(5, behind.getFile("/notes.txt").length());
+        VirtualFileAccessor reopened =
+                behind.getFile("/notes.txt").createAccessor(true, false, false);
+        byte[] into = new byte[5];
+        assertEquals(5, reopened.read(into, 0, 5));
+        assertArrayEquals(bytes("newer"), into);
+
+        writer.forEach(Runnable::run);
+        assertArrayEquals(bytes("newer"), store.read("/notes.txt"));
+        assertEquals(1, writer.size());
+    }
+
+    /** a file that goes between the check and the read opens as missing, as java.io has it */
+    @Test
+    void aFileThatVanishesWhileOpeningIsMissing() {
+        store.write("/level.dat", bytes("x"));
+        FileStore vanishing = (FileStore) Proxy.newProxyInstance(getClass().getClassLoader(),
+                new Class<?>[] {FileStore.class}, (proxy, method, arguments) -> {
+                    if (method.getName().equals("read")) {
+                        store.delete((String) arguments[0]);
+                    }
+                    try {
+                        return method.invoke(store, arguments);
+                    } catch (InvocationTargetException e) {
+                        throw e.getCause();
+                    }
+                });
+
+        assertNull(new StoreFileSystem(vanishing).getFile("/level.dat")
+                .createAccessor(true, false, false));
     }
 
     @Test

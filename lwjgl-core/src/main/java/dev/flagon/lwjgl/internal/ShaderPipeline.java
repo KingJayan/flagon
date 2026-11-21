@@ -78,6 +78,13 @@ public final class ShaderPipeline {
     }
 
     private void bind(GenericArrays arrays, int first, int count, int base) {
+        staging.begin();
+        for (int slot = 0; slot < arrays.count(); slot++) {
+            ClientArray array = arrays.slot(slot);
+            if (array.isEnabled() && array.isBound()) {
+                staging.need(array, first, count);
+            }
+        }
         for (int slot = 0; slot < arrays.count(); slot++) {
             ClientArray array = arrays.slot(slot);
             if (!array.isEnabled() || !array.isBound()) {
@@ -85,7 +92,7 @@ public final class ShaderPipeline {
                 continue;
             }
             device.enableAttribute(slot);
-            staging.bind(slot, array, first, count, base);
+            staging.bind(slot, array, base);
             device.attributeDivisor(slot, array.divisor());
         }
     }

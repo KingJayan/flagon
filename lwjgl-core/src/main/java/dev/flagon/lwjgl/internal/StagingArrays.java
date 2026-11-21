@@ -7,9 +7,12 @@ import dev.flagon.platform.graphics.GraphicsDevice;
 import java.nio.Buffer;
 import java.nio.ByteBuffer;
 import java.nio.FloatBuffer;
+import java.util.IdentityHashMap;
+import java.util.Map;
 
 /**
- * points attribute slots at their data, uploading anything that lives in client memory
+ * points attribute slots at their data, uploading anything that lives in client memory. a draw
+ * first says what each array needs, so arrays interleaved in one client buffer share one upload.
  */
 public final class StagingArrays {
 
@@ -25,6 +28,22 @@ public final class StagingArrays {
     private final Object[] scratch;
     private final long[] uploaded;
 
+    /** one client buffer's part in the coming draw, uploaded into the staging buffer at index */
+    private static final class Needed {
+        final int index;
+        int fromElement;
+        int toElement;
+        boolean sent;
+
+        Needed(int index, int fromElement, int toElement) {
+            this.index = index;
+            this.fromElement = fromElement;
+            this.toElement = toElement;
+        }
+    }
+
+    private final Map<Buffer, Needed> needed = new IdentityHashMap<>();
+
     public StagingArrays(GraphicsDevice device, int slots) {
         this.device = device;
         this.buffers = new int[slots];
@@ -33,16 +52,55 @@ public final class StagingArrays {
         this.uploaded = new long[slots];
     }
 
+    /** forgets what the last draw needed */
+    public void begin() {
+        needed.clear();
+    }
+
+    /** the vertices a draw reads from an array in client memory; call before binding it */
+    public void need(ClientArray array, int first, int count) {
+        Buffer client = array.client();
+        if (array.buffer() != GraphicsDevice.NO_BUFFER || client == null) {
+            return;
+        }
+        int elementSize = Buffers.elementSize(client);
+        int fromElement = 0;
+        int toElement = client.limit();
+        if (count != WHOLE) {
+            int fromByte = array.offset() + first * array.stride();
+            int toByte = array.offset() + (first + count - 1) * array.stride()
+                    + array.components() * array.type().sizeInBytes();
+            // whole elements only
+            fromElement = Math.max(0, fromByte / elementSize);
+            toElement = Math.min(toElement, (toByte + elementSize - 1) / elementSize);
+        }
+        Needed known = needed.get(client);
+        if (known == null) {
+            needed.put(client, new Needed(needed.size(), fromElement, toElement));
+        } else {
+            known.fromElement = Math.min(known.fromElement, fromElement);
+            known.toElement = Math.max(known.toElement, toElement);
+        }
+    }
+
     /**
      * @param base the vertex index 0 reads, folded into the offset so a quad draw needs no
      *             index rewrite
      */
-    public void bind(int slot, ClientArray array, int first, int count, int base) {
+    public void bind(int slot, ClientArray array, int base) {
         if (array.buffer() != GraphicsDevice.NO_BUFFER) {
             device.bindBuffer(BufferTarget.ARRAY, array.buffer());
         } else {
-            device.bindBuffer(BufferTarget.ARRAY, buffer(slot));
-            upload(slot, array, first, count);
+            Needed part = needed.get(array.client());
+            if (part == null) {
+                throw new IllegalStateException("slot " + slot + " was bound before its draw "
+                        + "said what it needs");
+            }
+            device.bindBuffer(BufferTarget.ARRAY, buffer(part.index));
+            if (!part.sent) {
+                part.sent = true;
+                upload(part.index, array.client(), part.fromElement, part.toElement);
+            }
         }
         int offset = array.offset() + base * array.stride();
         if (array.isInteger()) {
@@ -63,8 +121,7 @@ public final class StagingArrays {
         return buffers[slot];
     }
 
-    private void upload(int slot, ClientArray array, int first, int count) {
-        Buffer client = array.client();
+    private void upload(int slot, Buffer client, int fromElement, int toElement) {
         int elementSize = Buffers.elementSize(client);
         int size = client.limit() * elementSize;
         // a resize empties the buffer, so the next upload has to run
@@ -72,16 +129,6 @@ public final class StagingArrays {
         if (emptied) {
             device.bufferData(BufferTarget.ARRAY, size, BufferUsage.STREAM);
             sizes[slot] = size;
-        }
-        int fromElement = 0;
-        int toElement = client.limit();
-        if (count != WHOLE) {
-            int fromByte = array.offset() + first * array.stride();
-            int toByte = array.offset() + (first + count - 1) * array.stride()
-                    + array.components() * array.type().sizeInBytes();
-            // whole elements only
-            fromElement = Math.max(0, fromByte / elementSize);
-            toElement = Math.min(toElement, (toByte + elementSize - 1) / elementSize);
         }
         if (toElement <= fromElement) {
             return;
@@ -177,5 +224,6 @@ public final class StagingArrays {
             scratch[slot] = null;
             uploaded[slot] = 0L;
         }
+        needed.clear();
     }
 }

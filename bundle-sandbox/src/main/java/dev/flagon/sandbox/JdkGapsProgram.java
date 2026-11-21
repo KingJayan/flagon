@@ -17,6 +17,7 @@ import java.net.Proxy;
 import java.net.URL;
 import java.net.UnknownHostException;
 import java.nio.channels.Selector;
+import java.util.ArrayList;
 import java.util.concurrent.Callable;
 import java.util.concurrent.Executors;
 import java.util.regex.Pattern;
@@ -61,6 +62,8 @@ public final class JdkGapsProgram implements Program {
 
         console.info("jdkgaps: the superclass of a string is "
                 + String.class.getGenericSuperclass());
+        console.info("jdkgaps: an array list extends "
+                + ArrayList.class.getGenericSuperclass());
         console.info("jdkgaps: a string is anonymous " + String.class.isAnonymousClass());
 
         console.info("jdkgaps: punycode writes a name as " + IDN.toASCII("münchen.de"));

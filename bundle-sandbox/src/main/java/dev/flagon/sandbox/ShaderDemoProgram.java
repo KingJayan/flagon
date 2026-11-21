@@ -125,7 +125,8 @@ public final class ShaderDemoProgram implements Program {
         // a uniform the shader does not declare
         int absent = GL20.glGetUniformLocation(program, "u_notThere");
         Platforms.get().console().info("program " + program + ", u_scale at " + scaleUniform
-                + ", missing uniform reports " + absent);
+                + ", missing uniform reports " + absent + ", a program is a shader "
+                + GL20.glIsShader(program));
     }
 
     private static int compile(int type, String source, String stage) {

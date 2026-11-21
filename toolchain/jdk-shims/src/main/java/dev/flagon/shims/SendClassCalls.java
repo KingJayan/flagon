@@ -16,6 +16,7 @@ public final class SendClassCalls implements TeaVMPlugin, ClassHolderTransformer
     private static final Map<String, String> SENT = Map.of(
             "getGenericSuperclass", "getGenericSuperclass",
             "getGenericInterfaces", "getGenericInterfaces",
+            "getTypeParameters", "getTypeParameters",
             "getSigners", "getSigners",
             "isAnonymousClass", "isAnonymousClass",
             "getProtectionDomain", "getProtectionDomain",

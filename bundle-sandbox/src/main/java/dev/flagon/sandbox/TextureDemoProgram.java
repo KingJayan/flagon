@@ -18,6 +18,7 @@ public final class TextureDemoProgram implements Program {
 
     private final FloatBuffer flash =
             BufferUtils.createFloatBuffer(4).put(new float[] {0.0f, 0.0f, 1.0f, 0.5f}).flip();
+    private final FloatBuffer generatedPlane = BufferUtils.createFloatBuffer(4);
     private static final int MAX_FRAMES = 900;
 
     private static final int[] TEXELS = {
@@ -176,6 +177,7 @@ public final class TextureDemoProgram implements Program {
         texturedQuad(720.0f, 150.0f, 728.0f, 158.0f);
 
         multiTextured();
+        generated();
 
         GL11.glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
         GL11.glBindTexture(GL11.GL_TEXTURE_2D, rgb);
@@ -223,6 +225,33 @@ public final class TextureDemoProgram implements Program {
         GL11.glTexEnvi(GL11.GL_TEXTURE_ENV, GL11.GL_TEXTURE_ENV_MODE, GL11.GL_MODULATE);
         GL11.glDisable(GL11.GL_TEXTURE_2D);
         GL13.glActiveTexture(GL13.GL_TEXTURE0);
+    }
+
+    // the end portal's way: no coordinates of its own, s across the strip from an eye plane and
+    // t on the top row from an object plane
+    private void generated() {
+        GL11.glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
+        GL11.glBindTexture(GL11.GL_TEXTURE_2D, texture);
+        GL11.glTexGeni(GL11.GL_S, GL11.GL_TEXTURE_GEN_MODE, GL11.GL_EYE_LINEAR);
+        GL11.glTexGen(GL11.GL_S, GL11.GL_EYE_PLANE, plane(1.0f / 320.0f, 0.0f, 0.0f, -0.125f));
+        GL11.glTexGeni(GL11.GL_T, GL11.GL_TEXTURE_GEN_MODE, GL11.GL_OBJECT_LINEAR);
+        GL11.glTexGen(GL11.GL_T, GL11.GL_OBJECT_PLANE, plane(0.0f, 0.0f, 0.0f, 0.25f));
+        GL11.glEnable(GL11.GL_TEXTURE_GEN_S);
+        GL11.glEnable(GL11.GL_TEXTURE_GEN_T);
+        GL11.glBegin(GL11.GL_QUADS);
+        GL11.glVertex2f(40.0f, 330.0f);
+        GL11.glVertex2f(40.0f, 354.0f);
+        GL11.glVertex2f(360.0f, 354.0f);
+        GL11.glVertex2f(360.0f, 330.0f);
+        GL11.glEnd();
+        GL11.glDisable(GL11.GL_TEXTURE_GEN_S);
+        GL11.glDisable(GL11.GL_TEXTURE_GEN_T);
+    }
+
+    private FloatBuffer plane(float a, float b, float c, float d) {
+        generatedPlane.clear();
+        generatedPlane.put(a).put(b).put(c).put(d).flip();
+        return generatedPlane;
     }
 
     private static void multiTexturedQuad(float left, float top, float right, float bottom) {

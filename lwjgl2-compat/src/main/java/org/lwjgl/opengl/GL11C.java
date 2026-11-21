@@ -350,6 +350,9 @@ public class GL11C {
             case GL_POLYGON_OFFSET_LINE, GL_POLYGON_OFFSET_POINT, GL11.GL_COLOR_LOGIC_OP ->
                     state().setUnstaged(capability, enabled);
             case GL_TEXTURE_2D -> state().setTextureEnabled(enabled);
+            case GL11.GL_TEXTURE_GEN_S, GL11.GL_TEXTURE_GEN_T, GL11.GL_TEXTURE_GEN_R,
+                 GL11.GL_TEXTURE_GEN_Q ->
+                    state().setTextureGenerated(capability - GL11.GL_TEXTURE_GEN_S, enabled);
             case GL_ALPHA_TEST -> state().setAlphaTestEnabled(enabled);
             case GL_LIGHTING -> state().lighting().setEnabled(enabled);
             case GL_COLOR_MATERIAL -> state().lighting().setColorMaterial(enabled);

@@ -5,17 +5,19 @@ import org.junit.jupiter.api.io.TempDir;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Set;
+import java.util.zip.GZIPInputStream;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -93,72 +95,38 @@ class WriteResourcePackTest {
     }
 
     @Test
-    void packsATextFileSmallerThanItReadsBack(@TempDir Path work) throws IOException {
-        Files.writeString(work.resolve("long.txt"), "abcdefgh".repeat(400));
+    void laysEachResourceOutAsItIs(@TempDir Path work) throws IOException {
+        Files.writeString(work.resolve("a.txt"), "hello");
 
         ByteArrayOutputStream bytes = new ByteArrayOutputStream();
         WriteResourcePack.write(WriteResourcePack.collect(work), bytes);
 
-        assertTrue(bytes.size() < 3200, "the pack is " + bytes.size() + " bytes");
-    }
-
-    @Test
-    void keepsAFileCompressionWouldOnlyGrow(@TempDir Path work) throws IOException {
-        byte[] noisy = new byte[512];
-        new java.util.Random(7).nextBytes(noisy);
-        Files.write(work.resolve("noise.bin"), noisy);
-
-        ByteArrayOutputStream bytes = new ByteArrayOutputStream();
-        WriteResourcePack.write(WriteResourcePack.collect(work), bytes);
-
-        byte[] written = bytes.toByteArray();
-        assertEquals(WriteResourcePack.STORED, written[written.length - noisy.length - 1]);
-    }
-
-    @Test
-    void storesAFileItsOwnFormatAlreadyCompressed(@TempDir Path work) throws IOException {
-        Files.writeString(work.resolve("tile.png"), "abcdefgh".repeat(400));
-
-        ByteArrayOutputStream bytes = new ByteArrayOutputStream();
-        WriteResourcePack.write(WriteResourcePack.collect(work), bytes);
-
-        assertEquals(WriteResourcePack.STORED, packingOf(bytes.toByteArray()).get("tile.png"));
-    }
-
-    @Test
-    void tellsTheFormatsApartAcrossEveryBatch(@TempDir Path work) throws IOException {
-        for (int at = 0; at < 200; at++) {
-            String name = at % 2 == 0 ? "file" + at + ".txt" : "file" + at + ".png";
-            Files.writeString(work.resolve(name), "abcdefgh".repeat(40));
-        }
-
-        ByteArrayOutputStream bytes = new ByteArrayOutputStream();
-        WriteResourcePack.write(WriteResourcePack.collect(work), bytes);
-
-        Map<String, Integer> packing = packingOf(bytes.toByteArray());
-        assertEquals(200, packing.size());
-        for (Map.Entry<String, Integer> entry : packing.entrySet()) {
-            int wanted = entry.getKey().endsWith(".png")
-                    ? WriteResourcePack.STORED
-                    : WriteResourcePack.DEFLATED;
-            assertEquals(wanted, entry.getValue(), entry.getKey());
-        }
-    }
-
-    /** @return how each resource in the pack was packed, by name */
-    private static Map<String, Integer> packingOf(byte[] pack) {
-        ByteBuffer read = ByteBuffer.wrap(pack);
+        ByteBuffer read = ByteBuffer.wrap(bytes.toByteArray());
         read.position(WriteResourcePack.MAGIC.length);
-        Map<String, Integer> packing = new LinkedHashMap<>();
-        for (int count = read.getInt(); count > 0; count--) {
-            byte[] name = new byte[read.getInt()];
-            read.get(name);
-            read.getInt();
-            int stored = read.getInt();
-            packing.put(new String(name, StandardCharsets.UTF_8), (int) read.get());
-            read.position(read.position() + stored);
+        assertEquals(1, read.getInt());
+        byte[] name = new byte[read.getInt()];
+        read.get(name);
+        byte[] contents = new byte[read.getInt()];
+        read.get(contents);
+        assertEquals("a.txt", new String(name, StandardCharsets.UTF_8));
+        assertEquals("hello", new String(contents, StandardCharsets.UTF_8));
+        assertEquals(0, read.remaining());
+    }
+
+    /** the browser unzips the whole pack as it downloads, so the file on disk is gzip */
+    @Test
+    void gzipsThePackItWrites(@TempDir Path work) throws IOException {
+        Path resources = Files.createDirectory(work.resolve("in"));
+        Files.writeString(resources.resolve("long.txt"), "abcdefgh".repeat(400));
+        Path pack = work.resolve("out/app.pack");
+
+        WriteResourcePack.main(new String[] {resources.toString(), pack.toString()});
+
+        assertTrue(Files.size(pack) < 400, "the pack is " + Files.size(pack) + " bytes");
+        try (InputStream unzipped = new GZIPInputStream(Files.newInputStream(pack))) {
+            byte[] magic = unzipped.readNBytes(WriteResourcePack.MAGIC.length);
+            assertArrayEquals(WriteResourcePack.MAGIC, magic);
         }
-        return packing;
     }
 
     private static Path jar(Path at, Map<String, String> files) throws IOException {

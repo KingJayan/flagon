@@ -65,7 +65,7 @@ Ahead-of-time (AOT) tree-shaking strips unreferenced class members by default. `
 
 ### ClassLoader & Resource Lookup
 
-* `getResourceAsStream`: Reads the resource pack. The build packs every file a jar carries beside its classes into `<bundle>.pack` and the page fetches that pack before the bundle runs. Each file is compressed where that makes it smaller. `Class.getResourceAsStream` resolves a relative name beside the class, the way the JDK does.
+* `getResourceAsStream`: Reads the resource pack. The build packs every file a jar carries beside its classes into `<bundle>.pack`, gzipped whole. The page fetches the pack alongside the bundle and unzips it as it downloads, and a resource is copied out of it only when it is read. `Class.getResourceAsStream` resolves a relative name beside the class, the way the JDK does.
 * `ClassLoader.getResource`, `Class.getResource`: Return a `flagon:` URL for a file in the pack, and `null` for any other name. `openStream` on that URL reads the packed bytes.
 * `ClassLoader.getResources`: Returns the one URL the pack holds for that name, or an empty enumeration. A bundle is one artifact, so no name ever has two copies, and a multi-jar scan such as `META-INF/services` still finds only one.
 
@@ -92,7 +92,7 @@ Ahead-of-time (AOT) tree-shaking strips unreferenced class members by default. `
 * **Concurrency:** Asynchronous main-thread OPFS access suspends the calling green thread; application-level `java.io` remains synchronous and blocking.
 * **Caching:** Files are fully loaded into memory when opened.
 * **Flushing:** Streams flush to OPFS on `flush()` and `close()`.
-* **`RandomAccessFile`:** Configured to write through to OPFS on every write operation to prevent data loss.
+* **`RandomAccessFile`:** Holds its writes in memory and writes them to OPFS on `close()`, or on every write in `rwd` and `rws` modes.
 
 ---
 
@@ -162,16 +162,16 @@ Both LWJGL 2 (`lwjgl2-compat`) and LWJGL 3 (`lwjgl3-compat`) APIs are supported.
 | Feature | Support | Details |
 | --- | --- | --- |
 | **Core Targets** | Desktop GL 1.1–3.2 | Backed by WebGL 2.0. |
-| **Immediate Mode** | Supported | `glBegin`/`glEnd` batches emulated via dynamic VBOs. |
+| **Immediate Mode** | Supported | Each `glBegin`/`glEnd` block is written after the last one in a stream buffer, so a draw never waits on the one before. |
 | **`GL_QUADS`** | Supported (Unindexed) | Converted into indexed triangle pairs on upload. |
 | **`GL_QUADS` (Indexed)** | Refused | Rewriting caller-owned index buffers is unsupported. |
-| **Client Arrays** | Supported | Staged into internal buffer objects prior to draw calls. |
-| **Display Lists** | Supported | `glGenLists`, `glNewList`, `glCallList`, `glDeleteLists`. |
+| **Client Arrays** | Supported | Staged into internal buffer objects prior to draw calls. Arrays interleaved in one client buffer share one upload. |
+| **Display Lists** | Supported | `glGenLists`, `glNewList`, `glCallList`, `glDeleteLists`. A list's `glBegin`/`glEnd` blocks share one buffer per vertex layout. |
 | **Lighting** | Supported | 8 fixed-function vertex lights calculated in eye space. One-sided: back faces take the front material, so a `GL_BACK` material is unseen. `glColorMaterial` tracks any one material. |
 | **Matrix Modes** | Supported | `GL_MODELVIEW`, `GL_PROJECTION`, and a `GL_TEXTURE` stack per unit. |
 | **Texture Environment** | Supported | `GL_MODULATE`, `GL_REPLACE`, `GL_ADD`, `GL_DECAL`, `GL_BLEND`, and `GL_COMBINE` without the `GL_DOT3` functions. |
 | **Logic Ops** | Drawn as `GL_COPY` | WebGL has no logic op stage; `glLogicOp` and `GL_COLOR_LOGIC_OP` are kept but change nothing. |
-| **Texture Coordinate Generation** | Unsupported | `glTexGen` throws `UnsupportedOperationException`. |
+| **Texture Coordinate Generation** | Supported | `glTexGen` makes S, T, R and Q in the vertex shader: object linear, eye linear and sphere map. `GL_NORMAL_MAP` and `GL_REFLECTION_MAP` throw `UnsupportedOperationException`. |
 | **Shading Model** | Supported | `GL_FLAT` takes the color of the last vertex, as GL does. |
 | **Polygon Modes** | `GL_FILL` only | Wireframe and point polygon rasterization are unsupported. |
 | **Texture Types** | Core subsets | Byte uploads converted to RGBA internally. No 16-bit integer channels. |

@@ -22,6 +22,8 @@ final class QuadIndices {
         if (quads <= uploadedQuads) {
             return;
         }
+        // immediate blocks move through a ring, so the quads needed keep rising a little
+        quads = Math.max(quads, uploadedQuads * 2);
         int[] indices = new int[quads * DrawMode.QUAD_INDICES];
         write(indices, quads);
         device.bufferData(BufferTarget.ELEMENT, indices, indices.length, BufferUsage.STATIC);

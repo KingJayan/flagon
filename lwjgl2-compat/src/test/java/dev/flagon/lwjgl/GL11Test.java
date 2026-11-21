@@ -225,14 +225,14 @@ class GL11Test {
     }
 
     @Test
-    void quadIndicesAreUploadedOnlyWhenTheyHaveToGrow() {
-        drawQuads(4);
-        drawQuads(2);
-        assertEquals(1, device.calls("elementData").size());
+    void quadIndicesGrowByDoublingAsTheStreamMovesOn() {
+        for (int draw = 0; draw < 20; draw++) {
+            drawQuads(4);
+        }
 
-        drawQuads(9);
-        assertEquals(java.util.List.of("elementData 24 STATIC", "elementData 54 STATIC"),
-                device.calls("elementData"));
+        assertEquals(java.util.List.of("elementData 24 STATIC", "elementData 48 STATIC",
+                "elementData 96 STATIC", "elementData 192 STATIC", "elementData 384 STATIC",
+                "elementData 768 STATIC"), device.calls("elementData"));
     }
 
     /** gl drops a trailing partial primitive rather than drawing a malformed one. */
@@ -1100,6 +1100,34 @@ class GL11Test {
         assertEquals(0.5f, matrices[16]);
         assertEquals(0.25f, matrices[16 + 5]);
         assertEquals(0.0f, matrices[16 + 12]);
+    }
+
+    /** the end portal: eye planes taken through the modelview, and q from an object plane */
+    @Test
+    void texGenSendsEachCoordinatesModeAndPlanes() {
+        GL11.glTranslatef(0.0f, 0.0f, -2.0f);
+        GL11.glTexGeni(GL11.GL_S, GL11.GL_TEXTURE_GEN_MODE, GL11.GL_EYE_LINEAR);
+        GL11.glTexGen(GL11.GL_S, GL11.GL_EYE_PLANE, BufferUtils.createFloatBuffer(4)
+                .put(new float[] {0.0f, 0.0f, 1.0f, 0.0f}).flip());
+        GL11.glTexGeni(GL11.GL_Q, GL11.GL_TEXTURE_GEN_MODE, GL11.GL_OBJECT_LINEAR);
+        int list = GL11.glGenLists(1);
+        GL11.glNewList(list, GL11.GL_COMPILE);
+        GL11.glTexGen(GL11.GL_Q, GL11.GL_OBJECT_PLANE, BufferUtils.createFloatBuffer(4)
+                .put(new float[] {0.0f, 1.0f, 0.0f, 0.0f}).flip());
+        GL11.glEndList();
+        GL11.glCallList(list);
+        GL11.glEnable(GL11.GL_TEXTURE_GEN_S);
+        GL11.glEnable(GL11.GL_TEXTURE_GEN_Q);
+        triangle();
+
+        assertTrue(GL11.glIsEnabled(GL11.GL_TEXTURE_GEN_Q));
+        assertArrayEquals(new int[] {2, 0, 0, 1},
+                Arrays.copyOfRange(device.uniformInts("u_texGen[0]"), 0, 4));
+        // gl keeps an eye plane through the inverse of the modelview it was given under
+        assertArrayEquals(new float[] {0.0f, 0.0f, 1.0f, 2.0f},
+                Arrays.copyOfRange(device.uniformFloats("u_eyePlane[0]"), 0, 4));
+        assertArrayEquals(new float[] {0.0f, 1.0f, 0.0f, 0.0f},
+                Arrays.copyOfRange(device.uniformFloats("u_objectPlane[0]"), 12, 16));
     }
 
     /** the red flash on a hurt mob: unit 1 mixes a constant color over what came before */

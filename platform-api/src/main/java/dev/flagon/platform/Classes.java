@@ -2,6 +2,7 @@ package dev.flagon.platform;
 
 import java.io.InputStream;
 import java.lang.reflect.Type;
+import java.lang.reflect.TypeVariable;
 import java.net.URL;
 import java.security.ProtectionDomain;
 
@@ -13,11 +14,16 @@ public final class Classes {
     }
 
     public static Type getGenericSuperclass(Class<?> type) {
-        return type.getSuperclass();
+        return GenericSupertypes.superclass(type);
     }
 
     public static Type[] getGenericInterfaces(Class<?> type) {
-        return type.getInterfaces();
+        return GenericSupertypes.interfaces(type);
+    }
+
+    public static TypeVariable<?>[] getTypeParameters(Class<?> type) {
+        TypeVariable<?>[] made = GenericSupertypes.parameters(type);
+        return made != null ? made : type.getTypeParameters();
     }
 
     public static Object[] getSigners(Class<?> type) {

@@ -80,7 +80,11 @@ public class TRandomAccessFile implements DataInput, DataOutput, Closeable {
 
     @Override
     public void close() throws IOException {
-        accessor = null;
+        if (accessor != null) {
+            VirtualFileAccessor closing = accessor;
+            accessor = null;
+            closing.close();
+        }
     }
 
     public int read(byte[] b, int off, int len) throws IOException {
@@ -90,7 +94,7 @@ public class TRandomAccessFile implements DataInput, DataOutput, Closeable {
         }
         ensureOpened();
         int result = accessor.read(b, off, len);
-        return result >  0 ? result : -1;
+        return result > 0 ? result : -1;
     }
 
     public int read(byte[] b) throws IOException {
@@ -101,7 +105,7 @@ public class TRandomAccessFile implements DataInput, DataOutput, Closeable {
         ensureOpened();
         byte[] buffer = new byte[1];
         int read = accessor.read(buffer, 0, 1);
-        return read > 0 ? buffer[0] : -1;
+        return read > 0 ? buffer[0] & 0xFF : -1;
     }
 
     @Override
