@@ -1,12 +1,13 @@
 package java.nio.channels;
 
 import java.io.IOException;
+import java.nio.channels.spi.SelectorProvider;
 import java.util.Set;
 
 public abstract class Selector implements java.io.Closeable {
 
     public static Selector open() throws IOException {
-        throw Refusal.refuse();
+        return SelectorProvider.provider().openSelector();
     }
 
     public abstract boolean isOpen();

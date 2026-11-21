@@ -6,6 +6,9 @@ import dev.flagon.runtime.Program;
 import org.example.absent.MissingFromBundle;
 
 import java.lang.management.ManagementFactory;
+import java.lang.ref.PhantomReference;
+import java.lang.ref.ReferenceQueue;
+import java.lang.ref.WeakReference;
 import java.net.IDN;
 import java.net.Inet4Address;
 import java.net.Inet6Address;
@@ -13,9 +16,12 @@ import java.net.InetAddress;
 import java.net.Proxy;
 import java.net.URL;
 import java.net.UnknownHostException;
+import java.nio.channels.Selector;
 import java.util.concurrent.Callable;
 import java.util.concurrent.Executors;
 import java.util.regex.Pattern;
+import java.util.zip.Deflater;
+import java.util.zip.Inflater;
 
 /** shows the jdk calls the browser classlib leaves out, which the build sends to Flagon. */
 public final class JdkGapsProgram implements Program {
@@ -99,6 +105,37 @@ public final class JdkGapsProgram implements Program {
         URL url = new URL("http://localhost/nothing");
         console.info("jdkgaps: a connection through a named proxy opens "
                 + (url.openConnection(Proxy.NO_PROXY) != null));
+
+        // zlib reports a call with nothing to do as an error the jdk turns into zero bytes
+        Deflater idle = new Deflater();
+        byte[] out = new byte[16];
+        console.info("jdkgaps: with nothing to take a deflater writes its header, "
+                + idle.deflate(out) + " bytes, then " + idle.deflate(out)
+                + ", and an inflater reads " + new Inflater().inflate(out));
+
+        // netty's leak detector links its records between two references to nothing
+        console.info("jdkgaps: references to nothing read "
+                + new WeakReference<Object>(null).get() + " and "
+                + new PhantomReference<Object>(null, new ReferenceQueue<>()).get());
+
+        // a netty event loop waits on an empty selector and is woken from another thread
+        Selector selector = Selector.open();
+        long before = System.currentTimeMillis();
+        selector.select(50);
+        console.info("jdkgaps: an empty select waits out its time "
+                + (System.currentTimeMillis() - before >= 40));
+        Thread waker = new Thread(() -> {
+            try {
+                Thread.sleep(50);
+            } catch (InterruptedException ignored) {
+                Thread.currentThread().interrupt();
+            }
+            selector.wakeup();
+        });
+        waker.start();
+        console.info("jdkgaps: another thread wakes a select holding "
+                + selector.select() + " keys");
+        selector.close();
     }
 
     private static void refuse() {

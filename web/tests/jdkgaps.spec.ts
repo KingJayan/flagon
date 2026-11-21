@@ -33,6 +33,12 @@ for (const backend of BACKENDS) {
       await expect(log).toContainText('jdkgaps: four bytes make an ipv4 address true at 127.0.0.1');
       await expect(log).toContainText('jdkgaps: sixteen bytes make a loopback ipv6 address true');
       await expect(log).toContainText('jdkgaps: a connection through a named proxy opens true');
+      await expect(log).toContainText(
+        'jdkgaps: with nothing to take a deflater writes its header, 2 bytes, then 0, and an '
+          + 'inflater reads 0');
+      await expect(log).toContainText('jdkgaps: references to nothing read null and null');
+      await expect(log).toContainText('jdkgaps: an empty select waits out its time true');
+      await expect(log).toContainText('jdkgaps: another thread wakes a select holding 0 keys');
     });
   });
 }

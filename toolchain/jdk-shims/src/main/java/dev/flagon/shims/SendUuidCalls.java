@@ -24,7 +24,8 @@ public final class SendUuidCalls implements TeaVMPlugin, ClassHolderTransformer 
     private static final Map<String, String> SENT = Map.of(
             "getMostSignificantBits", "getMostSignificantBits",
             "getLeastSignificantBits", "getLeastSignificantBits",
-            "nameUUIDFromBytes", "nameUUIDFromBytes");
+            "nameUUIDFromBytes", "nameUUIDFromBytes",
+            "fromString", "fromString");
 
     private static final String[] NOT_OURS = {"org.teavm.", UUIDS};
 

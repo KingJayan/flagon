@@ -13,6 +13,25 @@ public final class Uuids {
         return UUID.fromString(text(high, low));
     }
 
+    /** the jdk's reading: five dashed hex fields, each masked to its width */
+    public static UUID fromString(String text) {
+        String[] fields = text.split("-", -1);
+        if (fields.length != 5 || text.length() > 36) {
+            throw new IllegalArgumentException("Invalid UUID string: " + text);
+        }
+        long[] values = new long[5];
+        for (int at = 0; at < 5; at++) {
+            if (fields[at].isEmpty()) {
+                throw new IllegalArgumentException("Invalid UUID string: " + text);
+            }
+            values[at] = Long.parseLong(fields[at], 16);
+        }
+        long high = (values[0] & 0xffffffffL) << 32 | (values[1] & 0xffffL) << 16
+                | values[2] & 0xffffL;
+        long low = (values[3] & 0xffffL) << 48 | values[4] & 0xffffffffffffL;
+        return of(high, low);
+    }
+
     public static long getMostSignificantBits(UUID id) {
         String plain = plain(id);
         return parse(plain.substring(0, 16));
