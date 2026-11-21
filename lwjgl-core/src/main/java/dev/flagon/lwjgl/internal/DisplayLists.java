@@ -40,6 +40,7 @@ public final class DisplayLists {
     // a list name is its index
     private final List<Held> lists = new ArrayList<>();
     private IntConsumer release = block -> { };
+    private Runnable ended = () -> { };
     private Player player = (op, codes, at, values, from) -> { };
 
     private int[] codes = NO_CODES;
@@ -58,6 +59,11 @@ public final class DisplayLists {
     /** a list owns the vertices its blocks uploaded, so they go when the list does */
     public void onRelease(IntConsumer release) {
         this.release = release;
+    }
+
+    /** a list's blocks are uploaded together once it ends */
+    public void onEnd(Runnable ended) {
+        this.ended = ended;
     }
 
     public void onPlay(Player player) {
@@ -121,6 +127,7 @@ public final class DisplayLists {
                 Arrays.copyOf(values, valueCount), Arrays.copyOf(blocks, blockCount)));
         recording = false;
         executeWhileRecording = false;
+        ended.run();
     }
 
     public boolean isRecording() {

@@ -37,7 +37,6 @@ public final class FixedFunctionPipeline {
             uniform float u_pointSize;
             uniform mat4 u_textureMatrix[4];
 
-            uniform bool u_lightingEnabled;
             uniform int u_lightEnabled[8];
             uniform vec4 u_lightPosition[8];
             uniform vec4 u_lightAmbient[8];
@@ -54,6 +53,13 @@ public final class FixedFunctionPipeline {
             // the materials the vertex color stands in for: ambient 1, diffuse 2, specular 4,
             // emission 8
             uniform int u_colorMaterial;
+
+            #ifdef GENERATE
+            // each unit's s, t, r and q mode: 0 given, 1 object linear, 2 eye linear, 3 sphere map
+            uniform ivec4 u_texGen[4];
+            uniform vec4 u_objectPlane[16];
+            uniform vec4 u_eyePlane[16];
+            #endif
 
             out vec4 v_color;
             // gl es takes a flat value from the last vertex, as gl does by default
@@ -109,18 +115,40 @@ public final class FixedFunctionPipeline {
                 return vec4(color, diffuseMaterial.a);
             }
 
-            void main() {
-                // gl reads s and t, with r 0 and q 1, through each unit's texture matrix
-                v_texCoord[0] = u_textureMatrix[0] * vec4(in_texCoord0, 0.0, 1.0);
-                v_texCoord[1] = u_textureMatrix[1] * vec4(in_texCoord1, 0.0, 1.0);
-                v_texCoord[2] = u_textureMatrix[2] * vec4(in_texCoord2, 0.0, 1.0);
-                v_texCoord[3] = u_textureMatrix[3] * vec4(in_texCoord3, 0.0, 1.0);
+            // gl reads s and t, with r 0 and q 1, through each unit's texture matrix
+            vec4 coordinate(int unit, vec2 given, vec4 eye, vec3 normal) {
+                vec4 coordinate = vec4(given, 0.0, 1.0);
+                #ifdef GENERATE
+                ivec4 modes = u_texGen[unit];
+                vec3 reflected = reflect(normalize(eye.xyz), normal);
+                float sphere = 2.0 * length(reflected + vec3(0.0, 0.0, 1.0));
+                for (int at = 0; at < 4; at++) {
+                    if (modes[at] == 1) {
+                        coordinate[at] = dot(u_objectPlane[unit * 4 + at], vec4(in_position, 1.0));
+                    } else if (modes[at] == 2) {
+                        coordinate[at] = dot(u_eyePlane[unit * 4 + at], eye);
+                    } else if (modes[at] == 3) {
+                        coordinate[at] = reflected[at] / max(sphere, 0.0001) + 0.5;
+                    }
+                }
+                #endif
+                return u_textureMatrix[unit] * coordinate;
+            }
 
+            void main() {
                 vec4 eye = u_modelView * vec4(in_position, 1.0);
+                vec3 normal = normalize(u_normalMatrix * in_normal);
+                v_texCoord[0] = coordinate(0, in_texCoord0, eye, normal);
+                v_texCoord[1] = coordinate(1, in_texCoord1, eye, normal);
+                v_texCoord[2] = coordinate(2, in_texCoord2, eye, normal);
+                v_texCoord[3] = coordinate(3, in_texCoord3, eye, normal);
+
                 v_eyeDistance = length(eye.xyz);
-                v_color = u_lightingEnabled
-                        ? lit(eye.xyz, normalize(u_normalMatrix * in_normal))
-                        : in_color;
+                #ifdef LIGHTING
+                v_color = lit(eye.xyz, normal);
+                #else
+                v_color = in_color;
+                #endif
                 v_flatColor = v_color;
 
                 gl_PointSize = u_pointSize;
@@ -151,7 +179,6 @@ public final class FixedFunctionPipeline {
             uniform bool u_alphaTestEnabled;
             uniform float u_alphaTestThreshold;
             uniform bool u_flatShading;
-            uniform bool u_fogEnabled;
             uniform int u_fogMode;
             uniform vec4 u_fogColor;
             uniform float u_fogDensity;
@@ -285,6 +312,7 @@ public final class FixedFunctionPipeline {
                 if (u_textureEnabled[0]) {
                     samples.unit[0] = textureProj(u_texture0, v_texCoord[0].xyw);
                 }
+                #ifdef MULTITEXTURE
                 if (u_textureEnabled[1]) {
                     samples.unit[1] = textureProj(u_texture1, v_texCoord[1].xyw);
                 }
@@ -294,10 +322,12 @@ public final class FixedFunctionPipeline {
                 if (u_textureEnabled[3]) {
                     samples.unit[3] = textureProj(u_texture3, v_texCoord[3].xyw);
                 }
+                #endif
                 vec4 color = primary;
                 if (u_textureEnabled[0]) {
                     color = fold(0, samples, color, primary);
                 }
+                #ifdef MULTITEXTURE
                 if (u_textureEnabled[1]) {
                     color = fold(1, samples, color, primary);
                 }
@@ -307,33 +337,66 @@ public final class FixedFunctionPipeline {
                 if (u_textureEnabled[3]) {
                     color = fold(3, samples, color, primary);
                 }
+                #endif
                 // gl's alpha test discards, it does not blend; discard is the faithful mapping
                 if (u_alphaTestEnabled && color.a <= u_alphaTestThreshold) {
                     discard;
                 }
-                if (u_fogEnabled) {
-                    // fog reaches the color but never the alpha
-                    float blend = clamp(fogFactor(v_eyeDistance), 0.0, 1.0);
-                    color = vec4(mix(u_fogColor.rgb, color.rgb, blend), color.a);
-                }
+                #ifdef FOG
+                // fog reaches the color but never the alpha
+                float blend = clamp(fogFactor(v_eyeDistance), 0.0, 1.0);
+                color = vec4(mix(u_fogColor.rgb, color.rgb, blend), color.a);
+                #endif
                 out_color = color;
             }
             """;
 
-    private static final String COMBINING_FRAGMENT_SHADER =
-            FRAGMENT_SHADER.replace("#version 300 es\n", "#version 300 es\n#define COMBINE\n");
+    // what a build compiles in beyond the common path; each slows every vertex or fragment it
+    // reaches, so a draw takes the build with only what its state uses
+    private static final int COMBINE = 1;
+    private static final int GENERATE = 2;
+    private static final int LIGHTING = 4;
+    private static final int FOG = 8;
+    private static final int MULTITEXTURE = 16;
+    private static final int VARIANTS = 32;
+    private static final String[] DEFINES = {"COMBINE", "GENERATE", "LIGHTING", "FOG",
+        "MULTITEXTURE"};
 
     private final GraphicsDevice device;
     private final int buffer;
     private final int[] immediateArrays = new int[ImmediateLayout.MASKS];
     private int bufferFloats;
+    // where the next immediate block goes; blocks follow one another until the buffer is full
+    private int streamed;
     private final QuadIndices quadIndices;
     private final float[] normalMatrix = new float[9];
 
     private static final int NOTHING_WRITTEN = -1;
 
-    private record Captured(int buffer, int array, DrawMode mode, int vertexCount, int layout) {
+    // a megabyte of immediate vertices before the stream buffer starts over
+    private static final int STREAM_FLOATS = 1 << 18;
+
+    /**
+     * the blocks one list compile captured in one layout, uploaded together as one buffer when
+     * the list ends
+     */
+    private static final class Group {
+        final int layout;
+        float[] pending = new float[1024];
+        int pendingFloats;
+        int buffer = GraphicsDevice.NO_BUFFER;
+        int array = GraphicsDevice.NO_VERTEX_ARRAY;
+        int live;
+
+        Group(int layout) {
+            this.layout = layout;
+        }
     }
+
+    private record Captured(Group group, DrawMode mode, int first, int vertexCount) {
+    }
+
+    private final Group[] filling = new Group[ImmediateLayout.MASKS];
 
     private final List<Captured> captured = new ArrayList<>();
     private final List<Integer> freeCaptures = new ArrayList<>();
@@ -343,16 +406,14 @@ public final class FixedFunctionPipeline {
     private final StagingArrays staging;
 
     private final float[] textureMatrices = new float[16 * VertexArrays.UNITS];
-    private final Uniforms plain;
-    private Uniforms combining;
+    private final Uniforms[] variants = new Uniforms[VARIANTS];
     private Uniforms at;
 
     private Borrowed[] borrowed = new Borrowed[16];
 
     public FixedFunctionPipeline(GraphicsDevice device) {
         this.device = device;
-        this.plain = new Uniforms(device, device.createProgram(VERTEX_SHADER, FRAGMENT_SHADER));
-        this.at = plain;
+        this.at = variant(0);
         this.buffer = device.createBuffer();
         this.quadIndices = new QuadIndices(device);
         this.staging = new StagingArrays(device, VertexArrays.SLOTS);
@@ -363,11 +424,23 @@ public final class FixedFunctionPipeline {
         if (mode.usableVertices(vertexCount) == 0) {
             return NO_CAPTURE;
         }
-        int buffer = device.createBuffer();
-        device.bindBuffer(BufferTarget.ARRAY, buffer);
-        device.bufferData(BufferTarget.ARRAY, vertices, floatCount, BufferUsage.STATIC);
-        int array = describeImmediateLayout(layout, buffer);
-        Captured block = new Captured(buffer, array, mode, vertexCount, layout);
+        Group group = filling[layout];
+        if (group == null) {
+            group = new Group(layout);
+            filling[layout] = group;
+        }
+        int vertexFloats = ImmediateLayout.floats(layout);
+        int quad = vertexFloats * DrawMode.QUAD_VERTICES;
+        // a whole number of quads in, so quad indices can start at the block
+        int start = (group.pendingFloats + quad - 1) / quad * quad;
+        if (start + floatCount > group.pending.length) {
+            group.pending = Arrays.copyOf(group.pending,
+                    Math.max(start + floatCount, group.pending.length * 2));
+        }
+        System.arraycopy(vertices, 0, group.pending, start, floatCount);
+        group.pendingFloats = start + floatCount;
+        group.live++;
+        Captured block = new Captured(group, mode, start / vertexFloats, vertexCount);
         if (freeCaptures.isEmpty()) {
             captured.add(block);
             return captured.size() - 1;
@@ -377,15 +450,39 @@ public final class FixedFunctionPipeline {
         return at;
     }
 
+    /** uploads what the list being compiled captured, one buffer per layout */
+    public void seal() {
+        for (int layout = 0; layout < filling.length; layout++) {
+            Group group = filling[layout];
+            if (group != null) {
+                filling[layout] = null;
+                upload(group);
+            }
+        }
+    }
+
+    private void upload(Group group) {
+        group.buffer = device.createBuffer();
+        device.bindBuffer(BufferTarget.ARRAY, group.buffer);
+        device.bufferData(BufferTarget.ARRAY, group.pending, group.pendingFloats,
+                BufferUsage.STATIC);
+        group.array = describeImmediateLayout(group.layout, group.buffer);
+        group.pending = null;
+    }
+
     public void drawCaptured(int block, RenderState render, int lent) {
         if (block == NO_CAPTURE) {
             return;
         }
         Captured held = captured.get(block);
+        if (held.group().array == GraphicsDevice.NO_VERTEX_ARRAY) {
+            // drawn while its list is still compiling
+            seal();
+        }
         begin(render, lent);
-        device.bindVertexArray(held.array());
-        constants(held.layout(), render);
-        issue(held.mode(), 0, held.mode().usableVertices(held.vertexCount()));
+        device.bindVertexArray(held.group().array);
+        constants(held.group().layout, render);
+        issue(held.mode(), held.first(), held.mode().usableVertices(held.vertexCount()));
         device.bindVertexArray(GraphicsDevice.NO_VERTEX_ARRAY);
     }
 
@@ -393,11 +490,13 @@ public final class FixedFunctionPipeline {
         if (block == NO_CAPTURE || captured.get(block) == null) {
             return;
         }
-        Captured held = captured.get(block);
-        device.deleteVertexArray(held.array());
-        device.deleteBuffer(held.buffer());
+        Group group = captured.get(block).group();
         captured.set(block, null);
         freeCaptures.add(block);
+        if (--group.live == 0 && group.array != GraphicsDevice.NO_VERTEX_ARRAY) {
+            device.deleteVertexArray(group.array);
+            device.deleteBuffer(group.buffer);
+        }
     }
 
     public void drawImmediate(DrawMode mode, float[] vertices, int floatCount, int vertexCount,
@@ -410,18 +509,29 @@ public final class FixedFunctionPipeline {
 
         device.bindVertexArray(immediateArray(layout));
         device.bindBuffer(BufferTarget.ARRAY, buffer);
-        stream(vertices, floatCount);
+        int first = stream(vertices, floatCount, ImmediateLayout.floats(layout));
         constants(layout, render);
-        issue(mode, 0, drawable);
+        issue(mode, first, drawable);
         device.bindVertexArray(GraphicsDevice.NO_VERTEX_ARRAY);
     }
 
-    private void stream(float[] vertices, int floatCount) {
-        if (floatCount > bufferFloats) {
-            bufferFloats = Math.max(floatCount, bufferFloats * 2);
+    /**
+     * writes a block after the last one rather than over it, which a draw may still be reading;
+     * a full buffer is orphaned and filled again from the start
+     *
+     * @return the vertex the block starts at, a whole number of quads in
+     */
+    private int stream(float[] vertices, int floatCount, int vertexFloats) {
+        int quad = vertexFloats * DrawMode.QUAD_VERTICES;
+        int start = (streamed + quad - 1) / quad * quad;
+        if (start + floatCount > bufferFloats) {
+            bufferFloats = Math.max(Math.max(STREAM_FLOATS, bufferFloats), floatCount * 2);
             device.bufferData(BufferTarget.ARRAY, bufferFloats * Float.BYTES, BufferUsage.STREAM);
+            start = 0;
         }
-        device.bufferSubData(BufferTarget.ARRAY, 0, vertices, floatCount);
+        device.bufferSubData(BufferTarget.ARRAY, start * Float.BYTES, vertices, floatCount);
+        streamed = start + floatCount;
+        return start / vertexFloats;
     }
 
     private void constants(int layout, RenderState render) {
@@ -491,8 +601,9 @@ public final class FixedFunctionPipeline {
             return;
         }
         begin(render, lent);
+        // quads fold first into the attribute offsets, so their indices start at zero
         bindArrays(arrays, render, first, drawable, mode.isIndexed() ? first : 0);
-        issue(mode, first, drawable);
+        issue(mode, mode.isIndexed() ? 0 : first, drawable);
     }
 
     public void drawElements(DrawMode mode, int count, IndexType indexType, int offsetInBytes,
@@ -511,12 +622,14 @@ public final class FixedFunctionPipeline {
         device.drawElements(mode.primitive(), count, indexType, offsetInBytes);
     }
 
+    /** @param first for quads, a multiple of four: the indices skip that many quads */
     private void issue(DrawMode mode, int first, int drawable) {
         if (mode.isIndexed()) {
+            int skipped = first / DrawMode.QUAD_VERTICES;
             int quads = drawable / DrawMode.QUAD_VERTICES;
-            quadIndices.bind(quads);
+            quadIndices.bind(skipped + quads);
             device.drawElements(mode.primitive(), quads * DrawMode.QUAD_INDICES,
-                    IndexType.UNSIGNED_INT, 0);
+                    IndexType.UNSIGNED_INT, skipped * DrawMode.QUAD_INDICES * Integer.BYTES);
         } else {
             device.drawArrays(mode.primitive(), first, drawable);
         }
@@ -525,14 +638,15 @@ public final class FixedFunctionPipeline {
     private void begin(RenderState render, int lent) {
         if (lent != GraphicsDevice.NO_PROGRAM) {
             // the application owns a lent program and can link it again at any time
-            plain.forget();
-            if (combining != null) {
-                combining.forget();
+            for (Uniforms variant : variants) {
+                if (variant != null) {
+                    variant.forget();
+                }
             }
             beginLent(render, lent);
             return;
         }
-        at = combines(render) ? combining() : plain;
+        at = variant(features(render));
         device.useProgram(at.program);
         // gl keeps uniforms per program, so they still stand from the last draw through this one
         boolean matrix = moved(render, Revision.MATRIX);
@@ -543,6 +657,7 @@ public final class FixedFunctionPipeline {
         boolean fog = moved(render, Revision.FOG);
         boolean textureMatrix = moved(render, Revision.TEXTURE_MATRIX);
         boolean environment = moved(render, Revision.ENVIRONMENT);
+        boolean generation = moved(render, Revision.GENERATION);
         keep(render);
         if (matrix) {
             device.uniformMatrix4(at.modelViewUniform, render.modelView());
@@ -569,6 +684,14 @@ public final class FixedFunctionPipeline {
                     TextureEnvironment.CODES / 4 * VertexArrays.UNITS);
             device.uniformFloats(at.textureEnvColorUniform, 4, held.colors(), VertexArrays.UNITS);
             device.uniformFloats(at.combineScaleUniform, 2, held.scales(), VertexArrays.UNITS);
+        }
+        if (generation) {
+            TextureGeneration held = render.textureGeneration();
+            device.uniformInts(at.texGenUniform, 4, held.codes(), VertexArrays.UNITS);
+            device.uniformFloats(at.objectPlaneUniform, 4, held.objectPlanes(),
+                    VertexArrays.UNITS * TextureGeneration.COORDINATES);
+            device.uniformFloats(at.eyePlaneUniform, 4, held.eyePlanes(),
+                    VertexArrays.UNITS * TextureGeneration.COORDINATES);
         }
         if (alpha) {
             device.uniform1i(at.alphaTestEnabledUniform, render.isAlphaTestEnabled() ? 1 : 0);
@@ -603,14 +726,32 @@ public final class FixedFunctionPipeline {
         return false;
     }
 
-    // the combine path slows every fragment it is compiled into, so it is a second build that a
-    // draw takes only when one of its units combines
-    private Uniforms combining() {
-        if (combining == null) {
-            combining = new Uniforms(device,
-                    device.createProgram(VERTEX_SHADER, COMBINING_FRAGMENT_SHADER));
+    private static int features(RenderState render) {
+        int features = (combines(render) ? COMBINE : 0)
+                | (render.textureGeneration().generates() ? GENERATE : 0)
+                | (render.lighting().isEnabled() ? LIGHTING : 0)
+                | (render.lighting().isFogEnabled() ? FOG : 0);
+        for (int unit = 1; unit < VertexArrays.UNITS; unit++) {
+            if (render.isTextureEnabled(unit)) {
+                features |= MULTITEXTURE;
+            }
         }
-        return combining;
+        return features;
+    }
+
+    private Uniforms variant(int features) {
+        if (variants[features] == null) {
+            StringBuilder defines = new StringBuilder("#version 300 es\n");
+            for (int bit = 0; bit < DEFINES.length; bit++) {
+                if ((features & 1 << bit) != 0) {
+                    defines.append("#define ").append(DEFINES[bit]).append('\n');
+                }
+            }
+            variants[features] = new Uniforms(device, device.createProgram(
+                    VERTEX_SHADER.replace("#version 300 es\n", defines.toString()),
+                    FRAGMENT_SHADER.replace("#version 300 es\n", defines.toString())));
+        }
+        return variants[features];
     }
 
     private float[] textureMatrices(RenderState render) {
@@ -763,7 +904,6 @@ public final class FixedFunctionPipeline {
 
     private void light(RenderState render) {
         Lighting lighting = render.lighting();
-        device.uniform1i(at.lightingEnabledUniform, lighting.isEnabled() ? 1 : 0);
         device.uniform1i(at.flatShadingUniform, lighting.isFlatShading() ? 1 : 0);
         if (!lighting.isEnabled()) {
             return;
@@ -787,7 +927,6 @@ public final class FixedFunctionPipeline {
     }
 
     private void fog(Lighting lighting) {
-        device.uniform1i(at.fogEnabledUniform, lighting.isFogEnabled() ? 1 : 0);
         if (!lighting.isFogEnabled()) {
             return;
         }
@@ -804,19 +943,32 @@ public final class FixedFunctionPipeline {
 
     private void bindArrays(VertexArrays arrays, RenderState render, int first, int count,
                             int base) {
-        bindSlot(VertexArrays.POSITION, arrays.position(), first, count, base,
+        staging.begin();
+        need(arrays.position(), first, count);
+        need(arrays.color(), first, count);
+        for (int unit = 0; unit < VertexArrays.UNITS; unit++) {
+            need(arrays.texCoord(unit), first, count);
+        }
+        need(arrays.normal(), first, count);
+        bindSlot(VertexArrays.POSITION, arrays.position(), base,
                 0.0f, 0.0f, 0.0f, 1.0f);
-        bindSlot(VertexArrays.COLOR, arrays.color(), first, count, base,
+        bindSlot(VertexArrays.COLOR, arrays.color(), base,
                 render.red(), render.green(), render.blue(), render.alpha());
         for (int unit = 0; unit < VertexArrays.UNITS; unit++) {
-            bindSlot(VertexArrays.TEX_COORD + unit, arrays.texCoord(unit), first, count, base,
+            bindSlot(VertexArrays.TEX_COORD + unit, arrays.texCoord(unit), base,
                     render.s(unit), render.t(unit), 0.0f, 1.0f);
         }
-        bindSlot(VertexArrays.NORMAL, arrays.normal(), first, count, base,
+        bindSlot(VertexArrays.NORMAL, arrays.normal(), base,
                 render.normalX(), render.normalY(), render.normalZ(), 0.0f);
     }
 
-    private void bindSlot(int slot, ClientArray array, int first, int count, int base,
+    private void need(ClientArray array, int first, int count) {
+        if (array.isEnabled() && array.isBound()) {
+            staging.need(array, first, count);
+        }
+    }
+
+    private void bindSlot(int slot, ClientArray array, int base,
                           float x, float y, float z, float w) {
         if (!array.isEnabled() || !array.isBound()) {
             device.disableAttribute(slot);
@@ -824,7 +976,7 @@ public final class FixedFunctionPipeline {
             return;
         }
         device.enableAttribute(slot);
-        staging.bind(slot, array, first, count, base);
+        staging.bind(slot, array, base);
     }
 
     public void dispose() {
@@ -840,9 +992,10 @@ public final class FixedFunctionPipeline {
             }
         }
         device.deleteBuffer(buffer);
-        device.deleteProgram(plain.program);
-        if (combining != null) {
-            device.deleteProgram(combining.program);
+        for (Uniforms variant : variants) {
+            if (variant != null) {
+                device.deleteProgram(variant.program);
+            }
         }
     }
 
@@ -859,12 +1012,14 @@ public final class FixedFunctionPipeline {
         private final int combineUniform;
         private final int textureEnvColorUniform;
         private final int combineScaleUniform;
+        private final int texGenUniform;
+        private final int objectPlaneUniform;
+        private final int eyePlaneUniform;
         private final int alphaTestEnabledUniform;
         private final int alphaTestThresholdUniform;
         private final int flatShadingUniform;
 
         private final int normalMatrixUniform;
-        private final int lightingEnabledUniform;
         private final int lightEnabledUniform;
         private final int lightPositionUniform;
         private final int lightAmbientUniform;
@@ -878,7 +1033,6 @@ public final class FixedFunctionPipeline {
         private final int materialEmissionUniform;
         private final int shininessUniform;
         private final int colorMaterialUniform;
-        private final int fogEnabledUniform;
         private final int fogModeUniform;
         private final int fogColorUniform;
         private final int fogDensityUniform;
@@ -901,12 +1055,14 @@ public final class FixedFunctionPipeline {
             combineUniform = device.uniformLocation(program, "u_combine[0]");
             textureEnvColorUniform = device.uniformLocation(program, "u_textureEnvColor[0]");
             combineScaleUniform = device.uniformLocation(program, "u_combineScale[0]");
+            texGenUniform = device.uniformLocation(program, "u_texGen[0]");
+            objectPlaneUniform = device.uniformLocation(program, "u_objectPlane[0]");
+            eyePlaneUniform = device.uniformLocation(program, "u_eyePlane[0]");
             alphaTestEnabledUniform = device.uniformLocation(program, "u_alphaTestEnabled");
             alphaTestThresholdUniform = device.uniformLocation(program, "u_alphaTestThreshold");
             flatShadingUniform = device.uniformLocation(program, "u_flatShading");
 
             normalMatrixUniform = device.uniformLocation(program, "u_normalMatrix");
-            lightingEnabledUniform = device.uniformLocation(program, "u_lightingEnabled");
             lightEnabledUniform = device.uniformLocation(program, "u_lightEnabled[0]");
             lightPositionUniform = device.uniformLocation(program, "u_lightPosition[0]");
             lightAmbientUniform = device.uniformLocation(program, "u_lightAmbient[0]");
@@ -920,7 +1076,6 @@ public final class FixedFunctionPipeline {
             materialEmissionUniform = device.uniformLocation(program, "u_materialEmission");
             shininessUniform = device.uniformLocation(program, "u_shininess");
             colorMaterialUniform = device.uniformLocation(program, "u_colorMaterial");
-            fogEnabledUniform = device.uniformLocation(program, "u_fogEnabled");
             fogModeUniform = device.uniformLocation(program, "u_fogMode");
             fogColorUniform = device.uniformLocation(program, "u_fogColor");
             fogDensityUniform = device.uniformLocation(program, "u_fogDensity");

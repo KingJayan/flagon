@@ -4,6 +4,7 @@ import dev.flagon.lwjgl.internal.ClientArray;
 import dev.flagon.lwjgl.internal.Lighting;
 import dev.flagon.lwjgl.internal.Ops;
 import dev.flagon.lwjgl.internal.TextureEnvironment;
+import dev.flagon.lwjgl.internal.TextureGeneration;
 import dev.flagon.lwjgl.internal.VertexArrays;
 import dev.flagon.platform.graphics.AttributeType;
 import dev.flagon.platform.graphics.CompareFunc;
@@ -593,16 +594,58 @@ public final class GL11 extends GL11C {
         };
     }
     /**
-     * coordinate generation has no shader behind it: every texture coordinate here comes from the
-     * coordinate array or glTexCoord.
+     * the vertex shader makes a generated coordinate from the position: object linear, eye linear
+     * or sphere map. gl 1.3's normal and reflection maps are not emulated.
      */
     public static void glTexGeni(int coordinate, int name, int value) {
-        throw new UnsupportedOperationException(
-                "glTexGeni is not emulated: webgl generates no texture coordinates, so the "
-                        + "coordinate array or glTexCoord has to carry them");
+        int at = texGenCoordinate(coordinate);
+        if (name != GL_TEXTURE_GEN_MODE) {
+            throw new IllegalArgumentException(
+                    "glTexGeni sets GL_TEXTURE_GEN_MODE, got 0x" + Integer.toHexString(name));
+        }
+        int mode = switch (value) {
+            case GL_OBJECT_LINEAR -> TextureGeneration.OBJECT_LINEAR;
+            case GL_EYE_LINEAR -> TextureGeneration.EYE_LINEAR;
+            case GL_SPHERE_MAP -> TextureGeneration.SPHERE_MAP;
+            default -> throw new UnsupportedOperationException(
+                    "glTexGen does not emulate mode 0x" + Integer.toHexString(value));
+        };
+        if (recording() && state().record(Ops.TEXTURE_GEN_MODE, at, mode)) {
+            return;
+        }
+        state().setTextureGenMode(at, mode);
+    }
+    public static void glTexGenf(int coordinate, int name, float value) {
+        glTexGeni(coordinate, name, (int) value);
     }
     public static void glTexGen(int coordinate, int name, FloatBuffer values) {
-        glTexGeni(coordinate, name, 0);
+        if (name == GL_TEXTURE_GEN_MODE) {
+            glTexGenf(coordinate, name, values.get(values.position()));
+            return;
+        }
+        if (name != GL_OBJECT_PLANE && name != GL_EYE_PLANE) {
+            throw new IllegalArgumentException(
+                    "glTexGen takes a mode or a plane, got 0x" + Integer.toHexString(name));
+        }
+        int at = texGenCoordinate(coordinate);
+        int from = values.position();
+        float a = values.get(from);
+        float b = values.get(from + 1);
+        float c = values.get(from + 2);
+        float d = values.get(from + 3);
+        boolean eye = name == GL_EYE_PLANE;
+        if (recording() && state().record(Ops.TEXTURE_GEN_PLANE, at, eye ? 1 : 0, a, b, c, d)) {
+            return;
+        }
+        state().setTextureGenPlane(at, eye, a, b, c, d);
+    }
+    private static int texGenCoordinate(int coordinate) {
+        if (coordinate < GL_S || coordinate > GL_Q) {
+            throw new IllegalArgumentException(
+                    "glTexGen takes GL_S, GL_T, GL_R or GL_Q, got 0x"
+                            + Integer.toHexString(coordinate));
+        }
+        return coordinate - GL_S;
     }
     /**
      * webgl has no logic op stage and blending cannot stand in for one, so every operation draws as

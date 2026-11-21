@@ -132,6 +132,7 @@ public final class GLState implements RenderState {
     private final Revision revision = new Revision();
     private final Lighting lighting = new Lighting(revision);
     private final TextureEnvironment environment = new TextureEnvironment(revision);
+    private final TextureGeneration generation = new TextureGeneration(revision);
     private boolean colorLogicOp;
     private boolean polygonOffsetLine;
     private boolean polygonOffsetPoint;
@@ -143,6 +144,7 @@ public final class GLState implements RenderState {
         this.device = device;
         this.pipeline = new FixedFunctionPipeline(device);
         this.displayLists.onRelease(pipeline::release);
+        this.displayLists.onEnd(pipeline::seal);
         this.attributes = new GenericArrays(device.maxAttributes());
         this.shaders = new ShaderPipeline(device, device.maxAttributes());
         this.viewportWidth = device.width();
@@ -702,6 +704,37 @@ public final class GLState implements RenderState {
         return environment;
     }
 
+    public void setTextureGenerated(int coordinate, boolean enabled) {
+        generation.setEnabled(activeTexture, coordinate, enabled);
+    }
+
+    public void setTextureGenMode(int coordinate, int mode) {
+        generation.setMode(activeTexture, coordinate, mode);
+    }
+
+    /** gl keeps an eye plane in eye space, so it goes through the modelview's inverse now */
+    public void setTextureGenPlane(int coordinate, boolean eye, float a, float b, float c,
+                                   float d) {
+        float[] inverse = eye ? Matrix4.invert(modelView()) : null;
+        if (inverse == null) {
+            generation.setPlane(activeTexture, coordinate, eye, a, b, c, d);
+            return;
+        }
+        float[] plane = new float[4];
+        for (int column = 0; column < 4; column++) {
+            int from = column * 4;
+            plane[column] = a * inverse[from] + b * inverse[from + 1] + c * inverse[from + 2]
+                    + d * inverse[from + 3];
+        }
+        generation.setPlane(activeTexture, coordinate, true, plane[0], plane[1], plane[2],
+                plane[3]);
+    }
+
+    @Override
+    public TextureGeneration textureGeneration() {
+        return generation;
+    }
+
     /**
      * capabilities webgl has no stage for: the logic op draws as copy, and polygons only ever
      * fill, so a line or point offset has nothing to move. glIsEnabled still answers for them.
@@ -1219,6 +1252,9 @@ public final class GLState implements RenderState {
             case Ops.TEXTURE_ENV_COLOR -> setTextureEnvColor(values[from], values[from + 1],
                     values[from + 2], values[from + 3]);
             case Ops.TEXTURE_SCALE -> setTextureScale(codes[at] != 0, values[from]);
+            case Ops.TEXTURE_GEN_MODE -> setTextureGenMode(codes[at], codes[at + 1]);
+            case Ops.TEXTURE_GEN_PLANE -> setTextureGenPlane(codes[at], codes[at + 1] != 0,
+                    values[from], values[from + 1], values[from + 2], values[from + 3]);
             case Ops.MODEL_AMBIENT -> lighting.setModelAmbient(four(values, from));
             case Ops.SHININESS -> lighting.setShininess(values[from]);
             case Ops.SHADE_MODEL -> lighting.setFlatShading(codes[at] != 0);
@@ -1315,6 +1351,8 @@ public final class GLState implements RenderState {
             case 0x0B44 -> cullFaceEnabled;
             case 0x0C11 -> scissorTest;
             case 0x0DE1 -> textureEnabled[activeTexture];
+            case 0x0C60, 0x0C61, 0x0C62, 0x0C63 ->
+                    generation.isEnabled(activeTexture, capability - 0x0C60);
             case 0x0BC0 -> alphaTestEnabled;
             case 0x0B50 -> lighting.isEnabled();
             case 0x0B57 -> lighting.isColorMaterial();

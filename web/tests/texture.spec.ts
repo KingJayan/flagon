@@ -62,6 +62,13 @@ for (const backend of BACKENDS) {
       expectColor(await readPixel(page, 900, 110), [128, 0, 128], 'unit 1 combining unit 0');
     });
 
+    test('generates texture coordinates from eye and object planes', async ({ page }) => {
+      await runDemo(page, backend);
+
+      expectColor(await readPixel(page, 100, 18), [255, 0, 0], 'the left of the strip');
+      expectColor(await readPixel(page, 300, 18), [0, 255, 0], 'the right of the strip');
+    });
+
     test('widens a texture uploaded in a narrower format', async ({ page }) => {
       await runDemo(page, backend);
 
