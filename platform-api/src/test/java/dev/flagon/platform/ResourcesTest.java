@@ -145,6 +145,43 @@ class ResourcesTest {
         assertEquals("notes", new String(opened.readAllBytes(), StandardCharsets.UTF_8));
     }
 
+    @Test
+    void knowsTheFilesShippedBesideTheJarsAndTheirFolders() throws IOException {
+        ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+        DataOutputStream out = new DataOutputStream(bytes);
+        out.write("FLGNPK04".getBytes(StandardCharsets.US_ASCII));
+        out.writeInt(3);
+        entry(out, "assets/indexes/1.8.json", 2, "{}");
+        entry(out, "assets/objects/ab/abcd", 2, "pack");
+        entry(out, "inside/jar.txt", 0, "jar");
+        out.flush();
+
+        Resources.install(bytes.toByteArray());
+
+        assertTrue(Resources.isShippedFile("/assets/objects/ab/abcd"));
+        assertFalse(Resources.isShippedFile("inside/jar.txt"));
+        assertFalse(Resources.isShippedFile("/assets/objects"));
+        assertTrue(Resources.isShippedFolder("/assets/objects"));
+        assertTrue(Resources.isShippedFolder("/"));
+        assertFalse(Resources.isShippedFolder("/inside"));
+        assertArrayEquals(new String[] {"indexes", "objects"}, Resources.listShipped("/assets"));
+        assertArrayEquals(new String[] {"assets"}, Resources.listShipped("/"));
+        assertArrayEquals(new String[0], Resources.listShipped("/nowhere"));
+        assertEquals("pack", new String(Resources.read("assets/objects/ab/abcd"),
+                StandardCharsets.UTF_8));
+    }
+
+    private static void entry(DataOutputStream out, String name, int place, String content)
+            throws IOException {
+        byte[] label = name.getBytes(StandardCharsets.UTF_8);
+        byte[] bytes = content.getBytes(StandardCharsets.UTF_8);
+        out.writeInt(label.length);
+        out.write(label);
+        out.writeInt(bytes.length);
+        out.writeByte(place);
+        out.write(bytes);
+    }
+
     private static byte[] apartPack(String name, int length, String hash) throws IOException {
         ByteArrayOutputStream bytes = new ByteArrayOutputStream();
         DataOutputStream out = new DataOutputStream(bytes);

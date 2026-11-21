@@ -39,10 +39,14 @@ public final class Resources {
 
     private static final int INSIDE = 0;
     private static final int APART = 1;
+    private static final int SHIPPED = 2;
     private static final int HASH = 32;
 
-    /** where one resource sits: at an offset in the pack, or apart under a hash */
-    private record At(int offset, int length, String apart) {
+    /**
+     * where one resource sits: at an offset in the pack, or apart under a hash. a shipped one sat
+     * beside the program's jars, so it is a file too
+     */
+    private record At(int offset, int length, String apart, boolean shipped) {
     }
 
     private static final Source EMPTY = of(new byte[0]);
@@ -51,6 +55,7 @@ public final class Resources {
     private static Source pack = EMPTY;
     private static Fetcher fetcher = NOWHERE;
     private static Map<String, At> index = Map.of();
+    private static Map<String, Set<String>> shippedFolders = Map.of();
 
     private Resources() {
     }
@@ -79,6 +84,7 @@ public final class Resources {
         pack = EMPTY;
         fetcher = NOWHERE;
         index = Map.of();
+        shippedFolders = Map.of();
     }
 
     public static void install(byte[] bytes) {
@@ -98,6 +104,44 @@ public final class Resources {
         pack = source;
         fetcher = apart;
         index = read;
+        shippedFolders = foldersOf(read);
+    }
+
+    /** each folder that holds a shipped file, down from the root "", with what it holds */
+    private static Map<String, Set<String>> foldersOf(Map<String, At> read) {
+        Map<String, Set<String>> folders = new LinkedHashMap<>();
+        for (Map.Entry<String, At> entry : read.entrySet()) {
+            if (!entry.getValue().shipped()) {
+                continue;
+            }
+            String path = entry.getKey();
+            for (int slash = path.lastIndexOf('/'); ; slash = path.lastIndexOf('/')) {
+                String folder = slash < 0 ? "" : path.substring(0, slash);
+                Set<String> held = folders.computeIfAbsent(folder,
+                        ignored -> new LinkedHashSet<>());
+                if (!held.add(path.substring(slash + 1)) || slash < 0) {
+                    break;
+                }
+                path = folder;
+            }
+        }
+        return folders;
+    }
+
+    /** whether the program shipped a file at this path beside its jars */
+    public static boolean isShippedFile(String path) {
+        At at = index.get(clean(path));
+        return at != null && at.shipped();
+    }
+
+    public static boolean isShippedFolder(String path) {
+        return shippedFolders.containsKey(clean(path));
+    }
+
+    /** the names in a shipped folder, or an empty array when it is none */
+    public static String[] listShipped(String path) {
+        Set<String> held = shippedFolders.get(clean(path));
+        return held == null ? new String[0] : held.toArray(new String[0]);
     }
 
     /** the hashes of the resources kept beside the pack */
@@ -204,18 +248,20 @@ public final class Resources {
             String name = new String(cursor.readBytes(cursor.readInt()), StandardCharsets.UTF_8);
             int length = cursor.readInt();
             int place = cursor.readByte();
+            boolean shipped = (place & SHIPPED) != 0;
+            place &= ~SHIPPED;
             if (length < 0 || place != INSIDE && place != APART) {
                 throw new IllegalArgumentException("the pack mislabels " + name);
             }
             if (place == APART) {
-                read.put(name, new At(0, length, hex(cursor.readBytes(HASH))));
+                read.put(name, new At(0, length, hex(cursor.readBytes(HASH)), shipped));
                 continue;
             }
             int offset = cursor.at();
             if (offset + length > source.length()) {
                 throw new IllegalArgumentException("the pack ends inside " + name);
             }
-            read.put(name, new At(offset, length, null));
+            read.put(name, new At(offset, length, null, shipped));
             cursor.skip(length);
         }
         return read;

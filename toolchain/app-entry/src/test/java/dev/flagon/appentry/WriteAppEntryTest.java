@@ -44,6 +44,17 @@ class WriteAppEntryTest {
     }
 
     @Test
+    void pointsMinecraftAtTheAssetIndexBesideItsJars() throws Exception {
+        Path built = jar("net.minecraft.client.main.Main", "net.minecraft.client.main.Main");
+        Files.move(built, built.resolveSibling("1.8.9.jar"));
+        Files.createDirectories(directory.resolve("assets/indexes"));
+        Files.writeString(directory.resolve("assets/indexes/1.8.json"), "{}");
+
+        assertTrue(entryFor(directory).contains("\"--version\", \"1.8.9\", \"--assetIndex\", "
+                + "\"1.8\"}"));
+    }
+
+    @Test
     void findsTheRealMainWhenTheManifestNamesAClassTheJarLacks() throws Exception {
         Path jar = jar("real.deep.Entry", "real.Entry");
 

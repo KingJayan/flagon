@@ -52,6 +52,8 @@ val writeAppEntry = tasks.register<JavaExec>("writeAppEntry") {
     mainClass.set("dev.flagon.appentry.WriteAppEntry")
     inputs.files(vendorDir.asFileTree.matching { include("*.jar") }).withPropertyName("vendor")
         .withPathSensitivity(PathSensitivity.NAME_ONLY)
+    inputs.files(vendorDir.asFileTree.matching { include("assets/indexes/*.json") })
+        .withPropertyName("assetIndexes").withPathSensitivity(PathSensitivity.NAME_ONLY)
     outputs.dir(generatedSources)
     outputs.dir(generatedResources)
     outputs.cacheIf { true }

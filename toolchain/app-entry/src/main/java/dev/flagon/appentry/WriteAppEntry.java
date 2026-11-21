@@ -60,7 +60,7 @@ public final class WriteAppEntry {
         List<String> mains = runnableIn(jars);
         List<String> named = namedByResources(jars);
         Files.writeString(into.resolve("AppEntry.java"),
-                source(mains, named, launcherArguments(jars)));
+                source(mains, named, launcherArguments(jars, given)));
         if (!named.isEmpty()) {
             System.out.println("loading " + named.size()
                     + " classes that only a resource names: " + named);
@@ -282,17 +282,40 @@ public final class WriteAppEntry {
 
     private static final Pattern VERSION = Pattern.compile("\\d+(?:\\.\\d+)+");
 
-    /** what a game's launcher passes; the main exits without it */
-    static Map<String, List<String>> launcherArguments(OpenJars jars) {
+    /**
+     * what a game's launcher passes; the main exits without it. minecraft finds its assets, the
+     * language list among them, through the index {@code make minecraft} puts beside the jars
+     */
+    static Map<String, List<String>> launcherArguments(OpenJars jars, Path vendor)
+            throws IOException {
         Map<String, List<String>> given = new HashMap<>();
         for (OpenJars.Opened opened : jars.all()) {
             if (opened.jar().getEntry(MINECRAFT.replace('.', '/') + ".class") != null) {
                 String name = opened.path().getFileName().toString().replaceFirst("\\.jar$", "");
                 String version = VERSION.matcher(name).matches() ? name : "unknown";
-                given.put(MINECRAFT, List.of("--accessToken", "0", "--version", version));
+                List<String> arguments = new ArrayList<>(List.of("--accessToken", "0",
+                        "--version", version));
+                String index = assetIndexIn(vendor);
+                if (index != null) {
+                    arguments.addAll(List.of("--assetIndex", index));
+                }
+                given.put(MINECRAFT, arguments);
             }
         }
         return given;
+    }
+
+    private static String assetIndexIn(Path vendor) throws IOException {
+        Path indexes = vendor.resolve("assets/indexes");
+        if (!Files.isDirectory(indexes)) {
+            return null;
+        }
+        try (var listing = Files.list(indexes)) {
+            return listing.map(index -> index.getFileName().toString())
+                    .filter(index -> index.endsWith(".json")).sorted()
+                    .map(index -> index.substring(0, index.length() - ".json".length()))
+                    .findFirst().orElse(null);
+        }
     }
 
     private static List<Path> jarsIn(Path given) throws IOException {

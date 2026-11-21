@@ -1,13 +1,17 @@
 package dev.flagon.platform.browser.fs;
 
+import dev.flagon.platform.Resources;
 import dev.flagon.platform.fs.FileStore;
 import dev.flagon.platform.fs.MemoryFileStore;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.teavm.runtime.fs.VirtualFile;
 import org.teavm.runtime.fs.VirtualFileAccessor;
 import org.teavm.runtime.fs.VirtualFileSystem;
 
+import java.io.ByteArrayOutputStream;
+import java.io.DataOutputStream;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Proxy;
@@ -50,6 +54,82 @@ class StoreFileSystemTest {
         int read = accessor.read(into, 0, into.length);
         accessor.close();
         return new String(into, 0, Math.max(read, 0), StandardCharsets.UTF_8);
+    }
+
+    @AfterEach
+    void forgetThePack() {
+        Resources.clear();
+    }
+
+    /** a pack whose files all sit beside the jars; null content is a file kept apart */
+    private static void ship(String... namesAndContents) throws IOException {
+        ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+        DataOutputStream out = new DataOutputStream(bytes);
+        out.write("FLGNPK04".getBytes(StandardCharsets.US_ASCII));
+        out.writeInt(namesAndContents.length / 2);
+        for (int at = 0; at < namesAndContents.length; at += 2) {
+            byte[] label = bytes(namesAndContents[at]);
+            out.writeInt(label.length);
+            out.write(label);
+            String content = namesAndContents[at + 1];
+            if (content == null) {
+                out.writeInt(4);
+                out.writeByte(1 | 2);
+                out.write(new byte[32]);
+            } else {
+                out.writeInt(bytes(content).length);
+                out.writeByte(2);
+                out.write(bytes(content));
+            }
+        }
+        out.flush();
+        Resources.install(bytes.toByteArray());
+    }
+
+    @Test
+    void aFileShippedBesideTheJarsReadsAsAFile() throws IOException {
+        ship("assets/indexes/1.8.json", "{}", "assets/objects/ab/abcd", "pack");
+
+        assertTrue(fs.getFile("/assets").isDirectory());
+        assertTrue(fs.getFile("/assets/objects/ab/abcd").isFile());
+        assertEquals(4, fs.getFile("/assets/objects/ab/abcd").length());
+        assertArrayEquals(new String[] {"indexes", "objects"}, fs.getFile("/assets").listFiles());
+        assertEquals("pack", read("/assets/objects/ab/abcd"));
+        assertNull(fs.getFile("/assets/objects/ab/abcd").createAccessor(true, true, false));
+        assertFalse(fs.getFile("/assets/objects/ab/abcd").delete());
+    }
+
+    @Test
+    void aShippedFolderTakesNewFilesBesideWhatShipped() throws IOException {
+        ship("assets/indexes/1.8.json", "{}");
+
+        assertTrue(fs.getFile("/assets").createDirectory("skins"));
+        assertTrue(fs.getFile("/assets/skins").isDirectory());
+        assertArrayEquals(new String[] {"indexes", "skins"}, fs.getFile("/assets").listFiles());
+        assertFalse(fs.getFile("/assets").createDirectory("indexes"));
+        assertNotNull(fs.getFile("/assets/indexes/new.json").createAccessor(false, true, false));
+        assertTrue(store.isFile("/assets/indexes/new.json"));
+    }
+
+    /** a read of a shipped file never asks the store, which may suspend */
+    @Test
+    void aShippedFileIsFoundWithoutTheStore() throws IOException {
+        ship("options.txt", "shipped");
+        store.write("/options.txt", bytes("saved"));
+
+        assertEquals("shipped", read("/options.txt"));
+    }
+
+    @Test
+    void aShippedFileThatLoadsLaterOpensNowAndReadsOnceItIsIn() throws IOException {
+        ship("assets/music.ogg", null);
+
+        VirtualFileAccessor opened = fs.getFile("/assets/music.ogg").createAccessor(true, false,
+                false);
+
+        assertNotNull(opened);
+        assertEquals(4, opened.size());
+        assertThrows(IOException.class, () -> opened.read(new byte[4], 0, 4));
     }
 
     @Test
