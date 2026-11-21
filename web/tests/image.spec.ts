@@ -27,6 +27,12 @@ for (const backend of BACKENDS) {
       await expect(log).toContainText('image: a scaled copy carries the corner 0xFF3366CC');
       await expect(log).toContainText('image: greyscale reads 4x2 first 0xFF0A0A0A last 0xFF505050');
       await expect(log).toContainText('image: palette reads 4x2 first 0xFFFF0000 last 0xFF00FF00');
+      await expect(log).toContainText(
+        'image: 1-bit palette reads 4x2 first 0xFFFFFFFF last 0xFF000000',
+      );
+      await expect(log).toContainText(
+        'image: 4-bit greyscale reads 4x2 first 0xFFFFFFFF last 0xFF888888',
+      );
       await expect(log).toContainText('image: the clipboard hands back copied in the page');
     });
   });
