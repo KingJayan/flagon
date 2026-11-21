@@ -1,40 +1,41 @@
 /* pewter from the flagon, flame orange from its steam */
 :root {
-  --paper: #e9e7e3;
-  --paper-panel: #f6f5f2;
-  --paper-sunk: #dfdcd6;
-  --paper-ink: #24252b;
-  --paper-muted: #66645e;
-  --paper-line: #cfcbc4;
+  --paper: #f4f5f7;
+  --paper-panel: #ffffff;
+  --paper-sunk: #f0f2f4;
+  --paper-ink: #16191d;
+  --paper-muted: #5c6670;
+  --paper-line: #e1e4e8;
   --paper-accent: #b5490f;
   --paper-ok: #2f7a3f;
   --paper-bad: #b3261e;
-  --paper-glass: rgb(246 245 242 / 0.72);
-  --paper-edge: rgb(255 255 255 / 0.85);
-  --paper-umbra: rgb(36 37 43 / 0.16);
+  --paper-umbra: rgb(16 24 40 / 0.08);
+  --paper-on-accent: #ffffff;
 
-  --night: #1a1b1f;
-  --night-panel: #24262b;
-  --night-sunk: #151619;
-  --night-ink: #e9e7e3;
-  --night-muted: #9b988f;
-  --night-line: #34363c;
+  --night: #0b0e12;
+  --night-panel: #12161c;
+  --night-sunk: #0d1015;
+  --night-ink: #e8edf4;
+  --night-muted: #8b95a3;
+  --night-line: #242a33;
   --night-accent: #f08a3c;
   --night-ok: #7cc48b;
   --night-bad: #f2857c;
-  --night-glass: rgb(36 38 43 / 0.72);
-  --night-edge: rgb(255 255 255 / 0.07);
-  --night-umbra: rgb(0 0 0 / 0.5);
+  --night-umbra: rgb(0 0 0 / 0.4);
+  --night-on-accent: #16191d;
 
+  /* the top bar stays dark in both themes */
+  --bar: #111719;
+  --bar-ink: #f4f7f8;
+  --bar-muted: #9aa4ab;
   --stage: #000000;
 
-  --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
-  --serif: "Iowan Old Style", Georgia, "Times New Roman", serif;
-  --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --mono: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace;
+  --sans: 'Inter Variable', Inter, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   --small: 0.75rem;
   --detail: 0.875rem;
   --body: 1rem;
-  --title: 1.375rem;
+  --title: 1.125rem;
 
   color-scheme: light dark;
   --bg: var(--paper);
@@ -46,14 +47,13 @@
   --accent: var(--paper-accent);
   --ok: var(--paper-ok);
   --bad: var(--paper-bad);
-  --glass: var(--paper-glass);
-  --edge: var(--paper-edge);
   --umbra: var(--paper-umbra);
+  --on-accent: var(--paper-on-accent);
 
-  /* three heights: pressed into the page, resting on it, and lifted off it */
-  --pressed: inset 0 1px 2px var(--umbra), inset 0 0 0 1px var(--line);
-  --resting: inset 0 1px 0 var(--edge), 0 1px 2px var(--umbra);
-  --lifted: inset 0 1px 0 var(--edge), 0 2px 4px var(--umbra), 0 18px 40px -12px var(--umbra);
+  /* a card sits on the page, a key stands off it, and the display stands furthest */
+  --card: 0 1px 2px var(--umbra);
+  --key: 0 1px 0 var(--umbra), inset 0 -1px 0 var(--umbra);
+  --stand: 0 1px 2px var(--umbra), 0 12px 32px -12px var(--umbra);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -68,9 +68,9 @@
     --accent: var(--night-accent);
     --ok: var(--night-ok);
     --bad: var(--night-bad);
-    --glass: var(--night-glass);
-    --edge: var(--night-edge);
     --umbra: var(--night-umbra);
+    --on-accent: var(--night-on-accent);
+    --bar: var(--night);
   }
 }
 
@@ -85,7 +85,7 @@
   --accent: var(--night-accent);
   --ok: var(--night-ok);
   --bad: var(--night-bad);
-  --glass: var(--night-glass);
-  --edge: var(--night-edge);
   --umbra: var(--night-umbra);
+  --on-accent: var(--night-on-accent);
+  --bar: var(--night);
 }

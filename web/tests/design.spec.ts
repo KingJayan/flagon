@@ -76,7 +76,7 @@ test.describe('the shell as a designed page', () => {
 });
 
 test.describe('one design language across both pages', () => {
-  const SHARED = ['--ink', '--muted', '--accent', '--bad', '--ok', '--line', '--serif', '--mono'];
+  const SHARED = ['--ink', '--muted', '--accent', '--bad', '--ok', '--line', '--sans', '--mono'];
 
   async function tokensOf(page: import('@playwright/test').Page, url: string) {
     await page.goto(url);
@@ -94,7 +94,7 @@ test.describe('one design language across both pages', () => {
       expect(shell[name], `the shell defines ${name}`).not.toBe('');
       expect(play[name], `/play/ defines ${name}`).not.toBe('');
     }
-    expect(play['--serif']).toBe(shell['--serif']);
+    expect(play['--sans']).toBe(shell['--sans']);
     expect(play['--mono']).toBe(shell['--mono']);
   });
 
