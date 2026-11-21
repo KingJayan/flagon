@@ -142,12 +142,13 @@ class AL10Test {
     }
 
     @Test
-    void playingASourceWithNoBufferIsAnInvalidOperation() {
+    void playingASourceWithNoBufferStopsIt() {
         int source = AL10.alGenSources();
 
         AL10.alSourcePlay(source);
 
-        assertEquals(AL10.AL_INVALID_OPERATION, AL10.alGetError());
+        assertEquals(AL10.AL_NO_ERROR, AL10.alGetError());
+        assertEquals(AL10.AL_STOPPED, AL10.alGetSourcei(source, AL10.AL_SOURCE_STATE));
     }
 
     @Test
@@ -286,13 +287,28 @@ class AL10Test {
     }
 
     @Test
-    void aQueueAndASingleBufferAreNotBothHeld() {
+    void aPlayingQueueRefusesASingleBuffer() {
         int source = AL10.alGenSources();
         AL10.alSourceQueueBuffers(source, buffer(16_000));
+        AL10.alSourcePlay(source);
 
         AL10.alSourcei(source, AL10.AL_BUFFER, buffer(16_000));
 
         assertEquals(AL10.AL_INVALID_OPERATION, AL10.alGetError());
+    }
+
+    /** paulscode sets a stopped stream's buffer to rewind it */
+    @Test
+    void aStoppedQueueGivesWayToASingleBuffer() {
+        int source = AL10.alGenSources();
+        AL10.alSourceQueueBuffers(source, buffer(16_000));
+        int single = buffer(16_000);
+
+        AL10.alSourcei(source, AL10.AL_BUFFER, single);
+
+        assertEquals(AL10.AL_NO_ERROR, AL10.alGetError());
+        assertEquals(0, AL10.alGetSourcei(source, AL10.AL_BUFFERS_QUEUED));
+        assertEquals(single, AL10.alGetSourcei(source, AL10.AL_BUFFER));
     }
 
     @Test

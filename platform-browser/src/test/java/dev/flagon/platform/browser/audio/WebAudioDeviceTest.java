@@ -124,12 +124,30 @@ class WebAudioDeviceTest {
     }
 
     @Test
-    void willNotPlayASourceWithNothingInIt() {
+    void stopsASourceWithNothingInItWhenToldToPlay() {
         int source = device.createSource();
 
-        AudioException thrown = assertThrows(AudioException.class, () -> device.play(source));
+        device.play(source);
 
-        assertTrue(thrown.getMessage().contains("no buffer"), thrown.getMessage());
+        assertEquals(SourceState.STOPPED, device.sourceState(source));
+    }
+
+    @Test
+    void givesUpAStoppedQueueForASingleBuffer() {
+        int queued = device.createBuffer();
+        int single = device.createBuffer();
+        soundIn(queued);
+        soundIn(single);
+        int source = device.createSource();
+        device.queueBuffers(source, new int[] {queued});
+        device.play(source);
+
+        assertThrows(AudioException.class, () -> device.attachBuffer(source, single));
+        device.stop(source);
+        device.attachBuffer(source, single);
+
+        assertEquals(0, device.buffersQueued(source));
+        assertEquals(single, device.attachedBuffer(source));
     }
 
     // the state machine
@@ -336,6 +354,7 @@ class WebAudioDeviceTest {
         int buffer = device.createBuffer();
         soundIn(buffer);
         device.queueBuffers(streaming, new int[]{buffer});
+        device.play(streaming);
 
         assertThrows(AudioException.class, () -> device.attachBuffer(streaming, buffer));
         assertThrows(AudioException.class,
