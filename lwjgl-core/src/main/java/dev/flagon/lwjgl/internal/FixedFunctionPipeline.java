@@ -35,6 +35,7 @@ public final class FixedFunctionPipeline {
             uniform mat4 u_projection;
             uniform mat3 u_normalMatrix;
             uniform float u_pointSize;
+            uniform mat4 u_textureMatrix[4];
 
             uniform bool u_lightingEnabled;
             uniform int u_lightEnabled[8];
@@ -50,20 +51,26 @@ public final class FixedFunctionPipeline {
             uniform vec4 u_materialSpecular;
             uniform vec4 u_materialEmission;
             uniform float u_shininess;
-            uniform bool u_colorMaterial;
+            // the materials the vertex color stands in for: ambient 1, diffuse 2, specular 4,
+            // emission 8
+            uniform int u_colorMaterial;
 
             out vec4 v_color;
             // gl es takes a flat value from the last vertex, as gl does by default
             flat out vec4 v_flatColor;
-            out vec2 v_texCoord[4];
+            out vec4 v_texCoord[4];
             out float v_eyeDistance;
 
             // gl lights per vertex, so the whole model is evaluated here rather than per fragment
             vec4 lit(vec3 eye, vec3 normal) {
-                vec4 ambientMaterial = u_colorMaterial ? in_color : u_materialAmbient;
-                vec4 diffuseMaterial = u_colorMaterial ? in_color : u_materialDiffuse;
+                vec4 ambientMaterial = (u_colorMaterial & 1) != 0 ? in_color : u_materialAmbient;
+                vec4 diffuseMaterial = (u_colorMaterial & 2) != 0 ? in_color : u_materialDiffuse;
+                vec4 specularMaterial =
+                        (u_colorMaterial & 4) != 0 ? in_color : u_materialSpecular;
+                vec4 emissionMaterial =
+                        (u_colorMaterial & 8) != 0 ? in_color : u_materialEmission;
 
-                vec3 color = u_materialEmission.rgb
+                vec3 color = emissionMaterial.rgb
                         + u_lightModelAmbient.rgb * ambientMaterial.rgb;
                 vec3 toEye = normalize(-eye);
 
@@ -95,7 +102,7 @@ public final class FixedFunctionPipeline {
                         vec3 halfway = normalize(toLight + toEye);
                         float gloss = pow(max(dot(normal, halfway), 0.0), u_shininess);
                         color += attenuation * gloss
-                                * u_lightSpecular[light].rgb * u_materialSpecular.rgb;
+                                * u_lightSpecular[light].rgb * specularMaterial.rgb;
                     }
                 }
                 // gl takes the alpha from the diffuse material alone
@@ -103,10 +110,11 @@ public final class FixedFunctionPipeline {
             }
 
             void main() {
-                v_texCoord[0] = in_texCoord0;
-                v_texCoord[1] = in_texCoord1;
-                v_texCoord[2] = in_texCoord2;
-                v_texCoord[3] = in_texCoord3;
+                // gl reads s and t, with r 0 and q 1, through each unit's texture matrix
+                v_texCoord[0] = u_textureMatrix[0] * vec4(in_texCoord0, 0.0, 1.0);
+                v_texCoord[1] = u_textureMatrix[1] * vec4(in_texCoord1, 0.0, 1.0);
+                v_texCoord[2] = u_textureMatrix[2] * vec4(in_texCoord2, 0.0, 1.0);
+                v_texCoord[3] = u_textureMatrix[3] * vec4(in_texCoord3, 0.0, 1.0);
 
                 vec4 eye = u_modelView * vec4(in_position, 1.0);
                 v_eyeDistance = length(eye.xyz);
@@ -126,7 +134,7 @@ public final class FixedFunctionPipeline {
 
             in vec4 v_color;
             flat in vec4 v_flatColor;
-            in vec2 v_texCoord[4];
+            in vec4 v_texCoord[4];
             in float v_eyeDistance;
 
             uniform sampler2D u_texture0;
@@ -135,6 +143,11 @@ public final class FixedFunctionPipeline {
             uniform sampler2D u_texture3;
             uniform bool u_textureEnabled[4];
             uniform int u_textureEnv[4];
+            // per unit: rgb function and sources, alpha function and sources, rgb operands,
+            // alpha operands
+            uniform ivec4 u_combine[16];
+            uniform vec4 u_textureEnvColor[4];
+            uniform vec2 u_combineScale[4];
             uniform bool u_alphaTestEnabled;
             uniform float u_alphaTestThreshold;
             uniform bool u_flatShading;
@@ -147,14 +160,111 @@ public final class FixedFunctionPipeline {
 
             out vec4 out_color;
 
-            vec4 combine(vec4 incoming, vec4 sampled, int mode) {
+            // the four samples, each unit's taken once; a combine source may read any of them
+            struct Samples {
+                vec4 unit[4];
+            };
+
+            #ifdef COMBINE
+            // GL_TEXTURE, GL_CONSTANT, GL_PRIMARY_COLOR, GL_PREVIOUS, then GL_TEXTURE0 onwards
+            vec4 source(int code, int unit, Samples samples, vec4 previous, vec4 primary) {
+                if (code == 0) {
+                    return samples.unit[unit];
+                }
+                if (code == 1) {
+                    return u_textureEnvColor[unit];
+                }
+                if (code == 2) {
+                    return primary;
+                }
+                if (code == 3) {
+                    return previous;
+                }
+                return samples.unit[code - 4];
+            }
+
+            vec3 operandRgb(vec4 value, int operand) {
+                if (operand == 1) {
+                    return 1.0 - value.rgb;
+                }
+                if (operand == 2) {
+                    return vec3(value.a);
+                }
+                if (operand == 3) {
+                    return vec3(1.0 - value.a);
+                }
+                return value.rgb;
+            }
+
+            float operandAlpha(vec4 value, int operand) {
+                return operand == 3 ? 1.0 - value.a : value.a;
+            }
+
+            vec4 apply(int function, vec4 a, vec4 b, vec4 c) {
+                if (function == 0) {
+                    return a;
+                }
+                if (function == 2) {
+                    return a + b;
+                }
+                if (function == 3) {
+                    return a + b - 0.5;
+                }
+                if (function == 4) {
+                    return a * c + b * (1.0 - c);
+                }
+                if (function == 5) {
+                    return a - b;
+                }
+                return a * b;
+            }
+
+            vec4 combined(int unit, Samples samples, vec4 previous, vec4 primary) {
+                ivec4 rgb = u_combine[unit * 4];
+                ivec4 alpha = u_combine[unit * 4 + 1];
+                ivec4 rgbOperand = u_combine[unit * 4 + 2];
+                ivec4 alphaOperand = u_combine[unit * 4 + 3];
+                vec4 first = source(rgb.y, unit, samples, previous, primary);
+                vec4 second = source(rgb.z, unit, samples, previous, primary);
+                vec4 third = source(rgb.w, unit, samples, previous, primary);
+                vec4 color = apply(rgb.x, vec4(operandRgb(first, rgbOperand.x), 0.0),
+                        vec4(operandRgb(second, rgbOperand.y), 0.0),
+                        vec4(operandRgb(third, rgbOperand.z), 0.0));
+                first = source(alpha.y, unit, samples, previous, primary);
+                second = source(alpha.z, unit, samples, previous, primary);
+                third = source(alpha.w, unit, samples, previous, primary);
+                vec4 opacity = apply(alpha.x, vec4(operandAlpha(first, alphaOperand.x)),
+                        vec4(operandAlpha(second, alphaOperand.y)),
+                        vec4(operandAlpha(third, alphaOperand.z)));
+                vec2 scale = u_combineScale[unit];
+                return clamp(vec4(color.rgb * scale.x, opacity.a * scale.y), 0.0, 1.0);
+            }
+            #endif
+
+            // GL_MODULATE, GL_REPLACE, GL_ADD, GL_COMBINE, GL_DECAL and GL_BLEND, the common one
+            // first
+            vec4 fold(int unit, Samples samples, vec4 previous, vec4 primary) {
+                vec4 texel = samples.unit[unit];
+                int mode = u_textureEnv[unit];
+                if (mode == 0) {
+                    return previous * texel;
+                }
                 if (mode == 1) {
-                    return sampled;
+                    return texel;
                 }
                 if (mode == 2) {
-                    return vec4(incoming.rgb + sampled.rgb, incoming.a * sampled.a);
+                    return vec4(previous.rgb + texel.rgb, previous.a * texel.a);
                 }
-                return incoming * sampled;
+                #ifdef COMBINE
+                if (mode == 3) {
+                    return combined(unit, samples, previous, primary);
+                }
+                #endif
+                if (mode == 4) {
+                    return vec4(mix(previous.rgb, texel.rgb, texel.a), previous.a);
+                }
+                return vec4(mix(previous.rgb, u_textureEnvColor[unit].rgb, texel.rgb),
+                        previous.a * texel.a);
             }
 
             // GL_LINEAR, GL_EXP and GL_EXP2, the three curves gl fades a fragment out along
@@ -170,18 +280,32 @@ public final class FixedFunctionPipeline {
             }
 
             void main() {
-                vec4 color = u_flatShading ? v_flatColor : v_color;
+                vec4 primary = u_flatShading ? v_flatColor : v_color;
+                Samples samples = Samples(vec4[4](vec4(1.0), vec4(1.0), vec4(1.0), vec4(1.0)));
                 if (u_textureEnabled[0]) {
-                    color = combine(color, texture(u_texture0, v_texCoord[0]), u_textureEnv[0]);
+                    samples.unit[0] = textureProj(u_texture0, v_texCoord[0].xyw);
                 }
                 if (u_textureEnabled[1]) {
-                    color = combine(color, texture(u_texture1, v_texCoord[1]), u_textureEnv[1]);
+                    samples.unit[1] = textureProj(u_texture1, v_texCoord[1].xyw);
                 }
                 if (u_textureEnabled[2]) {
-                    color = combine(color, texture(u_texture2, v_texCoord[2]), u_textureEnv[2]);
+                    samples.unit[2] = textureProj(u_texture2, v_texCoord[2].xyw);
                 }
                 if (u_textureEnabled[3]) {
-                    color = combine(color, texture(u_texture3, v_texCoord[3]), u_textureEnv[3]);
+                    samples.unit[3] = textureProj(u_texture3, v_texCoord[3].xyw);
+                }
+                vec4 color = primary;
+                if (u_textureEnabled[0]) {
+                    color = fold(0, samples, color, primary);
+                }
+                if (u_textureEnabled[1]) {
+                    color = fold(1, samples, color, primary);
+                }
+                if (u_textureEnabled[2]) {
+                    color = fold(2, samples, color, primary);
+                }
+                if (u_textureEnabled[3]) {
+                    color = fold(3, samples, color, primary);
                 }
                 // gl's alpha test discards, it does not blend; discard is the faithful mapping
                 if (u_alphaTestEnabled && color.a <= u_alphaTestThreshold) {
@@ -196,8 +320,10 @@ public final class FixedFunctionPipeline {
             }
             """;
 
+    private static final String COMBINING_FRAGMENT_SHADER =
+            FRAGMENT_SHADER.replace("#version 300 es\n", "#version 300 es\n#define COMBINE\n");
+
     private final GraphicsDevice device;
-    private final int program;
     private final int buffer;
     private final int[] immediateArrays = new int[ImmediateLayout.MASKS];
     private int bufferFloats;
@@ -212,91 +338,24 @@ public final class FixedFunctionPipeline {
     private final List<Captured> captured = new ArrayList<>();
     private final List<Integer> freeCaptures = new ArrayList<>();
 
-    private final int[] written = new int[Revision.GROUPS];
     private int normalMatrixFrom = NOTHING_WRITTEN;
 
     private final StagingArrays staging;
 
-    private final int modelViewUniform;
-    private final int projectionUniform;
-    private final int pointSizeUniform;
-    private final int[] textureEnabledUniforms = new int[VertexArrays.UNITS];
-    private final int[] textureEnvUniforms = new int[VertexArrays.UNITS];
-    private final int alphaTestEnabledUniform;
-    private final int alphaTestThresholdUniform;
-    private final int flatShadingUniform;
-
-    private final int normalMatrixUniform;
-    private final int lightingEnabledUniform;
-    private final int lightEnabledUniform;
-    private final int lightPositionUniform;
-    private final int lightAmbientUniform;
-    private final int lightDiffuseUniform;
-    private final int lightSpecularUniform;
-    private final int lightAttenuationUniform;
-    private final int lightModelAmbientUniform;
-    private final int materialAmbientUniform;
-    private final int materialDiffuseUniform;
-    private final int materialSpecularUniform;
-    private final int materialEmissionUniform;
-    private final int shininessUniform;
-    private final int colorMaterialUniform;
-    private final int fogEnabledUniform;
-    private final int fogModeUniform;
-    private final int fogColorUniform;
-    private final int fogDensityUniform;
-    private final int fogStartUniform;
-    private final int fogEndUniform;
+    private final float[] textureMatrices = new float[16 * VertexArrays.UNITS];
+    private final Uniforms plain;
+    private Uniforms combining;
+    private Uniforms at;
 
     private Borrowed[] borrowed = new Borrowed[16];
 
     public FixedFunctionPipeline(GraphicsDevice device) {
         this.device = device;
-        this.program = device.createProgram(VERTEX_SHADER, FRAGMENT_SHADER);
+        this.plain = new Uniforms(device, device.createProgram(VERTEX_SHADER, FRAGMENT_SHADER));
+        this.at = plain;
         this.buffer = device.createBuffer();
         this.quadIndices = new QuadIndices(device);
         this.staging = new StagingArrays(device, VertexArrays.SLOTS);
-        Arrays.fill(written, NOTHING_WRITTEN);
-
-        modelViewUniform = device.uniformLocation(program, "u_modelView");
-        projectionUniform = device.uniformLocation(program, "u_projection");
-        pointSizeUniform = device.uniformLocation(program, "u_pointSize");
-        for (int unit = 0; unit < VertexArrays.UNITS; unit++) {
-            textureEnabledUniforms[unit] =
-                    device.uniformLocation(program, "u_textureEnabled[" + unit + "]");
-            textureEnvUniforms[unit] = device.uniformLocation(program, "u_textureEnv[" + unit
-                    + "]");
-        }
-        alphaTestEnabledUniform = device.uniformLocation(program, "u_alphaTestEnabled");
-        alphaTestThresholdUniform = device.uniformLocation(program, "u_alphaTestThreshold");
-        flatShadingUniform = device.uniformLocation(program, "u_flatShading");
-
-        normalMatrixUniform = device.uniformLocation(program, "u_normalMatrix");
-        lightingEnabledUniform = device.uniformLocation(program, "u_lightingEnabled");
-        lightEnabledUniform = device.uniformLocation(program, "u_lightEnabled[0]");
-        lightPositionUniform = device.uniformLocation(program, "u_lightPosition[0]");
-        lightAmbientUniform = device.uniformLocation(program, "u_lightAmbient[0]");
-        lightDiffuseUniform = device.uniformLocation(program, "u_lightDiffuse[0]");
-        lightSpecularUniform = device.uniformLocation(program, "u_lightSpecular[0]");
-        lightAttenuationUniform = device.uniformLocation(program, "u_lightAttenuation[0]");
-        lightModelAmbientUniform = device.uniformLocation(program, "u_lightModelAmbient");
-        materialAmbientUniform = device.uniformLocation(program, "u_materialAmbient");
-        materialDiffuseUniform = device.uniformLocation(program, "u_materialDiffuse");
-        materialSpecularUniform = device.uniformLocation(program, "u_materialSpecular");
-        materialEmissionUniform = device.uniformLocation(program, "u_materialEmission");
-        shininessUniform = device.uniformLocation(program, "u_shininess");
-        colorMaterialUniform = device.uniformLocation(program, "u_colorMaterial");
-        fogEnabledUniform = device.uniformLocation(program, "u_fogEnabled");
-        fogModeUniform = device.uniformLocation(program, "u_fogMode");
-        fogColorUniform = device.uniformLocation(program, "u_fogColor");
-        fogDensityUniform = device.uniformLocation(program, "u_fogDensity");
-        fogStartUniform = device.uniformLocation(program, "u_fogStart");
-        fogEndUniform = device.uniformLocation(program, "u_fogEnd");
-
-        device.useProgram(program);
-        for (int unit = 0; unit < VertexArrays.UNITS; unit++) {
-            device.uniform1i(device.uniformLocation(program, "u_texture" + unit), unit);
-        }
     }
 
     public int capture(DrawMode mode, float[] vertices, int floatCount, int vertexCount,
@@ -466,11 +525,15 @@ public final class FixedFunctionPipeline {
     private void begin(RenderState render, int lent) {
         if (lent != GraphicsDevice.NO_PROGRAM) {
             // the application owns a lent program and can link it again at any time
-            Arrays.fill(written, NOTHING_WRITTEN);
+            plain.forget();
+            if (combining != null) {
+                combining.forget();
+            }
             beginLent(render, lent);
             return;
         }
-        device.useProgram(program);
+        at = combines(render) ? combining() : plain;
+        device.useProgram(at.program);
         // gl keeps uniforms per program, so they still stand from the last draw through this one
         boolean matrix = moved(render, Revision.MATRIX);
         boolean texture = moved(render, Revision.TEXTURE);
@@ -478,24 +541,38 @@ public final class FixedFunctionPipeline {
         boolean point = moved(render, Revision.POINT);
         boolean lights = moved(render, Revision.LIGHTING);
         boolean fog = moved(render, Revision.FOG);
+        boolean textureMatrix = moved(render, Revision.TEXTURE_MATRIX);
+        boolean environment = moved(render, Revision.ENVIRONMENT);
         keep(render);
         if (matrix) {
-            device.uniformMatrix4(modelViewUniform, render.modelView());
-            device.uniformMatrix4(projectionUniform, render.projection());
+            device.uniformMatrix4(at.modelViewUniform, render.modelView());
+            device.uniformMatrix4(at.projectionUniform, render.projection());
+        }
+        if (textureMatrix) {
+            device.uniformMatrices(at.textureMatrixUniform, 4, false, textureMatrices(render),
+                    VertexArrays.UNITS);
         }
         if (point) {
-            device.uniform1f(pointSizeUniform, render.pointSize());
+            device.uniform1f(at.pointSizeUniform, render.pointSize());
         }
         if (texture) {
             for (int unit = 0; unit < VertexArrays.UNITS; unit++) {
-                device.uniform1i(textureEnabledUniforms[unit],
+                device.uniform1i(at.textureEnabledUniforms[unit],
                         render.isTextureEnabled(unit) ? 1 : 0);
-                device.uniform1i(textureEnvUniforms[unit], render.textureEnv(unit));
+                device.uniform1i(at.textureEnvUniforms[unit],
+                        render.textureEnvironment().mode(unit));
             }
         }
+        if (environment) {
+            TextureEnvironment held = render.textureEnvironment();
+            device.uniformInts(at.combineUniform, 4, held.codes(),
+                    TextureEnvironment.CODES / 4 * VertexArrays.UNITS);
+            device.uniformFloats(at.textureEnvColorUniform, 4, held.colors(), VertexArrays.UNITS);
+            device.uniformFloats(at.combineScaleUniform, 2, held.scales(), VertexArrays.UNITS);
+        }
         if (alpha) {
-            device.uniform1i(alphaTestEnabledUniform, render.isAlphaTestEnabled() ? 1 : 0);
-            device.uniform1f(alphaTestThresholdUniform, render.alphaTestThreshold());
+            device.uniform1i(at.alphaTestEnabledUniform, render.isAlphaTestEnabled() ? 1 : 0);
+            device.uniform1f(at.alphaTestThresholdUniform, render.alphaTestThreshold());
         }
         // the normal matrix comes from the modelview
         if (lights || matrix) {
@@ -507,13 +584,40 @@ public final class FixedFunctionPipeline {
     }
 
     private boolean moved(RenderState render, int group) {
-        return written[group] != render.revision(group);
+        return at.written[group] != render.revision(group);
     }
 
     private void keep(RenderState render) {
         for (int group = 0; group < Revision.GROUPS; group++) {
-            written[group] = render.revision(group);
+            at.written[group] = render.revision(group);
         }
+    }
+
+    private static boolean combines(RenderState render) {
+        for (int unit = 0; unit < VertexArrays.UNITS; unit++) {
+            if (render.isTextureEnabled(unit)
+                    && render.textureEnvironment().mode(unit) == TextureEnvironment.COMBINE) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    // the combine path slows every fragment it is compiled into, so it is a second build that a
+    // draw takes only when one of its units combines
+    private Uniforms combining() {
+        if (combining == null) {
+            combining = new Uniforms(device,
+                    device.createProgram(VERTEX_SHADER, COMBINING_FRAGMENT_SHADER));
+        }
+        return combining;
+    }
+
+    private float[] textureMatrices(RenderState render) {
+        for (int unit = 0; unit < VertexArrays.UNITS; unit++) {
+            System.arraycopy(render.textureMatrix(unit), 0, textureMatrices, unit * 16, 16);
+        }
+        return textureMatrices;
     }
 
     private float[] normalMatrix(RenderState render) {
@@ -536,11 +640,16 @@ public final class FixedFunctionPipeline {
         boolean texture = where.moved(render, Revision.TEXTURE);
         boolean alpha = where.moved(render, Revision.ALPHA);
         boolean fog = where.moved(render, Revision.FOG);
+        boolean textureMatrix = where.moved(render, Revision.TEXTURE_MATRIX);
         where.keep(render);
         if (matrix) {
             device.uniformMatrix4(where.modelView, render.modelView());
             device.uniformMatrix4(where.projection, render.projection());
             device.uniformMatrices(where.normalMatrix, 3, false, normalMatrix(render), 1);
+        }
+        if (textureMatrix) {
+            device.uniformMatrices(where.textureMatrix, 4, false, textureMatrices(render),
+                    VertexArrays.UNITS);
         }
         if (fog) {
             uniform4(where.fogStructColor, lighting.fogColor());
@@ -560,7 +669,7 @@ public final class FixedFunctionPipeline {
             for (int unit = 0; unit < VertexArrays.UNITS; unit++) {
                 device.uniform1i(where.textureEnabled[unit],
                         render.isTextureEnabled(unit) ? 1 : 0);
-                device.uniform1i(where.textureEnv[unit], render.textureEnv(unit));
+                device.uniform1i(where.textureEnv[unit], render.textureEnvironment().mode(unit));
             }
         }
         if (alpha) {
@@ -586,6 +695,7 @@ public final class FixedFunctionPipeline {
         where.modelView = device.uniformLocation(lent, "u_modelView");
         where.projection = device.uniformLocation(lent, "u_projection");
         where.normalMatrix = device.uniformLocation(lent, "u_normalMatrix");
+        where.textureMatrix = device.uniformLocation(lent, "u_textureMatrix[0]");
         where.fogStructColor = device.uniformLocation(lent, "u_fog.color");
         where.fogStructDensity = device.uniformLocation(lent, "u_fog.density");
         where.fogStructStart = device.uniformLocation(lent, "u_fog.start");
@@ -613,6 +723,7 @@ public final class FixedFunctionPipeline {
         private int modelView;
         private int projection;
         private int normalMatrix;
+        private int textureMatrix;
         private int fogStructColor;
         private int fogStructDensity;
         private int fogStructStart;
@@ -652,37 +763,39 @@ public final class FixedFunctionPipeline {
 
     private void light(RenderState render) {
         Lighting lighting = render.lighting();
-        device.uniform1i(lightingEnabledUniform, lighting.isEnabled() ? 1 : 0);
-        device.uniform1i(flatShadingUniform, lighting.isFlatShading() ? 1 : 0);
+        device.uniform1i(at.lightingEnabledUniform, lighting.isEnabled() ? 1 : 0);
+        device.uniform1i(at.flatShadingUniform, lighting.isFlatShading() ? 1 : 0);
         if (!lighting.isEnabled()) {
             return;
         }
-        device.uniformMatrices(normalMatrixUniform, 3, false, normalMatrix(render), 1);
-        device.uniformInts(lightEnabledUniform, 1, lighting.lightEnabledFlags(), Lighting.LIGHTS);
-        device.uniformFloats(lightPositionUniform, 4, lighting.positions(), Lighting.LIGHTS);
-        device.uniformFloats(lightAmbientUniform, 4, lighting.ambients(), Lighting.LIGHTS);
-        device.uniformFloats(lightDiffuseUniform, 4, lighting.diffuses(), Lighting.LIGHTS);
-        device.uniformFloats(lightSpecularUniform, 4, lighting.speculars(), Lighting.LIGHTS);
-        device.uniformFloats(lightAttenuationUniform, 3, lighting.attenuations(), Lighting.LIGHTS);
-        uniform4(lightModelAmbientUniform, lighting.modelAmbient());
-        uniform4(materialAmbientUniform, lighting.materialAmbient());
-        uniform4(materialDiffuseUniform, lighting.materialDiffuse());
-        uniform4(materialSpecularUniform, lighting.materialSpecular());
-        uniform4(materialEmissionUniform, lighting.materialEmission());
-        device.uniform1f(shininessUniform, lighting.shininess());
-        device.uniform1i(colorMaterialUniform, lighting.isColorMaterial() ? 1 : 0);
+        device.uniformMatrices(at.normalMatrixUniform, 3, false, normalMatrix(render), 1);
+        device.uniformInts(at.lightEnabledUniform, 1, lighting.lightEnabledFlags(),
+                Lighting.LIGHTS);
+        device.uniformFloats(at.lightPositionUniform, 4, lighting.positions(), Lighting.LIGHTS);
+        device.uniformFloats(at.lightAmbientUniform, 4, lighting.ambients(), Lighting.LIGHTS);
+        device.uniformFloats(at.lightDiffuseUniform, 4, lighting.diffuses(), Lighting.LIGHTS);
+        device.uniformFloats(at.lightSpecularUniform, 4, lighting.speculars(), Lighting.LIGHTS);
+        device.uniformFloats(at.lightAttenuationUniform, 3, lighting.attenuations(),
+                Lighting.LIGHTS);
+        uniform4(at.lightModelAmbientUniform, lighting.modelAmbient());
+        uniform4(at.materialAmbientUniform, lighting.materialAmbient());
+        uniform4(at.materialDiffuseUniform, lighting.materialDiffuse());
+        uniform4(at.materialSpecularUniform, lighting.materialSpecular());
+        uniform4(at.materialEmissionUniform, lighting.materialEmission());
+        device.uniform1f(at.shininessUniform, lighting.shininess());
+        device.uniform1i(at.colorMaterialUniform, lighting.colorMaterialTracks());
     }
 
     private void fog(Lighting lighting) {
-        device.uniform1i(fogEnabledUniform, lighting.isFogEnabled() ? 1 : 0);
+        device.uniform1i(at.fogEnabledUniform, lighting.isFogEnabled() ? 1 : 0);
         if (!lighting.isFogEnabled()) {
             return;
         }
-        device.uniform1i(fogModeUniform, lighting.fogMode());
-        uniform4(fogColorUniform, lighting.fogColor());
-        device.uniform1f(fogDensityUniform, lighting.fogDensity());
-        device.uniform1f(fogStartUniform, lighting.fogStart());
-        device.uniform1f(fogEndUniform, lighting.fogEnd());
+        device.uniform1i(at.fogModeUniform, lighting.fogMode());
+        uniform4(at.fogColorUniform, lighting.fogColor());
+        device.uniform1f(at.fogDensityUniform, lighting.fogDensity());
+        device.uniform1f(at.fogStartUniform, lighting.fogStart());
+        device.uniform1f(at.fogEndUniform, lighting.fogEnd());
     }
 
     private void uniform4(int location, float[] rgba) {
@@ -727,6 +840,100 @@ public final class FixedFunctionPipeline {
             }
         }
         device.deleteBuffer(buffer);
-        device.deleteProgram(program);
+        device.deleteProgram(plain.program);
+        if (combining != null) {
+            device.deleteProgram(combining.program);
+        }
+    }
+
+    /** where one build of the shader keeps its uniforms, and what it was last sent */
+    private static final class Uniforms {
+        private final int program;
+        private final int[] written = new int[Revision.GROUPS];
+        private final int modelViewUniform;
+        private final int projectionUniform;
+        private final int pointSizeUniform;
+        private final int[] textureEnabledUniforms = new int[VertexArrays.UNITS];
+        private final int[] textureEnvUniforms = new int[VertexArrays.UNITS];
+        private final int textureMatrixUniform;
+        private final int combineUniform;
+        private final int textureEnvColorUniform;
+        private final int combineScaleUniform;
+        private final int alphaTestEnabledUniform;
+        private final int alphaTestThresholdUniform;
+        private final int flatShadingUniform;
+
+        private final int normalMatrixUniform;
+        private final int lightingEnabledUniform;
+        private final int lightEnabledUniform;
+        private final int lightPositionUniform;
+        private final int lightAmbientUniform;
+        private final int lightDiffuseUniform;
+        private final int lightSpecularUniform;
+        private final int lightAttenuationUniform;
+        private final int lightModelAmbientUniform;
+        private final int materialAmbientUniform;
+        private final int materialDiffuseUniform;
+        private final int materialSpecularUniform;
+        private final int materialEmissionUniform;
+        private final int shininessUniform;
+        private final int colorMaterialUniform;
+        private final int fogEnabledUniform;
+        private final int fogModeUniform;
+        private final int fogColorUniform;
+        private final int fogDensityUniform;
+        private final int fogStartUniform;
+        private final int fogEndUniform;
+
+        Uniforms(GraphicsDevice device, int program) {
+            this.program = program;
+            forget();
+            modelViewUniform = device.uniformLocation(program, "u_modelView");
+            projectionUniform = device.uniformLocation(program, "u_projection");
+            pointSizeUniform = device.uniformLocation(program, "u_pointSize");
+            for (int unit = 0; unit < VertexArrays.UNITS; unit++) {
+                textureEnabledUniforms[unit] =
+                        device.uniformLocation(program, "u_textureEnabled[" + unit + "]");
+                textureEnvUniforms[unit] = device.uniformLocation(program, "u_textureEnv[" + unit
+                        + "]");
+            }
+            textureMatrixUniform = device.uniformLocation(program, "u_textureMatrix[0]");
+            combineUniform = device.uniformLocation(program, "u_combine[0]");
+            textureEnvColorUniform = device.uniformLocation(program, "u_textureEnvColor[0]");
+            combineScaleUniform = device.uniformLocation(program, "u_combineScale[0]");
+            alphaTestEnabledUniform = device.uniformLocation(program, "u_alphaTestEnabled");
+            alphaTestThresholdUniform = device.uniformLocation(program, "u_alphaTestThreshold");
+            flatShadingUniform = device.uniformLocation(program, "u_flatShading");
+
+            normalMatrixUniform = device.uniformLocation(program, "u_normalMatrix");
+            lightingEnabledUniform = device.uniformLocation(program, "u_lightingEnabled");
+            lightEnabledUniform = device.uniformLocation(program, "u_lightEnabled[0]");
+            lightPositionUniform = device.uniformLocation(program, "u_lightPosition[0]");
+            lightAmbientUniform = device.uniformLocation(program, "u_lightAmbient[0]");
+            lightDiffuseUniform = device.uniformLocation(program, "u_lightDiffuse[0]");
+            lightSpecularUniform = device.uniformLocation(program, "u_lightSpecular[0]");
+            lightAttenuationUniform = device.uniformLocation(program, "u_lightAttenuation[0]");
+            lightModelAmbientUniform = device.uniformLocation(program, "u_lightModelAmbient");
+            materialAmbientUniform = device.uniformLocation(program, "u_materialAmbient");
+            materialDiffuseUniform = device.uniformLocation(program, "u_materialDiffuse");
+            materialSpecularUniform = device.uniformLocation(program, "u_materialSpecular");
+            materialEmissionUniform = device.uniformLocation(program, "u_materialEmission");
+            shininessUniform = device.uniformLocation(program, "u_shininess");
+            colorMaterialUniform = device.uniformLocation(program, "u_colorMaterial");
+            fogEnabledUniform = device.uniformLocation(program, "u_fogEnabled");
+            fogModeUniform = device.uniformLocation(program, "u_fogMode");
+            fogColorUniform = device.uniformLocation(program, "u_fogColor");
+            fogDensityUniform = device.uniformLocation(program, "u_fogDensity");
+            fogStartUniform = device.uniformLocation(program, "u_fogStart");
+            fogEndUniform = device.uniformLocation(program, "u_fogEnd");
+            device.useProgram(program);
+            for (int unit = 0; unit < VertexArrays.UNITS; unit++) {
+                device.uniform1i(device.uniformLocation(program, "u_texture" + unit), unit);
+            }
+        }
+
+        void forget() {
+            Arrays.fill(written, NOTHING_WRITTEN);
+        }
     }
 }

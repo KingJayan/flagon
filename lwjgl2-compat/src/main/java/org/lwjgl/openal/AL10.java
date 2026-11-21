@@ -381,11 +381,7 @@ public final class AL10 {
             state().fail(AL_INVALID_NAME);
             return;
         }
-        try {
-            device().play(source);
-        } catch (AudioException noBuffer) {
-            state().fail(AL_INVALID_OPERATION);
-        }
+        device().play(source);
     }
 
     public static void alSourcePause(int source) {

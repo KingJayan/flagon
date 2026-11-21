@@ -11,7 +11,9 @@ final class Revision {
     static final int TEXTURE = 3;
     static final int ALPHA = 4;
     static final int POINT = 5;
-    static final int GROUPS = 6;
+    static final int TEXTURE_MATRIX = 6;
+    static final int ENVIRONMENT = 7;
+    static final int GROUPS = 8;
 
     private final int[] counts = new int[GROUPS];
 

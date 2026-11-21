@@ -154,6 +154,8 @@ public class GL11C {
     public static final int GL_DECR = 0x1E03;
     public static final int GL_INVERT = 0x150A;
     public static final int GL_POLYGON_OFFSET_FILL = 0x8037;
+    public static final int GL_POLYGON_OFFSET_LINE = 0x2A02;
+    public static final int GL_POLYGON_OFFSET_POINT = 0x2A01;
     public static final int GL_POINT = 0x1B00;
     public static final int GL_LINE = 0x1B01;
     public static final int GL_FILL = 0x1B02;
@@ -345,6 +347,8 @@ public class GL11C {
             case GL_SCISSOR_TEST -> state().setScissorTest(enabled);
             case GL_STENCIL_TEST -> device().setStencilTest(enabled);
             case GL_POLYGON_OFFSET_FILL -> device().setPolygonOffsetFill(enabled);
+            case GL_POLYGON_OFFSET_LINE, GL_POLYGON_OFFSET_POINT, GL11.GL_COLOR_LOGIC_OP ->
+                    state().setUnstaged(capability, enabled);
             case GL_TEXTURE_2D -> state().setTextureEnabled(enabled);
             case GL_ALPHA_TEST -> state().setAlphaTestEnabled(enabled);
             case GL_LIGHTING -> state().lighting().setEnabled(enabled);
@@ -514,7 +518,7 @@ public class GL11C {
     // queries
 
     public static int glGetError() {
-        GraphicsError error = device().takeError();
+        GraphicsError error = state().takeError();
         return switch (error) {
             case NONE -> GL_NO_ERROR;
             case INVALID_ENUM -> GL_INVALID_ENUM;
@@ -620,6 +624,8 @@ public class GL11C {
     static int floatVector(int name, float[] into) {
         switch (name) {
             case GL_MODELVIEW_MATRIX -> System.arraycopy(state().modelView(), 0, into, 0, 16);
+            case GL11.GL_TEXTURE_MATRIX -> System.arraycopy(
+                    state().textureMatrix(state().activeTexture()), 0, into, 0, 16);
             case GL_PROJECTION_MATRIX -> System.arraycopy(state().projection(), 0, into, 0, 16);
             case GL_CURRENT_COLOR -> state().currentColor(into);
             case GL_COLOR_CLEAR_VALUE -> state().clearColorValue(into);
@@ -628,7 +634,7 @@ public class GL11C {
                     "glGetFloat does not emulate 0x" + Integer.toHexString(name));
         }
         return switch (name) {
-            case GL_MODELVIEW_MATRIX, GL_PROJECTION_MATRIX -> 16;
+            case GL_MODELVIEW_MATRIX, GL_PROJECTION_MATRIX, GL11.GL_TEXTURE_MATRIX -> 16;
             case GL_DEPTH_CLEAR_VALUE -> 1;
             default -> 4;
         };
@@ -803,13 +809,15 @@ public class GL11C {
                     "glMaterial does not emulate parameter 0x" + Integer.toHexString(parameter));
         }
     }
-    /** the shader keeps one material, so a face-by-face material cannot be honored. */
-    static void requireBothFaces(int face, String call) {
-        if (face != GL_FRONT_AND_BACK) {
-            throw new UnsupportedOperationException(
-                    call + " emulates GL_FRONT_AND_BACK only: the fixed-function shader here "
-                            + "carries a single material, so front and back cannot differ");
-        }
+    /** lighting here is one-sided: back faces show the front material, and a back one is unseen */
+    static boolean reachesFront(int face, String call) {
+        return switch (face) {
+            case GL_FRONT, GL_FRONT_AND_BACK -> true;
+            case GL_BACK -> false;
+            default -> throw new UnsupportedOperationException(
+                    call + " takes GL_FRONT, GL_BACK or GL_FRONT_AND_BACK, got 0x"
+                            + Integer.toHexString(face));
+        };
     }
     static void fog(int parameter, float value) {
         Lighting lighting = state().lighting();

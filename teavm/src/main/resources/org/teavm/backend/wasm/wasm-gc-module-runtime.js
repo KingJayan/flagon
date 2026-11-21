@@ -274,27 +274,36 @@ function coreImports(imports, context) {
       report(heldValue.queue, heldValue.ref);
     }
   });
+
   const stringFinalizationRegistry = new FinalizationRegistry((heldValue) => {
     const report = context.exports?.["teavm.reportGarbageCollectedString"];
     if (typeof report === "function") {
       report(heldValue);
     }
   });
+
+  const clearedRef = { deref: () => void 0 };
   imports.teavm = {
     createWeakRef(value, ref, queue) {
+      if (value === null) {
+        return clearedRef;
+      }
       if (queue !== null) {
         finalizationRegistry.register(value, { ref, queue });
       }
       return new WeakRef(value);
     },
+
     deref: (weakRef) => {
       const result = weakRef.deref();
       return result !== void 0 ? result : null;
     },
+
     createStringWeakRef(value, heldValue) {
       stringFinalizationRegistry.register(value, heldValue);
       return new WeakRef(value);
     },
+
     stringDeref: (weakRef) => weakRef.deref(),
     takeStackTrace(exceptionClassName) {
       const stack = new Error().stack ?? "";
@@ -326,11 +335,13 @@ function coreImports(imports, context) {
             if (result.length > 0 && result[0].className === "java.lang.Throwable" && result[0].method === "fillInStackTrace") {
               result.shift();
             }
+
             let foundIndex = -1;
             for (let i = 0; i < result.length; ++i) {
               if (result[i].method !== "<init>") {
                 break;
               }
+
               if (result[i].className === exceptionClassName) {
                 foundIndex = i + 1;
                 break;
@@ -344,11 +355,13 @@ function coreImports(imports, context) {
         }
       };
     },
+
     decorateException(javaException) {
       new JavaError(context, javaException);
     }
   };
 }
+
 function asyncImports(imports) {
   imports.teavmAsync = {
     offer(instance, fn, time) {
@@ -362,6 +375,7 @@ function asyncImports(imports) {
     }
   };
 }
+
 function fiberImports(imports, context) {
   if (typeof WebAssembly.Suspending !== "function") {
     const absent = () => {
@@ -387,6 +401,7 @@ function fiberImports(imports, context) {
     }
   };
 }
+
 function getMemoryDefaults(module) {
   const sections = WebAssembly.Module.customSections(module, "teavm.memoryRequirements");
   if (sections.length !== 1) {

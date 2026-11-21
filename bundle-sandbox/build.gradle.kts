@@ -16,6 +16,7 @@ dependencies {
     implementation(project(":lwjgl2-compat"))
     implementation(project(":lwjgl3-compat"))
     implementation(project(":toolchain:socket-classlib"))
+    implementation(project(":toolchain:nio-classlib"))
     implementation(project(":toolchain:jdk-classlib"))
     implementation(project(":toolchain:awt-classlib"))
     implementation(project(":toolchain:crypto-classlib"))

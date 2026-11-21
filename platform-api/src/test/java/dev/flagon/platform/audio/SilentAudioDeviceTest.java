@@ -71,10 +71,12 @@ class SilentAudioDeviceTest {
     }
 
     @Test
-    void playingWithNoBufferIsRefused() {
+    void playingWithNoBufferStopsTheSource() {
         int source = device.createSource();
 
-        assertThrows(AudioException.class, () -> device.play(source));
+        device.play(source);
+
+        assertEquals(SourceState.STOPPED, device.sourceState(source));
     }
 
     /** the point of timing a silent device: code that waits for a sound to end has to be let go. */
@@ -195,7 +197,8 @@ class SilentAudioDeviceTest {
         device.attachBuffer(source, AudioDevice.NO_BUFFER);
 
         assertEquals(AudioDevice.NO_BUFFER, device.attachedBuffer(source));
-        assertThrows(AudioException.class, () -> device.play(source));
+        device.play(source);
+        assertEquals(SourceState.STOPPED, device.sourceState(source));
     }
 
     @Test
@@ -285,6 +288,7 @@ class SilentAudioDeviceTest {
         int streaming = device.createSource();
         int buffer = oneSecondBuffer();
         device.queueBuffers(streaming, new int[]{buffer});
+        device.play(streaming);
         assertThrows(AudioException.class, () -> device.attachBuffer(streaming, buffer));
 
         int single = device.createSource();

@@ -66,7 +66,7 @@ public final class WriteResourcePack {
         Map<String, Item> files = new LinkedHashMap<>();
         for (Path source : sourcesIn(given)) {
             if (Files.isDirectory(source)) {
-                readTree(source, files);
+                readTree(source, given, files);
             } else {
                 readJar(source, files);
             }
@@ -82,10 +82,22 @@ public final class WriteResourcePack {
             return List.of(given);
         }
         List<Path> jars = new ArrayList<>();
+        List<Path> folders = new ArrayList<>();
         try (var listing = Files.list(given)) {
-            listing.filter(entry -> entry.toString().endsWith(".jar")).sorted().forEach(jars::add);
+            for (Path entry : listing.sorted().toList()) {
+                if (entry.toString().endsWith(".jar")) {
+                    jars.add(entry);
+                } else if (Files.isDirectory(entry)) {
+                    folders.add(entry);
+                }
+            }
         }
-        return jars.isEmpty() ? List.of(given) : jars;
+        if (jars.isEmpty()) {
+            return List.of(given);
+        }
+        // loose files beside the jars, such as game assets, after them so a jar keeps its names
+        jars.addAll(folders);
+        return jars;
     }
 
     private static void readJar(Path jar, Map<String, Item> files) throws IOException {
@@ -100,10 +112,11 @@ public final class WriteResourcePack {
         }
     }
 
-    private static void readTree(Path root, Map<String, Item> files) throws IOException {
+    private static void readTree(Path root, Path base, Map<String, Item> files)
+            throws IOException {
         try (var tree = Files.walk(root)) {
             for (Path file : tree.filter(Files::isRegularFile).sorted().toList()) {
-                String name = root.relativize(file).toString().replace('\\', '/');
+                String name = base.relativize(file).toString().replace('\\', '/');
                 if (wanted(name)) {
                     files.putIfAbsent(name, new Item(file, null));
                 }

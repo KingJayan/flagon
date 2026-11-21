@@ -116,6 +116,7 @@ Browser (Green Thread) <──WebSocket──> flagon proxy <──TCP/TLS──
 
 * `ServerSocket`: Refused (browsers cannot open listening ports).
 * `DatagramSocket` / `MulticastSocket`: Refused (the WebSocket transport is stream-only).
+* `SocketChannel` / `ServerSocketChannel`: Refused (the proxy carries a stream, not a selectable channel). `Selector.open()` works and holds no keys: `select` waits for its timeout or `wakeup()`, so a Netty NIO event loop runs tasks and local channels.
 
 ### Proxy Server CLI
 
@@ -166,8 +167,12 @@ Both LWJGL 2 (`lwjgl2-compat`) and LWJGL 3 (`lwjgl3-compat`) APIs are supported.
 | **`GL_QUADS` (Indexed)** | Refused | Rewriting caller-owned index buffers is unsupported. |
 | **Client Arrays** | Supported | Staged into internal buffer objects prior to draw calls. |
 | **Display Lists** | Supported | `glGenLists`, `glNewList`, `glCallList`, `glDeleteLists`. |
-| **Lighting** | Supported | 8 fixed-function vertex lights calculated in eye space. |
-| **Shading Model** | `GL_SMOOTH` only | `GL_FLAT` is unsupported (no provoking vertex in WebGL). |
+| **Lighting** | Supported | 8 fixed-function vertex lights calculated in eye space. One-sided: back faces take the front material, so a `GL_BACK` material is unseen. `glColorMaterial` tracks any one material. |
+| **Matrix Modes** | Supported | `GL_MODELVIEW`, `GL_PROJECTION`, and a `GL_TEXTURE` stack per unit. |
+| **Texture Environment** | Supported | `GL_MODULATE`, `GL_REPLACE`, `GL_ADD`, `GL_DECAL`, `GL_BLEND`, and `GL_COMBINE` without the `GL_DOT3` functions. |
+| **Logic Ops** | Drawn as `GL_COPY` | WebGL has no logic op stage; `glLogicOp` and `GL_COLOR_LOGIC_OP` are kept but change nothing. |
+| **Texture Coordinate Generation** | Unsupported | `glTexGen` throws `UnsupportedOperationException`. |
+| **Shading Model** | Supported | `GL_FLAT` takes the color of the last vertex, as GL does. |
 | **Polygon Modes** | `GL_FILL` only | Wireframe and point polygon rasterization are unsupported. |
 | **Texture Types** | Core subsets | Byte uploads converted to RGBA internally. No 16-bit integer channels. |
 | **Mipmaps** | Supported | Emulated via `glGenerateMipmap`; supports all standard minification filters. |

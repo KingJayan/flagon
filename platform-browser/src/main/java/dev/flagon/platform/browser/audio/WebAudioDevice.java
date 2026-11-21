@@ -280,10 +280,14 @@ public final class WebAudioDevice implements AudioDevice {
             throw new AudioException("not a buffer: " + buffer);
         }
         Source held = source(source);
-        if (!held.queue.isEmpty()) {
+        // a stopped stream gives up its queue, as OpenAL lets it
+        if (!held.queue.isEmpty()
+                && (held.state == SourceState.PLAYING || held.state == SourceState.PAUSED)) {
             throw new AudioException("source " + source + " is streaming a queue");
         }
         held.release();
+        held.queue.clear();
+        held.processed = 0;
         held.buffer = buffer;
         held.offset = 0.0;
         held.state = SourceState.INITIAL;
@@ -383,7 +387,11 @@ public final class WebAudioDevice implements AudioDevice {
             return;
         }
         if (!(objects.get(held.buffer) instanceof Buffer buffer) || buffer.audio == null) {
-            throw new AudioException("source " + source + " has no buffer to play");
+            // OpenAL takes a source with nothing to play straight to stopped
+            held.release();
+            held.offset = 0.0;
+            held.state = SourceState.STOPPED;
+            return;
         }
         double from = held.state == SourceState.PAUSED ? held.offset : 0.0;
         if (from >= buffer.audio.getDuration()) {

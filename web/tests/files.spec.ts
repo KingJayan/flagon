@@ -29,6 +29,8 @@ for (const backend of BACKENDS) {
       await runDemo(page, backend);
 
       await expect(page.getByTestId('log')).toContainText('after seek: hello java.io says');
+      await expect(page.getByTestId('log')).toContainText(
+        'a missing file opened to write is made: true, holding 8192');
     });
 
     test('creates, lists, renames and deletes', async ({ page }) => {

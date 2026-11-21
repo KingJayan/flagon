@@ -125,9 +125,14 @@ public final class SilentAudioDevice implements AudioDevice {
             throw new AudioException("not a buffer: " + buffer);
         }
         Source held = source(source);
-        if (!held.queue.isEmpty()) {
+        SourceState state = settle(held);
+        // a stopped stream gives up its queue, as OpenAL lets it
+        if (!held.queue.isEmpty()
+                && (state == SourceState.PLAYING || state == SourceState.PAUSED)) {
             throw new AudioException("source " + source + " is streaming a queue");
         }
+        held.queue.clear();
+        held.processed = 0;
         held.buffer = buffer;
         held.offset = 0.0;
         held.state = SourceState.INITIAL;
@@ -190,7 +195,10 @@ public final class SilentAudioDevice implements AudioDevice {
     public void play(int source) {
         Source held = source(source);
         if (held.buffer == NO_BUFFER && held.queue.isEmpty()) {
-            throw new AudioException("source " + source + " has no buffer to play");
+            // OpenAL takes a source with nothing to play straight to stopped
+            held.offset = 0.0;
+            held.state = SourceState.STOPPED;
+            return;
         }
         if (held.state != SourceState.PAUSED) {
             held.offset = 0.0;

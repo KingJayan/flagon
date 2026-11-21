@@ -77,6 +77,18 @@ public final class FileSystemDemoProgram implements Program {
             file.write("java.io says".getBytes(StandardCharsets.UTF_8));
         }
         console.info("after seek: " + read(notes));
+
+        // opening to write makes a missing file, the way minecraft starts each region file
+        File region = new File(HOME, "region.mca");
+        if (region.exists() && !region.delete()) {
+            throw new IllegalStateException("could not clear " + region.getPath());
+        }
+        try (RandomAccessFile file = new RandomAccessFile(region, "rw")) {
+            file.writeInt(8192);
+            file.seek(0);
+            console.info("a missing file opened to write is made: " + region.exists()
+                    + ", holding " + file.readInt());
+        }
     }
 
     private void directories(ConsoleSink console) throws Exception {

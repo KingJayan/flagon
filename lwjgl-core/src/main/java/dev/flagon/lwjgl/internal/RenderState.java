@@ -11,7 +11,10 @@ public interface RenderState {
 
     boolean isTextureEnabled(int unit);
 
-    int textureEnv(int unit);
+    /** GL_TEXTURE for one unit, which its coordinates pass through */
+    float[] textureMatrix(int unit);
+
+    TextureEnvironment textureEnvironment();
 
     boolean isAlphaTestEnabled();
 

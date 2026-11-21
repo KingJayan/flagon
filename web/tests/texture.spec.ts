@@ -59,6 +59,7 @@ for (const backend of BACKENDS) {
 
       expectColor(await readPixel(page, 830, 290), [128, 0, 0], 'unit 1 modulating unit 0');
       expectColor(await readPixel(page, 900, 290), [128, 128, 128], 'unit 1 replacing unit 0');
+      expectColor(await readPixel(page, 900, 110), [128, 0, 128], 'unit 1 combining unit 0');
     });
 
     test('widens a texture uploaded in a narrower format', async ({ page }) => {

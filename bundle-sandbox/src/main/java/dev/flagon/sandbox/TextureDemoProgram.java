@@ -2,16 +2,22 @@ package dev.flagon.sandbox;
 
 import dev.flagon.platform.Platforms;
 import dev.flagon.runtime.Program;
+import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.Display;
 import org.lwjgl.opengl.DisplayMode;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL12;
 import org.lwjgl.opengl.GL13;
 
+import java.nio.FloatBuffer;
+
 public final class TextureDemoProgram implements Program {
 
     private static final int WIDTH = 940;
     private static final int HEIGHT = 360;
+
+    private final FloatBuffer flash =
+            BufferUtils.createFloatBuffer(4).put(new float[] {0.0f, 0.0f, 1.0f, 0.5f}).flip();
     private static final int MAX_FRAMES = 900;
 
     private static final int[] TEXELS = {
@@ -197,6 +203,21 @@ public final class TextureDemoProgram implements Program {
         GL13.glActiveTexture(GL13.GL_TEXTURE0);
 
         multiTexturedQuad(870.0f, 40.0f, 930.0f, 104.0f);
+
+        // the hurt flash minecraft draws: half way from what came before to a constant color
+        GL13.glActiveTexture(GL13.GL_TEXTURE1);
+        GL11.glTexEnvi(GL11.GL_TEXTURE_ENV, GL11.GL_TEXTURE_ENV_MODE, GL13.GL_COMBINE);
+        GL11.glTexEnvi(GL11.GL_TEXTURE_ENV, GL13.GL_COMBINE_RGB, GL13.GL_INTERPOLATE);
+        GL11.glTexEnvi(GL11.GL_TEXTURE_ENV, GL13.GL_SOURCE0_RGB, GL13.GL_CONSTANT);
+        GL11.glTexEnvi(GL11.GL_TEXTURE_ENV, GL13.GL_SOURCE1_RGB, GL13.GL_PREVIOUS);
+        GL11.glTexEnvi(GL11.GL_TEXTURE_ENV, GL13.GL_SOURCE2_RGB, GL13.GL_CONSTANT);
+        GL11.glTexEnvi(GL11.GL_TEXTURE_ENV, GL13.GL_OPERAND2_RGB, GL11.GL_SRC_ALPHA);
+        GL11.glTexEnvi(GL11.GL_TEXTURE_ENV, GL13.GL_COMBINE_ALPHA, GL11.GL_REPLACE);
+        GL11.glTexEnvi(GL11.GL_TEXTURE_ENV, GL13.GL_SOURCE0_ALPHA, GL13.GL_PREVIOUS);
+        GL11.glTexEnv(GL11.GL_TEXTURE_ENV, GL11.GL_TEXTURE_ENV_COLOR, flash);
+        GL13.glActiveTexture(GL13.GL_TEXTURE0);
+
+        multiTexturedQuad(870.0f, 220.0f, 930.0f, 280.0f);
 
         GL13.glActiveTexture(GL13.GL_TEXTURE1);
         GL11.glTexEnvi(GL11.GL_TEXTURE_ENV, GL11.GL_TEXTURE_ENV_MODE, GL11.GL_MODULATE);

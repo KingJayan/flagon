@@ -1,10 +1,13 @@
 package org.lwjgl.opengl;
 
 import dev.flagon.lwjgl.internal.ClientArray;
+import dev.flagon.lwjgl.internal.Lighting;
 import dev.flagon.lwjgl.internal.Ops;
+import dev.flagon.lwjgl.internal.TextureEnvironment;
 import dev.flagon.lwjgl.internal.VertexArrays;
 import dev.flagon.platform.graphics.AttributeType;
 import dev.flagon.platform.graphics.CompareFunc;
+import dev.flagon.platform.graphics.GraphicsError;
 
 import java.nio.ByteBuffer;
 import java.nio.FloatBuffer;
@@ -19,6 +22,9 @@ public final class GL11 extends GL11C {
 
     public static final int GL_MODELVIEW = 0x1700;
     public static final int GL_PROJECTION = 0x1701;
+    public static final int GL_TEXTURE = 0x1702;
+    public static final int GL_TEXTURE_MATRIX = 0x0BA8;
+    public static final int GL_ALPHA_SCALE = 0x0D1C;
     public static final int GL_TEXTURE_ENV = 0x2300;
     public static final int GL_TEXTURE_ENV_MODE = 0x2200;
     public static final int GL_TEXTURE_ENV_COLOR = 0x2201;
@@ -80,11 +86,20 @@ public final class GL11 extends GL11C {
     public static int glGenLists(int count) {
         return state().lists().generate(count);
     }
+    /** names are unsigned, so only 0 is refused; minecraft names -1 for an empty chunk layer */
     public static void glNewList(int list, int mode) {
+        if (list == 0) {
+            state().fail(GraphicsError.INVALID_VALUE);
+            return;
+        }
         state().lists().onPlay(GL11C::play);
         state().lists().begin(list, mode);
     }
     public static void glEndList() {
+        if (!state().lists().isRecording()) {
+            state().fail(GraphicsError.INVALID_OPERATION);
+            return;
+        }
         state().lists().end();
     }
     public static void glCallList(int list) {
@@ -281,11 +296,13 @@ public final class GL11 extends GL11C {
         state().lighting().setModelAmbient(values);
     }
     public static void glMaterialf(int face, int parameter, float value) {
-        requireBothFaces(face, "glMaterialf");
         if (parameter != GL_SHININESS) {
             throw new UnsupportedOperationException(
                     "glMaterialf emulates GL_SHININESS only, got 0x"
                             + Integer.toHexString(parameter));
+        }
+        if (!reachesFront(face, "glMaterialf")) {
+            return;
         }
         if (recording() && state().record(Ops.SHININESS, value)) {
             return;
@@ -302,9 +319,11 @@ public final class GL11 extends GL11C {
         glMaterial(face, parameter, require4(values, "glMaterialfv"));
     }
     private static void glMaterial(int face, int parameter, float[] values) {
-        requireBothFaces(face, "glMaterial");
         if (parameter == GL_SHININESS) {
             glMaterialf(face, parameter, values[0]);
+            return;
+        }
+        if (!reachesFront(face, "glMaterial")) {
             return;
         }
         if (recording() && state().record(Ops.MATERIAL, parameter,
@@ -314,12 +333,22 @@ public final class GL11 extends GL11C {
         material(parameter, values);
     }
     public static void glColorMaterial(int face, int mode) {
-        requireBothFaces(face, "glColorMaterial");
-        if (mode != GL_AMBIENT_AND_DIFFUSE) {
-            throw new UnsupportedOperationException(
-                    "glColorMaterial emulates GL_AMBIENT_AND_DIFFUSE only, got 0x"
-                            + Integer.toHexString(mode));
+        int tracks = switch (mode) {
+            case GL_AMBIENT -> Lighting.TRACKS_AMBIENT;
+            case GL_DIFFUSE -> Lighting.TRACKS_DIFFUSE;
+            case GL_SPECULAR -> Lighting.TRACKS_SPECULAR;
+            case GL_EMISSION -> Lighting.TRACKS_EMISSION;
+            case GL_AMBIENT_AND_DIFFUSE -> Lighting.TRACKS_AMBIENT | Lighting.TRACKS_DIFFUSE;
+            default -> throw new UnsupportedOperationException(
+                    "glColorMaterial takes a material, got 0x" + Integer.toHexString(mode));
+        };
+        if (!reachesFront(face, "glColorMaterial")) {
+            tracks = 0;
         }
+        if (recording() && state().record(Ops.COLOR_MATERIAL, tracks)) {
+            return;
+        }
+        state().lighting().setColorMaterialTracks(tracks);
     }
     public static void glShadeModel(int model) {
         if (model != GL_SMOOTH && model != GL_FLAT) {
@@ -430,45 +459,138 @@ public final class GL11 extends GL11C {
         };
     }
     /**
-     * the texture environment decides how a unit's sample is combined with what came before it.
-     * GL_MODULATE, GL_REPLACE and GL_ADD are the modes the compatibility shader implements.
+     * the texture environment decides how a unit's sample is folded into the color: a mode, and
+     * for GL_COMBINE the function, sources and operands for rgb and alpha.
      */
     public static void glTexEnvi(int target, int name, int value) {
-        if (target != GL_TEXTURE_ENV) {
-            throw new UnsupportedOperationException(
-                    "glTexEnvi emulates GL_TEXTURE_ENV only, got 0x" + Integer.toHexString(target));
-        }
-        if (name != GL_TEXTURE_ENV_MODE) {
-            throw new UnsupportedOperationException(
-                    "glTexEnvi does not emulate parameter 0x" + Integer.toHexString(name));
-        }
-        int mode = switch (value) {
-            case GL_MODULATE -> 0;
-            case GL_REPLACE -> 1;
-            case GL_ADD -> 2;
-            default -> throw new UnsupportedOperationException(
-                    "glTexEnvi does not emulate mode 0x" + Integer.toHexString(value)
-                            + "; GL_MODULATE, GL_REPLACE and GL_ADD are the modes the "
-                            + "compatibility shader implements");
-        };
-        if (recording() && state().record(Ops.TEXTURE_ENV, mode)) {
+        requireTextureEnv(target, "glTexEnvi");
+        if (name == GL13.GL_RGB_SCALE || name == GL_ALPHA_SCALE) {
+            glTexEnvf(target, name, value);
             return;
         }
-        state().setTextureEnv(mode);
+        if (name == GL_TEXTURE_ENV_MODE) {
+            int mode = switch (value) {
+                case GL_MODULATE -> TextureEnvironment.MODULATE;
+                case GL_REPLACE -> TextureEnvironment.REPLACE;
+                case GL_ADD -> TextureEnvironment.ADD;
+                case GL13.GL_COMBINE -> TextureEnvironment.COMBINE;
+                case GL_DECAL -> TextureEnvironment.DECAL;
+                case GL_BLEND -> TextureEnvironment.BLEND;
+                default -> throw new UnsupportedOperationException(
+                        "glTexEnvi does not emulate mode 0x" + Integer.toHexString(value));
+            };
+            if (recording() && state().record(Ops.TEXTURE_ENV, mode)) {
+                return;
+            }
+            state().setTextureEnv(mode);
+            return;
+        }
+        int at = combineSlot(name);
+        int code = switch (at) {
+            case TextureEnvironment.RGB_FUNCTION, TextureEnvironment.ALPHA_FUNCTION ->
+                    combineFunction(value);
+            case TextureEnvironment.RGB_OPERAND, TextureEnvironment.RGB_OPERAND + 1,
+                 TextureEnvironment.RGB_OPERAND + 2 -> operand(value, false);
+            case TextureEnvironment.ALPHA_OPERAND, TextureEnvironment.ALPHA_OPERAND + 1,
+                 TextureEnvironment.ALPHA_OPERAND + 2 -> operand(value, true);
+            default -> combineSource(value);
+        };
+        if (recording() && state().record(Ops.TEXTURE_COMBINE, at, code)) {
+            return;
+        }
+        state().setTextureCombine(at, code);
     }
     public static void glTexEnvf(int target, int name, float value) {
-        glTexEnvi(target, name, (int) value);
-    }
-    /** the buffer form carries a colour for GL_TEXTURE_ENV_COLOR, which the shader ignores. */
-    public static void glTexEnv(int target, int name, FloatBuffer values) {
-        if (name == GL_TEXTURE_ENV_MODE) {
-            glTexEnvi(target, name, (int) values.get(values.position()));
+        if (name != GL13.GL_RGB_SCALE && name != GL_ALPHA_SCALE) {
+            glTexEnvi(target, name, (int) value);
             return;
         }
-        throw new UnsupportedOperationException(
-                "glTexEnv does not emulate parameter 0x" + Integer.toHexString(name)
-                        + "; the compatibility shader combines a sample with GL_TEXTURE_ENV_MODE "
-                        + "alone");
+        requireTextureEnv(target, "glTexEnvf");
+        if (value != 1.0f && value != 2.0f && value != 4.0f) {
+            throw new IllegalArgumentException("a combine scale is 1, 2 or 4, got " + value);
+        }
+        boolean alpha = name == GL_ALPHA_SCALE;
+        if (recording() && state().record(Ops.TEXTURE_SCALE, alpha ? 1 : 0, value)) {
+            return;
+        }
+        state().setTextureScale(alpha, value);
+    }
+    public static void glTexEnv(int target, int name, FloatBuffer values) {
+        if (name != GL_TEXTURE_ENV_COLOR) {
+            glTexEnvf(target, name, values.get(values.position()));
+            return;
+        }
+        requireTextureEnv(target, "glTexEnv");
+        float[] color = read4(values, "glTexEnv");
+        if (recording() && state().record(Ops.TEXTURE_ENV_COLOR,
+                color[0], color[1], color[2], color[3])) {
+            return;
+        }
+        state().setTextureEnvColor(color[0], color[1], color[2], color[3]);
+    }
+    private static void requireTextureEnv(int target, String call) {
+        if (target != GL_TEXTURE_ENV) {
+            throw new UnsupportedOperationException(
+                    call + " emulates GL_TEXTURE_ENV only, got 0x" + Integer.toHexString(target));
+        }
+    }
+    private static int combineSlot(int name) {
+        return switch (name) {
+            case GL13.GL_COMBINE_RGB -> TextureEnvironment.RGB_FUNCTION;
+            case GL13.GL_COMBINE_ALPHA -> TextureEnvironment.ALPHA_FUNCTION;
+            case GL13.GL_SOURCE0_RGB, GL13.GL_SOURCE1_RGB, GL13.GL_SOURCE2_RGB ->
+                    TextureEnvironment.RGB_SOURCE + name - GL13.GL_SOURCE0_RGB;
+            case GL13.GL_SOURCE0_ALPHA, GL13.GL_SOURCE1_ALPHA, GL13.GL_SOURCE2_ALPHA ->
+                    TextureEnvironment.ALPHA_SOURCE + name - GL13.GL_SOURCE0_ALPHA;
+            case GL13.GL_OPERAND0_RGB, GL13.GL_OPERAND1_RGB, GL13.GL_OPERAND2_RGB ->
+                    TextureEnvironment.RGB_OPERAND + name - GL13.GL_OPERAND0_RGB;
+            case GL13.GL_OPERAND0_ALPHA, GL13.GL_OPERAND1_ALPHA, GL13.GL_OPERAND2_ALPHA ->
+                    TextureEnvironment.ALPHA_OPERAND + name - GL13.GL_OPERAND0_ALPHA;
+            default -> throw new UnsupportedOperationException(
+                    "glTexEnv does not emulate parameter 0x" + Integer.toHexString(name));
+        };
+    }
+    private static int combineFunction(int function) {
+        return switch (function) {
+            case GL_REPLACE -> TextureEnvironment.FUNCTION_REPLACE;
+            case GL_MODULATE -> TextureEnvironment.FUNCTION_MODULATE;
+            case GL_ADD -> TextureEnvironment.FUNCTION_ADD;
+            case GL13.GL_ADD_SIGNED -> TextureEnvironment.FUNCTION_ADD_SIGNED;
+            case GL13.GL_INTERPOLATE -> TextureEnvironment.FUNCTION_INTERPOLATE;
+            case GL13.GL_SUBTRACT -> TextureEnvironment.FUNCTION_SUBTRACT;
+            default -> throw new UnsupportedOperationException(
+                    "glTexEnv does not emulate combine function 0x"
+                            + Integer.toHexString(function));
+        };
+    }
+    private static int combineSource(int source) {
+        if (source >= GL13.GL_TEXTURE0 && source < GL13.GL_TEXTURE0 + VertexArrays.UNITS) {
+            return TextureEnvironment.SOURCE_UNIT + source - GL13.GL_TEXTURE0;
+        }
+        return switch (source) {
+            case GL_TEXTURE -> TextureEnvironment.SOURCE_TEXTURE;
+            case GL13.GL_CONSTANT -> TextureEnvironment.SOURCE_CONSTANT;
+            case GL13.GL_PRIMARY_COLOR -> TextureEnvironment.SOURCE_PRIMARY_COLOR;
+            case GL13.GL_PREVIOUS -> TextureEnvironment.SOURCE_PREVIOUS;
+            default -> throw new UnsupportedOperationException(
+                    "glTexEnv does not emulate combine source 0x" + Integer.toHexString(source));
+        };
+    }
+    private static int operand(int operand, boolean alpha) {
+        return switch (operand) {
+            case GL_SRC_COLOR, GL_ONE_MINUS_SRC_COLOR -> {
+                if (alpha) {
+                    throw new IllegalArgumentException(
+                            "an alpha operand reads alpha, got 0x" + Integer.toHexString(operand));
+                }
+                yield operand == GL_SRC_COLOR ? TextureEnvironment.OPERAND_COLOR
+                        : TextureEnvironment.OPERAND_ONE_MINUS_COLOR;
+            }
+            case GL_SRC_ALPHA -> TextureEnvironment.OPERAND_ALPHA;
+            case GL_ONE_MINUS_SRC_ALPHA -> TextureEnvironment.OPERAND_ONE_MINUS_ALPHA;
+            default -> throw new UnsupportedOperationException(
+                    "glTexEnv does not emulate operand 0x" + Integer.toHexString(operand));
+        };
     }
     /**
      * coordinate generation has no shader behind it: every texture coordinate here comes from the
@@ -482,11 +604,15 @@ public final class GL11 extends GL11C {
     public static void glTexGen(int coordinate, int name, FloatBuffer values) {
         glTexGeni(coordinate, name, 0);
     }
-    /** webgl has no logic op stage; blending is the only way it combines with the framebuffer. */
+    /**
+     * webgl has no logic op stage and blending cannot stand in for one, so every operation draws as
+     * GL_COPY: a text caret drawn with GL_OR_REVERSE shows in its own color rather than inverted.
+     */
     public static void glLogicOp(int operation) {
-        throw new UnsupportedOperationException(
-                "glLogicOp is not emulated: webgl combines a fragment with the framebuffer by "
-                        + "blending only");
+        if (operation < GL_CLEAR || operation > GL_SET) {
+            throw new IllegalArgumentException(
+                    "glLogicOp takes GL_CLEAR to GL_SET, got 0x" + Integer.toHexString(operation));
+        }
     }
     /** builds every level below the base from it. */
     public static void glGenerateMipmap(int target) {
