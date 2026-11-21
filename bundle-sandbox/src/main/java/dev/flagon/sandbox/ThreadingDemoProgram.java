@@ -59,10 +59,38 @@ public final class ThreadingDemoProgram implements Program {
         latchesAndLocks(console);
         readersAndAWriter(console);
         conditionsAndPools(console);
+        aMonitorHeldAcrossASleep(console);
         chunksArriveWhileTheLoopDraws(console);
 
         Display.destroy();
         console.info("threading: done");
+    }
+
+    /** a method that never suspends must still wait for a monitor another thread holds */
+    private void aMonitorHeldAcrossASleep(ConsoleSink console) throws InterruptedException {
+        Object lock = new Object();
+        CountDownLatch holding = new CountDownLatch(1);
+        Thread holder = new Thread(() -> {
+            synchronized (lock) {
+                holding.countDown();
+                try {
+                    Thread.sleep(20L);
+                } catch (InterruptedException stopped) {
+                    Thread.currentThread().interrupt();
+                }
+            }
+        });
+        holder.start();
+        holding.await();
+        console.info("threading: entered a held monitor " + enter(lock));
+    }
+
+    private static int entered;
+
+    private static int enter(Object lock) {
+        synchronized (lock) {
+            return ++entered;
+        }
     }
 
     /** a condition hands a lock back and forth, and the pool classes run work the same way */

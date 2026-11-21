@@ -88,6 +88,7 @@ test.describe('a browser without jspi', () => {
     const log = page.getByTestId('log');
     await expect(page.getByTestId('state')).toHaveText('exited', { timeout: 30_000 });
     await expect(log).toContainText('threading: worker ticked 5 over true frames drawn beside it');
+    await expect(log).toContainText('threading: entered a held monitor 1');
     await expect(log).toContainText('threading: done');
     expect(failures).toEqual([]);
   });

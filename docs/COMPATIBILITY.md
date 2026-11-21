@@ -142,6 +142,7 @@ Threading is backed by cooperative green threads via `toolchain/concurrent-class
 | `Executors.newFixedThreadPool(n)` | Allocates `n` green worker threads over an internal task queue. |
 | `Executors.newCachedThreadPool()` | Thread pool upper bound clamped to `availableProcessors()`. |
 | `CompletableFuture` | Supported across standard chains (`supplyAsync`, `thenApply`, etc.). |
+| `synchronized` | Suspends calling green thread while another thread holds the monitor. |
 | `ReentrantLock`, `CountDownLatch` | Suspends calling green thread on block; maintains UI loop. |
 | `ReentrantReadWriteLock` | Upgrading to a write lock while holding a read lock throws an error. |
 | `ForkJoinPool` | Unsupported. Use standard `ExecutorService` patterns instead. |
