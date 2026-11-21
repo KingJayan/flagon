@@ -56,6 +56,10 @@ for (const backend of ["wasm", "js"]) {
         expect(
             logged.filter((line) => /Error in class|CodecJOrbis/.test(line)),
         ).toEqual([]);
+        // the assets, the language list among them, come through the index as files
+        expect(
+            logged.filter((line) => line.includes("resource index file")),
+        ).toEqual([]);
         await expect(page.getByTestId("headline")).not.toHaveText(
             "The program exited",
         );

@@ -77,21 +77,19 @@ for (const library of manifest.libraries as Library[]) {
     libraries++;
 }
 
+// laid out as the launcher lays them out; the game finds them through the index, as files
 const assets = join(launcher, "assets");
-const index = JSON.parse(
-    readFileSync(
-        join(assets, "indexes", `${manifest.assetIndex.id}.json`),
-        "utf8",
-    ),
-);
+const indexName = join("indexes", `${manifest.assetIndex.id}.json`);
+mkdirSync(join(vendor, "assets", "indexes"), { recursive: true });
+copyFileSync(join(assets, indexName), join(vendor, "assets", indexName));
+const index = JSON.parse(readFileSync(join(assets, indexName), "utf8"));
 let objects = 0;
-for (const [name, { hash }] of Object.entries(
+for (const { hash } of Object.values(
     index.objects as Record<string, { hash: string }>,
 )) {
-    // the game falls back to its classpath for an asset the index does not map
-    const into = join(vendor, "assets", name);
-    mkdirSync(dirname(into), { recursive: true });
-    copyFileSync(join(assets, "objects", hash.slice(0, 2), hash), into);
+    const object = join("objects", hash.slice(0, 2), hash);
+    mkdirSync(dirname(join(vendor, "assets", object)), { recursive: true });
+    copyFileSync(join(assets, object), join(vendor, "assets", object));
     objects++;
 }
 

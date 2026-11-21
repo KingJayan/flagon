@@ -1,5 +1,6 @@
 package dev.flagon.platform.browser.fs;
 
+import dev.flagon.platform.Resources;
 import dev.flagon.platform.fs.FilePaths;
 import dev.flagon.platform.fs.FileStore;
 import dev.flagon.platform.fs.FileStoreException;
@@ -7,7 +8,14 @@ import org.teavm.runtime.fs.VirtualFile;
 import org.teavm.runtime.fs.VirtualFileAccessor;
 
 import java.io.IOException;
+import java.util.Arrays;
+import java.util.LinkedHashSet;
+import java.util.Set;
 
+/**
+ * a file in the store, or one the program shipped beside its jars. a shipped one reads only and
+ * is found without asking the store, since the store suspends and a read may hold a lock
+ */
 final class StoreVirtualFile implements VirtualFile {
 
     private final FileStore store;
@@ -25,28 +33,55 @@ final class StoreVirtualFile implements VirtualFile {
         return FilePaths.name(path);
     }
 
+    private boolean shipped() {
+        return Resources.isShippedFile(path);
+    }
+
+    private boolean shippedFolder() {
+        return Resources.isShippedFolder(path);
+    }
+
+    /** makes a shipped folder, and those above it, real, so something can be put in it */
+    private boolean stored(String folder) {
+        if (store.isDirectory(folder)) {
+            return true;
+        }
+        return !FilePaths.isRoot(folder) && Resources.isShippedFolder(folder)
+                && stored(FilePaths.parent(folder)) && store.createDirectory(folder);
+    }
+
     @Override
     public boolean isDirectory() {
-        return store.isDirectory(path);
+        return shippedFolder() || store.isDirectory(path);
     }
 
     @Override
     public boolean isFile() {
-        return store.isFile(path);
+        return shipped() || store.isFile(path);
     }
 
     @Override
     public String[] listFiles() {
-        return store.isDirectory(path) ? store.list(path) : null;
+        if (!shippedFolder()) {
+            return store.isDirectory(path) ? store.list(path) : null;
+        }
+        Set<String> names = new LinkedHashSet<>(Arrays.asList(Resources.listShipped(path)));
+        if (store.isDirectory(path)) {
+            names.addAll(Arrays.asList(store.list(path)));
+        }
+        return names.toArray(new String[0]);
     }
 
     @Override
     public VirtualFileAccessor createAccessor(boolean readable, boolean writable, boolean append) {
-        if (store.isDirectory(path)) {
+        if (shipped()) {
+            return writable ? null : new ShippedFileAccessor(path);
+        }
+        if (isDirectory()) {
             return null;
         }
         if (!store.exists(path)) {
-            if (!writable || !store.createFile(path)) {
+            if (!writable || !stored(FilePaths.parent(path)) || !store.createFile(path)) {
                 return null;
             }
         }
@@ -60,26 +95,32 @@ final class StoreVirtualFile implements VirtualFile {
 
     @Override
     public boolean createFile(String name) throws IOException {
-        if (!store.isDirectory(path)) {
+        if (!isDirectory()) {
             throw new IOException("not a directory: " + path);
         }
-        return store.createFile(FilePaths.join(path, name));
+        String made = FilePaths.join(path, name);
+        return !Resources.isShippedFile(made) && stored(path) && store.createFile(made);
     }
 
     @Override
     public boolean createDirectory(String name) {
-        return store.isDirectory(path) && store.createDirectory(FilePaths.join(path, name));
+        String made = FilePaths.join(path, name);
+        return isDirectory() && !Resources.isShippedFolder(made) && stored(path)
+                && store.createDirectory(made);
     }
 
     @Override
     public boolean delete() {
+        if (shipped()) {
+            return false;
+        }
         writes.settle();
         return store.delete(path);
     }
 
     @Override
     public boolean adopt(VirtualFile file, String name) {
-        if (!(file instanceof StoreVirtualFile source) || !store.isDirectory(path)) {
+        if (!(file instanceof StoreVirtualFile source) || !isDirectory() || !stored(path)) {
             return false;
         }
         writes.settle();
@@ -88,7 +129,7 @@ final class StoreVirtualFile implements VirtualFile {
 
     @Override
     public boolean canRead() {
-        return store.exists(path);
+        return shipped() || shippedFolder() || store.exists(path);
     }
 
     @Override
@@ -113,6 +154,9 @@ final class StoreVirtualFile implements VirtualFile {
 
     @Override
     public int length() {
+        if (shipped()) {
+            return Resources.sizeOf(path);
+        }
         byte[] unwritten = writes.get(path);
         return unwritten != null ? unwritten.length : store.size(path);
     }

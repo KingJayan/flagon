@@ -36,11 +36,13 @@ public final class WriteResourcePack {
 
     static final int INSIDE = 0;
     static final int APART = 1;
+    /** added to the place: the file sits beside the jars, so java.io.File finds it as well */
+    static final int SHIPPED = 2;
 
     private static final int BUFFER = 1 << 16;
 
-    /** where one resource comes from */
-    record Item(Path source, String entry) {
+    /** where one resource comes from; a shipped one sat in a folder beside the jars */
+    record Item(Path source, String entry, boolean shipped) {
     }
 
     /** how to pack; a null quality leaves audio as it is, and an apartFrom of 0 keeps all in */
@@ -121,10 +123,12 @@ public final class WriteResourcePack {
         try {
             Map<String, Future<byte[]>> pending = new LinkedHashMap<>();
             for (Map.Entry<String, Item> file : files.entrySet()) {
-                if (!file.getKey().toLowerCase(Locale.ROOT).endsWith(".ogg")) {
+                // a loose file's content decides, as a launcher names its assets by hash alone
+                Item item = file.getValue();
+                if (item.entry() != null
+                        && !file.getKey().toLowerCase(Locale.ROOT).endsWith(".ogg")) {
                     continue;
                 }
-                Item item = file.getValue();
                 pending.put(file.getKey(), pool.submit(() -> {
                     byte[] original;
                     try (Jars open = new Jars()) {
@@ -159,7 +163,7 @@ public final class WriteResourcePack {
         Map<String, Item> files = new LinkedHashMap<>();
         for (Path source : sourcesIn(given)) {
             if (Files.isDirectory(source)) {
-                readTree(source, given, files);
+                readTree(source, given, !source.equals(given), files);
             } else {
                 readJar(source, files);
             }
@@ -200,18 +204,18 @@ public final class WriteResourcePack {
                 if (entry.isDirectory() || !wanted(entry.getName())) {
                     continue;
                 }
-                files.putIfAbsent(entry.getName(), new Item(jar, entry.getName()));
+                files.putIfAbsent(entry.getName(), new Item(jar, entry.getName(), false));
             }
         }
     }
 
-    private static void readTree(Path root, Path base, Map<String, Item> files)
+    private static void readTree(Path root, Path base, boolean shipped, Map<String, Item> files)
             throws IOException {
         try (var tree = Files.walk(root)) {
             for (Path file : tree.filter(Files::isRegularFile).sorted().toList()) {
                 String name = base.relativize(file).toString().replace('\\', '/');
                 if (wanted(name)) {
-                    files.putIfAbsent(name, new Item(file, null));
+                    files.putIfAbsent(name, new Item(file, null, shipped));
                 }
             }
         }
@@ -260,14 +264,15 @@ public final class WriteResourcePack {
                 data.writeInt(label.length);
                 data.write(label);
                 data.writeInt(raw.length);
+                int shipped = file.getValue().shipped() ? SHIPPED : 0;
                 if (apartFrom > 0 && raw.length >= apartFrom) {
                     byte[] hash = Hashes.sha256(raw);
                     Files.createDirectories(apart);
                     Files.write(apart.resolve(HexFormat.of().formatHex(hash)), raw);
-                    data.writeByte(APART);
+                    data.writeByte(APART | shipped);
                     data.write(hash);
                 } else {
-                    data.writeByte(INSIDE);
+                    data.writeByte(INSIDE | shipped);
                     data.write(raw);
                 }
             }

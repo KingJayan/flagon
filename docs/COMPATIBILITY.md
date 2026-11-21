@@ -94,6 +94,7 @@ Ahead-of-time (AOT) tree-shaking strips unreferenced class members by default. `
 * **Caching:** Files are fully loaded into memory when opened.
 * **Flushing:** Streams flush to OPFS on `flush()` and `close()`.
 * **`RandomAccessFile`:** Holds its writes in memory and writes them to OPFS on `close()`, or on every write in `rwd` and `rws` modes.
+* **Shipped files:** Files in folders beside the jars, such as `vendor/assets/`, are read-only files under `/`. A read of one never touches OPFS. A program can add files to their folders, but not replace a shipped one. A file the page loads after start opens at once, and its first read throws `IOException` until it arrives.
 
 ---
 

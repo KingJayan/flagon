@@ -29,7 +29,9 @@ bun dev # local vite on localhost:5174
 
 Some libraries scan the classpath for their own parts. Log4j 2 finds its pattern converters this way. List the packages such a library scans in `vendor/preserve.txt`, one glob per line (`*` stops at a package boundary, `**` does not), and the build keeps them. A library that calls methods or reads fields by name needs its classes in `vendor/reflect.txt`, in the same form.
 
-For Minecraft, `make minecraft` fills `vendor/` from a local launcher install: the game, the libraries that run in a browser, its assets and both lists. `make minecraft MINECRAFT=1.8.9 LAUNCHER=path` picks another version or install.
+Folders beside the JARs in `vendor/` ship too. The program opens their files by path, read-only, from the working directory `/`.
+
+For Minecraft, `make minecraft` fills `vendor/` from a local launcher install: the game, the libraries that run in a browser, its assets laid out as the launcher keeps them, and both lists. `make minecraft MINECRAFT=1.8.9 LAUNCHER=path` picks another version or install.
 
 The build resolves collisions by sorting filenames alphabetically (the first occurrence of a duplicate class takes priority), identifies the entry point via the JAR's `Main-Class` manifest header (or classes with a `main` method), generates a direct bootstrap entry point, and compiles both `app.wasm` and `app.js`.
 

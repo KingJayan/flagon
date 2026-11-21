@@ -62,6 +62,7 @@ class WriteResourcePackTest {
         var packed = WriteResourcePack.collect(work);
 
         assertEquals(Map.of("assets/lang.txt", "hello").keySet(), packed.keySet());
+        assertFalse(packed.get("assets/lang.txt").shipped(), "a lone tree is the classpath");
     }
 
     @Test
@@ -77,6 +78,28 @@ class WriteResourcePackTest {
         assertEquals(Set.of("assets/pack.mcmeta", "assets/sounds/click.ogg"),
                 packed.keySet());
         assertEquals(work.resolve("game.jar"), packed.get("assets/pack.mcmeta").source());
+        assertTrue(packed.get("assets/sounds/click.ogg").shipped());
+        assertFalse(packed.get("assets/pack.mcmeta").shipped());
+    }
+
+    @Test
+    void marksAShippedFileInThePack(@TempDir Path work) throws IOException {
+        jar(work.resolve("game.jar"), Map.of("inside.txt", "jar"));
+        Files.createDirectories(work.resolve("assets"));
+        Files.writeString(work.resolve("assets/beside.txt"), "loose");
+
+        ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+        WriteResourcePack.write(WriteResourcePack.collect(work), bytes);
+
+        ByteBuffer read = ByteBuffer.wrap(bytes.toByteArray());
+        read.position(WriteResourcePack.MAGIC.length + 4);
+        skipName(read);
+        read.position(read.position() + 4);
+        assertEquals(WriteResourcePack.INSIDE, read.get());
+        read.position(read.position() + 3);
+        skipName(read);
+        read.position(read.position() + 4);
+        assertEquals(WriteResourcePack.INSIDE | WriteResourcePack.SHIPPED, read.get());
     }
 
     @Test
@@ -169,7 +192,10 @@ class WriteResourcePackTest {
         Files.write(resources.resolve("loud.ogg"), vorbis(100));
         Files.write(resources.resolve("quiet.ogg"), vorbis(45));
         Files.write(resources.resolve("opus.ogg"), ogg("\u0013OpusHead", 100));
-        Files.write(resources.resolve("loud.txt"), vorbis(100));
+        Files.createDirectories(resources.resolve("objects/ab"));
+        Files.write(resources.resolve("objects/ab/abcd"), vorbis(90));
+        Files.write(resources.resolve("loud.txt"), "not audio".repeat(20).getBytes(
+                StandardCharsets.US_ASCII));
         int[] runs = {0};
         // cuts a file to 40 bytes, which pays only for the large one
         Vorbis.Encoder halving = (from, to) -> {
@@ -181,13 +207,13 @@ class WriteResourcePackTest {
                 WriteResourcePack.collect(resources), new Vorbis(halving, work.resolve("cache")),
                 "q0");
 
-        assertEquals(Set.of("loud.ogg"), shrunk.keySet());
+        assertEquals(Set.of("loud.ogg", "objects/ab/abcd"), shrunk.keySet());
         assertEquals(40, shrunk.get("loud.ogg").length);
-        assertEquals(2, runs[0]);
+        assertEquals(3, runs[0]);
 
         WriteResourcePack.shrink(WriteResourcePack.collect(resources),
                 new Vorbis(halving, work.resolve("cache")), "q0");
-        assertEquals(2, runs[0], "a second pack reads the cache");
+        assertEquals(3, runs[0], "a second pack reads the cache");
     }
 
     @Test
