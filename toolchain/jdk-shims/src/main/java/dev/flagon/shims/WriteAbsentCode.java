@@ -30,6 +30,7 @@ import org.teavm.model.instructions.IsInstanceInstruction;
 import org.teavm.model.instructions.PutFieldInstruction;
 import org.teavm.model.instructions.RaiseInstruction;
 import org.teavm.model.instructions.StringConstantInstruction;
+import org.teavm.reflection.AnnotationGenerationHelper;
 import org.teavm.vm.spi.TeaVMHost;
 import org.teavm.vm.spi.TeaVMPlugin;
 
@@ -76,7 +77,9 @@ public final class WriteAbsentCode implements TeaVMPlugin, ClassHolderTransforme
 
     @Override
     public void transformClass(ClassHolder type, ClassHolderTransformerContext context) {
-        boolean theirs = !ours(type.getName().replace('.', '/'));
+        // teavm writes the annotation data classes it generates as natives, then fills them in
+        boolean theirs = !ours(type.getName().replace('.', '/'))
+                && !type.getName().endsWith(AnnotationGenerationHelper.ANNOTATION_DATA_SUFFIX);
         if (theirs) {
             for (String implemented : type.getInterfaces()) {
                 standIn(implemented, true, context);
