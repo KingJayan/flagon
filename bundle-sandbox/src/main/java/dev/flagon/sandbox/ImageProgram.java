@@ -59,6 +59,12 @@ public final class ImageProgram implements Program {
 
         readWritten(console, "greyscale", grey());
         readWritten(console, "palette", palette());
+        // minecraft's unicode font pages are 1-bit palettes
+        readWritten(console, "1-bit palette", png(4, 2, 1, 3,
+                new byte[] {0, (byte) 0b1010_0000, 0, 0}, new byte[] {0, 0, 0, (byte) 255,
+                    (byte) 255, (byte) 255}));
+        readWritten(console, "4-bit greyscale", png(4, 2, 4, 0,
+                new byte[] {0, (byte) 0xF0, 0, 0, 0, 0x08}, null));
 
         Toolkit.getDefaultToolkit().getSystemClipboard()
                 .setContents(new StringSelection("copied in the page"), null);
@@ -77,24 +83,24 @@ public final class ImageProgram implements Program {
 
     private static byte[] grey() throws java.io.IOException {
         byte[] rows = {0, 10, 20, 30, 40, 1, 50, 10, 10, 10};
-        return png(4, 2, 0, rows, null);
+        return png(4, 2, 8, 0, rows, null);
     }
 
     private static byte[] palette() throws java.io.IOException {
         byte[] rows = {0, 0, 1, 2, 0, 2, 0, 1, 0, 1};
-        return png(4, 2, 3, rows, new byte[] {(byte) 255, 0, 0, 0, (byte) 255, 0, 0, 0,
+        return png(4, 2, 8, 3, rows, new byte[] {(byte) 255, 0, 0, 0, (byte) 255, 0, 0, 0,
             (byte) 255});
     }
 
-    private static byte[] png(int width, int height, int colorType, byte[] rows, byte[] palette)
-            throws java.io.IOException {
+    private static byte[] png(int width, int height, int depth, int colorType, byte[] rows,
+                              byte[] palette) throws java.io.IOException {
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         out.write(new byte[] {(byte) 0x89, 'P', 'N', 'G', '\r', '\n', 0x1A, '\n'});
 
         ByteArrayOutputStream header = new ByteArrayOutputStream();
         writeInt(header, width);
         writeInt(header, height);
-        header.write(8);
+        header.write(depth);
         header.write(colorType);
         header.write(0);
         header.write(0);

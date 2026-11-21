@@ -76,12 +76,12 @@ final class Png {
         if (width <= 0 || height <= 0) {
             throw new IOException("this is not a png: it carries no header");
         }
-        if (depth != 8) {
-            throw new IOException("a png of " + depth + " bits a channel is not read here; "
-                    + "eight is what a game writes");
+        if (!fits(depth, colorType)) {
+            throw new IOException("a png of colour type " + colorType + " cannot be " + depth
+                    + " bits a channel");
         }
         byte[] raw = inflate(compressed.toByteArray());
-        return unfilter(raw, width, height, colorType, palette, paletteAlpha);
+        return unfilter(raw, width, height, depth, colorType, palette, paletteAlpha);
     }
 
     static void write(BufferedImage image, OutputStream to) throws IOException {
@@ -112,8 +112,17 @@ final class Png {
         to.flush();
     }
 
-    private static BufferedImage unfilter(byte[] raw, int width, int height, int colorType,
-                                          byte[] palette, byte[] paletteAlpha)
+    /** the depths the png format lets each colour type have */
+    private static boolean fits(int depth, int colorType) {
+        return switch (colorType) {
+            case GREY -> depth == 1 || depth == 2 || depth == 4 || depth == 8 || depth == 16;
+            case PALETTE -> depth == 1 || depth == 2 || depth == 4 || depth == 8;
+            default -> depth == 8 || depth == 16;
+        };
+    }
+
+    private static BufferedImage unfilter(byte[] raw, int width, int height, int depth,
+                                          int colorType, byte[] palette, byte[] paletteAlpha)
             throws IOException {
         int channels = switch (colorType) {
             case GREY -> 1;
@@ -123,7 +132,9 @@ final class Png {
             case RGBA -> 4;
             default -> throw new IOException("a png colour type of " + colorType + " is unknown");
         };
-        int stride = width * channels;
+        int stride = (width * channels * depth + 7) / 8;
+        // filters reach back a whole pixel, or one byte when a pixel is smaller
+        int pixelBytes = Math.max(1, channels * depth / 8);
         if (raw.length < height * (stride + 1)) {
             throw new IOException("a png says it is " + width + "x" + height
                     + ", which is more than its pixels fill");
@@ -137,9 +148,10 @@ final class Png {
             int filter = raw[at++] & 0xFF;
             System.arraycopy(raw, at, line, 0, stride);
             at += stride;
-            undo(filter, line, above, channels);
+            undo(filter, line, above, pixelBytes);
             for (int x = 0; x < width; x++) {
-                image.setRGB(x, y, pixel(line, x * channels, colorType, palette, paletteAlpha));
+                image.setRGB(x, y, pixel(line, x * channels, depth, colorType, palette,
+                        paletteAlpha));
             }
             byte[] swap = above;
             above = line;
@@ -148,23 +160,42 @@ final class Png {
         return image;
     }
 
-    private static int pixel(byte[] line, int at, int colorType, byte[] palette,
+    /** the row's sample at {@code index}, as it is stored; a 16-bit one keeps its high byte */
+    private static int sample(byte[] line, int index, int depth) {
+        if (depth == 8) {
+            return line[index] & 0xFF;
+        }
+        if (depth == 16) {
+            return line[index * 2] & 0xFF;
+        }
+        int bit = index * depth;
+        int shift = 8 - depth - bit % 8;
+        return (line[bit / 8] & 0xFF) >> shift & (1 << depth) - 1;
+    }
+
+    /** a sample stretched to eight bits; a palette index is never stretched */
+    private static int level(byte[] line, int index, int depth) {
+        int stored = sample(line, index, depth);
+        return depth < 8 ? stored * 255 / ((1 << depth) - 1) : stored;
+    }
+
+    private static int pixel(byte[] line, int at, int depth, int colorType, byte[] palette,
                              byte[] paletteAlpha) {
         return switch (colorType) {
             case GREY -> {
-                int grey = line[at] & 0xFF;
+                int grey = level(line, at, depth);
                 yield 0xFF000000 | grey << 16 | grey << 8 | grey;
             }
             case GREY_ALPHA -> {
-                int grey = line[at] & 0xFF;
-                yield (line[at + 1] & 0xFF) << 24 | grey << 16 | grey << 8 | grey;
+                int grey = level(line, at, depth);
+                yield level(line, at + 1, depth) << 24 | grey << 16 | grey << 8 | grey;
             }
-            case RGB -> 0xFF000000 | (line[at] & 0xFF) << 16
-                    | (line[at + 1] & 0xFF) << 8 | (line[at + 2] & 0xFF);
-            case RGBA -> (line[at + 3] & 0xFF) << 24 | (line[at] & 0xFF) << 16
-                    | (line[at + 1] & 0xFF) << 8 | (line[at + 2] & 0xFF);
+            case RGB -> 0xFF000000 | level(line, at, depth) << 16
+                    | level(line, at + 1, depth) << 8 | level(line, at + 2, depth);
+            case RGBA -> level(line, at + 3, depth) << 24 | level(line, at, depth) << 16
+                    | level(line, at + 1, depth) << 8 | level(line, at + 2, depth);
             default -> {
-                int index = line[at] & 0xFF;
+                int index = sample(line, at, depth);
                 int alpha = paletteAlpha != null && index < paletteAlpha.length
                         ? paletteAlpha[index] & 0xFF : 0xFF;
                 yield alpha << 24 | (palette[index * 3] & 0xFF) << 16
