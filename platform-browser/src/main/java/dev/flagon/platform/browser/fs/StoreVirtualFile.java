@@ -2,6 +2,7 @@ package dev.flagon.platform.browser.fs;
 
 import dev.flagon.platform.fs.FilePaths;
 import dev.flagon.platform.fs.FileStore;
+import dev.flagon.platform.fs.FileStoreException;
 import org.teavm.runtime.fs.VirtualFile;
 import org.teavm.runtime.fs.VirtualFileAccessor;
 
@@ -10,10 +11,12 @@ import java.io.IOException;
 final class StoreVirtualFile implements VirtualFile {
 
     private final FileStore store;
+    private final WriteBehind writes;
     private final String path;
 
-    StoreVirtualFile(FileStore store, String path) {
+    StoreVirtualFile(FileStore store, WriteBehind writes, String path) {
         this.store = store;
+        this.writes = writes;
         this.path = path;
     }
 
@@ -47,7 +50,12 @@ final class StoreVirtualFile implements VirtualFile {
                 return null;
             }
         }
-        return new StoreFileAccessor(store, path, readable, writable, append);
+        try {
+            return new StoreFileAccessor(store, writes, path, writable, append);
+        } catch (FileStoreException e) {
+            // another thread moved or deleted it after the check; java.io reports it missing
+            return null;
+        }
     }
 
     @Override
@@ -65,6 +73,7 @@ final class StoreVirtualFile implements VirtualFile {
 
     @Override
     public boolean delete() {
+        writes.settle();
         return store.delete(path);
     }
 
@@ -73,6 +82,7 @@ final class StoreVirtualFile implements VirtualFile {
         if (!(file instanceof StoreVirtualFile source) || !store.isDirectory(path)) {
             return false;
         }
+        writes.settle();
         return store.move(source.path, FilePaths.join(path, name));
     }
 
@@ -103,6 +113,7 @@ final class StoreVirtualFile implements VirtualFile {
 
     @Override
     public int length() {
-        return store.size(path);
+        byte[] unwritten = writes.get(path);
+        return unwritten != null ? unwritten.length : store.size(path);
     }
 }

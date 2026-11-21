@@ -4,27 +4,31 @@ import dev.flagon.platform.fs.FileStore;
 import org.teavm.runtime.fs.VirtualFileAccessor;
 
 import java.io.IOException;
+import java.util.Arrays;
 
 final class StoreFileAccessor implements VirtualFileAccessor {
 
-    private final FileStore store;
+    // how often an open file's writes are queued, so a closed tab loses only the last few seconds
+    private static final long QUEUE_MILLIS = 5_000;
+
+    private final WriteBehind writes;
     private final String path;
     private final boolean writable;
-    private final boolean writeThrough;
 
     private byte[] data;
     private int length;
     private int position;
     private boolean dirty;
     private boolean closed;
+    private long queued = System.currentTimeMillis();
 
-    StoreFileAccessor(FileStore store, String path, boolean readable, boolean writable,
+    StoreFileAccessor(FileStore store, WriteBehind writes, String path, boolean writable,
                       boolean append) {
-        this.store = store;
+        this.writes = writes;
         this.path = path;
         this.writable = writable;
-        this.writeThrough = readable && writable;
-        this.data = store.read(path);
+        byte[] unwritten = writes.get(path);
+        this.data = unwritten != null ? unwritten.clone() : store.read(path);
         this.length = data.length;
         this.position = append ? length : 0;
     }
@@ -52,9 +56,7 @@ final class StoreFileAccessor implements VirtualFileAccessor {
         position += count;
         length = Math.max(length, position);
         dirty = true;
-        if (writeThrough) {
-            flush();
-        }
+        queueNow();
     }
 
     private void ensureCapacity(int needed) {
@@ -106,9 +108,7 @@ final class StoreFileAccessor implements VirtualFileAccessor {
         length = to;
         position = Math.min(position, length);
         dirty = true;
-        if (writeThrough) {
-            flush();
-        }
+        queueNow();
     }
 
     @Override
@@ -116,10 +116,15 @@ final class StoreFileAccessor implements VirtualFileAccessor {
         if (!dirty) {
             return;
         }
-        byte[] contents = new byte[length];
-        System.arraycopy(data, 0, contents, 0, length);
-        store.write(path, contents);
+        writes.put(path, Arrays.copyOf(data, length));
+        queued = System.currentTimeMillis();
         dirty = false;
+    }
+
+    private void queueNow() {
+        if (System.currentTimeMillis() - queued >= QUEUE_MILLIS) {
+            flush();
+        }
     }
 
     @Override
@@ -127,8 +132,9 @@ final class StoreFileAccessor implements VirtualFileAccessor {
         if (closed) {
             return;
         }
-        flush();
+        // a write from another thread now fails rather than landing after the last flush
         closed = true;
+        flush();
         data = null;
     }
 
