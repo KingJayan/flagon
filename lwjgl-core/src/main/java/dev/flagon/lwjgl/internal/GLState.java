@@ -111,6 +111,7 @@ public final class GLState implements RenderState {
     // gl names are dense small ints
     private final List<ShaderStage> shaderStages = new ArrayList<>();
     private final List<String> shaderSources = new ArrayList<>();
+    private final List<List<UniformDefaults.Default>> shaderDefaults = new ArrayList<>();
     private final BitSet fixedFunctionShaders = new BitSet();
     private final BitSet fixedFunctionPrograms = new BitSet();
     private final List<BitSet> attachedShaders = new ArrayList<>();
@@ -551,11 +552,17 @@ public final class GLState implements RenderState {
     public void forgetShader(int shader) {
         put(shaderStages, shader, null);
         put(shaderSources, shader, null);
+        put(shaderDefaults, shader, null);
         fixedFunctionShaders.clear(shader);
     }
 
     public void sourced(int shader, String translated) {
+        sourced(shader, translated, List.of());
+    }
+
+    public void sourced(int shader, String translated, List<UniformDefaults.Default> defaults) {
         put(shaderSources, shader, translated);
+        put(shaderDefaults, shader, defaults.isEmpty() ? null : defaults);
     }
 
     private static <T> void put(List<T> held, int name, T value) {
@@ -641,6 +648,46 @@ public final class GLState implements RenderState {
             reads |= fixedFunctionShaders.get(shader);
         }
         fixedFunctionPrograms.set(linked, reads);
+        if (attached != null && device.isProgramLinked(linked)) {
+            setDefaults(linked, attached);
+        }
+    }
+
+    /** the values the source gave its uniforms, which gl sets when the program links */
+    private void setDefaults(int linked, BitSet attached) {
+        boolean bound = false;
+        for (int shader = attached.nextSetBit(0); shader >= 0;
+                shader = attached.nextSetBit(shader + 1)) {
+            List<UniformDefaults.Default> defaults = at(shaderDefaults, shader);
+            for (UniformDefaults.Default given : defaults == null
+                    ? List.<UniformDefaults.Default>of() : defaults) {
+                int location = device.uniformLocation(linked, given.name());
+                if (location < 0) {
+                    continue;
+                }
+                if (!bound) {
+                    device.useProgram(linked);
+                    bound = true;
+                }
+                set(location, given);
+            }
+        }
+        if (bound) {
+            device.useProgram(program);
+        }
+    }
+
+    private void set(int location, UniformDefaults.Default given) {
+        float[] values = given.values();
+        if (!given.integer()) {
+            device.uniformFloats(location, values.length, values, 1);
+            return;
+        }
+        int[] ints = new int[values.length];
+        for (int at = 0; at < values.length; at++) {
+            ints[at] = (int) values[at];
+        }
+        device.uniformInts(location, ints.length, ints, 1);
     }
 
     public void forgetProgram(int deleted) {

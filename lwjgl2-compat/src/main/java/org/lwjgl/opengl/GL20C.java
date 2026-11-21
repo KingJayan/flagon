@@ -3,6 +3,7 @@ package org.lwjgl.opengl;
 import dev.flagon.lwjgl.internal.ClientArray;
 import dev.flagon.lwjgl.internal.GLState;
 import dev.flagon.lwjgl.internal.GlslTranslator;
+import dev.flagon.lwjgl.internal.UniformDefaults;
 import dev.flagon.platform.graphics.AttributeType;
 import dev.flagon.platform.graphics.BufferTarget;
 import dev.flagon.platform.graphics.GraphicsDevice;
@@ -55,7 +56,8 @@ public class GL20C {
         String written = source.toString();
         String translated = GlslTranslator.toGlslEs(written, state().shaderStage(shader));
         state().markFixedFunction(shader, GlslTranslator.readsFixedFunction(written));
-        state().sourced(shader, translated);
+        state().sourced(shader, translated, UniformDefaults.of(GlslTranslator.withoutComments(
+                written)));
         device().shaderSource(shader, translated);
     }
     public static void glShaderSource(int shader, CharSequence[] sources) {
