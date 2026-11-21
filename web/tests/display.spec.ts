@@ -40,6 +40,30 @@ for (const backend of BACKENDS) {
       expect(pixel[1]).toBeLessThan(80);
     });
 
+    test('shows no frame that paused half drawn', async ({ page }) => {
+      await start(page, backend);
+      const log = page.getByTestId('log');
+      await expect(log).toContainText('pausing mid-frame', { timeout: 30_000 });
+
+      // each sample runs between the program's turns, so it lands inside some of the pauses
+      const blue: number[] = [];
+      while (!((await log.textContent()) ?? '').includes('paused mid-frame 20 times')) {
+        blue.push(
+          await page.evaluate(() => {
+            const shown = document.createElement('canvas');
+            shown.width = 1;
+            shown.height = 1;
+            const context = shown.getContext('2d')!;
+            context.drawImage(document.getElementById('flagon-canvas') as HTMLCanvasElement,
+              320, 180, 1, 1, 0, 0, 1, 1);
+            return context.getImageData(0, 0, 1, 1).data[2];
+          }),
+        );
+      }
+      expect(blue.length).toBeGreaterThan(5);
+      expect(blue.filter((value) => value > 150)).toEqual([]);
+    });
+
     test('leaves the page its canvas where the page supplied one', async ({ page }) => {
       await start(page, backend);
       await expect(page.getByTestId('log')).toContainText('display again', { timeout: 30_000 });

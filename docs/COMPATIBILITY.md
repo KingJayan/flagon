@@ -155,7 +155,7 @@ Both LWJGL 2 (`lwjgl2-compat`) and LWJGL 3 (`lwjgl3-compat`) APIs are supported.
 
 ### Display & Lifecycle
 
-* **`Display.update()` / `glfwSwapBuffers()`:** Suspends the calling thread and waits for browser `requestAnimationFrame()`.
+* **`Display.update()` / `glfwSwapBuffers()`:** Copies the frame to the canvas, then suspends the calling thread and waits for browser `requestAnimationFrame()`. Drawing goes to a back buffer, so a frame that pauses half drawn never shows.
 * **`Display.sync(fps)`:** Throttles execution by presenting redundant frames via `requestAnimationFrame()`.
 * **`Display.setIcon()` / `glfwSetWindowPos()`:** No-op. The host page controls tab icons and canvas positioning.
 

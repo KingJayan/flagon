@@ -61,9 +61,10 @@ final class Canvas {
     static WebGL2 context(JSObject canvas) {
         ContextOptions wanted = JSObjects.create();
 
+        // drawing goes to a back buffer with its own depth and stencil
         wanted.setAlpha(false);
-        wanted.setDepth(true);
-        wanted.setStencil(true);
+        wanted.setDepth(false);
+        wanted.setStencil(false);
         wanted.setAntialias(false);
         wanted.setPreserveDrawingBuffer(wantsPreserved());
         wanted.setPowerPreference("high-performance");

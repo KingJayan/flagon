@@ -56,6 +56,7 @@ public final class CanvasSurface implements DisplaySurface {
     @Override
     public void setSize(int width, int height) {
         Canvas.resize(canvas, width, height);
+        graphics.resizeScreen();
     }
 
     @Override
@@ -100,8 +101,7 @@ public final class CanvasSurface implements DisplaySurface {
 
     @Override
     public void present() {
-        // webgl presents implicitly when the frame callback returns, so there is nothing to
-        // swap; what desktop code is really waiting for here is the next frame
+        graphics.presentScreen();
         Frames.awaitNextFrame();
     }
 
