@@ -353,6 +353,63 @@ class GlslTranslatorTest {
     }
 
     @Test
+    void anIntLiteralBecomesAFloatWhereAFloatMeetsIt() {
+        String translated = GlslTranslator.toGlslEs("""
+                #version 120
+                uniform sampler2D DiffuseSampler;
+                varying vec2 texCoord;
+                float half(float h) { return 2; }
+                void main() {
+                    vec4 c = texture2D(DiffuseSampler, texCoord);
+                    float f = 1;
+                    float g = 2 - abs(f * 6.0 - 2.0);
+                    if (f != 0) { g *= half(1) * -3; }
+                    vec4 color = c * clamp(f, 0.5, 2) + pow(g, 2);
+                    gl_FragColor = vec4(color.rgb, 1);
+                }
+                """, ShaderStage.FRAGMENT);
+
+        assertTrue(translated.contains("{ return 2.0; }"), translated);
+        assertTrue(translated.contains("float f = 1.0;"), translated);
+        assertTrue(translated.contains("float g = 2.0 - abs"), translated);
+        assertTrue(translated.contains("if (f != 0.0) { g *= half(1.0) * -3.0; }"), translated);
+        assertTrue(translated.contains("clamp(f, 0.5, 2.0) + pow(g, 2.0)"), translated);
+        assertTrue(translated.contains("vec4(color.rgb, 1)"), translated);
+    }
+
+    @Test
+    void precisionFollowsTheExtensionsOfAShaderWithoutAVersion() {
+        String translated = GlslTranslator.toGlslEs("""
+                #extension GL_EXT_gpu_shader4 : enable
+                void main() { gl_FragColor = vec4(1.0); }
+                """, ShaderStage.FRAGMENT);
+
+        assertTrue(translated.startsWith("#extension GL_EXT_gpu_shader4 : enable\n"
+                + "precision mediump float;\n"), translated);
+    }
+
+    @Test
+    void anIntLiteralStaysWhereAnIntMeetsIt() {
+        String translated = GlslTranslator.toGlslEs("""
+                #version 120
+                uniform float weights[4];
+                uniform int count;
+                varying float shade;
+                void main() {
+                    float sum = 0.0;
+                    for (int i = 0; i < 4; i++) {
+                        sum += weights[i + 1] * float(count / 2);
+                    }
+                    gl_FragColor = vec4(sum * shade, max(count, 1), 0.0, 1.0);
+                }
+                """, ShaderStage.FRAGMENT);
+
+        assertTrue(translated.contains("for (int i = 0; i < 4; i++)"), translated);
+        assertTrue(translated.contains("weights[i + 1] * float(count / 2)"), translated);
+        assertTrue(translated.contains("max(count, 1)"), translated);
+    }
+
+    @Test
     void nullSourceIsRejected() {
         assertThrows(IllegalArgumentException.class,
                 () -> GlslTranslator.toGlslEs(null, ShaderStage.VERTEX));

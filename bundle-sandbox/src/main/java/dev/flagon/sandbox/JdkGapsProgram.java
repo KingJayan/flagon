@@ -4,6 +4,8 @@ import dev.flagon.platform.ConsoleSink;
 import dev.flagon.platform.Platforms;
 import dev.flagon.runtime.Program;
 import org.example.absent.MissingFromBundle;
+import org.example.library.Named;
+import org.example.library.NamedPlugin;
 
 import java.lang.management.ManagementFactory;
 import java.lang.ref.PhantomReference;
@@ -108,6 +110,8 @@ public final class JdkGapsProgram implements Program {
         URL url = new URL("http://localhost/nothing");
         console.info("jdkgaps: a connection through a named proxy opens "
                 + (url.openConnection(Proxy.NO_PROXY) != null));
+        console.info("jdkgaps: a library's annotation reads "
+                + NamedPlugin.class.getAnnotation(Named.class).value());
 
         // zlib reports a call with nothing to do as an error the jdk turns into zero bytes
         Deflater idle = new Deflater();

@@ -34,6 +34,7 @@ for (const backend of BACKENDS) {
       await expect(log).toContainText('jdkgaps: four bytes make an ipv4 address true at 127.0.0.1');
       await expect(log).toContainText('jdkgaps: sixteen bytes make a loopback ipv6 address true');
       await expect(log).toContainText('jdkgaps: a connection through a named proxy opens true');
+      await expect(log).toContainText("jdkgaps: a library's annotation reads console");
       await expect(log).toContainText(
         'jdkgaps: with nothing to take a deflater writes its header, 2 bytes, then 0, and an '
           + 'inflater reads 0');

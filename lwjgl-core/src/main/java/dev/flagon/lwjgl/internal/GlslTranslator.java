@@ -60,7 +60,8 @@ public final class GlslTranslator {
     }
 
     private static String finishGlslEs300(String stripped, ShaderStage stage) {
-        String body = renameSamplerCalls(stripped);
+        String renamed = renameSamplerCalls(stripped);
+        String body = ImplicitFloats.rewrite(renamed, withoutComments(renamed));
         String bare = withoutComments(body);
         StringBuilder injected = new StringBuilder();
         boolean fragment = stage == ShaderStage.FRAGMENT;
@@ -238,7 +239,8 @@ public final class GlslTranslator {
         if (stage != ShaderStage.FRAGMENT || declaresFloatPrecision(code)) {
             return source;
         }
-        return "precision mediump float;\n" + source;
+        int after = afterExtensions(source, code);
+        return source.substring(0, after) + "precision mediump float;\n" + source.substring(after);
     }
 
     private static boolean declaresFloatPrecision(String source) {
