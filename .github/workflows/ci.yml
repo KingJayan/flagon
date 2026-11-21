@@ -15,7 +15,7 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v5
 
@@ -32,8 +32,12 @@ jobs:
       - name: Unit tests
         run: make test
 
+      # main deploys, so it builds and tests the release bundles the site serves
+      - uses: ./.github/actions/web-deps
+        if: github.event_name == 'push'
+
       - name: Build backends
-        run: make bundles
+        run: make ${{ github.event_name == 'push' && 'bundles-release' || 'bundles' }}
 
       - name: Upload bundles
         uses: actions/upload-artifact@v5
@@ -112,6 +116,37 @@ jobs:
           name: blob-report-${{ matrix.project }}-${{ matrix.shard }}
           path: web/blob-report/
           retention-days: 7
+
+  site:
+    needs: browser
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v5
+        with:
+          name: site
+          path: site/
+
+      - uses: actions/download-artifact@v5
+        with:
+          name: bundles
+          path: site/flagon/
+
+      # vercel deploys the site branch as it is; main's vercel.json keeps every other branch off
+      - name: Push the site branch
+        working-directory: site
+        run: |
+          echo '{ "git": { "deploymentEnabled": true } }' > vercel.json
+          git init -q -b site
+          git add .
+          # vercel's hobby plan deploys only commits by a linked account, so the pusher signs it
+          git -c user.name='${{ github.actor }}' \
+            -c user.email='${{ github.actor_id }}+${{ github.actor }}@users.noreply.github.com' \
+            commit -q -m "site $GITHUB_SHA"
+          git push -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" site
 
   report:
     needs: browser
