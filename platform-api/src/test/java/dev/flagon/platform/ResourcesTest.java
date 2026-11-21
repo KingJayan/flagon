@@ -8,8 +8,10 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.util.HexFormat;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -96,6 +98,68 @@ class ResourcesTest {
         assertThrows(IllegalArgumentException.class, () -> Resources.install(cut));
     }
 
+    @Test
+    void fetchesAResourceKeptApartOnlyWhenItIsRead() throws IOException {
+        String hash = "ab".repeat(32);
+        Map<String, String> fetched = new LinkedHashMap<>();
+        Resources.install(Resources.of(apartPack("music/calm.ogg", 5, hash)), asked -> {
+            fetched.put(asked, asked);
+            return asked.equals(hash) ? "notes".getBytes(StandardCharsets.UTF_8) : null;
+        });
+
+        assertTrue(Resources.has("music/calm.ogg"));
+        assertEquals(5, Resources.sizeOf("music/calm.ogg"));
+        assertEquals(Set.of(hash), Resources.apart());
+        assertTrue(fetched.isEmpty());
+        assertEquals("notes", new String(Resources.read("music/calm.ogg"),
+                StandardCharsets.UTF_8));
+        byte[] into = new byte[8];
+        assertEquals(5, Resources.readInto("/music/calm.ogg", into));
+        assertEquals(Set.of(hash), fetched.keySet());
+    }
+
+    @Test
+    void findsNothingWhenAResourceKeptApartCannotBeHad() throws IOException {
+        byte[] pack = apartPack("music/calm.ogg", 5, "cd".repeat(32));
+
+        Resources.install(Resources.of(pack), hash -> "too long".getBytes(StandardCharsets.UTF_8));
+        assertNull(Resources.read("music/calm.ogg"));
+
+        Resources.install(pack);
+        assertTrue(Resources.has("music/calm.ogg"));
+        assertEquals(-1, Resources.readInto("music/calm.ogg", new byte[5]));
+        InputStream early = Resources.open("music/calm.ogg");
+        assertThrows(IOException.class, early::read);
+    }
+
+    @Test
+    void opensAResourceKeptApartBeforeItArrives() throws IOException {
+        String hash = "ef".repeat(32);
+        boolean[] arrived = {false};
+        Resources.install(Resources.of(apartPack("music/calm.ogg", 5, hash)),
+                asked -> arrived[0] ? "notes".getBytes(StandardCharsets.UTF_8) : null);
+
+        InputStream opened = Resources.open("music/calm.ogg");
+        arrived[0] = true;
+
+        assertEquals("notes", new String(opened.readAllBytes(), StandardCharsets.UTF_8));
+    }
+
+    private static byte[] apartPack(String name, int length, String hash) throws IOException {
+        ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+        DataOutputStream out = new DataOutputStream(bytes);
+        out.write("FLGNPK04".getBytes(StandardCharsets.US_ASCII));
+        out.writeInt(1);
+        byte[] label = name.getBytes(StandardCharsets.UTF_8);
+        out.writeInt(label.length);
+        out.write(label);
+        out.writeInt(length);
+        out.writeByte(1);
+        out.write(HexFormat.of().parseHex(hash));
+        out.flush();
+        return bytes.toByteArray();
+    }
+
     private static Map<String, String> names(String... files) {
         Map<String, String> packed = new LinkedHashMap<>();
         for (String file : files) {
@@ -107,7 +171,7 @@ class ResourcesTest {
     private static byte[] pack(Map<String, String> files) throws IOException {
         ByteArrayOutputStream bytes = new ByteArrayOutputStream();
         DataOutputStream out = new DataOutputStream(bytes);
-        out.write("FLGNPK03".getBytes(StandardCharsets.US_ASCII));
+        out.write("FLGNPK04".getBytes(StandardCharsets.US_ASCII));
         out.writeInt(files.size());
         for (Map.Entry<String, String> file : files.entrySet()) {
             byte[] name = file.getKey().getBytes(StandardCharsets.UTF_8);
@@ -115,6 +179,7 @@ class ResourcesTest {
             out.writeInt(name.length);
             out.write(name);
             out.writeInt(content.length);
+            out.writeByte(0);
             out.write(content);
         }
         out.flush();

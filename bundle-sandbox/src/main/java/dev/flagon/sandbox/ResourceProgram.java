@@ -41,6 +41,32 @@ public final class ResourceProgram implements Program {
                 + read(open(getClass().getClassLoader().getResource(ABSOLUTE.substring(1)))));
         console.info("resources: a file nobody packed has the url "
                 + getClass().getResource("/nothing-here.txt"));
+        String[] apart = readApart().split("\n");
+        console.info("resources: a file kept apart says " + apart[0] + " in " + apart.length
+                + " lines");
+    }
+
+    /** a file kept apart arrives after the program starts, and reads fail until it does */
+    private String readApart() throws IOException {
+        for (int tries = 0; ; tries++) {
+            try {
+                return read(getClass().getResourceAsStream("apart.txt"));
+            } catch (IOException early) {
+                if (tries == 100) {
+                    throw early;
+                }
+                sleep();
+            }
+        }
+    }
+
+    private static void sleep() throws IOException {
+        try {
+            Thread.sleep(50);
+        } catch (InterruptedException stopped) {
+            Thread.currentThread().interrupt();
+            throw new IOException(stopped);
+        }
     }
 
     private static InputStream open(URL url) throws IOException {

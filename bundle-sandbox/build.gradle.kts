@@ -32,6 +32,7 @@ bundle {
     reflectClasses.set("dev.flagon.sandbox.ReflectedBy*")
     reflectProxies.set("dev.flagon.sandbox.Proxied")
     reflectConverted.set("java.lang.Integer")
+    apartFrom.set(256)
 }
 
 tasks.named<RunMain>("writeCatalog") {

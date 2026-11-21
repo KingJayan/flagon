@@ -25,8 +25,11 @@ final class ResourcePack {
             return;
         }
         try {
-            Resources.install(over(fetched));
+            Resources.install(over(fetched), ResourcePack::fetchApart);
             console.info("flagon: the pack carries " + Resources.count() + " resources");
+            if (servesApart()) {
+                wantApart(String.join(",", Resources.apart()));
+            }
         } catch (IllegalArgumentException broken) {
             Resources.clear();
             console.warn("the resource pack is unreadable: " + broken.getMessage());
@@ -57,6 +60,26 @@ final class ResourcePack {
             }
         };
     }
+
+    /** the file once the page has fetched it; a read never waits, so it is null till then */
+    private static byte[] fetchApart(String hash) {
+        if (!servesApart()) {
+            return null;
+        }
+        ArrayBuffer arrived = takeApart(hash);
+        return arrived == null || JSObjects.isUndefined(arrived) ? null
+                : JsArrays.bytesOf(new Int8Array(arrived));
+    }
+
+    @JSBody(script = "return typeof window.__flagonApart !== 'undefined';")
+    private static native boolean servesApart();
+
+    @JSBody(params = "hash", script = "return window.__flagonApart.take(hash);")
+    private static native ArrayBuffer takeApart(String hash);
+
+    /** the page fetches these, joined with commas, and drops cached files it is not given */
+    @JSBody(params = "hashes", script = "window.__flagonApart.want(hashes);")
+    private static native void wantApart(String hashes);
 
     interface Packed extends JSObject {
         @JSProperty("__flagonResources")

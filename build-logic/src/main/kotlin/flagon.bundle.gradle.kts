@@ -27,6 +27,7 @@ bundle.reflectProxies.convention("")
 bundle.reflectConverted.convention("")
 bundle.compilerMemory.convention(1024)
 bundle.shrinkCoroutineWasm.convention(true)
+bundle.apartFrom.convention(0)
 
 val bundlesDir = layout.buildDirectory.dir("flagon")
 val releaseBuild = providers.gradleProperty("flagon.release").isPresent
@@ -174,9 +175,13 @@ val writeResourcePack = tasks.register<RunMain>("writeResourcePack") {
     inputs.files(bundle.resourcesFrom).withPropertyName("resources").optional()
         .withPathSensitivity(PathSensitivity.RELATIVE)
     outputs.file(out)
+    outputs.dir(layout.buildDirectory.dir(bundle.bundleName.map { "flagon/$it.files" }))
     outputs.cacheIf { true }
     paths.add(bundle.resourcesFrom)
     paths.add(out)
+    paths.add(layout.buildDirectory.dir("transcoded"))
+    arguments.add(bundle.apartFrom.map { "--apart-from=$it" })
+    arguments.addAll(bundle.vorbisQuality.map { listOf("--vorbis-quality=$it") }.orElse(listOf()))
 }
 
 fun optimizing(variant: String, compile: TaskProvider<GenerateWasmGCTask>): Provider<out Task> {

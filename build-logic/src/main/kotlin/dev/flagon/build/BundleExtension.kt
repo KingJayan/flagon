@@ -20,6 +20,12 @@ interface BundleExtension {
 
     val compilerMemory: Property<Int>
 
+    /** re-encodes the pack's ogg vorbis at this quality through ffmpeg; unset keeps it */
+    val vorbisQuality: Property<Int>
+
+    /** resources this many bytes or larger load from beside the pack when read; 0 keeps all in */
+    val apartFrom: Property<Int>
+
     /** release wasm-opt on the coroutine build; binaryen crashes on the app's */
     val shrinkCoroutineWasm: Property<Boolean>
 }

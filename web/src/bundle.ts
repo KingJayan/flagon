@@ -13,6 +13,10 @@ declare global {
   interface Window {
     __flagonHost?: HostBridge;
     __flagonResources?: ArrayBuffer;
+    __flagonApart?: {
+      want(hashes: string): void;
+      take(hash: string): ArrayBuffer | null;
+    };
     __flagonCloseRequested?: boolean;
     __flagonFrames?: number;
   }
@@ -111,15 +115,123 @@ export function packUrlOf(bundleUrl: string): string {
   return bundleUrl.replace(/\/(?:js|wasm|jspi)\/([^/]+)\.(?:js|wasm)$/, '/$1.pack');
 }
 
+const PACK_CACHE = 'flagon-pack';
+
+function isServed(response: Response): boolean {
+  return response.ok && !(response.headers.get('content-type') ?? '').includes('text/html');
+}
+
+async function openPackCache(): Promise<Cache | undefined> {
+  try {
+    return typeof caches === 'undefined' ? undefined : await caches.open(PACK_CACHE);
+  } catch {
+    // cache storage needs a secure context, and a private window may refuse it
+    return undefined;
+  }
+}
+
+/** the cached pack while the server says it still holds, else the server's */
+async function revalidated(url: string, cache: Cache | undefined): Promise<Response> {
+  const kept = await cache?.match(url);
+  const headers = new Headers();
+  const tag = kept?.headers.get('etag');
+  const modified = kept?.headers.get('last-modified');
+  if (tag) {
+    headers.set('if-none-match', tag);
+  } else if (modified) {
+    headers.set('if-modified-since', modified);
+  }
+  const response = await fetch(url, { headers, cache: 'no-store' });
+  if (response.status === 304 && kept) {
+    return kept;
+  }
+  const validated = response.headers.has('etag') || response.headers.has('last-modified');
+  if (cache && validated && isServed(response)) {
+    cache.put(url, response.clone()).catch(() => {});
+  }
+  return response;
+}
+
+const APART_FETCHES = 4;
+
+/**
+ * fetches the resources kept beside the pack in the background, from the cache where it can, and
+ * hands each to the program once it is in; a read cannot wait, since it may hold a lock
+ */
+function serveApart(packUrl: string, cache: Cache | undefined): void {
+  const base = new URL(packUrl.replace(/\.pack$/, '.files/'), location.origin).href;
+  const arrived = new Map<string, ArrayBuffer>();
+  const queue: string[] = [];
+
+  async function load(hash: string): Promise<void> {
+    const url = base + hash;
+    try {
+      const kept = await cache?.match(url);
+      if (kept) {
+        arrived.set(hash, await kept.arrayBuffer());
+        return;
+      }
+      const response = await fetch(url);
+      if (!isServed(response)) {
+        console.warn(`flagon: ${url} answered ${response.status}`);
+        return;
+      }
+      cache?.put(url, response.clone()).catch(() => {});
+      arrived.set(hash, await response.arrayBuffer());
+    } catch (failure) {
+      console.warn(`flagon: could not fetch ${url}: ${String(failure)}`);
+    }
+  }
+
+  // each worker takes the next file once its last is in, so a file asked for early goes next
+  async function work(): Promise<void> {
+    const hash = queue.shift();
+    if (hash !== undefined) {
+      await load(hash);
+      await work();
+    }
+  }
+
+  window.__flagonApart = {
+    want(hashes: string): void {
+      const wanted = hashes.split(',').filter((hash) => hash.length > 0);
+      queue.push(...wanted);
+      for (let worker = 0; worker < APART_FETCHES; worker++) {
+        void work();
+      }
+      const urls = new Set(wanted.map((hash) => base + hash));
+      cache
+        ?.keys()
+        .then((keys) => {
+          const stale = keys.filter((key) => key.url.startsWith(base) && !urls.has(key.url));
+          return Promise.all(stale.map((key) => cache.delete(key)));
+        })
+        .catch(() => {});
+    },
+    take(hash: string): ArrayBuffer | null {
+      const file = arrived.get(hash);
+      if (file) {
+        return file;
+      }
+      // asked for before its turn, so it goes next
+      const waiting = queue.indexOf(hash);
+      if (waiting > 0) {
+        queue.splice(waiting, 1);
+        queue.unshift(hash);
+      }
+      return null;
+    },
+  };
+}
+
 async function fetchPack(bundleUrl: string): Promise<void> {
   delete window.__flagonResources;
+  const url = packUrlOf(bundleUrl);
   try {
-    const response = await fetch(packUrlOf(bundleUrl));
-    const type = response.headers.get('content-type') ?? '';
-    if (!response.ok || type.includes('text/html')) {
-      return;
-    }
-    if (!response.body) {
+    const cache = await openPackCache();
+    serveApart(url, cache);
+    const response = await revalidated(url, cache);
+    if (!isServed(response) || !response.body) {
       return;
     }
     // the pack is gzipped whole, and unzips here as it downloads

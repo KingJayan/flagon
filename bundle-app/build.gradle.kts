@@ -80,6 +80,8 @@ bundle {
     resourcesFrom.set(vendorDir)
     compilerMemory.set(4096)
     shrinkCoroutineWasm.set(false)
+    vorbisQuality.set(0)
+    apartFrom.set(256 * 1024)
     reflectConverted.set(
         "java.lang.Boolean, java.lang.Byte, java.lang.Short, java.lang.Integer, "
             + "java.lang.Long, java.lang.Float, java.lang.Double, java.lang.String, java.io.File",
