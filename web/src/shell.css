@@ -144,6 +144,10 @@ h2 {
   gap: 0.35rem;
 }
 
+[data-view='demos'] .workbench-only {
+  display: none;
+}
+
 label {
   font-size: var(--detail);
   font-weight: 500;

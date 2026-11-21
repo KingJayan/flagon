@@ -9,6 +9,7 @@ import {
 } from './bundle';
 import { watchFrames, type Frames } from './frames';
 import { kindOf, Log, type Line } from './log';
+import { DEMOS, isWorkbench, keyOf } from './site';
 import { installStop } from './stopping';
 
 const app = document.querySelector<HTMLElement>('#app')!;
@@ -168,16 +169,52 @@ function splitArgs(line: string): string[] {
   );
 }
 
-const request = readRequest('sandbox');
+function showDemos(current: { bundle: string; program: string }): void {
+  programSelect.replaceChildren();
+  for (const demo of DEMOS) {
+    programSelect.add(new Option(demo.name, keyOf(demo)));
+  }
+  if (!DEMOS.some((demo) => keyOf(demo) === keyOf(current))) {
+    programSelect.add(new Option(keyOf(current), keyOf(current)));
+  }
+  programSelect.value = keyOf(current);
+}
+
+function chosen(): { bundle: string; program: string } {
+  if (workbench) {
+    return { bundle: bundleSelect.value, program: programSelect.value };
+  }
+  const [bundle = '', program = ''] = programSelect.value.split('/');
+  return { bundle, program };
+}
+
+const workbench = await isWorkbench();
+app.dataset.view = workbench ? 'workbench' : 'demos';
+document.querySelector('label[for="program"]')!.textContent = workbench ? 'Program' : 'Demo';
+
+const linked = new URLSearchParams(location.search).has('bundle');
+const request = readRequest(workbench || linked ? 'sandbox' : DEMOS[0]!.bundle);
+if (!workbench && !linked) {
+  request.program = DEMOS[0]!.program;
+}
 
 bundleSelect.value = request.bundle;
 backendSelect.value = request.backend;
 argsInput.value = request.args.join(' ');
-offer(request.bundle, request.program);
+if (workbench) {
+  offer(request.bundle, request.program);
+} else {
+  showDemos(request);
+}
 
 const playing = new URLSearchParams(location.search);
 playing.set('bundle', request.bundle);
+playing.set('program', request.program);
 playing.delete('preserve');
+playing.delete('view');
+if (!request.program) {
+  playing.delete('program');
+}
 document.querySelector<HTMLAnchorElement>('#player')!.search = playing.toString();
 
 bundleSelect.addEventListener('change', () => {
@@ -185,14 +222,19 @@ bundleSelect.addEventListener('change', () => {
 });
 
 runButton.addEventListener('click', () => {
+  const pick = chosen();
   const next = new URLSearchParams();
-  next.set('bundle', bundleSelect.value);
+  next.set('bundle', pick.bundle);
   next.set('backend', backendSelect.value);
-  if (programSelect.value) {
-    next.set('program', programSelect.value);
+  if (pick.program) {
+    next.set('program', pick.program);
   }
-  for (const argument of splitArgs(argsInput.value)) {
+  for (const argument of workbench ? splitArgs(argsInput.value) : []) {
     next.append('arg', argument);
+  }
+  const view = new URLSearchParams(location.search).get('view');
+  if (view) {
+    next.set('view', view);
   }
   location.search = next.toString();
 });
@@ -210,7 +252,7 @@ const host: HostBridge = {
   catalog(ids, descriptions) {
     const entries = ids.map((id, index) => ({ id, description: descriptions[index] ?? id }));
     remember(request.bundle, entries);
-    if (bundleSelect.value === request.bundle) {
+    if (workbench && bundleSelect.value === request.bundle) {
       showPrograms(entries, request.program);
     }
   },
