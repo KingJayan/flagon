@@ -644,7 +644,7 @@ public final class WebGLGraphicsDevice implements GraphicsDevice {
 
     @Override
     public boolean isShader(int shader) {
-        return live(shader) && gl.isShader(handles.get(shader));
+        return isKind(handles.get(shader), true);
     }
 
     @Override
@@ -696,11 +696,19 @@ public final class WebGLGraphicsDevice implements GraphicsDevice {
 
     @Override
     public boolean isProgram(int program) {
-        return live(program) && gl.isProgram(handles.get(program));
+        return isKind(handles.get(program), false);
     }
 
-    private boolean live(int name) {
-        return handles.get(name) != null;
+    // every kind of object shares one table of names, and webgl throws on one of the wrong kind
+    private boolean isKind(JSObject handle, boolean shader) {
+        if (handle == null) {
+            return false;
+        }
+        try {
+            return shader ? gl.isShader(handle) : gl.isProgram(handle);
+        } catch (RuntimeException wrongKind) {
+            return false;
+        }
     }
 
     @Override
