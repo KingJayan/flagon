@@ -21,7 +21,7 @@ test.describe('reaching the shell without a mouse', () => {
       });
 
     // stop is disabled once the program has exited, so the console follows run
-    for (const id of ['source', 'bundle', 'backend', 'program', 'args', 'run', 'log']) {
+    for (const id of ['docs', 'source', 'bundle', 'backend', 'program', 'args', 'run', 'log']) {
       await page.keyboard.press('Tab');
       expect(await outlined()).toEqual({ id, shown: true });
     }
