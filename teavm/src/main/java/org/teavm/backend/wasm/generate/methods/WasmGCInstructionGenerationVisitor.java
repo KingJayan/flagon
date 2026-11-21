@@ -13,7 +13,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-// flagon: casts a returned value whose local is wider than the result type
+// flagon: casts a returned value whose local is wider than the result type, and waits for a held
+// monitor when nothing is split into coroutines
 package org.teavm.backend.wasm.generate.methods;
 
 import java.util.ArrayList;
@@ -1721,7 +1722,7 @@ public class WasmGCInstructionGenerationVisitor implements StatementVisitor, Exp
     }
 
     public void monitorEnter(WasmInstructionBuilder builder) {
-        builder.call(context.functions().forStaticMethod(async ? MONITOR_ENTER : MONITOR_ENTER_SYNC), async);
+        builder.call(context.functions().forStaticMethod(waits() ? MONITOR_ENTER : MONITOR_ENTER_SYNC), async);
     }
 
     @Override
@@ -1736,7 +1737,13 @@ public class WasmGCInstructionGenerationVisitor implements StatementVisitor, Exp
     }
 
     public void monitorExit(WasmInstructionBuilder builder) {
-        builder.call(context.functions().forStaticMethod(async ? MONITOR_EXIT : MONITOR_EXIT_SYNC), async);
+        builder.call(context.functions().forStaticMethod(waits() ? MONITOR_EXIT : MONITOR_EXIT_SYNC), async);
+    }
+
+    // flagon: with nothing split into coroutines, as under jspi, any call can pause, so a held
+    // monitor is waited for rather than refused
+    private boolean waits() {
+        return async || asyncSplitMethods.isEmpty();
     }
 
     private void generateInvocation(InvocationExpr expr) {
