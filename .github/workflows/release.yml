@@ -128,32 +128,3 @@ jobs:
         env:
           MAVEN_USERNAME: ${{ github.actor }}
           MAVEN_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-  site-branch:
-    needs: browser
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    steps:
-      - uses: actions/download-artifact@v5
-        with:
-          name: site
-          path: site/
-
-      - uses: actions/download-artifact@v5
-        with:
-          name: release-bundles
-          path: site/flagon/
-
-      # vercel deploys the site branch as it is; main's vercel.json keeps every other branch off
-      - name: Push the site branch
-        working-directory: site
-        run: |
-          echo '{ "git": { "deploymentEnabled": true } }' > vercel.json
-          git init -q -b site
-          git add .
-          # vercel's hobby plan deploys only commits by a linked account, so the tag's pusher signs it
-          git -c user.name='${{ github.actor }}' \
-            -c user.email='${{ github.actor_id }}+${{ github.actor }}@users.noreply.github.com' \
-            commit -q -m "site $GITHUB_REF_NAME"
-          git push -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" site

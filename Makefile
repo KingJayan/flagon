@@ -125,12 +125,20 @@ lint: ## run Java and web linters
 build-site: ## build the web application for deployment
 	cd $(WEB) && bun run build
 
-deploy-private: ## deploy the site and app bundle behind Vercel login
-	@test -f $(BUNDLES)/js/app.js || { \
-		echo "app bundle not found; run 'make app' first"; \
+deploy-private: ## deploy the public site plus a release app bundle behind Vercel login
+	@test -n "$(VENDOR_JARS)" || { echo "no JARs found in vendor/"; exit 1; }
+	git fetch -q origin site
+	@site=$$(git log -1 --format=%s origin/site | sed -n 's/^site \([0-9a-f]\{40\}\)$$/\1/p'); \
+	test "$$(git rev-parse HEAD)" = "$$site" || { \
+		echo "the public site is at $${site:-an unknown commit}; check that out so the app matches it"; \
 		exit 1; \
-	}
-	cd $(WEB) && bunx vite build --outDir ../build/private --emptyOutDir
+	}; \
+	git diff --quiet HEAD || { echo "commit or stash your changes so the app matches the site"; exit 1; }
+	$(GRADLE) -Pflagon.release :bundle-app:bundle
+	rm -rf build/private
+	mkdir -p build/private
+	git archive origin/site | tar -x -C build/private
+	cp -R bundle-app/build/flagon/. build/private/flagon/
 	cd build/private && vercel link --yes --project flagon > /dev/null && vercel deploy --yes
 
 dev: ## start the development server on port 5273
