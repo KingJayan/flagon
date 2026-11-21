@@ -162,11 +162,14 @@ class LightingTest {
     }
 
     @Test
-    void aOneSidedMaterialSaysWhyItCannotBehonored() {
-        UnsupportedOperationException failure = assertThrows(UnsupportedOperationException.class,
-                () -> GL11.glMaterial(GL11.GL_FRONT, GL11.GL_AMBIENT, floats(1.0f, 1.0f, 1.0f,
-                        1.0f)));
-        assertTrue(failure.getMessage().contains("GL_FRONT_AND_BACK"), failure.getMessage());
+    void lightsBackFacesWithTheFrontMaterialAsOneSidedGlDoes() {
+        GL11.glEnable(GL11.GL_LIGHTING);
+        GL11.glMaterial(GL11.GL_FRONT, GL11.GL_AMBIENT, floats(0.25f, 0.5f, 0.75f, 1.0f));
+        GL11.glMaterial(GL11.GL_BACK, GL11.GL_AMBIENT, floats(1.0f, 0.0f, 0.0f, 1.0f));
+        drawATriangle();
+
+        assertArrayEquals(new float[] {0.25f, 0.5f, 0.75f, 1.0f},
+                device.uniformFloats("u_materialAmbient"), 1.0e-6f);
     }
 
     @Test
@@ -176,7 +179,26 @@ class LightingTest {
         GL11.glEnable(GL11.GL_COLOR_MATERIAL);
         drawATriangle();
 
+        assertArrayEquals(new int[] {3}, device.uniformInts("u_colorMaterial"));
+    }
+
+    /** minecraft tints its fog with the vertex color standing in for the front ambient alone */
+    @Test
+    void colorMaterialStandsInForTheMaterialItNames() {
+        GL11.glEnable(GL11.GL_LIGHTING);
+        GL11.glEnable(GL11.GL_COLOR_MATERIAL);
+        GL11.glColorMaterial(GL11.GL_FRONT, GL11.GL_AMBIENT);
+        drawATriangle();
         assertArrayEquals(new int[] {1}, device.uniformInts("u_colorMaterial"));
+
+        GL11.glColorMaterial(GL11.GL_BACK, GL11.GL_DIFFUSE);
+        drawATriangle();
+        assertArrayEquals(new int[] {0}, device.uniformInts("u_colorMaterial"));
+
+        GL11.glDisable(GL11.GL_COLOR_MATERIAL);
+        GL11.glColorMaterial(GL11.GL_FRONT_AND_BACK, GL11.GL_EMISSION);
+        drawATriangle();
+        assertArrayEquals(new int[] {0}, device.uniformInts("u_colorMaterial"));
     }
 
     @Test

@@ -6,6 +6,10 @@ package dev.flagon.lwjgl.internal;
 public final class Lighting {
 
     public static final int LIGHTS = 8;
+    public static final int TRACKS_AMBIENT = 1;
+    public static final int TRACKS_DIFFUSE = 2;
+    public static final int TRACKS_SPECULAR = 4;
+    public static final int TRACKS_EMISSION = 8;
 
     public static final int LINEAR = 0;
     public static final int EXP = 1;
@@ -29,6 +33,7 @@ public final class Lighting {
     private final float[] materialEmission = {0.0f, 0.0f, 0.0f, 1.0f};
     private float shininess;
     private boolean colorMaterial;
+    private int colorMaterialTracks = TRACKS_AMBIENT | TRACKS_DIFFUSE;
     private boolean flatShading;
 
     private boolean fogEnabled;
@@ -196,6 +201,16 @@ public final class Lighting {
     public void setColorMaterial(boolean value) {
         revision.bump(Revision.LIGHTING);
         colorMaterial = value;
+    }
+
+    /** the materials the vertex color stands in for, as TRACKS_ bits */
+    public int colorMaterialTracks() {
+        return colorMaterial ? colorMaterialTracks : 0;
+    }
+
+    public void setColorMaterialTracks(int tracks) {
+        revision.bump(Revision.LIGHTING);
+        colorMaterialTracks = tracks;
     }
 
     public boolean isFogEnabled() {

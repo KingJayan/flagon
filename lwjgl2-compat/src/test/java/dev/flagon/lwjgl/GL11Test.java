@@ -4,10 +4,14 @@ import dev.flagon.lwjgl.internal.GLState;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL12;
+import org.lwjgl.opengl.GL13;
 import org.lwjgl.opengl.GL14;
 import org.lwjgl.opengl.GL20;
+
+import java.util.Arrays;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -654,6 +658,32 @@ class GL11Test {
         assertEquals(java.util.List.of("clearColor 0.25 0.5 0.75 1.0"), device.calls("clearColor"));
     }
 
+    /** list 0 is no list: gl reports it and runs the calls now */
+    @Test
+    void listZeroIsAnErrorAndItsCallsRunAtOnce() {
+        GL11.glNewList(0, GL11.GL_COMPILE);
+        GL11.glClearColor(0.25f, 0.5f, 0.75f, 1.0f);
+        GL11.glEndList();
+
+        assertEquals(java.util.List.of("clearColor 0.25 0.5 0.75 1.0"), device.calls("clearColor"));
+        assertEquals(GL11.GL_INVALID_VALUE, GL11.glGetError());
+        assertEquals(GL11.GL_NO_ERROR, GL11.glGetError());
+    }
+
+    /** names are unsigned: minecraft compiles an empty chunk layer into list -1, 2^32 - 1 */
+    @Test
+    void aNegativeNameIsAListPastTwoToTheThirtyOne() {
+        GL11.glNewList(-1, GL11.GL_COMPILE);
+        GL11.glClearColor(0.25f, 0.5f, 0.75f, 1.0f);
+        GL11.glEndList();
+        assertEquals(java.util.List.of(), device.calls("clearColor"));
+        assertEquals(GL11.GL_NO_ERROR, GL11.glGetError());
+
+        GL11.glCallList(-1);
+        assertEquals(java.util.List.of("clearColor 0.25 0.5 0.75 1.0"), device.calls("clearColor"));
+        assertEquals(1, GL11.glGenLists(1));
+    }
+
     /** the vertices go up once, when the list is built, and every replay draws from there */
     @Test
     void aDisplayListUploadsItsVerticesOnlyOnce() {
@@ -669,6 +699,35 @@ class GL11Test {
 
         assertEquals(uploads, device.calls("bufferData").size());
         assertEquals(2, device.calls("drawArrays").size());
+    }
+
+    /** a minecraft chunk: block coordinates on unit 0, lightmap shorts on unit 1, in one list */
+    @Test
+    void aListLeavesTheClientActiveUnitToTheClient() {
+        java.nio.ByteBuffer vertices = BufferUtils.createByteBuffer(28 * 4);
+        for (int corner = 0; corner < 4; corner++) {
+            vertices.putFloat(corner).putFloat(0.0f).putFloat(0.0f);
+            vertices.put((byte) 255).put((byte) 255).put((byte) 255).put((byte) 255);
+            vertices.putFloat(0.5f).putFloat(0.25f);
+            vertices.putShort((short) 240).putShort((short) 16);
+        }
+        GL11.glNewList(GL11.glGenLists(1), GL11.GL_COMPILE);
+        GL11.glVertexPointer(3, GL11.GL_FLOAT, 28, vertices.position(0));
+        GL11.glEnableClientState(GL11.GL_VERTEX_ARRAY);
+        GL11.glColorPointer(4, GL11.GL_UNSIGNED_BYTE, 28, vertices.position(12));
+        GL11.glEnableClientState(GL11.GL_COLOR_ARRAY);
+        GL11.glTexCoordPointer(2, GL11.GL_FLOAT, 28, vertices.position(16));
+        GL11.glEnableClientState(GL11.GL_TEXTURE_COORD_ARRAY);
+        GL13.glClientActiveTexture(GL13.GL_TEXTURE1);
+        GL11.glTexCoordPointer(2, GL11.GL_SHORT, 28, vertices.position(24));
+        GL11.glEnableClientState(GL11.GL_TEXTURE_COORD_ARRAY);
+        GL13.glClientActiveTexture(GL13.GL_TEXTURE0);
+        GL11.glDrawArrays(GL11.GL_QUADS, 0, 4);
+        GL11.glEndList();
+
+        // position, color, then each unit's pair
+        assertArrayEquals(new float[] {0.5f, 0.25f, 240.0f, 16.0f},
+                Arrays.copyOfRange(device.lastBufferData, 7, 11));
     }
 
     /** gl reads the arrays when the list is compiled, so a later change to them does not show */
@@ -1019,7 +1078,67 @@ class GL11Test {
         assertTrue(device.calls("uniform1i").stream().anyMatch(call -> call.endsWith(" 1")),
                 "the environment mode was not sent: " + device.calls("uniform1i"));
         assertThrows(UnsupportedOperationException.class,
-                () -> GL11.glTexEnvi(GL11.GL_TEXTURE_ENV, GL11.GL_TEXTURE_ENV_MODE,
-                        GL11.GL_COMBINE));
+                () -> GL11.glTexEnvi(GL11.GL_TEXTURE_ENV, GL13.GL_COMBINE_RGB, GL13.GL_DOT3_RGB));
+    }
+
+    /** minecraft scales its lightmap coordinates on unit 1 through gl_texture */
+    @Test
+    void eachUnitHasItsOwnTextureMatrix() {
+        GL13.glActiveTexture(GL13.GL_TEXTURE1);
+        GL11.glMatrixMode(GL11.GL_TEXTURE);
+        GL11.glLoadIdentity();
+        GL11.glScalef(0.5f, 0.25f, 1.0f);
+        GL11.glPushMatrix();
+        GL11.glTranslatef(8.0f, 8.0f, 0.0f);
+        GL11.glPopMatrix();
+        GL11.glMatrixMode(GL11.GL_MODELVIEW);
+        GL13.glActiveTexture(GL13.GL_TEXTURE0);
+        triangle();
+
+        float[] matrices = device.uniformFloats("u_textureMatrix[0]");
+        assertEquals(1.0f, matrices[0]);
+        assertEquals(0.5f, matrices[16]);
+        assertEquals(0.25f, matrices[16 + 5]);
+        assertEquals(0.0f, matrices[16 + 12]);
+    }
+
+    /** the red flash on a hurt mob: unit 1 mixes a constant color over what came before */
+    @Test
+    void combineSendsItsFunctionSourcesAndOperands() {
+        GL13.glActiveTexture(GL13.GL_TEXTURE1);
+        GL11.glTexEnvi(GL11.GL_TEXTURE_ENV, GL11.GL_TEXTURE_ENV_MODE, GL13.GL_COMBINE);
+        GL11.glTexEnvi(GL11.GL_TEXTURE_ENV, GL13.GL_COMBINE_RGB, GL13.GL_INTERPOLATE);
+        GL11.glTexEnvi(GL11.GL_TEXTURE_ENV, GL13.GL_SOURCE0_RGB, GL13.GL_CONSTANT);
+        GL11.glTexEnvi(GL11.GL_TEXTURE_ENV, GL13.GL_SOURCE1_RGB, GL13.GL_PREVIOUS);
+        GL11.glTexEnvi(GL11.GL_TEXTURE_ENV, GL13.GL_SOURCE2_RGB, GL13.GL_TEXTURE0);
+        GL11.glTexEnvi(GL11.GL_TEXTURE_ENV, GL13.GL_OPERAND2_RGB, GL11.GL_SRC_ALPHA);
+        GL11.glTexEnvi(GL11.GL_TEXTURE_ENV, GL13.GL_COMBINE_ALPHA, GL11.GL_REPLACE);
+        GL11.glTexEnvi(GL11.GL_TEXTURE_ENV, GL13.GL_OPERAND0_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
+        GL11.glTexEnv(GL11.GL_TEXTURE_ENV, GL11.GL_TEXTURE_ENV_COLOR,
+                BufferUtils.createFloatBuffer(4)
+                        .put(new float[] {1.0f, 0.0f, 0.0f, 0.3f}).flip());
+        GL11.glTexEnvf(GL11.GL_TEXTURE_ENV, GL13.GL_RGB_SCALE, 2.0f);
+        triangle();
+
+        int[] codes = device.uniformInts("u_combine[0]");
+        assertArrayEquals(new int[] {4, 1, 3, 4, 0, 0, 3, 1, 0, 0, 2, 0, 3, 2, 2, 0},
+                Arrays.copyOfRange(codes, 16, 32));
+        assertArrayEquals(new float[] {1.0f, 0.0f, 0.0f, 0.3f},
+                Arrays.copyOfRange(device.uniformFloats("u_textureEnvColor[0]"), 4, 8));
+        assertArrayEquals(new float[] {2.0f, 1.0f},
+                Arrays.copyOfRange(device.uniformFloats("u_combineScale[0]"), 2, 4));
+        assertThrows(IllegalArgumentException.class, () -> GL11.glTexEnvi(GL11.GL_TEXTURE_ENV,
+                GL13.GL_OPERAND0_ALPHA, GL11.GL_SRC_COLOR));
+    }
+
+    /** a text caret draws with a logic op webgl lacks, so it draws as copy instead of failing */
+    @Test
+    void aLogicOpIsHeldAndDrawsAsCopy() {
+        GL11.glEnable(GL11.GL_COLOR_LOGIC_OP);
+        GL11.glLogicOp(GL11.GL_OR_REVERSE);
+        triangle();
+
+        assertTrue(GL11.glIsEnabled(GL11.GL_COLOR_LOGIC_OP));
+        assertEquals(1, device.calls("drawArrays").size());
     }
 }

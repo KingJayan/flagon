@@ -27,7 +27,6 @@ public final class Ops {
     public static final int LIGHT_VECTOR = 22;
     public static final int MATERIAL = 23;
     public static final int FOG = 24;
-    public static final int CLIENT_ACTIVE_TEXTURE = 25;
     public static final int ACTIVE_TEXTURE = 26;
     public static final int BLEND_FUNC = 27;
     public static final int BLEND_FUNC_SEPARATE = 28;
@@ -57,6 +56,10 @@ public final class Ops {
     public static final int TEX_COORD = 52;
     public static final int BIND_TEXTURE = 53;
     public static final int SHADE_MODEL = 54;
+    public static final int COLOR_MATERIAL = 55;
+    public static final int TEXTURE_COMBINE = 56;
+    public static final int TEXTURE_ENV_COLOR = 57;
+    public static final int TEXTURE_SCALE = 58;
 
     private Ops() {
     }

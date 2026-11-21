@@ -6,6 +6,7 @@ import dev.flagon.platform.graphics.BufferTarget;
 import dev.flagon.platform.graphics.CompareFunc;
 import dev.flagon.platform.graphics.CullFace;
 import dev.flagon.platform.graphics.GraphicsDevice;
+import dev.flagon.platform.graphics.GraphicsError;
 import dev.flagon.platform.graphics.IndexType;
 import dev.flagon.platform.graphics.ShaderStage;
 import dev.flagon.platform.graphics.StencilOp;
@@ -21,6 +22,7 @@ public final class GLState implements RenderState {
 
     public static final int MODELVIEW = 0x1700;
     public static final int PROJECTION = 0x1701;
+    public static final int TEXTURE = 0x1702;
 
     private static GLState current;
 
@@ -29,12 +31,13 @@ public final class GLState implements RenderState {
 
     private final MatrixStack modelViewStack = new MatrixStack();
     private final MatrixStack projectionStack = new MatrixStack();
+    private final float[][] textureMatrices = new float[VertexArrays.UNITS][];
+    private final MatrixStack[] textureStacks = new MatrixStack[VertexArrays.UNITS];
     private final float[] modelView = Matrix4.identity();
     private final float[] projection = Matrix4.identity();
     private int matrixMode = MODELVIEW;
 
     private final boolean[] textureEnabled = new boolean[VertexArrays.UNITS];
-    private final int[] textureEnv = new int[VertexArrays.UNITS];
     private int activeTexture;
     private int clientActiveTexture;
     private boolean alphaTestEnabled;
@@ -128,6 +131,10 @@ public final class GLState implements RenderState {
     private float pointSizeMax = Float.MAX_VALUE;
     private final Revision revision = new Revision();
     private final Lighting lighting = new Lighting(revision);
+    private final TextureEnvironment environment = new TextureEnvironment(revision);
+    private boolean colorLogicOp;
+    private boolean polygonOffsetLine;
+    private boolean polygonOffsetPoint;
     private float normalX;
     private float normalY;
     private float normalZ = 1.0f;
@@ -142,6 +149,10 @@ public final class GLState implements RenderState {
         this.viewportHeight = device.height();
         this.scissorWidth = viewportWidth;
         this.scissorHeight = viewportHeight;
+        for (int unit = 0; unit < VertexArrays.UNITS; unit++) {
+            textureMatrices[unit] = Matrix4.identity();
+            textureStacks[unit] = new MatrixStack();
+        }
     }
 
     public static void attach(GraphicsDevice device) {
@@ -175,20 +186,25 @@ public final class GLState implements RenderState {
     // matrices
 
     public void matrixMode(int mode) {
-        if (mode != MODELVIEW && mode != PROJECTION) {
+        if (mode != MODELVIEW && mode != PROJECTION && mode != TEXTURE) {
             throw new IllegalArgumentException(
                     "unsupported matrix mode 0x" + Integer.toHexString(mode)
-                            + "; only GL_MODELVIEW and GL_PROJECTION are emulated");
+                            + "; GL_MODELVIEW, GL_PROJECTION and GL_TEXTURE are emulated");
         }
         matrixMode = mode;
     }
 
+    // gl_texture means the matrix of whichever unit is active, so it is looked up every time
     private float[] active() {
-        return matrixMode == PROJECTION ? projection : modelView;
+        return switch (matrixMode) {
+            case PROJECTION -> projection;
+            case TEXTURE -> textureMatrices[activeTexture];
+            default -> modelView;
+        };
     }
 
     private float[] mutable() {
-        revision.bump(Revision.MATRIX);
+        revision.bump(matrixMode == TEXTURE ? Revision.TEXTURE_MATRIX : Revision.MATRIX);
         return active();
     }
 
@@ -204,14 +220,21 @@ public final class GLState implements RenderState {
     public void popMatrix() {
         MatrixStack stack = stack();
         if (stack.isEmpty()) {
-            throw new IllegalStateException("matrix stack underflow in "
-                    + (matrixMode == PROJECTION ? "GL_PROJECTION" : "GL_MODELVIEW"));
+            throw new IllegalStateException("matrix stack underflow in " + switch (matrixMode) {
+                case PROJECTION -> "GL_PROJECTION";
+                case TEXTURE -> "GL_TEXTURE";
+                default -> "GL_MODELVIEW";
+            });
         }
         stack.pop(mutable());
     }
 
     private MatrixStack stack() {
-        return matrixMode == PROJECTION ? projectionStack : modelViewStack;
+        return switch (matrixMode) {
+            case PROJECTION -> projectionStack;
+            case TEXTURE -> textureStacks[activeTexture];
+            default -> modelViewStack;
+        };
     }
 
     public void loadIdentity() {
@@ -246,6 +269,11 @@ public final class GLState implements RenderState {
     @Override
     public float[] projection() {
         return projection;
+    }
+
+    @Override
+    public float[] textureMatrix(int unit) {
+        return textureMatrices[unit];
     }
 
     // immediate mode
@@ -654,16 +682,38 @@ public final class GLState implements RenderState {
     }
 
     public void setTextureEnv(int mode) {
-        if (textureEnv[activeTexture] == mode) {
-            return;
-        }
-        revision.bump(Revision.TEXTURE);
-        textureEnv[activeTexture] = mode;
+        environment.setMode(activeTexture, mode);
+    }
+
+    public void setTextureCombine(int at, int code) {
+        environment.setCode(activeTexture, at, code);
+    }
+
+    public void setTextureEnvColor(float red, float green, float blue, float alpha) {
+        environment.setColor(activeTexture, red, green, blue, alpha);
+    }
+
+    public void setTextureScale(boolean alpha, float scale) {
+        environment.setScale(activeTexture, alpha, scale);
     }
 
     @Override
-    public int textureEnv(int unit) {
-        return textureEnv[unit];
+    public TextureEnvironment textureEnvironment() {
+        return environment;
+    }
+
+    /**
+     * capabilities webgl has no stage for: the logic op draws as copy, and polygons only ever
+     * fill, so a line or point offset has nothing to move. glIsEnabled still answers for them.
+     */
+    public void setUnstaged(int capability, boolean enabled) {
+        switch (capability) {
+            case 0x0BF2 -> colorLogicOp = enabled;
+            case 0x2A02 -> polygonOffsetLine = enabled;
+            case 0x2A01 -> polygonOffsetPoint = enabled;
+            default -> throw new IllegalArgumentException(
+                    "0x" + Integer.toHexString(capability) + " has a stage to set");
+        }
     }
 
     public void activeTexture(int unit) {
@@ -1071,6 +1121,23 @@ public final class GLState implements RenderState {
         attributeStack.get(--attributeDepth).restore(this);
     }
 
+    // errors gl itself raises, held until read as a gl error is: the first one sticks
+
+    private GraphicsError error = GraphicsError.NONE;
+
+    public void fail(GraphicsError raised) {
+        if (error == GraphicsError.NONE) {
+            error = raised;
+        }
+    }
+
+    /** this layer's error first, then the device's */
+    public GraphicsError takeError() {
+        GraphicsError raised = error;
+        error = GraphicsError.NONE;
+        return raised == GraphicsError.NONE ? device.takeError() : raised;
+    }
+
     // display lists
 
     public DisplayLists lists() {
@@ -1148,12 +1215,16 @@ public final class GLState implements RenderState {
             case Ops.NORMAL -> normal(values[from], values[from + 1], values[from + 2]);
             case Ops.ALPHA_FUNC -> alphaFunc(COMPARES[codes[at]], values[from]);
             case Ops.TEXTURE_ENV -> setTextureEnv(codes[at]);
+            case Ops.TEXTURE_COMBINE -> setTextureCombine(codes[at], codes[at + 1]);
+            case Ops.TEXTURE_ENV_COLOR -> setTextureEnvColor(values[from], values[from + 1],
+                    values[from + 2], values[from + 3]);
+            case Ops.TEXTURE_SCALE -> setTextureScale(codes[at] != 0, values[from]);
             case Ops.MODEL_AMBIENT -> lighting.setModelAmbient(four(values, from));
             case Ops.SHININESS -> lighting.setShininess(values[from]);
             case Ops.SHADE_MODEL -> lighting.setFlatShading(codes[at] != 0);
+            case Ops.COLOR_MATERIAL -> lighting.setColorMaterialTracks(codes[at]);
             case Ops.FOG_COLOR -> lighting.setFogColor(four(values, from));
             case Ops.DRAW_BLOCK -> drawBlock(codes[at], codes[at + 1]);
-            case Ops.CLIENT_ACTIVE_TEXTURE -> clientActiveTexture(codes[at]);
             case Ops.ACTIVE_TEXTURE -> activeTexture(codes[at]);
             case Ops.BLEND_FUNC -> setBlendFunc(FACTORS[codes[at]], FACTORS[codes[at + 1]]);
             case Ops.BLEND_FUNC_SEPARATE -> setBlendFuncSeparate(FACTORS[codes[at]],
@@ -1248,6 +1319,9 @@ public final class GLState implements RenderState {
             case 0x0B50 -> lighting.isEnabled();
             case 0x0B57 -> lighting.isColorMaterial();
             case 0x0B60 -> lighting.isFogEnabled();
+            case 0x0BF2 -> colorLogicOp;
+            case 0x2A02 -> polygonOffsetLine;
+            case 0x2A01 -> polygonOffsetPoint;
             case 0x4000, 0x4001, 0x4002, 0x4003, 0x4004, 0x4005, 0x4006, 0x4007 ->
                     lighting.isLightEnabled(capability - 0x4000);
             default -> throw new UnsupportedOperationException(

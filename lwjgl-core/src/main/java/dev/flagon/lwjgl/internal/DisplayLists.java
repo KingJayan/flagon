@@ -2,7 +2,9 @@ package dev.flagon.lwjgl.internal;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.function.IntConsumer;
 
 /**
@@ -50,6 +52,8 @@ public final class DisplayLists {
     private int recordingInto;
     private boolean executeWhileRecording;
     private int nextName = 1;
+    private static final int FAR = 1 << 16;
+    private final Map<Integer, Held> far = new HashMap<>();
 
     /** a list owns the vertices its blocks uploaded, so they go when the list does */
     public void onRelease(IntConsumer release) {
@@ -90,8 +94,8 @@ public final class DisplayLists {
         if (recording) {
             throw new IllegalStateException("glNewList called inside glNewList/glEndList");
         }
-        if (name <= 0) {
-            throw new IllegalArgumentException("glNewList: list names start at 1, got " + name);
+        if (name == 0) {
+            throw new IllegalArgumentException("glNewList: list names start at 1, got 0");
         }
         if (mode != COMPILE && mode != COMPILE_AND_EXECUTE) {
             throw new IllegalArgumentException(
@@ -103,7 +107,9 @@ public final class DisplayLists {
         recording = true;
         recordingInto = name;
         executeWhileRecording = mode == COMPILE_AND_EXECUTE;
-        nextName = Math.max(nextName, name + 1);
+        if (dense(name)) {
+            nextName = Math.max(nextName, name + 1);
+        }
     }
 
     public void end() {
@@ -325,19 +331,32 @@ public final class DisplayLists {
     }
 
     public void delete(int first, int count) {
-        for (int name = first; name < first + count; name++) {
+        for (int at = 0; at < count; at++) {
+            int name = first + at;
             free(name);
             if (name > 0 && name < lists.size()) {
                 lists.set(name, null);
+            } else {
+                far.remove(name);
             }
         }
     }
 
+    // gl names are unsigned, so a negative int is a name past 2^31; those, and names far past
+    // the ones handed out, are kept apart from the dense run glGenLists fills
+    private boolean dense(int name) {
+        return name > 0 && name < lists.size() + FAR;
+    }
+
     private Held held(int name) {
-        return name > 0 && name < lists.size() ? lists.get(name) : null;
+        return name > 0 && name < lists.size() ? lists.get(name) : far.get(name);
     }
 
     private void put(int name, Held into) {
+        if (!dense(name)) {
+            far.put(name, into);
+            return;
+        }
         while (lists.size() <= name) {
             lists.add(null);
         }
