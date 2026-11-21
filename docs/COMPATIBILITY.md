@@ -65,7 +65,8 @@ Ahead-of-time (AOT) tree-shaking strips unreferenced class members by default. `
 
 ### ClassLoader & Resource Lookup
 
-* `getResourceAsStream`: Reads the resource pack. The build packs every file a jar carries beside its classes into `<bundle>.pack`, gzipped whole. The page fetches the pack alongside the bundle and unzips it as it downloads, and a resource is copied out of it only when it is read. `Class.getResourceAsStream` resolves a relative name beside the class, the way the JDK does.
+* `getResourceAsStream`: Reads the resource pack. The build packs every file a jar carries beside its classes into `<bundle>.pack`, gzipped whole. The page fetches the pack alongside the bundle and unzips it as it downloads, and a resource is copied out of it only when it is read. A bundle that sets `apartFrom` keeps each file of that size or larger in `<bundle>.files/`, named by its SHA-256. The program starts without them, and the page fetches them in the background. A read never waits, since it may hold a lock: before its file arrives, it throws `IOException`. The page keeps the pack and those files in Cache Storage, and revalidates the pack on each load.
+* **Audio in the pack:** `make app` re-encodes Ogg Vorbis at quality 0 through ffmpeg. It keeps the original where that saves under 15%. Files of 256 KiB or more, such as music, load after the program starts. `Class.getResourceAsStream` resolves a relative name beside the class, the way the JDK does.
 * `ClassLoader.getResource`, `Class.getResource`: Return a `flagon:` URL for a file in the pack, and `null` for any other name. `openStream` on that URL reads the packed bytes.
 * `ClassLoader.getResources`: Returns the one URL the pack holds for that name, or an empty enumeration. A bundle is one artifact, so no name ever has two copies, and a multi-jar scan such as `META-INF/services` still finds only one.
 

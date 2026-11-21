@@ -36,6 +36,27 @@ for (const backend of BACKENDS) {
       expect(failures).toEqual([]);
     });
 
+    test('fetches a file kept apart once, then reads it from the cache', async ({ page }) => {
+      const apart: string[] = [];
+      page.on('request', (request) => {
+        if (request.url().includes('/sandbox.files/')) {
+          apart.push(request.url());
+        }
+      });
+      const said =
+        'resources: a file kept apart says this file loads from beside the pack only when it ' +
+        'is read in 7 lines';
+      await open(page, backend, 'program=resources');
+      await expect(page.getByTestId('state')).toHaveText('exited', { timeout: 30_000 });
+      await expect(page.getByTestId('log')).toContainText(said);
+      expect(apart).toHaveLength(1);
+
+      await page.reload();
+      await expect(page.getByTestId('state')).toHaveText('exited', { timeout: 30_000 });
+      await expect(page.getByTestId('log')).toContainText(said);
+      expect(apart).toHaveLength(1);
+    });
+
     test('reads nothing for a file the build packed none of', async ({ page }) => {
       await open(page, backend, 'program=resources');
 

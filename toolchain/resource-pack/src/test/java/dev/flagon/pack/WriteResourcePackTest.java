@@ -11,6 +11,8 @@ import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Arrays;
+import java.util.HexFormat;
 import java.util.Map;
 import java.util.Set;
 import java.util.zip.GZIPInputStream;
@@ -20,6 +22,7 @@ import java.util.zip.ZipOutputStream;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class WriteResourcePackTest {
@@ -107,6 +110,7 @@ class WriteResourcePackTest {
         byte[] name = new byte[read.getInt()];
         read.get(name);
         byte[] contents = new byte[read.getInt()];
+        assertEquals(WriteResourcePack.INSIDE, read.get());
         read.get(contents);
         assertEquals("a.txt", new String(name, StandardCharsets.UTF_8));
         assertEquals("hello", new String(contents, StandardCharsets.UTF_8));
@@ -115,7 +119,7 @@ class WriteResourcePackTest {
 
     /** the browser unzips the whole pack as it downloads, so the file on disk is gzip */
     @Test
-    void gzipsThePackItWrites(@TempDir Path work) throws IOException {
+    void gzipsThePackItWrites(@TempDir Path work) throws Exception {
         Path resources = Files.createDirectory(work.resolve("in"));
         Files.writeString(resources.resolve("long.txt"), "abcdefgh".repeat(400));
         Path pack = work.resolve("out/app.pack");
@@ -127,6 +131,105 @@ class WriteResourcePackTest {
             byte[] magic = unzipped.readNBytes(WriteResourcePack.MAGIC.length);
             assertArrayEquals(WriteResourcePack.MAGIC, magic);
         }
+    }
+
+    @Test
+    void putsLargeResourcesApartUnderTheirHash(@TempDir Path work) throws IOException {
+        Path resources = Files.createDirectory(work.resolve("in"));
+        Files.writeString(resources.resolve("big.ogg"), "0123456789");
+        Files.writeString(resources.resolve("small.txt"), "hi");
+        Path apart = work.resolve("app.files");
+
+        ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+        WriteResourcePack.write(WriteResourcePack.collect(resources), Map.of(), 10, apart, bytes);
+
+        ByteBuffer read = ByteBuffer.wrap(bytes.toByteArray());
+        read.position(WriteResourcePack.MAGIC.length + 4);
+        skipName(read);
+        assertEquals(10, read.getInt());
+        assertEquals(WriteResourcePack.APART, read.get());
+        byte[] hash = new byte[32];
+        read.get(hash);
+        Path file = apart.resolve(HexFormat.of().formatHex(hash));
+        assertEquals("0123456789", Files.readString(file));
+        assertArrayEquals(hash, Hashes.sha256(Files.readAllBytes(file)));
+        skipName(read);
+        assertEquals(2, read.getInt());
+        assertEquals(WriteResourcePack.INSIDE, read.get());
+    }
+
+    @Test
+    void namesTheFolderOfResourcesApartAfterThePack() {
+        assertEquals(Path.of("out/app.files"), WriteResourcePack.apartOf(Path.of("out/app.pack")));
+    }
+
+    @Test
+    void reencodesOnlyVorbisThatComesOutSmallEnough(@TempDir Path work) throws Exception {
+        Path resources = Files.createDirectory(work.resolve("in"));
+        Files.write(resources.resolve("loud.ogg"), vorbis(100));
+        Files.write(resources.resolve("quiet.ogg"), vorbis(45));
+        Files.write(resources.resolve("opus.ogg"), ogg("\u0013OpusHead", 100));
+        Files.write(resources.resolve("loud.txt"), vorbis(100));
+        int[] runs = {0};
+        // cuts a file to 40 bytes, which pays only for the large one
+        Vorbis.Encoder halving = (from, to) -> {
+            runs[0]++;
+            Files.write(to, Arrays.copyOf(Files.readAllBytes(from), 40));
+        };
+
+        Map<String, byte[]> shrunk = WriteResourcePack.shrink(
+                WriteResourcePack.collect(resources), new Vorbis(halving, work.resolve("cache")),
+                "q0");
+
+        assertEquals(Set.of("loud.ogg"), shrunk.keySet());
+        assertEquals(40, shrunk.get("loud.ogg").length);
+        assertEquals(2, runs[0]);
+
+        WriteResourcePack.shrink(WriteResourcePack.collect(resources),
+                new Vorbis(halving, work.resolve("cache")), "q0");
+        assertEquals(2, runs[0], "a second pack reads the cache");
+    }
+
+    @Test
+    void tellsVorbisFromOtherOgg() {
+        assertTrue(Vorbis.is(vorbis(64)));
+        assertFalse(Vorbis.is(ogg("\u0013OpusHead", 64)));
+        assertFalse(Vorbis.is("not ogg at all, but long enough to read".getBytes(
+                StandardCharsets.US_ASCII)));
+        assertFalse(Vorbis.is(new byte[3]));
+    }
+
+    @Test
+    void readsItsOptions() {
+        var options = WriteResourcePack.Options.parse(new String[] {
+            "--vorbis-quality=0", "--apart-from=262144", "build/audio"});
+
+        assertEquals(0, options.vorbisQuality());
+        assertEquals(262144, options.apartFrom());
+        assertEquals(Path.of("build/audio"), options.cache());
+        assertThrows(IllegalArgumentException.class,
+                () -> WriteResourcePack.Options.parse(new String[] {"--vorbis-quality=0"}));
+        assertThrows(IllegalArgumentException.class,
+                () -> WriteResourcePack.Options.parse(new String[] {"--fast"}));
+    }
+
+    private static void skipName(ByteBuffer read) {
+        int length = read.getInt();
+        read.position(read.position() + length);
+    }
+
+    private static byte[] vorbis(int length) {
+        return ogg("\u0001vorbis", length);
+    }
+
+    /** one ogg page whose first packet opens with {@code header}, padded to {@code length} */
+    private static byte[] ogg(String header, int length) {
+        byte[] file = new byte[length];
+        System.arraycopy("OggS".getBytes(StandardCharsets.US_ASCII), 0, file, 0, 4);
+        file[26] = 1;
+        byte[] packet = header.getBytes(StandardCharsets.ISO_8859_1);
+        System.arraycopy(packet, 0, file, 28, packet.length);
+        return file;
     }
 
     private static Path jar(Path at, Map<String, String> files) throws IOException {

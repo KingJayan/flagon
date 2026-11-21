@@ -25,6 +25,8 @@ cd web
 bun dev # local vite on localhost:5174
 ```
 
+`make app` re-encodes Ogg Vorbis audio through `ffmpeg`, so a JAR with audio needs ffmpeg installed.
+
 Some libraries scan the classpath for their own parts. Log4j 2 finds its pattern converters this way. List the packages such a library scans in `vendor/preserve.txt`, one glob per line (`*` stops at a package boundary, `**` does not), and the build keeps them. A library that calls methods or reads fields by name needs its classes in `vendor/reflect.txt`, in the same form.
 
 For Minecraft, `make minecraft` fills `vendor/` from a local launcher install: the game, the libraries that run in a browser, its assets and both lists. `make minecraft MINECRAFT=1.8.9 LAUNCHER=path` picks another version or install.

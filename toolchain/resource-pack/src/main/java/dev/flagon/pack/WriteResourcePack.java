@@ -9,18 +9,33 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HexFormat;
 import java.util.LinkedHashMap;
-import java.util.Locale;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.zip.GZIPOutputStream;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
+/**
+ * packs a bundle's resources: {@code <resources> <pack> [<cache>] [--vorbis-quality=N]
+ * [--apart-from=BYTES]}, where the cache keeps transcoded audio between builds. resources at
+ * least {@code --apart-from} bytes go beside the pack in {@code <name>.files/}, named by their
+ * sha-256, and the page fetches them after the program starts.
+ */
 public final class WriteResourcePack {
 
-    static final byte[] MAGIC = "FLGNPK03".getBytes(StandardCharsets.US_ASCII);
+    static final byte[] MAGIC = "FLGNPK04".getBytes(StandardCharsets.US_ASCII);
+
+    static final int INSIDE = 0;
+    static final int APART = 1;
 
     private static final int BUFFER = 1 << 16;
 
@@ -28,23 +43,116 @@ public final class WriteResourcePack {
     record Item(Path source, String entry) {
     }
 
+    /** how to pack; a null quality leaves audio as it is, and an apartFrom of 0 keeps all in */
+    record Options(Integer vorbisQuality, int apartFrom, Path cache) {
+
+        static Options parse(String[] args) {
+            Integer quality = null;
+            int apartFrom = 0;
+            Path cache = null;
+            for (String arg : args) {
+                String value = arg.substring(arg.indexOf('=') + 1);
+                if (arg.startsWith("--vorbis-quality=")) {
+                    quality = Integer.valueOf(value);
+                } else if (arg.startsWith("--apart-from=")) {
+                    apartFrom = Integer.parseInt(value);
+                } else if (!arg.startsWith("--")) {
+                    cache = Path.of(arg);
+                } else {
+                    throw new IllegalArgumentException("unknown option " + arg);
+                }
+            }
+            if (quality != null && cache == null) {
+                throw new IllegalArgumentException("--vorbis-quality needs a cache folder");
+            }
+            return new Options(quality, apartFrom, cache);
+        }
+    }
+
     private WriteResourcePack() {
     }
 
-    public static void main(String[] args) throws IOException {
+    public static void main(String[] args) throws IOException, InterruptedException {
         Path given = Path.of(args[0]);
         Path pack = Path.of(args[1]);
+        Options options = Options.parse(List.of(args).subList(2, args.length)
+                .toArray(String[]::new));
         Map<String, Item> files = collect(given);
         Files.createDirectories(pack.getParent());
+        Map<String, byte[]> shrunk = options.vorbisQuality() == null ? Map.of()
+                : shrink(files, new Vorbis(Vorbis.ffmpeg(options.vorbisQuality()),
+                        options.cache()), "vorbis-q" + options.vorbisQuality());
+        Path apart = apartOf(pack);
+        clear(apart);
         // the whole pack is gzipped, and the browser unzips it natively as it arrives; each
         // resource then sits in it as is, ready to read
         try (OutputStream out = new GZIPOutputStream(
                 new BufferedOutputStream(Files.newOutputStream(pack), BUFFER), BUFFER)) {
-            write(files, out);
+            write(files, shrunk, options.apartFrom(), apart, out);
         }
         System.out.println(files.isEmpty()
                 ? "no resources in " + given + ", so the bundle carries an empty pack"
                 : "packed " + files.size() + " resources from " + given + " into " + pack);
+    }
+
+    /** where the resources kept out of the pack go */
+    static Path apartOf(Path pack) {
+        String name = pack.getFileName().toString();
+        int dot = name.lastIndexOf('.');
+        return pack.resolveSibling((dot > 0 ? name.substring(0, dot) : name) + ".files");
+    }
+
+    private static void clear(Path folder) throws IOException {
+        if (!Files.exists(folder)) {
+            return;
+        }
+        try (var tree = Files.walk(folder)) {
+            for (Path file : tree.sorted(Comparator.reverseOrder()).toList()) {
+                Files.delete(file);
+            }
+        }
+    }
+
+    /** each vorbis file that re-encodes smaller, by name */
+    static Map<String, byte[]> shrink(Map<String, Item> files, Vorbis vorbis, String key)
+            throws IOException, InterruptedException {
+        ExecutorService pool = Executors.newFixedThreadPool(
+                Runtime.getRuntime().availableProcessors());
+        try {
+            Map<String, Future<byte[]>> pending = new LinkedHashMap<>();
+            for (Map.Entry<String, Item> file : files.entrySet()) {
+                if (!file.getKey().toLowerCase(Locale.ROOT).endsWith(".ogg")) {
+                    continue;
+                }
+                Item item = file.getValue();
+                pending.put(file.getKey(), pool.submit(() -> {
+                    byte[] original;
+                    try (Jars open = new Jars()) {
+                        original = open.read(item);
+                    }
+                    if (!Vorbis.is(original)) {
+                        return null;
+                    }
+                    byte[] smaller = vorbis.shrink(original, key);
+                    return smaller == original ? null : smaller;
+                }));
+            }
+            Map<String, byte[]> shrunk = new LinkedHashMap<>();
+            for (Map.Entry<String, Future<byte[]>> result : pending.entrySet()) {
+                byte[] smaller = result.getValue().get();
+                if (smaller != null) {
+                    shrunk.put(result.getKey(), smaller);
+                }
+            }
+            return shrunk;
+        } catch (ExecutionException failed) {
+            if (failed.getCause() instanceof IOException io) {
+                throw io;
+            }
+            throw new IOException(failed.getCause());
+        } finally {
+            pool.shutdownNow();
+        }
     }
 
     static Map<String, Item> collect(Path given) throws IOException {
@@ -133,17 +241,35 @@ public final class WriteResourcePack {
     }
 
     static void write(Map<String, Item> files, OutputStream out) throws IOException {
+        write(files, Map.of(), 0, null, out);
+    }
+
+    /** resources {@code apartFrom} bytes or larger go to {@code apart}, when it is above 0 */
+    static void write(Map<String, Item> files, Map<String, byte[]> replaced, int apartFrom,
+                      Path apart, OutputStream out) throws IOException {
         DataOutputStream data = new DataOutputStream(out);
         data.write(MAGIC);
         data.writeInt(files.size());
         try (Jars open = new Jars()) {
             for (Map.Entry<String, Item> file : files.entrySet()) {
                 byte[] label = file.getKey().getBytes(StandardCharsets.UTF_8);
-                byte[] raw = open.read(file.getValue());
+                byte[] raw = replaced.get(file.getKey());
+                if (raw == null) {
+                    raw = open.read(file.getValue());
+                }
                 data.writeInt(label.length);
                 data.write(label);
                 data.writeInt(raw.length);
-                data.write(raw);
+                if (apartFrom > 0 && raw.length >= apartFrom) {
+                    byte[] hash = Hashes.sha256(raw);
+                    Files.createDirectories(apart);
+                    Files.write(apart.resolve(HexFormat.of().formatHex(hash)), raw);
+                    data.writeByte(APART);
+                    data.write(hash);
+                } else {
+                    data.writeByte(INSIDE);
+                    data.write(raw);
+                }
             }
         }
         data.flush();
