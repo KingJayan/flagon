@@ -59,42 +59,11 @@ public final class ThreadingDemoProgram implements Program {
         latchesAndLocks(console);
         readersAndAWriter(console);
         conditionsAndPools(console);
-        aWaitTimesOut(console);
         aMonitorHeldAcrossASleep(console);
         chunksArriveWhileTheLoopDraws(console);
 
         Display.destroy();
         console.info("threading: done");
-    }
-
-    /** a failure that can pause makes every exception constructor pause, null checks among them */
-    private static final class PausingFailure extends RuntimeException {
-        private final boolean pausing;
-
-        PausingFailure(boolean pausing) {
-            this.pausing = pausing;
-        }
-
-        @Override
-        public synchronized Throwable fillInStackTrace() {
-            if (pausing) {
-                try {
-                    Thread.sleep(1L);
-                } catch (InterruptedException stopped) {
-                    Thread.currentThread().interrupt();
-                }
-            }
-            return this;
-        }
-    }
-
-    private void aWaitTimesOut(ConsoleSink console) throws InterruptedException {
-        boolean paused = new PausingFailure(true).getStackTrace() != null;
-        Object lock = new Object();
-        synchronized (lock) {
-            lock.wait(20L);
-        }
-        console.info("threading: a wait timed out beside a failure that pauses " + paused);
     }
 
     /** a method that never suspends must still wait for a monitor another thread holds */

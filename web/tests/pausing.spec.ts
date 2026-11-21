@@ -38,6 +38,12 @@ for (const build of ['wasm', 'jspi']) {
         timeout: 30_000,
       })
       .toBe(true);
+    await expect
+      .poll(
+        () => lines.some((line) => line.includes('a wait times out beside exceptions that can pause true')),
+        { timeout: 30_000 },
+      )
+      .toBe(true);
     expect(crashes).toEqual([]);
   });
 }

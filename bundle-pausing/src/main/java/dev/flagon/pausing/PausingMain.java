@@ -31,9 +31,21 @@ public final class PausingMain {
         try {
             System.out.println("pausing: a deep pause comes back with " + deepPause(16)
                     + " frames");
+            System.out.println("pausing: a wait times out beside exceptions that can pause "
+                    + waitTimesOut());
         } catch (InterruptedException interrupted) {
             Thread.currentThread().interrupt();
         }
+    }
+
+    /** the wait's own exception checks can pause here, and must not cut its timer short */
+    private static boolean waitTimesOut() throws InterruptedException {
+        Object lock = new Object();
+        long started = System.currentTimeMillis();
+        synchronized (lock) {
+            lock.wait(20L);
+        }
+        return System.currentTimeMillis() - started >= 15;
     }
 
     private static int deepPause(int depth) throws InterruptedException {
