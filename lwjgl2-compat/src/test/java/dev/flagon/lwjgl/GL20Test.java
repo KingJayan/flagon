@@ -129,8 +129,34 @@ class GL20Test {
         GL20.glShaderSource(shader, "#version 120\nvoid main() { gl_FragColor = vec4(1.0); }");
 
         String source = device.sourceOf(shader);
-        assertTrue(source.startsWith("precision mediump float;"), source);
-        assertTrue(!source.contains("#version"), source);
+        assertTrue(source.startsWith("#version 300 es\n"), source);
+        assertTrue(source.contains("flagon_FragColor = vec4(1.0);"), source);
+    }
+
+    @Test
+    void aUniformsStartingValueIsSetWhenTheProgramLinks() {
+        int vertex = GL20.glCreateShader(GL20.GL_VERTEX_SHADER);
+        GL20.glShaderSource(vertex,
+                "attribute vec3 a; void main() { gl_Position = vec4(a, 1.0); }");
+        int fragment = GL20.glCreateShader(GL20.GL_FRAGMENT_SHADER);
+        GL20.glShaderSource(fragment, """
+                #version 120
+                uniform vec3 Gray = vec3(0.3, 0.59, 0.11);
+                uniform float Size = 4.0;
+                void main() { gl_FragColor = vec4(Gray * Size, 1.0); }
+                """);
+        int program = GL20.glCreateProgram();
+        GL20.glAttachShader(program, vertex);
+        GL20.glAttachShader(program, fragment);
+
+        GL20.glLinkProgram(program);
+
+        String source = device.sourceOf(fragment);
+        assertTrue(source.contains("uniform vec3 Gray;"), source);
+        assertTrue(source.contains("uniform float Size;"), source);
+        assertArrayEquals(new float[] {0.3f, 0.59f, 0.11f}, device.uniformFloats("Gray"));
+        assertArrayEquals(new float[] {4.0f}, device.uniformFloats("Size"));
+        assertEquals("useProgram 0", device.calls.get(device.calls.size() - 1));
     }
 
     @Test

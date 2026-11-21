@@ -178,7 +178,7 @@ Both LWJGL 2 (`lwjgl2-compat`) and LWJGL 3 (`lwjgl3-compat`) APIs are supported.
 | **Texture Types** | Core subsets | Byte uploads converted to RGBA internally. No 16-bit integer channels. |
 | **Mipmaps** | Supported | Emulated via `glGenerateMipmap`; supports all standard minification filters. |
 | **Framebuffer Objects** | Single Attachment | Multi-render-target (`GL_COLOR_ATTACHMENT1+`) is unsupported. |
-| **GLSL (Desktop 1.10–3.30)** | Auto-transpiled | Rewritten to GLSL ES 1.00 or 3.00 at link time. |
+| **GLSL (Desktop 1.10–3.30)** | Auto-transpiled | A shader with a `#version` becomes GLSL ES 3.00, and one without becomes GLSL ES 1.00. Names ES 3.00 reserves, such as `sample`, get a `flagon_` prefix. A constant uniform initializer is set after link. Integer literals in float math still fail (#527). |
 | **GLSL (> 3.30)** | Unsupported | Throws `UnsupportedOperationException`. |
 
 ### Fixed-Function Shader Rewriting

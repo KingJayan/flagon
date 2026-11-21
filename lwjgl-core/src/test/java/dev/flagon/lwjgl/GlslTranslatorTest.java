@@ -19,8 +19,58 @@ class GlslTranslatorTest {
                 void main() { gl_Position = vec4(position, 1.0); }
                 """, ShaderStage.VERTEX);
 
-        assertFalse(translated.contains("#version"), translated);
-        assertTrue(translated.contains("attribute vec3 position;"));
+        assertFalse(translated.contains("#version 120"), translated);
+        assertTrue(translated.startsWith("#version 300 es\n"), translated);
+        assertTrue(translated.contains("in vec3 position;"), translated);
+    }
+
+    /** es 1.00 takes only constant loop bounds; minecraft's blur steps from -Radius */
+    @Test
+    void aLegacyShaderBecomesEsThreeHundredForItsLoops() {
+        String translated = GlslTranslator.toGlslEs("""
+                #version 120
+                uniform sampler2D DiffuseSampler;
+                uniform float Radius;
+                varying vec2 texCoord;
+                void main() {
+                    vec4 blurred = vec4(0.0);
+                    for (float r = -Radius; r <= Radius; r += 1.0) {
+                        vec4 sample = texture2D(DiffuseSampler, texCoord + r);
+                        blurred += sample;
+                    }
+                    gl_FragColor = blurred;
+                }
+                """, ShaderStage.FRAGMENT);
+
+        assertTrue(translated.startsWith("#version 300 es\n"), translated);
+        assertTrue(translated.contains("in vec2 texCoord;"), translated);
+        assertTrue(translated.contains("vec4 flagon_sample = texture(DiffuseSampler"), translated);
+        assertTrue(translated.contains("blurred += flagon_sample;"), translated);
+        assertTrue(translated.contains("flagon_FragColor = blurred;"), translated);
+    }
+
+    @Test
+    void aLegacyShaderKeepsNamesLaterVersionsTookAsKeywords() {
+        String translated = GlslTranslator.toGlslEs("""
+                #version 110
+                uniform float flat;
+                void main() { gl_Position = vec4(flat); }
+                """, ShaderStage.VERTEX);
+
+        assertTrue(translated.contains("uniform float flagon_flat;"), translated);
+    }
+
+    @Test
+    void aCoreProfileShaderKeepsItsKeywordsButNotEsReservedNames() {
+        String translated = GlslTranslator.toGlslEs("""
+                #version 330 core
+                layout(location = 0) in vec3 position;
+                flat out int patch;
+                void main() { patch = 1; gl_Position = vec4(position, 1.0); }
+                """, ShaderStage.VERTEX);
+
+        assertTrue(translated.contains("layout(location = 0) in vec3 position;"), translated);
+        assertTrue(translated.contains("flat out int flagon_patch;"), translated);
     }
 
     @Test
@@ -37,7 +87,6 @@ class GlslTranslatorTest {
     @Test
     void aFragmentShaderIsGivenADefaultPrecision() {
         String translated = GlslTranslator.toGlslEs("""
-                #version 120
                 void main() { gl_FragColor = vec4(1.0); }
                 """, ShaderStage.FRAGMENT);
 
@@ -194,7 +243,7 @@ class GlslTranslatorTest {
                 void main() { gl_FragColor = vec4(1.0); }
                 """, ShaderStage.FRAGMENT);
 
-        assertTrue(translated.startsWith("precision mediump float;"), translated);
+        assertTrue(translated.startsWith("#version 300 es\n"), translated);
         assertFalse(translated.contains("#version 120"), translated);
         assertTrue(translated.contains("#version 330 core"), translated);
     }

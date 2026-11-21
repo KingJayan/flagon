@@ -30,8 +30,33 @@ public final class GlslTranslator {
     private GlslTranslator() {
     }
 
+    /** words es 3.00 reserves that desktop GLSL up to 3.30 lets a shader name things */
+    private static final String[] RESERVED = {
+        "sample", "patch", "subroutine", "active", "common", "partition", "filter", "resource",
+        "input", "output", "coherent", "readonly", "writeonly",
+    };
+
+    /** keywords from GLSL 1.30 on, which a 1.10 or 1.20 shader may still use as names */
+    private static final String[] LATER_KEYWORDS = {"smooth", "flat", "layout", "uint"};
+
     private static String toGlslEs300(String source, int directive, int end, ShaderStage stage) {
-        return finishGlslEs300(source.substring(0, directive) + source.substring(end), stage);
+        String stripped = renamed(source.substring(0, directive) + source.substring(end),
+                RESERVED);
+        return finishGlslEs300(stripped, stage);
+    }
+
+    /** es 1.00 limits loops and indexing to constants, so 1.10 and 1.20 go to es 3.00 too */
+    private static String fromLegacy(String stripped, ShaderStage stage) {
+        String named = renamed(renamed(stripped, RESERVED), LATER_KEYWORDS);
+        return finishGlslEs300(asInAndOut(named, stage), stage);
+    }
+
+    private static String renamed(String source, String[] words) {
+        String renamed = source;
+        for (String word : words) {
+            renamed = replaceWord(renamed, word, "flagon_" + word);
+        }
+        return renamed;
     }
 
     private static String finishGlslEs300(String stripped, ShaderStage stage) {
@@ -122,6 +147,8 @@ public final class GlslTranslator {
         if (isGlslEs(version)) {
             return source;
         }
+        // the directive comes first, so dropping initializers after it leaves its offsets alone
+        source = UniformDefaults.strip(source, code);
         if (FixedFunctionGlsl.isUsedIn(code)) {
             return toFixedFunction(source.substring(0, directive) + source.substring(end), stage);
         }
@@ -137,11 +164,10 @@ public final class GlslTranslator {
             return toGlslEs300(source, directive, end, stage);
         }
 
-        String stripped = source.substring(0, directive) + source.substring(end);
-        return withPrecision(stripped, code.substring(0, directive) + code.substring(end), stage);
+        return fromLegacy(source.substring(0, directive) + source.substring(end), stage);
     }
 
-    static String withoutComments(String source) {
+    public static String withoutComments(String source) {
         char[] code = source.toCharArray();
         int at = 0;
         while (at + 1 < code.length) {
