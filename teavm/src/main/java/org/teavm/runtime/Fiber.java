@@ -13,8 +13,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-// flagon: the checks allow a missing fiber, saved objects grow without code that can pause, and a
-// jspi build parks the wasm stack on a promise in place of the coroutine rewrite
+// flagon: the checks allow a missing fiber, saved objects grow without code that can pause, a
+// suspending call runs before the fiber is marked suspending, and a jspi build parks the wasm stack
+// on a promise in place of the coroutine rewrite
 package org.teavm.runtime;
 
 import java.util.Arrays;
@@ -268,9 +269,10 @@ public class Fiber {
         }
         lastPendingCall = pendingCall;
 
-        fiber.state = STATE_SUSPENDING;
         pendingCall.callback = new AsyncCallbackImpl(pendingCall, javaThread, fiber);
+        // the call runs as ordinary code: split methods it calls would unwind on a suspending fiber
         call.run(pendingCall.callback);
+        fiber.state = STATE_SUSPENDING;
         return null;
     }
 
