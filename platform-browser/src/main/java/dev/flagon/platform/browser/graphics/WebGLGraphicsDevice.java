@@ -65,7 +65,15 @@ public final class WebGLGraphicsDevice implements GraphicsDevice {
 
     private int boundArrayBuffer = NO_BUFFER;
     private int boundFramebuffer = NO_FRAMEBUFFER;
+    private int boundRenderbuffer = NO_RENDERBUFFER;
     private JSObject copyTarget;
+
+    // the browser shows the canvas whenever a frame pauses, so drawing goes here until present
+    private final JSObject screen;
+    private final JSObject screenColor;
+    private final JSObject screenDepth;
+    private int screenWidth;
+    private int screenHeight;
     private int boundProgram = NO_PROGRAM;
 
     private final List<Attributes> arrays = new ArrayList<>();
@@ -114,6 +122,53 @@ public final class WebGLGraphicsDevice implements GraphicsDevice {
         gl.bindVertexArray(defaultVertexArray);
         gl.pixelStorei(WebGL2.UNPACK_PREMULTIPLY_ALPHA_WEBGL, 0);
 
+        screen = gl.createFramebuffer();
+        screenColor = gl.createRenderbuffer();
+        screenDepth = gl.createRenderbuffer();
+        resizeScreen();
+        gl.bindFramebuffer(WebGL2.FRAMEBUFFER, screen);
+        gl.framebufferRenderbuffer(WebGL2.FRAMEBUFFER, WebGL2.COLOR_ATTACHMENT0,
+                WebGL2.RENDERBUFFER, screenColor);
+        gl.framebufferRenderbuffer(WebGL2.FRAMEBUFFER, WebGL2.DEPTH_STENCIL_ATTACHMENT,
+                WebGL2.RENDERBUFFER, screenDepth);
+    }
+
+    /** sizes the back buffer to the canvas; call after the canvas changes size */
+    public void resizeScreen() {
+        if (screenWidth == width() && screenHeight == height()) {
+            return;
+        }
+        screenWidth = width();
+        screenHeight = height();
+        gl.bindRenderbuffer(WebGL2.RENDERBUFFER, screenColor);
+        gl.renderbufferStorage(WebGL2.RENDERBUFFER, WebGL2.RGB8, screenWidth, screenHeight);
+        gl.bindRenderbuffer(WebGL2.RENDERBUFFER, screenDepth);
+        gl.renderbufferStorage(WebGL2.RENDERBUFFER, WebGL2.DEPTH24_STENCIL8, screenWidth,
+                screenHeight);
+        bindRenderbuffer(boundRenderbuffer);
+    }
+
+    /** copies the finished frame to the canvas */
+    public void presentScreen() {
+        boolean scissored = capabilityKnown[3] && capabilityOn[3];
+        if (scissored) {
+            gl.disable(WebGL2.SCISSOR_TEST);
+        }
+        boolean masked = !redMask || !greenMask || !blueMask;
+        if (masked) {
+            gl.colorMask(true, true, true, alphaMask);
+        }
+        gl.bindFramebuffer(WebGL2.READ_FRAMEBUFFER, screen);
+        gl.bindFramebuffer(WebGL2.DRAW_FRAMEBUFFER, null);
+        gl.blitFramebuffer(0, 0, screenWidth, screenHeight, 0, 0, screenWidth, screenHeight,
+                WebGL2.COLOR_BUFFER_BIT, WebGL2.NEAREST);
+        bindFramebuffer(boundFramebuffer);
+        if (masked) {
+            gl.colorMask(redMask, greenMask, blueMask, alphaMask);
+        }
+        if (scissored) {
+            gl.enable(WebGL2.SCISSOR_TEST);
+        }
     }
 
     private Attributes attributes() {
@@ -1187,7 +1242,7 @@ public final class WebGLGraphicsDevice implements GraphicsDevice {
                 WebGL2.TEXTURE_2D, liveTexture(texture), 0);
         gl.blitFramebuffer(framebufferX, framebufferY, framebufferX + width, framebufferY + height,
                 x, y, x + width, y + height, WebGL2.COLOR_BUFFER_BIT, WebGL2.NEAREST);
-        gl.bindFramebuffer(WebGL2.DRAW_FRAMEBUFFER, null);
+        gl.bindFramebuffer(WebGL2.DRAW_FRAMEBUFFER, screen);
         if (scissored) {
             gl.enable(WebGL2.SCISSOR_TEST);
         }
@@ -1217,7 +1272,7 @@ public final class WebGLGraphicsDevice implements GraphicsDevice {
 
     @Override
     public void bindFramebuffer(int framebuffer) {
-        gl.bindFramebuffer(WebGL2.FRAMEBUFFER, framebuffer == NO_FRAMEBUFFER ? null
+        gl.bindFramebuffer(WebGL2.FRAMEBUFFER, framebuffer == NO_FRAMEBUFFER ? screen
                 : lookup(framebuffer, "framebuffer"));
         boundFramebuffer = framebuffer;
     }
@@ -1277,12 +1332,16 @@ public final class WebGLGraphicsDevice implements GraphicsDevice {
     public void bindRenderbuffer(int renderbuffer) {
         gl.bindRenderbuffer(WebGL2.RENDERBUFFER, renderbuffer == NO_RENDERBUFFER ? null
                 : lookup(renderbuffer, "renderbuffer"));
+        boundRenderbuffer = renderbuffer;
     }
 
     @Override
     public void deleteRenderbuffer(int renderbuffer) {
         if (renderbuffer == NO_RENDERBUFFER) {
             return;
+        }
+        if (boundRenderbuffer == renderbuffer) {
+            boundRenderbuffer = NO_RENDERBUFFER;
         }
         gl.deleteRenderbuffer(lookup(renderbuffer, "renderbuffer"));
         handles.remove(renderbuffer);

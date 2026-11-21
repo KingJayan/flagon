@@ -19,6 +19,7 @@ public final class DisplayDemoProgram implements Program {
     private static final int SECOND_FRAMES = 5;
     private static final int RATE = 30;
     private static final int WATCHED_FRAMES = 1800;
+    private static final int PAUSED_FRAMES = 20;
 
     @Override
     public String id() {
@@ -60,7 +61,20 @@ public final class DisplayDemoProgram implements Program {
         console.info("display again " + Display.getWidth() + "x" + Display.getHeight()
                 + " closing=" + Display.isCloseRequested());
 
+        pauseMidFrame(console);
         watchFocus(console);
+    }
+
+    /** a frame that pauses half drawn, as a file save in a menu does, must not reach the page */
+    private static void pauseMidFrame(ConsoleSink console) throws InterruptedException {
+        console.info("pausing mid-frame");
+        for (int frame = 0; frame < PAUSED_FRAMES && !Display.isCloseRequested(); frame++) {
+            paint(0.1f, 0.1f, 0.9f);
+            Thread.sleep(25);
+            paint(0.8f, 0.1f, 0.1f);
+            Display.update();
+        }
+        console.info("paused mid-frame " + PAUSED_FRAMES + " times");
     }
 
     /** draws while anyone is watching and idles while nobody is, the way a desktop game does */

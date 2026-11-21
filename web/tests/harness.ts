@@ -29,11 +29,16 @@ export async function readPixels(page: Page, points: number[][]): Promise<number
     if (!gl) {
       throw new Error('no webgl2 context');
     }
-    return wanted.map(([px, py]) => {
+    // what the canvas shows, not the back buffer the program is drawing into
+    const drawing = gl.getParameter(gl.READ_FRAMEBUFFER_BINDING);
+    gl.bindFramebuffer(gl.READ_FRAMEBUFFER, null);
+    const pixels = wanted.map(([px, py]) => {
       const pixel = new Uint8Array(4);
       gl.readPixels(px, py, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, pixel);
       return Array.from(pixel);
     });
+    gl.bindFramebuffer(gl.READ_FRAMEBUFFER, drawing);
+    return pixels;
   }, points);
 }
 

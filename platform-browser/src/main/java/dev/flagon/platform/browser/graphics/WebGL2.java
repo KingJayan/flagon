@@ -14,6 +14,7 @@ import org.teavm.jso.typedarrays.Uint32Array;
 public interface WebGL2 extends JSObject {
 
     int FRAMEBUFFER = 0x8D40;
+    int READ_FRAMEBUFFER = 0x8CA8;
     int DRAW_FRAMEBUFFER = 0x8CA9;
     int RENDERBUFFER = 0x8D41;
     int COLOR_ATTACHMENT0 = 0x8CE0;
@@ -25,6 +26,7 @@ public interface WebGL2 extends JSObject {
     int FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT = 0x8CD7;
     int FRAMEBUFFER_INCOMPLETE_DIMENSIONS = 0x8CD9;
     int FRAMEBUFFER_UNSUPPORTED = 0x8CDD;
+    int RGB8 = 0x8051;
     int RGBA8 = 0x8058;
     int DEPTH_COMPONENT16 = 0x81A5;
     int DEPTH_COMPONENT24 = 0x81A6;
