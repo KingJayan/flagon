@@ -5,6 +5,8 @@ WEB := web
 BUNDLES := $(WEB)/public/flagon
 
 ARGS ?=
+MINECRAFT ?= 1.8.9
+LAUNCHER ?=
 N ?= 3
 ENGINES ?= chromium firefox
 
@@ -12,7 +14,7 @@ VENDOR_JARS := $(wildcard vendor/*.jar)
 
 
 .PHONY: help setup deps browsers fast bundles app verify-bundles \
-        bundles-release size test browser flake typecheck lint build-site \
+        minecraft bundles-release size test browser flake typecheck lint build-site \
         deploy-private dev serve check report merge-reports watch version release publish clean
 
 help: ## show available commands
@@ -46,6 +48,9 @@ app: ## build the JARs in vendor/ as runnable app bundles
 	@$(MAKE) verify-bundles
 	@echo "App bundles are available in $(BUNDLES)/"
 	@echo "Run 'make dev' and open http://localhost:5273/"
+
+minecraft: ## fill vendor/ from a local launcher install (MINECRAFT=1.8.9 LAUNCHER=path)
+	cd $(WEB) && bun vendor-minecraft.ts $(MINECRAFT) $(LAUNCHER)
 
 verify-bundles: ## verify generated bundles contain compiled output
 	@for bundle in $(BUNDLES)/js/*.js $(BUNDLES)/wasm/*.wasm $(BUNDLES)/jspi/*.wasm; do \

@@ -141,6 +141,7 @@ Because TeaVM relies on whole-program reachability analysis, unreferenced member
 Reflection Target            Retention Mechanism                       Metadata / Cost
 Class Identity / Types       Automatic (always retained)               Preserves getClass(), isInstance(), cast()
 Class Members                @Reflectable or flagon.reflect.classes     Retains fields, methods, constructors
+vendor/ Members              vendor/reflect.txt                        Adds its globs to flagon.reflect.classes
 Dynamic Proxy Interfaces     flagon.reflect.proxies                    Synthesizes proxy class at compile time
 vendor/ Constructors         META-INF/flagon/constructed.txt           Retains constructors; -Pflagon.app.reflect narrows
 Classpath Scan Targets       flagon.preserve (vendor/preserve.txt)     Retains classes that only a scan names

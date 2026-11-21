@@ -37,13 +37,17 @@ fun shrinks(variant: String): Provider<Boolean> =
 fun wasmDir(variant: String) = shrinks(variant).flatMap {
     if (it) layout.buildDirectory.dir("teavm/$variant") else bundlesDir.map { dir -> dir.dir(variant) }
 }
-val preserve = providers.gradleProperty("flagon.preserve").orElse(
-    providers.fileContents(rootProject.layout.projectDirectory.file("vendor/preserve.txt")).asText
+// one glob per line in a vendor/ file, joined the way the compiler properties take them
+fun vendorGlobs(name: String): Provider<String> =
+    providers.fileContents(rootProject.layout.projectDirectory.file("vendor/$name")).asText
         .map { text ->
             text.lines().map { it.trim() }.filter { it.isNotEmpty() && !it.startsWith("#") }
                 .joinToString(",")
-        },
-).orElse("")
+        }.orElse("")
+val preserve = providers.gradleProperty("flagon.preserve").orElse(vendorGlobs("preserve.txt"))
+val reflected = bundle.reflectClasses.zip(vendorGlobs("reflect.txt")) { own, vendor ->
+    listOf(own, vendor).filter { it.isNotBlank() }.joinToString(",")
+}
 
 val teavmClasspath = configurations.named("teavmClasspath")
 val bundleTools = configurations.create("bundleTools")
@@ -81,7 +85,7 @@ teavmClasspath.configure {
 
 val reflectionProperties = provider {
     mapOf(
-        "flagon.reflect.classes" to bundle.reflectClasses.get(),
+        "flagon.reflect.classes" to reflected.get(),
         "flagon.reflect.proxies" to bundle.reflectProxies.get(),
         "flagon.reflect.converted" to bundle.reflectConverted.get(),
         "flagon.preserve" to preserve.get(),

@@ -12,6 +12,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Set;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
@@ -56,6 +57,21 @@ class WriteResourcePackTest {
         var packed = WriteResourcePack.collect(work);
 
         assertEquals(Map.of("assets/lang.txt", "hello").keySet(), packed.keySet());
+    }
+
+    @Test
+    void takesTheFoldersBesideTheJarsAfterThem(@TempDir Path work) throws IOException {
+        jar(work.resolve("game.jar"), Map.of("assets/pack.mcmeta", "jar"));
+        Files.createDirectories(work.resolve("assets/sounds"));
+        Files.writeString(work.resolve("assets/sounds/click.ogg"), "ogg");
+        Files.writeString(work.resolve("assets/pack.mcmeta"), "loose");
+        Files.writeString(work.resolve("preserve.txt"), "org.**");
+
+        var packed = WriteResourcePack.collect(work);
+
+        assertEquals(Set.of("assets/pack.mcmeta", "assets/sounds/click.ogg"),
+                packed.keySet());
+        assertEquals(work.resolve("game.jar"), packed.get("assets/pack.mcmeta").source());
     }
 
     @Test
