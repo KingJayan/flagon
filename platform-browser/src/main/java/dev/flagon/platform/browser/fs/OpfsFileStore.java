@@ -15,7 +15,11 @@ public final class OpfsFileStore implements FileStore {
     }
 
     public static OpfsFileStore createIfAvailable() {
-        return Opfs.isAvailable() ? new OpfsFileStore() : null;
+        if (!Opfs.isAvailable()) {
+            return null;
+        }
+        OpfsFileStore store = new OpfsFileStore();
+        return store.opfs.opens() ? store : null;
     }
 
     @Override

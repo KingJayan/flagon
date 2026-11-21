@@ -120,6 +120,16 @@ final class Opfs {
         return hasNavigator() && hasStorage() && offersDirectory();
     }
 
+    /** private windows offer the api but refuse the directory */
+    boolean opens() {
+        try {
+            root();
+            return true;
+        } catch (FileStoreException refused) {
+            return false;
+        }
+    }
+
     Entry stat(String path) {
         if ("/".equals(path)) {
             return entry(true, true, 0, 0);

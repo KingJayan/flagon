@@ -78,8 +78,8 @@ public final class BrowserPlatform implements Platform {
         if (opfs != null) {
             return opfs;
         }
-        console.warn("no origin private file system here; files are kept in memory and lost on"
-                + " reload");
+        console.warn("no usable origin private file system here; files are kept in memory and"
+                + " lost on reload");
         return new MemoryFileStore();
     }
 

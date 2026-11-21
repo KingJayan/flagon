@@ -89,7 +89,7 @@ Ahead-of-time (AOT) tree-shaking strips unreferenced class members by default. `
 
 ## Storage & Filesystem (`java.io`)
 
-* **Backing Store:** Origin Private File System (OPFS). Falls back to an ephemeral in-memory filesystem if OPFS is unavailable.
+* **Backing Store:** Origin Private File System (OPFS). Falls back to an ephemeral in-memory filesystem if OPFS is unavailable or refuses access, as in a private window.
 * **Concurrency:** Asynchronous main-thread OPFS access suspends the calling green thread; application-level `java.io` remains synchronous and blocking.
 * **Caching:** Files are fully loaded into memory when opened.
 * **Flushing:** Streams flush to OPFS on `flush()` and `close()`.
