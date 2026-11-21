@@ -414,8 +414,8 @@ final class ImplicitFloats {
                             || code.charAt(end) == '_')) {
                         end++;
                     }
-                } else if (Character.isDigit(c)
-                        || (c == '.' && end < code.length() && Character.isDigit(code.charAt(end)))) {
+                } else if (Character.isDigit(c) || (c == '.' && end < code.length()
+                        && Character.isDigit(code.charAt(end)))) {
                     end = numberEnd(code, at);
                 } else if (end < code.length() && "=<>!+-*/".indexOf(c) >= 0
                         && code.charAt(end) == '=') {
