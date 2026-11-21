@@ -25,7 +25,7 @@ class ResourceUrlsTest {
 
     @AfterEach
     void forget() {
-        Resources.install(null);
+        Resources.clear();
     }
 
     @Test
@@ -77,7 +77,7 @@ class ResourceUrlsTest {
     void refusesAUrlWhoseFileLeftThePack() throws IOException {
         Resources.install(pack(Map.of("a/one.txt", "one")));
         URL stale = ResourceUrls.of("a/one.txt");
-        Resources.install(null);
+        Resources.clear();
 
         assertThrows(IOException.class, stale::openStream);
     }
@@ -92,7 +92,7 @@ class ResourceUrlsTest {
     private static byte[] pack(Map<String, String> files) throws IOException {
         ByteArrayOutputStream bytes = new ByteArrayOutputStream();
         DataOutputStream out = new DataOutputStream(bytes);
-        out.write("FLGNPK02".getBytes(StandardCharsets.US_ASCII));
+        out.write("FLGNPK03".getBytes(StandardCharsets.US_ASCII));
         out.writeInt(files.size());
         for (Map.Entry<String, String> file : files.entrySet()) {
             byte[] name = file.getKey().getBytes(StandardCharsets.UTF_8);
@@ -100,8 +100,6 @@ class ResourceUrlsTest {
             out.writeInt(name.length);
             out.write(name);
             out.writeInt(content.length);
-            out.writeInt(content.length);
-            out.writeByte(0);
             out.write(content);
         }
         out.flush();

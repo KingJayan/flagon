@@ -5,7 +5,6 @@ import org.junit.jupiter.api.Test;
 
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
-import java.util.zip.DeflaterOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
@@ -24,7 +23,7 @@ class ResourcesTest {
 
     @AfterEach
     void forget() {
-        Resources.install(null);
+        Resources.clear();
     }
 
     @Test
@@ -64,46 +63,22 @@ class ResourcesTest {
 
     @Test
     void answersNothingWithNoPackAtAll() {
-        Resources.install(null);
+        Resources.clear();
 
         assertEquals(0, Resources.count());
         assertNull(Resources.open("a/one.txt"));
     }
 
     @Test
-    void readsBackAFileThePackerCompressed() throws IOException {
+    void readsBackAWholeFileByEveryRoute() throws IOException {
         String text = "abcdefgh".repeat(100);
-        Resources.install(deflated("big.txt", text));
+        Resources.install(pack(Map.of("big.txt", text)));
 
         assertEquals(text.length(), Resources.sizeOf("big.txt"));
         assertArrayEquals(text.getBytes(StandardCharsets.UTF_8), Resources.read("big.txt"));
         try (InputStream stream = Resources.open("big.txt")) {
             assertArrayEquals(text.getBytes(StandardCharsets.UTF_8), stream.readAllBytes());
         }
-    }
-
-    private static byte[] deflated(String file, String text) throws IOException {
-        byte[] raw = text.getBytes(StandardCharsets.UTF_8);
-        ByteArrayOutputStream packed = new ByteArrayOutputStream();
-        try (java.util.zip.DeflaterOutputStream out =
-                new java.util.zip.DeflaterOutputStream(packed)) {
-            out.write(raw);
-        }
-        byte[] body = packed.toByteArray();
-
-        ByteArrayOutputStream bytes = new ByteArrayOutputStream();
-        DataOutputStream out = new DataOutputStream(bytes);
-        out.write("FLGNPK02".getBytes(StandardCharsets.US_ASCII));
-        out.writeInt(1);
-        byte[] name = file.getBytes(StandardCharsets.UTF_8);
-        out.writeInt(name.length);
-        out.write(name);
-        out.writeInt(raw.length);
-        out.writeInt(body.length);
-        out.writeByte(1);
-        out.write(body);
-        out.flush();
-        return bytes.toByteArray();
     }
 
     @Test
@@ -132,7 +107,7 @@ class ResourcesTest {
     private static byte[] pack(Map<String, String> files) throws IOException {
         ByteArrayOutputStream bytes = new ByteArrayOutputStream();
         DataOutputStream out = new DataOutputStream(bytes);
-        out.write("FLGNPK02".getBytes(StandardCharsets.US_ASCII));
+        out.write("FLGNPK03".getBytes(StandardCharsets.US_ASCII));
         out.writeInt(files.size());
         for (Map.Entry<String, String> file : files.entrySet()) {
             byte[] name = file.getKey().getBytes(StandardCharsets.UTF_8);
@@ -140,8 +115,6 @@ class ResourcesTest {
             out.writeInt(name.length);
             out.write(name);
             out.writeInt(content.length);
-            out.writeInt(content.length);
-            out.writeByte(0);
             out.write(content);
         }
         out.flush();
@@ -149,8 +122,8 @@ class ResourcesTest {
     }
 
     @Test
-    void inflatesAPackedFile() throws IOException {
-        Resources.install(deflated(Map.of("a/one.txt", "one", "b/two.txt", "two")));
+    void readsEachFileItCarries() throws IOException {
+        Resources.install(pack(Map.of("a/one.txt", "one", "b/two.txt", "two")));
 
         assertArrayEquals("one".getBytes(StandardCharsets.UTF_8), Resources.read("a/one.txt"));
         assertArrayEquals("two".getBytes(StandardCharsets.UTF_8), Resources.read("b/two.txt"));
@@ -158,7 +131,7 @@ class ResourcesTest {
 
     @Test
     void handsEveryReaderItsOwnCopy() throws IOException {
-        Resources.install(deflated(Map.of("a/one.txt", "one")));
+        Resources.install(pack(Map.of("a/one.txt", "one")));
 
         byte[] first = Resources.read("a/one.txt");
         assertNotSame(first, Resources.read("a/one.txt"));
@@ -169,7 +142,7 @@ class ResourcesTest {
 
     @Test
     void fillsAnArrayTheCallerBrought() throws IOException {
-        Resources.install(deflated(Map.of("a/one.txt", "one")));
+        Resources.install(pack(Map.of("a/one.txt", "one")));
         byte[] into = new byte[8];
 
         assertEquals(3, Resources.readInto("a/one.txt", into));
@@ -177,7 +150,7 @@ class ResourcesTest {
     }
 
     @Test
-    void fillsAnArrayFromAStoredFile() throws IOException {
+    void fillsAnArrayOfExactlyTheFilesSize() throws IOException {
         Resources.install(pack(Map.of("a/one.txt", "one")));
         byte[] into = new byte[3];
 
@@ -186,8 +159,8 @@ class ResourcesTest {
     }
 
     @Test
-    void keepsTheCachedBytesWhenTheReaderChangesItsArray() throws IOException {
-        Resources.install(deflated(Map.of("a/one.txt", "one")));
+    void keepsThePackWhenTheReaderChangesItsArray() throws IOException {
+        Resources.install(pack(Map.of("a/one.txt", "one")));
         byte[] into = new byte[3];
         Resources.readInto("a/one.txt", into);
 
@@ -198,7 +171,7 @@ class ResourcesTest {
 
     @Test
     void refusesAnArrayTooSmallToHoldTheFile() throws IOException {
-        Resources.install(deflated(Map.of("a/one.txt", "one")));
+        Resources.install(pack(Map.of("a/one.txt", "one")));
 
         assertThrows(IllegalArgumentException.class,
                 () -> Resources.readInto("a/one.txt", new byte[2]));
@@ -209,29 +182,5 @@ class ResourcesTest {
         Resources.install(pack(Map.of("a/one.txt", "one")));
 
         assertEquals(-1, Resources.readInto("missing.txt", new byte[8]));
-    }
-
-    private static byte[] deflated(Map<String, String> files) throws IOException {
-        ByteArrayOutputStream bytes = new ByteArrayOutputStream();
-        DataOutputStream out = new DataOutputStream(bytes);
-        out.write("FLGNPK02".getBytes(StandardCharsets.US_ASCII));
-        out.writeInt(files.size());
-        for (Map.Entry<String, String> file : files.entrySet()) {
-            byte[] name = file.getKey().getBytes(StandardCharsets.UTF_8);
-            byte[] content = file.getValue().getBytes(StandardCharsets.UTF_8);
-            ByteArrayOutputStream packed = new ByteArrayOutputStream();
-            try (DeflaterOutputStream deflating = new DeflaterOutputStream(packed)) {
-                deflating.write(content);
-            }
-            byte[] stored = packed.toByteArray();
-            out.writeInt(name.length);
-            out.write(name);
-            out.writeInt(content.length);
-            out.writeInt(stored.length);
-            out.writeByte(1);
-            out.write(stored);
-        }
-        out.flush();
-        return bytes.toByteArray();
     }
 }

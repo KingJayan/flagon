@@ -4,47 +4,75 @@ import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.Collections;
-import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Set;
-import java.util.zip.DataFormatException;
-import java.util.zip.Inflater;
-import java.util.zip.InflaterInputStream;
 
 public final class Resources {
 
-    private static final byte[] MAGIC = "FLGNPK02".getBytes(StandardCharsets.US_ASCII);
+    private static final byte[] MAGIC = "FLGNPK03".getBytes(StandardCharsets.US_ASCII);
 
-    private static final int STORED = 0;
+    /**
+     * the pack's bytes where they already are: a browser keeps them in the buffer they arrived
+     * in, so only a resource that is read is copied
+     */
+    public interface Source {
 
-    /** where one resource sits */
-    private record At(int offset, int stored, int raw, int packing) {
+        int length();
+
+        byte get(int at);
+
+        void copy(int from, byte[] into, int to, int count);
     }
 
-    /** how many inflated bytes to keep */
-    private static final int CACHE_BYTES = 4 * 1024 * 1024;
+    /** where one resource sits */
+    private record At(int offset, int length) {
+    }
 
-    private static final LinkedHashMap<String, byte[]> inflated =
-            new LinkedHashMap<>(16, 0.75f, true);
+    private static final Source EMPTY = of(new byte[0]);
 
-    private static byte[] pack = new byte[0];
+    private static Source pack = EMPTY;
     private static Map<String, At> index = Map.of();
-    private static int cached;
 
     private Resources() {
     }
 
+    public static Source of(byte[] bytes) {
+        return new Source() {
+            @Override
+            public int length() {
+                return bytes.length;
+            }
+
+            @Override
+            public byte get(int at) {
+                return bytes[at];
+            }
+
+            @Override
+            public void copy(int from, byte[] into, int to, int count) {
+                System.arraycopy(bytes, from, into, to, count);
+            }
+        };
+    }
+
+    /** the pack is gone; every lookup finds nothing */
+    public static void clear() {
+        pack = EMPTY;
+        index = Map.of();
+    }
+
     public static void install(byte[] bytes) {
-        inflated.clear();
-        cached = 0;
-        if (bytes == null || bytes.length == 0) {
-            pack = new byte[0];
-            index = Map.of();
+        install(of(bytes));
+    }
+
+    public static void install(Source source) {
+        if (source.length() == 0) {
+            clear();
             return;
         }
-        Map<String, At> read = readIndex(bytes);
-        pack = bytes;
+        Map<String, At> read = readIndex(source);
+        pack = source;
         index = read;
     }
 
@@ -66,8 +94,8 @@ public final class Resources {
         if (at == null) {
             return null;
         }
-        byte[] bytes = new byte[at.raw()];
-        readInto(name, bytes);
+        byte[] bytes = new byte[at.length()];
+        pack.copy(at.offset(), bytes, 0, at.length());
         return bytes;
     }
 
@@ -78,63 +106,22 @@ public final class Resources {
         if (at == null) {
             return -1;
         }
-        if (into.length < at.raw()) {
-            throw new IllegalArgumentException(clean + " is " + at.raw() + " bytes, and the array "
-                    + "holds " + into.length);
+        if (into.length < at.length()) {
+            throw new IllegalArgumentException(clean + " is " + at.length() + " bytes, and the "
+                    + "array holds " + into.length);
         }
-        if (at.packing() == STORED) {
-            System.arraycopy(pack, at.offset(), into, 0, at.raw());
-            return at.raw();
-        }
-        byte[] known = inflated.get(clean);
-        if (known == null) {
-            known = inflate(at, clean);
-            remember(clean, known);
-        }
-        System.arraycopy(known, 0, into, 0, at.raw());
-        return at.raw();
-    }
-
-    /** a shared inflater is not safe to re-enter */
-    private static byte[] inflate(At at, String name) {
-        byte[] raw = new byte[at.raw()];
-        Inflater inflater = new Inflater();
-        try {
-            inflater.setInput(pack, at.offset(), at.stored());
-            inflater.inflate(raw);
-        } catch (DataFormatException broken) {
-            throw new IllegalStateException("the pack cannot unpack " + name, broken);
-        } finally {
-            inflater.end();
-        }
-        return raw;
-    }
-
-    private static void remember(String name, byte[] bytes) {
-        if (bytes.length > CACHE_BYTES) {
-            return;
-        }
-        byte[] was = inflated.put(name, bytes);
-        cached += bytes.length - (was == null ? 0 : was.length);
-        Iterator<Map.Entry<String, byte[]>> eldest = inflated.entrySet().iterator();
-        while (cached > CACHE_BYTES && eldest.hasNext()) {
-            cached -= eldest.next().getValue().length;
-            eldest.remove();
-        }
+        pack.copy(at.offset(), into, 0, at.length());
+        return at.length();
     }
 
     public static InputStream open(String name) {
-        At at = index.get(clean(name));
-        if (at == null) {
-            return null;
-        }
-        InputStream bytes = new ByteArrayInputStream(pack, at.offset(), at.stored());
-        return at.packing() == STORED ? bytes : new InflaterInputStream(bytes);
+        byte[] bytes = read(name);
+        return bytes == null ? null : new ByteArrayInputStream(bytes);
     }
 
     public static int sizeOf(String name) {
         At at = index.get(clean(name));
-        return at == null ? -1 : at.raw();
+        return at == null ? -1 : at.length();
     }
 
     static String clean(String name) {
@@ -148,8 +135,8 @@ public final class Resources {
         return name.substring(start);
     }
 
-    private static Map<String, At> readIndex(byte[] bytes) {
-        Cursor cursor = new Cursor(bytes);
+    private static Map<String, At> readIndex(Source source) {
+        Cursor cursor = new Cursor(source);
         for (byte expected : MAGIC) {
             if (cursor.readByte() != expected) {
                 throw new IllegalArgumentException("this is not a flagon resource pack");
@@ -162,26 +149,24 @@ public final class Resources {
         Map<String, At> read = new LinkedHashMap<>();
         for (int file = 0; file < count; file++) {
             String name = new String(cursor.readBytes(cursor.readInt()), StandardCharsets.UTF_8);
-            int raw = cursor.readInt();
-            int stored = cursor.readInt();
-            int packing = cursor.readByte();
+            int length = cursor.readInt();
             int offset = cursor.at();
-            if (raw < 0 || stored < 0 || offset + stored > bytes.length) {
+            if (length < 0 || offset + length > source.length()) {
                 throw new IllegalArgumentException("the pack ends inside " + name);
             }
-            read.put(name, new At(offset, stored, raw, packing));
-            cursor.skip(stored);
+            read.put(name, new At(offset, length));
+            cursor.skip(length);
         }
         return read;
     }
 
     private static final class Cursor {
 
-        private final byte[] bytes;
+        private final Source source;
         private int at;
 
-        Cursor(byte[] bytes) {
-            this.bytes = bytes;
+        Cursor(Source source) {
+            this.source = source;
         }
 
         int at() {
@@ -189,10 +174,10 @@ public final class Resources {
         }
 
         byte readByte() {
-            if (at >= bytes.length) {
+            if (at >= source.length()) {
                 throw new IllegalArgumentException("the pack ends before its header does");
             }
-            return bytes[at++];
+            return source.get(at++);
         }
 
         int readInt() {
@@ -205,11 +190,11 @@ public final class Resources {
         }
 
         byte[] readBytes(int length) {
-            if (length < 0 || at + length > bytes.length) {
+            if (length < 0 || at + length > source.length()) {
                 throw new IllegalArgumentException("the pack ends inside its header");
             }
             byte[] taken = new byte[length];
-            System.arraycopy(bytes, at, taken, 0, length);
+            source.copy(at, taken, 0, length);
             at += length;
             return taken;
         }
