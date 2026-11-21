@@ -19,9 +19,12 @@ Flagon compiles desktop Java bytecode into browser-native WebAssembly GC and Jav
 
 ## Status
 
-Try the demos at [flagon-nu.vercel.app](https://flagon-nu.vercel.app), which every push to `main` deploys. `make deploy-private` deploys that same site with your `vendor/` app added, to a preview that only your Vercel login can open.
+Try the demos at [flagon-nu.vercel.app](https://flagon-nu.vercel.app).
 
-The target is Minecraft 1.8.9. It loads singleplayer worlds in Chromium. With its jars in `vendor/`, `make app` then `make browser ARGS=minecraft.spec.ts` checks the menu.
+Current target is Minecraft 1.8.9, right now loads singleplayer worlds in Chromium.
+
+>[!IMPORTANT]
+>This repo does not distribute any trademarked content. All custom JARs(such as Minecraft) must be provided locally.
 
 ## Quickstart
 
@@ -35,9 +38,8 @@ make dev     # Start dev server at http://127.0.0.1:5273
 
 To test a standalone JAR without setup, drop it into `vendor/` and run `make app` (see [Running an Existing JAR](DOWNSTREAM.md#quickstart-no-setup)).
 
-* **Dev Shell (`/`):** Console, runtime diagnostics, and program picker.
-* **Fullscreen View (`/play/?bundle=app`):** Full canvas execution.
-* **Networking (`make serve`):** Host static build with the WSS-to-TCP bridge (see [Networking Details](COMPATIBILITY.md)).
+>[!NOTE]
+>**Networking (`make serve`):** host static build with the WSS-to-TCP bridge (see [Networking Details](COMPATIBILITY.md)).
 
 ## Testing
 
