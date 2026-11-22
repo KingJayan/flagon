@@ -20,6 +20,6 @@ public final class Files {
     private static UnsupportedCapabilityException refuse() {
         return new UnsupportedCapabilityException(
                 "a page has no file handle to seek over: read the file as a stream instead. see"
-                        + " docs/COMPATIBILITY.md");
+                        + " flagon-nu.vercel.app/docs");
     }
 }

@@ -1,0 +1,185 @@
+@import './shell.css';
+
+.library {
+  display: grid;
+  grid-template-columns: 14rem minmax(0, 1fr);
+  align-items: start;
+  gap: 2.5rem;
+  max-width: 76rem;
+  margin: 0 auto;
+  padding: 2rem 1.5rem 4rem;
+}
+
+.contents {
+  position: sticky;
+  top: 5.5rem;
+  max-height: calc(100vh - 7rem);
+  overflow-y: auto;
+  font-size: var(--detail);
+}
+
+.contents ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.contents ul ul {
+  margin: 0.25rem 0 0.75rem;
+  padding-left: 0.75rem;
+  border-left: 1px solid var(--line);
+}
+
+.contents a {
+  display: block;
+  padding: 0.3rem 0.5rem;
+  border-radius: 6px;
+  color: var(--muted);
+  text-decoration: none;
+}
+
+.contents ul ul a {
+  padding: 0.2rem 0.5rem;
+  font-size: var(--small);
+}
+
+.contents a:hover {
+  color: var(--ink);
+}
+
+.contents a[aria-current='page'] {
+  font-weight: 600;
+  color: var(--ink);
+  background: var(--sunk);
+}
+
+.doc {
+  min-width: 0;
+  max-width: 48rem;
+  line-height: 1.65;
+}
+
+.doc h1 {
+  margin: 0 0 0.75rem;
+  font-size: 2rem;
+  letter-spacing: -0.02em;
+}
+
+.doc h2 {
+  margin: 2.75rem 0 0.75rem;
+  padding-top: 0.5rem;
+  font-size: 1.375rem;
+  border-top: 1px solid var(--line);
+}
+
+.doc h3 {
+  margin: 2rem 0 0.5rem;
+  font-size: 1.0625rem;
+}
+
+.doc h4 {
+  margin: 1.5rem 0 0.5rem;
+  font-size: var(--body);
+  font-family: var(--mono);
+  font-weight: 500;
+}
+
+.doc :is(h1, h2, h3, h4) {
+  scroll-margin-top: 5rem;
+}
+
+.doc a {
+  color: var(--accent);
+  text-underline-offset: 0.15em;
+}
+
+.doc code {
+  padding: 0.1em 0.3em;
+  font-family: var(--mono);
+  font-size: 0.875em;
+  background: var(--sunk);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+}
+
+.doc pre {
+  overflow-x: auto;
+  padding: 0.85rem 1rem;
+  font-size: var(--detail);
+  line-height: 1.55;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+.doc pre code {
+  padding: 0;
+  font-size: inherit;
+  background: none;
+  border: 0;
+}
+
+.doc blockquote {
+  margin: 1rem 0;
+  padding: 0.25rem 1rem;
+  color: var(--muted);
+  border-left: 3px solid var(--accent);
+}
+
+.doc .table {
+  overflow-x: auto;
+  margin: 1rem 0;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+.doc table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--detail);
+}
+
+.doc :is(th, td) {
+  padding: 0.5rem 0.75rem;
+  text-align: left;
+  vertical-align: top;
+  border-bottom: 1px solid var(--line);
+}
+
+.doc th {
+  font-weight: 600;
+  background: var(--sunk);
+}
+
+.doc tr:last-child td {
+  border-bottom: 0;
+}
+
+.doc hr {
+  margin: 2rem 0;
+  border: 0;
+  border-top: 1px solid var(--line);
+}
+
+@media (max-width: 52rem) {
+  .library {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 1.5rem;
+    padding: 1.25rem 1rem 3rem;
+  }
+
+  .contents {
+    position: static;
+    max-height: none;
+  }
+
+  .contents ul ul {
+    display: none;
+  }
+
+  .contents > ul {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem;
+  }
+}

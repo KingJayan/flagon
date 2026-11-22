@@ -92,7 +92,7 @@ public final class WriteAbsentCode implements TeaVMPlugin, ClassHolderTransforme
                         && !method.getAnnotations().all().iterator().hasNext()) {
                     method.getModifiers().remove(ElementModifier.NATIVE);
                     method.setProgram(raise(UNLINKED, method.getName() + " has no native code in"
-                            + " a page. see docs/COMPATIBILITY.md",
+                            + " a page. see flagon-nu.vercel.app/docs",
                             method.parameterCount()));
                 }
                 continue;
@@ -178,7 +178,7 @@ public final class WriteAbsentCode implements TeaVMPlugin, ClassHolderTransforme
             method.getModifiers().add(ElementModifier.STATIC);
         }
         method.setProgram(raise(ABSENT, name + " is not in this bundle. put the jar that carries"
-                + " it in vendor/. see docs/COMPATIBILITY.md", asked.parameterCount()));
+                + " it in vendor/. see flagon-nu.vercel.app/docs", asked.parameterCount()));
         return method;
     }
 

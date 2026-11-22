@@ -60,7 +60,7 @@ public class DatagramSocket implements java.io.Closeable {
     static SocketException refuseWith() {
         return new SocketException(
                 "a page sends no datagrams: the proxy carries a stream, and nothing carries a "
-                        + "packet. see docs/COMPATIBILITY.md");
+                        + "packet. see flagon-nu.vercel.app/docs");
     }
 
     private static void refuse() throws SocketException {

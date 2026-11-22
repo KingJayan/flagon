@@ -9,3 +9,9 @@ dependencies {
     api(libs.teavm.extension.spi.util)
     compileOnly("dev.flagon:teavm-core-patched:${project.version}")
 }
+
+// JdkFormsTableTest reads the table from jdk-classlib's source
+tasks.test {
+    inputs.file(rootProject.layout.projectDirectory.file("toolchain/jdk-classlib/src/main/java/java/io/JdkForms.java"))
+        .withPathSensitivity(PathSensitivity.RELATIVE)
+}

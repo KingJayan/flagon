@@ -12,7 +12,7 @@ public class InitialContext implements Context {
 
     @Override
     public Object lookup(String name) throws NamingException {
-        throw new NameNotFoundException(name + " is not in a page. see docs/COMPATIBILITY.md");
+        throw new NameNotFoundException(name + " is not in a page. see flagon-nu.vercel.app/docs");
     }
 
     @Override

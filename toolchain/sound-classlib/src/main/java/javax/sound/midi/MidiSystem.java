@@ -29,6 +29,6 @@ public final class MidiSystem {
 
     public static Sequence getSequence(URL url) throws InvalidMidiDataException {
         throw new InvalidMidiDataException("a page has no midi device: nothing here reads a "
-                + "sequence. see docs/COMPATIBILITY.md");
+                + "sequence. see flagon-nu.vercel.app/docs");
     }
 }

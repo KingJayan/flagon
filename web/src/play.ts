@@ -150,7 +150,7 @@ canvas.addEventListener('contextmenu', (event) => event.preventDefault());
 function missing(url: string): string {
   return bundle === 'app'
     ? 'No application has been built yet. Put a jar in vendor/ -- any jar -- and run make app. '
-      + 'See docs/DOWNSTREAM.md.'
+      + 'See /docs/?page=packaging.'
     : `The bundle at ${url} is not being served. Run make bundles.`;
 }
 
