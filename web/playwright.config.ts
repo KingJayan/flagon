@@ -39,6 +39,7 @@ export default defineConfig({
         '**/concurrency.spec.ts',
         '**/coverage.spec.ts',
         '**/crypto.spec.ts',
+        '**/docs.spec.ts',
         '**/files.spec.ts',
         '**/image.spec.ts',
         '**/jdkgaps.spec.ts',
