@@ -1,3 +1,4 @@
+// needs a display
 import { test, expect } from '@playwright/test';
 
 test.describe('the public site', () => {
