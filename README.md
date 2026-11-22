@@ -19,7 +19,7 @@ Flagon compiles desktop Java bytecode into browser-native WebAssembly GC and Jav
 
 ## Status
 
-Try the demos at [flagon-nu.vercel.app](https://flagon-nu.vercel.app).
+Try the demos and the Java playground at [flagon-nu.vercel.app](https://flagon-nu.vercel.app). The playground compiles with javac and TeaVM in the browser; build it with `make playground`.
 
 Current target is Minecraft 1.8.9, right now loads singleplayer worlds in Chromium.
 

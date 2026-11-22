@@ -43,6 +43,12 @@ export class Log {
     this.hold(spanOf(line, true));
   }
 
+  clear(): void {
+    this.written.length = 0;
+    this.pending = undefined;
+    this.view.replaceChildren();
+  }
+
   recent(count: number): Line[] {
     return this.written.slice(-count);
   }

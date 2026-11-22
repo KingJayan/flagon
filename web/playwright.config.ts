@@ -45,6 +45,7 @@ export default defineConfig({
         '**/lwjgl3.spec.ts',
         '**/net.spec.ts',
         '**/pausing.spec.ts',
+        '**/playground.spec.ts',
         '**/policy.spec.ts',
         '**/proxy.spec.ts',
         '**/resources.spec.ts',

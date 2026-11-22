@@ -1,0 +1,39 @@
+diff --git a/src/jdk.compiler/share/classes/com/sun/tools/javac/comp/Modules.java b/src/jdk.compiler/share/classes/com/sun/tools/javac/comp/Modules.java
+index 47066b24..c9429710 100644
+--- a/src/jdk.compiler/share/classes/com/sun/tools/javac/comp/Modules.java
++++ b/src/jdk.compiler/share/classes/com/sun/tools/javac/comp/Modules.java
+@@ -1431,20 +1431,20 @@ private Set<ModuleSymbol> computeTransitiveClosure(Set<? extends ModuleSymbol> b
+                     secondaryTodo = secondaryTodo.tail;
+                     isPrimaryTodo = false;
+                 }
+-                if (observable != null && !observable.contains(current))
+-                    continue;
+-                if (!result.add(current) || current == syms.unnamedModule || ((current.flags_field & Flags.AUTOMATIC_MODULE) != 0))
+-                    continue;
+-                current.complete();
+-                if (current.kind == ERR && (isPrimaryTodo || base.contains(current)) && warnedMissing.add(current)) {
+-                    log.error(Errors.ModuleNotFound(current));
+-                }
+-                for (RequiresDirective rd : current.requires) {
+-                    if (rd.module == syms.java_base) continue;
+-                    if ((rd.isTransitive() && isPrimaryTodo) || rootModules.contains(current)) {
+-                        primaryTodo = primaryTodo.prepend(rd.module);
+-                    } else {
+-                        secondaryTodo = secondaryTodo.prepend(rd.module);
++                if ((observable == null || observable.contains(current))
++                        && result.add(current) && current != syms.unnamedModule
++                        && (current.flags_field & Flags.AUTOMATIC_MODULE) == 0) {
++                    current.complete();
++                    if (current.kind == ERR && (isPrimaryTodo || base.contains(current)) && warnedMissing.add(current)) {
++                        log.error(Errors.ModuleNotFound(current));
++                    }
++                    for (RequiresDirective rd : current.requires) {
++                        if (rd.module == syms.java_base) continue;
++                        if ((rd.isTransitive() && isPrimaryTodo) || rootModules.contains(current)) {
++                            primaryTodo = primaryTodo.prepend(rd.module);
++                        } else {
++                            secondaryTodo = secondaryTodo.prepend(rd.module);
++                        }
+                     }
+                 }
+             } catch (CompletionFailure ex) {

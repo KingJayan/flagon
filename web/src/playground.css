@@ -1,0 +1,197 @@
+@import './shell.css';
+
+.desk {
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+  align-items: start;
+  gap: 1.25rem;
+  max-width: 88rem;
+  margin: 0 auto;
+  padding: 1.5rem;
+}
+
+.sheet {
+  overflow: hidden;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  box-shadow: var(--stand);
+}
+
+.sheet .heading {
+  padding: 0 0.75rem 0 1rem;
+  border-bottom: 1px solid var(--line);
+}
+
+.sheet h2 {
+  font-family: var(--mono);
+  font-weight: 500;
+}
+
+.tools {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+select.compact {
+  width: auto;
+  min-height: 2.25rem;
+  padding-top: 0.25rem;
+  padding-bottom: 0.25rem;
+  font-size: var(--detail);
+}
+
+.editor {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  height: calc(100vh - 13rem);
+  min-height: 22rem;
+  font: var(--detail) / 1.6 var(--mono);
+  background: var(--panel);
+}
+
+.gutter {
+  margin: 0;
+  padding: 0.85rem 0.75rem 0.85rem 1rem;
+  overflow: hidden;
+  font: inherit;
+  color: var(--muted);
+  text-align: right;
+  user-select: none;
+  background: var(--sunk);
+  border-right: 1px solid var(--line);
+}
+
+#code {
+  margin: 0;
+  padding: 0.85rem 1rem;
+  overflow: auto;
+  font: inherit;
+  color: var(--ink);
+  white-space: pre;
+  tab-size: 4;
+  resize: none;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+#code:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--accent) 45%, transparent);
+  outline-offset: -2px;
+}
+
+.hint {
+  margin: 0;
+  padding: 0.5rem 1rem;
+  font-size: var(--small);
+  color: var(--muted);
+  border-top: 1px solid var(--line);
+}
+
+.desk .console {
+  position: sticky;
+  top: 5rem;
+}
+
+.desk .log {
+  height: calc(100vh - 16rem);
+  min-height: 14rem;
+}
+
+.problems {
+  display: grid;
+  gap: 0.25rem;
+  margin: 0;
+  padding: 0 0.75rem 0.75rem;
+  list-style: none;
+}
+
+.problems:empty {
+  display: none;
+}
+
+.problems button {
+  justify-content: flex-start;
+  width: 100%;
+  min-height: 2rem;
+  font: var(--small) / 1.4 var(--mono);
+  text-align: left;
+  white-space: normal;
+}
+
+.problems button.error {
+  color: var(--bad);
+}
+
+#state::before {
+  content: '';
+  width: 0.45rem;
+  height: 0.45rem;
+  margin-right: 0.45rem;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+[data-state='loading'] #state::before,
+[data-state='compiling'] #state::before {
+  animation: blink 1s steps(2, start) infinite;
+}
+
+[data-state='compiling'] #state,
+[data-state='running'] #state {
+  color: var(--accent);
+}
+
+[data-state='ready'] #state,
+[data-state='exited'] #state {
+  color: var(--ok);
+}
+
+[data-state='failed'] #state {
+  color: var(--bad);
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+@media (max-width: 60rem) {
+  .desk {
+    grid-template-columns: minmax(0, 1fr);
+    padding: 1rem;
+  }
+
+  .sheet .heading {
+    flex-wrap: wrap;
+    padding-block: 0.5rem;
+  }
+
+  .tools {
+    width: 100%;
+  }
+
+  .tools select {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .editor {
+    height: 26rem;
+  }
+
+  .desk .console {
+    position: static;
+  }
+
+  .desk .log {
+    height: 16rem;
+  }
+}
