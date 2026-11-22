@@ -58,19 +58,28 @@ final class Signatures {
                 : superclass, interfaces.toArray(new Type[0]));
     }
 
+    /** names first, so a bound can name any variable, then each bound, read at once */
     private void formals() {
-        at++;
+        int start = ++at;
         while (peek() != '>') {
             int colon = text.indexOf(':', at);
-            Variable variable = new Variable(owner, text.substring(at, colon));
-            declared.add(variable);
+            declared.add(new Variable(owner, text.substring(at, colon)));
             at = colon;
+            while (peek() == ':') {
+                at++;
+                if (peek() == 'L' || peek() == 'T' || peek() == '[') {
+                    skipType();
+                }
+            }
+        }
+        at = start;
+        for (Variable variable : declared) {
+            at = text.indexOf(':', at);
             List<Type> bounds = new ArrayList<>();
             while (peek() == ':') {
                 at++;
                 if (peek() == 'L' || peek() == 'T' || peek() == '[') {
-                    bounds.add(new Lazy(this, at));
-                    skipType();
+                    bounds.add(type());
                 }
             }
             variable.bounds = bounds;
@@ -197,29 +206,6 @@ final class Signatures {
         return text.charAt(at);
     }
 
-    /** a bound read when first asked for, since it may name the variable that holds it */
-    private static final class Lazy implements Type {
-
-        private final Signatures from;
-        private final int start;
-        private Type read;
-
-        Lazy(Signatures from, int start) {
-            this.from = from;
-            this.start = start;
-        }
-
-        Type resolve() {
-            if (read == null) {
-                Signatures again = new Signatures(from.owner, from.data, from.text);
-                again.declared.addAll(from.declared);
-                again.at = start;
-                read = again.type();
-            }
-            return read;
-        }
-    }
-
     static final class Variable implements TypeVariable<Class<?>> {
 
         private final Class<?> declaration;
@@ -236,12 +222,7 @@ final class Signatures {
             if (bounds.isEmpty()) {
                 return new Type[] {Object.class};
             }
-            Type[] resolved = new Type[bounds.size()];
-            for (int at = 0; at < resolved.length; at++) {
-                Type bound = bounds.get(at);
-                resolved[at] = bound instanceof Lazy lazy ? lazy.resolve() : bound;
-            }
-            return resolved;
+            return bounds.toArray(new Type[0]);
         }
 
         @Override

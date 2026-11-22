@@ -14,16 +14,19 @@ public final class SendClassCalls implements TeaVMPlugin, ClassHolderTransformer
     private static final String CLASSES = "dev.flagon.platform.Classes";
 
     private static final Map<String, String> SENT = Map.of(
-            "getGenericSuperclass", "getGenericSuperclass",
-            "getGenericInterfaces", "getGenericInterfaces",
-            "getTypeParameters", "getTypeParameters",
             "getSigners", "getSigners",
             "isAnonymousClass", "isAnonymousClass",
             "getProtectionDomain", "getProtectionDomain",
             "getResource", "getResource");
 
-    /** sent from application code only: java.lang.Class calls getDeclaredMethods itself */
+    /**
+     * sent from application code only. the classlib calls some of these itself: Class inside
+     * getDeclaredMethod, and the generic type factory, which must not reach Method.invoke
+     */
     private static final Map<String, String> ADDED = Map.ofEntries(
+            Map.entry("getGenericSuperclass", "getGenericSuperclass"),
+            Map.entry("getGenericInterfaces", "getGenericInterfaces"),
+            Map.entry("getTypeParameters", "getTypeParameters"),
             Map.entry("getDeclaredMethods", "getDeclaredMethods"),
             Map.entry("getMethods", "getMethods"),
             Map.entry("isRecord", "isRecord"),
