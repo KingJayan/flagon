@@ -49,6 +49,7 @@ export default defineConfig({
         '**/policy.spec.ts',
         '**/proxy.spec.ts',
         '**/resources.spec.ts',
+        '**/serial.spec.ts',
         '**/shapes.spec.ts',
         '**/shutdownhook.spec.ts',
         '**/tls.spec.ts',

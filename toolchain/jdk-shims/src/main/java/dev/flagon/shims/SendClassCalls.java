@@ -29,6 +29,8 @@ public final class SendClassCalls implements TeaVMPlugin, ClassHolderTransformer
             Map.entry("getTypeParameters", "getTypeParameters"),
             Map.entry("getDeclaredMethods", "getDeclaredMethods"),
             Map.entry("getMethods", "getMethods"),
+            Map.entry("getDeclaredConstructors", "getDeclaredConstructors"),
+            Map.entry("getConstructors", "getConstructors"),
             Map.entry("isRecord", "isRecord"),
             Map.entry("isSealed", "isSealed"),
             Map.entry("getPermittedSubclasses", "getPermittedSubclasses"),

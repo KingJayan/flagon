@@ -1,5 +1,7 @@
 package java.lang.reflect;
 
+import dev.flagon.classlib.KeptData;
+
 import java.lang.annotation.Annotation;
 import java.util.ArrayList;
 import java.util.List;

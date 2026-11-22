@@ -40,6 +40,11 @@ bundle {
     apartFrom.set(256)
 }
 
+tasks.named<Test>("test") {
+    systemProperty("flagon.serial.update",
+        providers.systemProperty("flagon.serial.update").getOrElse("false"))
+}
+
 tasks.named<RunMain>("writeCatalog") {
     runtimeClasspath.from(absent.output)
 }

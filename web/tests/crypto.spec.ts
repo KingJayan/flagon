@@ -37,7 +37,6 @@ for (const backend of BACKENDS) {
       'crypto: a signature checks out true and a changed message does not true',
     );
     await expect(log).toContainText('crypto: a datagram socket is refused by name');
-    await expect(log).toContainText('crypto: java serialisation is refused by name');
     expect(failures).toEqual([]);
   });
 }

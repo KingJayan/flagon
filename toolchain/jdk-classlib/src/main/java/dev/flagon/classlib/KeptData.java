@@ -1,17 +1,21 @@
-package java.lang.reflect;
+package dev.flagon.classlib;
+
+import java.lang.reflect.Array;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 
 import java.util.HashMap;
 import java.util.Map;
 
 /**
  * the lines dev.flagon.shims.WriteReflectionData wrote into a class, for the reflection types
- * this classlib adds. dev.flagon.platform.ClassData reads the same lines for the rest.
+ * and the serialization this classlib adds. dev.flagon.platform.ClassData reads the same lines.
  */
-final class KeptData {
+public final class KeptData {
 
     private static final String METHOD = "$flagon$reflection";
 
-    final String text;
+    public final String text;
     private final Map<String, Class<?>> classes = new HashMap<>();
 
     private KeptData(Object[] written) {
@@ -22,7 +26,7 @@ final class KeptData {
         }
     }
 
-    static KeptData of(Class<?> type) {
+    public static KeptData of(Class<?> type) {
         try {
             Method written = type.getDeclaredMethod(METHOD);
             written.setAccessible(true);
@@ -34,7 +38,7 @@ final class KeptData {
     }
 
     /** the fields of each line with the given tag */
-    java.util.List<String[]> lines(char tag) {
+    public java.util.List<String[]> lines(char tag) {
         java.util.List<String[]> found = new java.util.ArrayList<>();
         for (String line : text.split("\n")) {
             if (line.length() > 2 && line.charAt(0) == tag) {
@@ -44,7 +48,7 @@ final class KeptData {
         return found;
     }
 
-    Class<?> ofDescriptor(String descriptor) {
+    public Class<?> ofDescriptor(String descriptor) {
         return switch (descriptor.charAt(0)) {
             case 'Z' -> boolean.class;
             case 'B' -> byte.class;
@@ -67,7 +71,7 @@ final class KeptData {
         };
     }
 
-    static String keyOf(String name, Class<?>[] parameters, Class<?> result) {
+    public static String keyOf(String name, Class<?>[] parameters, Class<?> result) {
         StringBuilder key = new StringBuilder(name).append('(');
         for (Class<?> parameter : parameters) {
             key.append(descriptorOf(parameter));
@@ -95,7 +99,7 @@ final class KeptData {
         };
     }
 
-    static String decode(String text) {
+    public static String decode(String text) {
         StringBuilder out = new StringBuilder(text.length());
         for (int at = 0; at < text.length(); at++) {
             char unit = text.charAt(at);

@@ -34,12 +34,12 @@ public final class ReflectionWatch {
     }
 
     public static Constructor<?>[] declaredConstructors(Class<?> type) {
-        Constructor<?>[] found = type.getDeclaredConstructors();
+        Constructor<?>[] found = Classes.withoutSerial(type.getDeclaredConstructors());
         return warnIfStripped(type, found, found.length, "declared constructors");
     }
 
     public static Constructor<?>[] constructors(Class<?> type) {
-        Constructor<?>[] found = type.getConstructors();
+        Constructor<?>[] found = Classes.withoutSerial(type.getConstructors());
         return warnIfStripped(type, found, found.length, "public constructors");
     }
 
