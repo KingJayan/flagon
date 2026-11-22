@@ -165,11 +165,19 @@ Threads are green threads on the page's one thread. They give concurrency, not p
 | `synchronized` | Suspends the thread while another holds the monitor. |
 | `Executors.newFixedThreadPool(n)` | `n` green threads over one queue. |
 | `Executors.newCachedThreadPool()` | A fixed pool of `availableProcessors()` threads. |
+| `Executors.newWorkStealingPool()` | A `ForkJoinPool`. |
 | `ScheduledThreadPoolExecutor` | Works. |
-| `CompletableFuture` | The `supplyAsync`, `then*`, `exceptionally`, `allOf` and `anyOf` chains. |
+| `ExecutorService.close()` | Works in try-with-resources. An executor is not an `AutoCloseable`. |
+| `ForkJoinPool`, `RecursiveTask`, `RecursiveAction`, `CountedCompleter` | Work, with `commonPool()`. A worker that joins a task no thread has started runs it itself. |
+| `CompletableFuture` | The whole `CompletionStage` API, `orTimeout`, `completeOnTimeout` and `delayedExecutor`. Failures wrap in `CompletionException` as on the JVM. |
 | `ReentrantLock`, `Condition`, `Semaphore`, `CountDownLatch` | Suspend the thread while blocked. |
+| `CyclicBarrier`, `Phaser`, `Exchanger` | Work, with timeouts and tiered phasers. |
 | `ReentrantReadWriteLock` | Works. Taking the write lock while holding the read lock throws `IllegalStateException`. |
-| `ConcurrentHashMap`, `ConcurrentLinkedQueue`, `LinkedBlockingQueue`, atomics | Work. |
+| `StampedLock` | Works, with optimistic reads and stamp conversion. |
+| `ConcurrentHashMap`, `ConcurrentSkipListMap`, `ConcurrentSkipListSet`, atomics | Work. Iterators of the skip-list types walk a snapshot. |
+| `ConcurrentLinkedQueue`, `LinkedBlockingQueue`, `PriorityBlockingQueue`, `DelayQueue` | Work. |
+
+The `java.util.concurrent` self-test prints the same lines in the browser as on the JVM.
 
 ## LWJGL
 

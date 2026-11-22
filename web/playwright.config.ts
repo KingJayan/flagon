@@ -36,8 +36,10 @@ export default defineConfig({
       testMatch: [
         '**/boot.spec.ts',
         '**/classloader.spec.ts',
+        '**/concurrency.spec.ts',
         '**/coverage.spec.ts',
         '**/crypto.spec.ts',
+        '**/docs.spec.ts',
         '**/files.spec.ts',
         '**/image.spec.ts',
         '**/jdkgaps.spec.ts',

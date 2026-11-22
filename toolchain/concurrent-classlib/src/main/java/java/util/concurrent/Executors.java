@@ -38,11 +38,11 @@ public final class Executors {
     }
 
     public static ExecutorService newWorkStealingPool() {
-        return newCachedThreadPool();
+        return new ForkJoinPool();
     }
 
     public static ExecutorService newWorkStealingPool(int parallelism) {
-        return newFixedThreadPool(parallelism);
+        return new ForkJoinPool(parallelism);
     }
 
     public static ScheduledExecutorService newScheduledThreadPool(int size) {

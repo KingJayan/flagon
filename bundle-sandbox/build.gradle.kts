@@ -43,6 +43,8 @@ bundle {
 tasks.named<Test>("test") {
     systemProperty("flagon.serial.update",
         providers.systemProperty("flagon.serial.update").getOrElse("false"))
+    systemProperty("flagon.concurrency.update",
+        providers.systemProperty("flagon.concurrency.update").getOrElse("false"))
 }
 
 tasks.named<RunMain>("writeCatalog") {
