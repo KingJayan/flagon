@@ -59,7 +59,8 @@ class ApiReferenceTest {
         assertEquals(List.of(), missing);
     }
 
-    private static void check(String reference, ClassTree type, String outer, List<String> missing) {
+    private static void check(String reference, ClassTree type, String outer,
+                              List<String> missing) {
         String name = outer + type.getSimpleName();
         int start = reference.indexOf("\n### " + name + "\n");
         if (start < 0) {
@@ -72,7 +73,8 @@ class ApiReferenceTest {
                 || type.getKind() == Tree.Kind.ANNOTATION_TYPE;
         for (Tree member : type.getMembers()) {
             String shown = null;
-            if (member instanceof MethodTree method && visible(method.getModifiers().getFlags(), contract)
+            if (member instanceof MethodTree method
+                    && visible(method.getModifiers().getFlags(), contract)
                     && !overrides(method) && !method.getName().contentEquals("<init>")) {
                 shown = " " + method.getName() + "(";
             } else if (member instanceof VariableTree field
@@ -90,11 +92,13 @@ class ApiReferenceTest {
     }
 
     private static boolean visible(Set<Modifier> modifiers, boolean contract) {
-        return modifiers.contains(Modifier.PUBLIC) || contract && !modifiers.contains(Modifier.PRIVATE);
+        return modifiers.contains(Modifier.PUBLIC)
+                || contract && !modifiers.contains(Modifier.PRIVATE);
     }
 
     private static boolean overrides(MethodTree method) {
         return method.getModifiers().getAnnotations().stream()
-                .anyMatch(annotation -> annotation.getAnnotationType().toString().equals("Override"));
+                .anyMatch(annotation -> "Override".equals(
+                        annotation.getAnnotationType().toString()));
     }
 }
