@@ -162,6 +162,6 @@ public final class Unsafe {
     private static UnsupportedOperationException refuse() {
         return new UnsupportedOperationException(
                 "a page has no unsafe memory: nothing here reads or writes an address. see "
-                        + "docs/COMPATIBILITY.md");
+                        + "flagon-nu.vercel.app/docs");
     }
 }

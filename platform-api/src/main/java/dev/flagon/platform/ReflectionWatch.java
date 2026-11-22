@@ -47,7 +47,7 @@ public final class ReflectionWatch {
         if (count == 0 && wasStripped(type) && told.add(type.getName())) {
             say(type.getName() + " reports no " + what + ", because the build kept no members "
                     + "for it. name the class to keep them: put @Reflectable on it, or add it to "
-                    + "flagon.reflect.classes in the pom. see docs/COMPATIBILITY.md");
+                    + "flagon.reflect.classes in the pom. see flagon-nu.vercel.app/docs");
         }
         return found;
     }

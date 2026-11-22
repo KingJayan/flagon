@@ -2,9 +2,9 @@
   <img src="docs/images/flagon-banner-nobg.png" alt="Flagon" width="350" />
 <p>
     <a href="#quickstart">Quickstart</a> &nbsp;•&nbsp;
-    <a href="docs/COMPATIBILITY.md">Compatibility</a> &nbsp;•&nbsp;
-    <a href="docs/DOWNSTREAM.md">Packaging</a> &nbsp;•&nbsp;
-    <a href="docs/ARCHITECTURE.md">Architecture</a>
+    <a href="https://flagon-nu.vercel.app/docs/">Docs</a> &nbsp;•&nbsp;
+    <a href="https://flagon-nu.vercel.app/playground/">Playground</a> &nbsp;•&nbsp;
+    <a href="https://flagon-nu.vercel.app/">Demos</a>
   </p>
 
 [![TeaVM](https://img.shields.io/badge/TeaVM-434c5e?style=flat-square&logo=webassembly&logoColor=eceff4)](https://teavm.org)
@@ -18,7 +18,7 @@ Flagon compiles desktop Java bytecode into browser-native WebAssembly GC and Jav
 
 ## Status
 
-Try the demos and the Java playground at [flagon-nu.vercel.app](https://flagon-nu.vercel.app). The playground compiles with javac and TeaVM in the browser; build it with `make playground`.
+Try the demos and the Java playground at [flagon-nu.vercel.app](https://flagon-nu.vercel.app). The playground compiles with javac and TeaVM in the browser; build it with `make playground`. The [docs](https://flagon-nu.vercel.app/docs/) are on the same site.
 
 Current target is Minecraft 1.8.9, currently loads singleplayer worlds in Chromium.
 
@@ -39,14 +39,14 @@ Requires **JDK 25+** and **[Bun](https://bun.sh)**.
 
 ```bash
 make setup   # Install dependencies
-make build   # Compile and output bundles
+make bundles # Compile and output bundles
 make dev     # Start dev server at http://127.0.0.1:5273
 ```
 
-To test a standalone JAR without setup, drop it into `vendor/` and run `make app` (see [Running an Existing JAR](DOWNSTREAM.md#quickstart-no-setup)).
+To test a standalone JAR without setup, drop it into `vendor/` and run `make app` (see [Packaging](https://flagon-nu.vercel.app/docs/?page=packaging#from-vendor)).
 
 >[!NOTE]
->**Networking (`make serve`):** host static build with the WSS-to-TCP bridge (see [Networking Details](COMPATIBILITY.md)).
+>**Networking (`make serve`):** host static build with the WSS-to-TCP bridge (see [Socket proxy](https://flagon-nu.vercel.app/docs/?page=packaging#socket-proxy)).
 
 ## Testing
 

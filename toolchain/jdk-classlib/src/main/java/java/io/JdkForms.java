@@ -234,7 +234,7 @@ final class JdkForms {
         String name = cl.getName();
         return name.startsWith("java.") || name.startsWith("javax.")
                 ? ": this jdk class has no serial form in the browser classlib. see "
-                        + "docs/COMPATIBILITY.md" : "";
+                        + "flagon-nu.vercel.app/docs" : "";
     }
 
     private static ObjectStreamClass descriptor(String jdkName) {

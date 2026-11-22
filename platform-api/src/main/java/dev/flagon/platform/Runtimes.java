@@ -22,6 +22,6 @@ public final class Runtimes {
     private static UnsupportedCapabilityException refuse() {
         return new UnsupportedCapabilityException(
                 "a page starts no processes: there is no operating system under it to start one"
-                        + " on. see docs/COMPATIBILITY.md");
+                        + " on. see flagon-nu.vercel.app/docs");
     }
 }

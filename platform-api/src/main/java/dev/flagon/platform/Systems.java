@@ -12,7 +12,7 @@ public final class Systems {
     public static void loadLibrary(String name) {
         throw new UnsupportedCapabilityException(
                 "there is no native library to load in a page: '" + name + "' would have to be"
-                        + " compiled into the bundle. see docs/COMPATIBILITY.md");
+                        + " compiled into the bundle. see flagon-nu.vercel.app/docs");
     }
 
     public static void load(String path) {

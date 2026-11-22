@@ -13,6 +13,7 @@ public class SchemaFactory {
     }
 
     public Schema newSchema(Source schema) throws SAXException {
-        throw new SAXException("xml schema validation is not in a page. see docs/COMPATIBILITY.md");
+        throw new SAXException(
+                "xml schema validation is not in a page. see flagon-nu.vercel.app/docs");
     }
 }

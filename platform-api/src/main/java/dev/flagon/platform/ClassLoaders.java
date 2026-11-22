@@ -26,7 +26,7 @@ public final class ClassLoaders {
         } catch (ClassNotFoundException | LinkageError missing) {
             throw new ClassNotFoundException(name + " is not in this bundle. nothing is loaded at"
                     + " runtime: a class reaches the browser only if the build compiled it. name"
-                    + " it in flagon.reflect.classes to keep it. see docs/COMPATIBILITY.md",
+                    + " it in flagon.reflect.classes to keep it. see flagon-nu.vercel.app/docs",
                     missing);
         }
     }

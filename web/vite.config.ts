@@ -49,6 +49,7 @@ export default defineConfig({
         shell: resolve(here, 'index.html'),
         play: resolve(here, 'play/index.html'),
         playground: resolve(here, 'playground/index.html'),
+        docs: resolve(here, 'docs/index.html'),
       },
     },
   },
