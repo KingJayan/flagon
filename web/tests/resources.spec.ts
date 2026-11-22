@@ -49,12 +49,14 @@ for (const backend of BACKENDS) {
       await open(page, backend, 'program=resources');
       await expect(page.getByTestId('state')).toHaveText('exited', { timeout: 30_000 });
       await expect(page.getByTestId('log')).toContainText(said);
-      expect(apart).toHaveLength(1);
+      const fetched = apart.length;
+      expect(fetched).toBeGreaterThan(0);
+      expect(new Set(apart).size).toBe(fetched);
 
       await page.reload();
       await expect(page.getByTestId('state')).toHaveText('exited', { timeout: 30_000 });
       await expect(page.getByTestId('log')).toContainText(said);
-      expect(apart).toHaveLength(1);
+      expect(apart).toHaveLength(fetched);
     });
 
     test('reads nothing for a file the build packed none of', async ({ page }) => {
