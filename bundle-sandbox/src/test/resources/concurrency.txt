@@ -1,0 +1,60 @@
+barrier: tripped 2 times, arrival indexes [0, 0, 1, 1, 2, 2]
+barrier: a lone wait throws TimeoutException, breaks true, then BrokenBarrierException, and reset mends true
+barrier: a failing action throws action and breaks true
+exchanger: main got from the worker, the worker got from main
+exchanger: a lone exchange throws TimeoutException
+phaser: four parties registered 4
+phaser: after two rounds the phase is 2 with work 6 and 1 party left
+phaser: the last party leaves at phase 2, terminated true, phase negative true
+phaser: a child with two parties registers 1 with its root
+phaser: the root goes from phase 0 to 1 and the child reads 1
+phaser: awaiting an old phase returns -2147483645 at once
+phaser: arriving with no parties throws IllegalStateException
+stamped: an optimistic stamp is optimistic true and valid true
+stamped: a write stamp is a write stamp true, locked true, optimistic read 0, try read 0
+stamped: after a write the old optimistic stamp is valid false
+stamped: two reads: count 2, read stamp true, try write 0, convert to write 0
+stamped: one read converts to a write true with 0 reads
+stamped: and back to a read true, write locked false
+stamped: a writer waits for the reader: [read held, write]
+stamped: unlocking a stale stamp throws IllegalMonitorStateException
+stamped: the write view locks true
+stamped: and unlocks true
+forkjoin: fibonacci of 20 is 6765 on a pool of 4
+forkjoin: and 610 invoked directly, 144 on the common pool
+forkjoin: an action adds 50 over 50 items
+forkjoin: a submitted callable runs in a pool true, the same pool true
+forkjoin: outside it runs in a pool false
+forkjoin: a failing task joins with IllegalArgumentException, gets IllegalArgumentException, abnormal true
+forkjoin: an unstarted task cancels true, done true
+forkjoin: invokeAll gives [5, 8, 13, 21]
+forkjoin: shut down it terminates true
+completer: a counted completer sums 1 to 100 as 5050
+skiplist: keys in order [1, 3, 5, 7, 9], first 1, last 9
+skiplist: ceiling of 4 is 5, floor of 4 is 3, higher than 9 is null
+skiplist: the sub map from 3 to 7 is {3=v3, 5=v5}, the head below 5 is {1=v1, 3=v3}, descending [9, 7, 5, 3, 1]
+skiplist: a put through the view reaches the map true
+skiplist: a put outside the view throws IllegalArgumentException
+skiplist: removing while iterating leaves {4=v4}
+skiplist: poll first gives 2=v2, entries refuse setValue with UnsupportedOperationException
+skiplist: a null key throws NullPointerException, adding to the key set throws UnsupportedOperationException
+skiplist: putIfAbsent keeps v4, merge makes v4+, compute removes null leaving {6=v6}
+skiplist: a reversed set [pear, fig, apple], its tail from fig [fig, apple], added twice false
+skiplist: poll last apple leaves [pear, fig], equal to a tree set true
+priority: a waiting take gets 42
+priority: peek 1, drained 3 as [1, 3, 5], left 8, then null
+priority: by length takes a then bb, capacity left is the maximum true
+delay: nothing is due at first: poll null, size 2
+delay: take gives soon then later after at least 35ms true
+delay: an empty queue polls with a timeout null
+future: handle on a failed future sees IllegalStateException, a stage after it sees CompletionException of IllegalStateException
+future: an async failure joins as CompletionException of IllegalStateException and gets as ExecutionException of IllegalStateException, exceptionNow IllegalStateException
+future: orTimeout fails with TimeoutException, completeOnTimeout gives late
+future: applyToEither takes FAST, acceptBoth gives done, combineAsync gives 7
+future: runAfterBoth, runAfterEither and acceptEither ran 3
+future: exceptionallyCompose recovers again after cause, exceptionallyAsync gives async IllegalStateException, thenComposeAsync gives 40
+future: a throwing whenComplete action fails the stage with IllegalArgumentException
+future: allOf waits for every future true and fails with IllegalStateException
+future: a delayed executor waits at least 25ms true
+future: with 1 dependent, cancel true, cancelled true, join throws CancellationException
+future: copy v, minimal stage v, resultNow v, ends true, completeAsync a, getNow fallback

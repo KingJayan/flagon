@@ -37,4 +37,29 @@ public interface ExecutorService extends Executor {
         }
         return futures;
     }
+
+    /**
+     * shuts down and waits for the tasks to end. not AutoCloseable: a close that waits would make
+     * every AutoCloseable.close in the program pausable, and the coroutine bundle far larger.
+     * try-with-resources on an executor still calls this.
+     */
+    default void close() {
+        boolean interrupted = false;
+        if (!isTerminated()) {
+            shutdown();
+            while (!isTerminated()) {
+                try {
+                    awaitTermination(1L, TimeUnit.DAYS);
+                } catch (InterruptedException stopped) {
+                    if (!interrupted) {
+                        shutdownNow();
+                        interrupted = true;
+                    }
+                }
+            }
+        }
+        if (interrupted) {
+            Thread.currentThread().interrupt();
+        }
+    }
 }
