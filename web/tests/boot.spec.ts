@@ -62,6 +62,17 @@ for (const backend of BACKENDS) {
       await expect(log).not.toContainText('selftest failure');
     });
 
+    test('reads what a class file says beyond its members', async ({ page }) => {
+      await open(page, backend, 'program=selftest');
+
+      const log = page.getByTestId('log');
+      await expect(page.getByTestId('state')).toHaveText('exited', { timeout: 30_000 });
+      await expect(log).toContainText(
+        'reflection: Point has 2 components and Box extends java.util.ArrayList<T>',
+      );
+      await expect(log).not.toContainText('selftest failure');
+    });
+
     test('cannot take a class that arrives after the compile', async ({ page }) => {
       await open(page, backend, 'program=selftest');
 
