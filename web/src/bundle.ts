@@ -1,3 +1,4 @@
+import { installFetch } from './fetch';
 import { installTunnel } from './tunnel';
 
 export interface HostBridge {
@@ -249,6 +250,7 @@ export class MissingBundle extends Error {}
 export async function runBundle(url: string, host: HostBridge, args: string[]): Promise<void> {
   window.__flagonHost = host;
   installTunnel();
+  installFetch();
   const absolute = new URL(url, location.origin).href;
   // the pack and the bundle come down together; the program starts once both are in
   const pack = fetchPack(absolute);

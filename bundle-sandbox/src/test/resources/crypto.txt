@@ -1,0 +1,41 @@
+digest: sha-384 of abc cb00753f45a35e8bb5a03d699ac65007272c32ab0eded1631a8b605a43ff5bed8086072ba1e7cc2358baeca134c825a7
+digest: sha-512 of abc ddaf35a193617abacc417349ae20413112e6fa4e89a97ea20a9eeee64b55d39a2192992a274fc1a836ba3c23a3feebbd454d4423643ce80e2a9ac94fa54ca49f
+digest: sha-512 of 1000 a's fed apart 67ba5535a46e3f86dbfbed8cbbaf0125c76ed549ff8b0b9e03e0c88cf90fa634fa7b12b47d77b694de488ace8d9a65967dc96df599727d3292a8d9d447709c97
+hmac: HmacMD5 16 80070713463e7749b90c2dc24911e275
+hmac: HmacSHA1 20 de7c9b85b8b78aa6bc8a7a36f70a90701c9db4d9
+hmac: HmacSHA256 32 f7bc83f430538424b13298e6aa6fb143ef4d59a14946175997479dbc2d1a3cd8
+hmac: HmacSHA384 48 d7f4727e2c0b39ae0f1e40cc96f60242d5b7801841cea6fc592c5d3e1ae50700582a96cf35e1e554995fe4e03381c237
+hmac: HmacSHA512 64 b42af09057bac1e2d41708e48a902e09b5ff7f12ab428a4fe86653c73dd248fb82f948a549f7b791a5b41915ee4d1ec3935357e4e2317250d0372afa2ebeeb3a
+hmac: a long key e24c1343ace9491f26628c464c43e2fc0fe7dfb3651b247779c3df045f276c0b clones true
+hmac: after a reset true
+hmac: an unready mac says MAC not initialized
+pbkdf2: PBKDF2WithHmacSHA1 2 PBKDF2WithHmacSHA1 RAW ea6c014dc72d6f8ccd1ed92ace1d41f0d8de8957
+pbkdf2: PBKDF2WithHmacSHA256 4096 PBKDF2WithHmacSHA256 RAW c5e478d59288c841aa530db6845c4c8d962893a001ce4e11a4963873aa98134a
+pbkdf2: PBKDF2WithHmacSHA512 1000 PBKDF2WithHmacSHA512 RAW 0e28f3efa802a2f0cd3b4ace5e3d9afadb7c2dccc5ef10eedb8a6564dfb0c9a63b6f46b1e150587b9fe7875cfaf999d00b454bb7d74295c60df1bbe5f8f36da188271db22110efda5cc9ee
+pbkdf2: PBKDF2WithHmacSHA256 1 PBKDF2WithHmacSHA256 RAW f135c27993baf98773c5cdb40a5706ce
+curve: secp256r1 256 bits, cofactor 1, numbers 429c8a663ce9bff402af0595baf02dc9017af4026d6de91d37ce07d637d2991e
+curve: secp384r1 384 bits, cofactor 1, numbers d7ed0e6e81621d3209ac3dbf13793e3d726277d82ee83d3add90b776b32e3ca4
+curve: secp521r1 521 bits, cofactor 1, numbers cfb0231bf7d60857f13d9f9b6b4469318c8a3f5922dd80b727dba01b00989daa
+curve: a plain generator makes 384 bit keys
+curve: secp256k1 is refused
+eckey: secp256r1 EC X.509 91 bytes starting 3059301306072a8648ce3d020106082a8648ce3d03010703420004, PKCS#8 67 bytes, read back true true true
+eckey: secp384r1 EC X.509 120 bytes starting 3076301006072a8648ce3d020106052b8104002203620004, PKCS#8 80 bytes, read back true true true
+eckey: secp521r1 EC X.509 158 bytes starting 30819b301006072a8648ce3d020106052b810400230381860004, PKCS#8 98 bytes, read back true true true
+ecdh: secp256r1 fixed secret times the generator 06320270583db63e3221a8c34550f32b972c50688a9b000c5a4029b68decf2dc
+ecdh: secp256r1 both sides agree true on 32 bytes
+ecdh: secp384r1 fixed secret times the generator 90e7edcf4184faaefee78a4ab4efc78b794a2e3a6237b59dcd6f64eb2c1c6d932d3c763d808abac6807da746c605c564
+ecdh: secp384r1 both sides agree true on 48 bytes
+ecdh: secp521r1 fixed secret times the generator 000a763b89a9e9a76fde1c0c757dc417f1cde0e103af08ba8e3c185c4945298e1dee4ac5383b5625826d6ad64d7e518b83d009cf6a69fa5f9428798e5f07200ad6e4
+ecdh: secp521r1 both sides agree true on 66 bytes
+ecdh: a middle phase says Only two party agreement supported, lastPhase must be true
+ecdh: a key on another curve is refused
+ecdh: an aes secret says Unsupported secret key algorithm: AES
+ecdh: a shared key is TlsPremasterSecret 32
+ecdsa: SHA256withECDSA on secp256r1 checks out true, a changed message false, a der pair true
+ecdsa: SHA384withECDSA on secp384r1 checks out true, a changed message false, a der pair true
+ecdsa: SHA512withECDSA on secp521r1 checks out true, a changed message false, a der pair true
+ecdsa: SHA1withECDSA on secp256r1 checks out true, a changed message false, a der pair true
+ecdsa: a jdk signature checks out true
+ecdsa: garbage is refused: Invalid encoding for signature
+rsa: SHA384withRSA 3f0002bc54049c48721b87890ae834c287385d660e53ccafe8a820d8f2db2ff9
+rsa: SHA512withRSA 6b8212271b308e7fc89f4c249dac59cb20f29d870c6a855c1a4471c27da9ae92

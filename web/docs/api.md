@@ -191,6 +191,7 @@ interface Platform
     FileStore files();
     AudioDevice audio();
     Network network();
+    default Fetch fetch(); // how java.net.http sends requests; refuses them by default.
     boolean hasDisplay();
     DisplaySurface display(int width, int height, String title); // opens the window or returns current.
 ```
@@ -1379,6 +1380,44 @@ interface Connection
     void close(); // closes the connection; closing one already closed does nothing.
 ```
 
+### Fetch
+
+Sends HTTP requests for `java.net.http`. `send` pauses only the calling green thread.
+
+```java
+interface Fetch
+    String name();
+    boolean isAvailable();
+    Response send(Request request); // throws TimedOut, or NetworkException when it fails.
+    static Fetch unavailable(String reason); // refuses every request with this reason.
+```
+
+### Fetch.Request
+
+One request. `timeoutMillis` 0 waits without limit. With `followRedirects` false, a redirect fails.
+
+```java
+record Fetch.Request(String method, String url, List<Map.Entry<String, String>> headers,
+                     byte[] body, long timeoutMillis, boolean followRedirects)
+```
+
+### Fetch.Response
+
+The whole answer. `url` is where it came from after redirects. Header names are lowercase.
+
+```java
+record Fetch.Response(int status, String url, Map<String, List<String>> headers, byte[] body)
+```
+
+### Fetch.TimedOut
+
+No answer arrived within the request's timeout.
+
+```java
+class Fetch.TimedOut extends NetworkException
+    TimedOut(String message);
+```
+
 ### MemoryNetwork
 
 A `Network` whose servers are objects in the heap. For tests.
@@ -1455,6 +1494,7 @@ The browser `Platform`. `create` takes the arguments `main` received.
 ```java
 class BrowserPlatform implements Platform
     static BrowserPlatform create(String[] arguments);
+    Fetch fetch(); // a BrowserFetch.
 ```
 
 ### BrowserRuntimeHost
@@ -1572,6 +1612,14 @@ class JsArrays
 ```
 
 ## dev.flagon.platform.browser.net
+
+### BrowserFetch
+
+The `Fetch` over the page's `fetch`, through `window.__flagonFetch`. The page's CORS rules apply.
+
+```java
+class BrowserFetch implements Fetch
+```
 
 ### ProxyNetwork
 

@@ -28,6 +28,7 @@ include(
     "toolchain:classfile",
     "toolchain:concurrent-classlib",
     "toolchain:crypto-classlib",
+    "toolchain:http-classlib",
     "toolchain:jdk-classlib",
     "toolchain:jdk-shims",
     "toolchain:nio-classlib",

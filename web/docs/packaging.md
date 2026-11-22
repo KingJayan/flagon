@@ -101,9 +101,10 @@ Add the class libraries the application needs:
 | `:toolchain:jdk-classlib` | Java serialization, `java.lang.management`, `javax.xml.parsers`, `java.sql` dates and small stubs. |
 | `:toolchain:concurrent-classlib` | `java.util.concurrent` on green threads. |
 | `:toolchain:socket-classlib` | `java.net.Socket` and `InetAddress` through the socket proxy. |
+| `:toolchain:http-classlib` | `java.net.http.HttpClient` through the page's `fetch`. |
 | `:toolchain:nio-classlib` | `FileChannel`, `Selector` and the NIO channel types. |
 | `:toolchain:awt-classlib` | `BufferedImage`, `ImageIO` (PNG) and the clipboard. |
-| `:toolchain:crypto-classlib` | `MessageDigest`, `Cipher`, `Signature` and RSA keys. |
+| `:toolchain:crypto-classlib` | `MessageDigest`, `Mac`, `Cipher`, `Signature`, `KeyAgreement`, PBKDF2, RSA and EC keys. |
 | `:toolchain:sound-classlib` | `javax.sound` types that report no device. |
 | `:toolchain:reflect-policy` | `@Reflectable` and the reflection policy. |
 

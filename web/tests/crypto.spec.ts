@@ -1,5 +1,15 @@
+import { readFileSync } from 'node:fs';
 import { test, expect } from '@playwright/test';
 import { BACKENDS, open, watchForFailures } from './harness';
+
+// the jdk wrote these lines; CryptoChecksTest keeps them true
+const EXPECTED = readFileSync(
+  new URL('../../bundle-sandbox/src/test/resources/crypto.txt', import.meta.url),
+  'utf8',
+)
+  .split('\n')
+  .filter((line) => line.length > 0)
+  .map((line) => `crypto: ${line}`);
 
 for (const backend of BACKENDS) {
   test(`checks the digests, ciphers and signatures on ${backend}`, async ({ page }) => {
@@ -37,6 +47,9 @@ for (const backend of BACKENDS) {
       'crypto: a signature checks out true and a changed message does not true',
     );
     await expect(log).toContainText('crypto: a datagram socket is refused by name');
+    await expect(log).toContainText('crypto: done');
+    const text = await log.innerText();
+    expect(EXPECTED.filter((line) => !text.includes(line))).toEqual([]);
     expect(failures).toEqual([]);
   });
 }
