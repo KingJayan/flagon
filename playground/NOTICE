@@ -1,0 +1,2 @@
+compiler/ comes from https://github.com/konsoletyper/teavm-javac (Apache License 2.0),
+commit 0340fab. javac/ builds javac from OpenJDK jdk25u (GPLv2 with the Classpath Exception).

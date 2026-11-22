@@ -46,6 +46,38 @@ jobs:
           path: web/public/flagon/
           retention-days: 1
 
+  # javac and teavm compiled to wasm change rarely, so the cache skips the 2-minute build
+  playground:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+
+      - id: cache
+        uses: actions/cache@v4
+        with:
+          path: playground/compiler/build/dist
+          key: playground-${{ hashFiles('playground/**', 'gradle/wrapper/gradle-wrapper.properties') }}
+
+      - uses: actions/setup-java@v5
+        if: steps.cache.outputs.cache-hit != 'true'
+        with:
+          distribution: temurin
+          java-version: '25'
+
+      - uses: gradle/actions/setup-gradle@v4
+        if: steps.cache.outputs.cache-hit != 'true'
+
+      - name: Build the playground compiler
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: ./gradlew -p playground :compiler:dist
+
+      - uses: actions/upload-artifact@v5
+        with:
+          name: playground
+          path: playground/compiler/build/dist/
+          retention-days: 1
+
   web:
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -71,7 +103,7 @@ jobs:
           retention-days: 1
 
   browser:
-    needs: [build, web]
+    needs: [build, web, playground]
     runs-on: ubuntu-latest
     timeout-minutes: 25
     # keep the tag in step with @playwright/test in web/bun.lock
@@ -95,6 +127,12 @@ jobs:
         with:
           name: bundles
           path: web/public/flagon/
+
+      - name: Download playground
+        uses: actions/download-artifact@v5
+        with:
+          name: playground
+          path: web/public/flagon/playground/
 
       - name: Download site
         uses: actions/download-artifact@v5
@@ -134,6 +172,11 @@ jobs:
         with:
           name: bundles
           path: site/flagon/
+
+      - uses: actions/download-artifact@v5
+        with:
+          name: playground
+          path: site/flagon/playground/
 
       # vercel deploys the site branch as it is; main's vercel.json keeps every other branch off
       - name: Push the site branch

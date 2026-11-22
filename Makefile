@@ -14,7 +14,7 @@ VENDOR_JARS := $(wildcard vendor/*.jar)
 
 
 .PHONY: help setup deps browsers fast bundles app verify-bundles \
-        minecraft bundles-release size test browser flake typecheck lint build-site \
+        playground minecraft bundles-release size test browser flake typecheck lint build-site \
         deploy-private dev serve check report merge-reports watch version release publish clean
 
 help: ## show available commands
@@ -38,6 +38,12 @@ fast: ## compile the fast development bundles
 bundles: ## compile Java to WebAssembly and JavaScript
 	$(GRADLE) bundles
 	@$(MAKE) verify-bundles
+
+playground: ## compile javac and TeaVM to wasm for the in-browser playground
+	$(GRADLE) -p playground :compiler:dist
+	rm -rf $(BUNDLES)/playground
+	mkdir -p $(BUNDLES)
+	cp -R playground/compiler/build/dist $(BUNDLES)/playground
 
 app: ## build the JARs in vendor/ as runnable app bundles
 	@test -n "$(VENDOR_JARS)" || { \

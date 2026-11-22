@@ -74,7 +74,8 @@ h1 {
     background-color 120ms ease-out;
 }
 
-.link:hover {
+.link:hover,
+.link[aria-current='page'] {
   color: var(--bar-ink);
   background: rgb(255 255 255 / 0.08);
 }
@@ -445,6 +446,20 @@ button:disabled {
   }
 
   .tagline {
+    display: none;
+  }
+}
+
+@media (max-width: 30rem) {
+  .brand h1 {
+    display: none;
+  }
+
+  .link {
+    padding: 0.4rem 0.5rem;
+  }
+
+  .link svg {
     display: none;
   }
 }

@@ -1,0 +1,349 @@
+/*
+ *  Copyright 2025 Alexey Andreev.
+ *
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+package org.teavm.javac;
+
+import java.io.File;
+import java.io.IOException;
+import java.util.function.Consumer;
+import org.teavm.javac.protocol.CompilationOptions;
+import org.teavm.javac.protocol.CompilationResultMessage;
+import org.teavm.javac.protocol.CompileMessage;
+import org.teavm.javac.protocol.CompilerDiagnosticMessage;
+import org.teavm.javac.protocol.ErrorMessage;
+import org.teavm.javac.protocol.LoadStdlibMessage;
+import org.teavm.javac.protocol.TeaVMDiagnosticMessage;
+import org.teavm.javac.protocol.TeaVMPhaseMessage;
+import org.teavm.javac.protocol.WorkerMessage;
+import org.teavm.jso.ajax.XMLHttpRequest;
+import org.teavm.jso.browser.Window;
+import org.teavm.jso.core.JSArray;
+import org.teavm.jso.JSObject;
+import org.teavm.jso.core.JSBoolean;
+import org.teavm.jso.core.JSObjects;
+import org.teavm.jso.core.JSPromise;
+import org.teavm.jso.core.JSString;
+import org.teavm.jso.dom.events.MessageEvent;
+import org.teavm.jso.typedarrays.ArrayBuffer;
+import org.teavm.jso.typedarrays.Int8Array;
+import org.teavm.vm.TeaVMPhase;
+
+public final class Worker {
+    private boolean isBusy;
+    private static final String SOURCE_FILE_NAME = "Main.java";
+    private static final String DEFAULT_OUTPUT_NAME = "app";
+    private final Compiler compiler;
+
+    Worker(Compiler compiler) {
+        this.compiler = compiler;
+        Window.worker().addEventListener("message", (MessageEvent event) -> {
+            handleEvent(event);
+        });
+        WorkerMessage response = JSObjects.createWithoutProto();
+        response.setCommand("initialized");
+        Window.worker().postMessage(response);
+    }
+
+    private void handleEvent(MessageEvent event) {
+        var request = (WorkerMessage) event.getData();
+        try {
+            processResponse(request);
+        } catch (Throwable e) {
+            log("Error occurred");
+            e.printStackTrace();
+            Window.worker().postMessage(createErrorResponse(request, "Error occurred processing message: "
+                    + e.getMessage()));
+        }
+    }
+
+    private long initializationStartTime;
+
+    private void processResponse(WorkerMessage request) throws Exception {
+        log("Message received: " + request.getId());
+
+        if (isBusy) {
+            log("Responded busy status");
+            Window.worker().postMessage(createErrorResponse(request, "Busy"));
+            return;
+        }
+
+        isBusy = true;
+        switch (request.getCommand()) {
+            case "load-classlib":
+                var loadLibReq = (LoadStdlibMessage) request;
+                init(request, loadLibReq.getUrl(), loadLibReq.getRuntimeUrl(), success -> {
+                    if (success) {
+                        respondOk(request);
+                    }
+                    isBusy = false;
+                });
+                break;
+            case "compile":
+                try {
+                    compileAll((CompileMessage) request, () -> {
+                        log("Done processing message: " + request.getId());
+                        isBusy = false;
+                    });
+                } catch (Throwable e) {
+                    isBusy = false;
+                    throw e;
+                }
+                break;
+        }
+    }
+
+    private void compileAll(CompileMessage request, Runnable done) throws IOException {
+        createSourceFiles(request);
+
+        CompilationResultMessage response = JSObjects.createWithoutProto();
+        response.setId(request.getId());
+        response.setCommand("compilation-complete");
+
+        var options = createOptions(request.getOptions());
+        var outputName = options.getOutputName().stringValue();
+        if (doCompile(request) && resolveMainClass(request, options)) {
+            generateWebAssembly(request.getId(), (WebAssemblyCompilationOptions) options).then(value -> {
+                if (!value.booleanValue()) {
+                    response.setStatus("errors");
+                } else {
+                    response.setStatus("successful");
+                    response.setScript(readResultingFile(outputName));
+                }
+                Window.worker().postMessage(response);
+                return null;
+            }).catchError(e -> {
+                log("Error occurred generating WebAssembly");
+                if (e instanceof Throwable t) {
+                    t.printStackTrace();
+                }
+                Window.worker().postMessage(createErrorResponse(request, "Error occurred generating WebAssembly: "
+                        + describeError(e)));
+                return null;
+            }).onSettled(() -> {
+                done.run();
+                return null;
+            });
+        } else {
+            response.setStatus("errors");
+            Window.worker().postMessage(response);
+            done.run();
+        }
+    }
+
+    private static String describeError(Object e) {
+        return e instanceof Throwable t ? t.getMessage() : String.valueOf(e);
+    }
+
+    private void respondOk(WorkerMessage message) {
+        WorkerMessage response = JSObjects.createWithoutProto();
+        response.setCommand("ok");
+        response.setId(message.getId());
+        Window.worker().postMessage(response);
+    }
+
+    private <T extends ErrorMessage> T createErrorResponse(WorkerMessage request, String text) {
+        T message = JSObjects.createWithoutProto();
+        message.setId(request.getId());
+        message.setCommand("error");
+        message.setText(text);
+        return message;
+    }
+
+    private void init(WorkerMessage request, String url, String runtimeUrl, Consumer<Boolean> next) {
+        log("Initializing");
+
+        initializationStartTime = System.currentTimeMillis();
+        loadTeaVMClasslib(request, url, runtimeUrl, success -> {
+            long end = System.currentTimeMillis();
+            log("Initialized in " + (end - initializationStartTime) + " ms");
+            next.accept(success);
+        });
+    }
+
+    private boolean doCompile(WorkerMessage request) {
+        var requestId = request.getId();
+        var reg = compiler.onDiagnostic(diagnostic -> handleDiagnostic((JavaDiagnostic) diagnostic, requestId));
+        var result = compiler.compile();
+        reg.destroy();
+        return result;
+    }
+
+    private void handleDiagnostic(JavaDiagnostic diagnostic, String requestId) {
+        CompilerDiagnosticMessage response = JSObjects.createWithoutProto();
+        response.setCommand("compiler-diagnostic");
+        response.setId(requestId);
+
+        response.setSeverity(diagnostic.getSeverity());
+        response.setFileName(diagnostic.getFileName());
+
+        response.setStartPosition(diagnostic.getStartPosition());
+        response.setPosition(diagnostic.getPosition());
+        response.setEndPosition( diagnostic.getEndPosition());
+
+        response.setLineNumber(diagnostic.getLineNumber());
+        response.setColumnNumber(diagnostic.getColumnNumber());
+
+        response.setMessage(diagnostic.getMessage());
+
+        Window.worker().postMessage(response);
+    }
+
+    private void handleTeaVMDiagnostic(TeaVMDiagnostic diagnostic, String requestId) {
+        TeaVMDiagnosticMessage response = JSObjects.createWithoutProto();
+        response.setCommand("diagnostic");
+        response.setId(requestId);
+
+        response.setSeverity(diagnostic.getSeverity());
+        response.setFileName(diagnostic.getFileName());
+        response.setLineNumber(diagnostic.getLineNumber());
+        response.setMessage(diagnostic.getMessage());
+
+        Window.worker().postMessage(response);
+    }
+
+    private long lastPhaseTime = System.currentTimeMillis();
+    private TeaVMPhase lastPhase;
+
+    private boolean resolveMainClass(WorkerMessage request, CompilationOptions options) throws IOException {
+        if (isDefined(options.getMainClass())) {
+            return true;
+        }
+        var candidates = compiler.detectMainClasses();
+        if (candidates.length != 1) {
+            var text = candidates.length == 0 ? "Main method not found" : "Multiple main methods found";
+            TeaVMDiagnosticMessage message = JSObjects.createWithoutProto();
+            message.setId(request.getId());
+            message.setCommand("diagnostic");
+            message.setSeverity("error");
+            message.setMessage(text);
+            message.setFileName(null);
+            message.setLineNumber(-1);
+            Window.worker().postMessage(message);
+            return false;
+        }
+
+        options.setMainClass(JSString.valueOf(candidates[0].replace('/', '.')));
+        return true;
+    }
+
+    private static CompilationOptions createOptions(CompilationOptions requestOptions) {
+        CompilationOptions options = JSObjects.createWithoutProto();
+        options.setOutputName(JSString.valueOf(DEFAULT_OUTPUT_NAME));
+        if (!isDefined(requestOptions)) {
+            return options;
+        }
+        if (isDefined(requestOptions.getOutputName())) {
+            options.setOutputName(requestOptions.getOutputName());
+        }
+        if (isDefined(requestOptions.getMainClass())) {
+            options.setMainClass(requestOptions.getMainClass());
+        }
+        if (isDefined(requestOptions.getStrictMode())) {
+            options.setStrictMode(requestOptions.getStrictMode());
+        }
+        if (isDefined(requestOptions.getObfuscated())) {
+            options.setObfuscated(requestOptions.getObfuscated());
+        }
+        if (isDefined(requestOptions.getAssertionsRemoved())) {
+            options.setAssertionsRemoved(requestOptions.getAssertionsRemoved());
+        }
+        if (isDefined(requestOptions.getAsyncEnabled())) {
+            options.setAsyncEnabled(requestOptions.getAsyncEnabled());
+        }
+        return options;
+    }
+
+    private static boolean isDefined(JSObject value) {
+        return value != null && !JSObjects.isUndefined(value);
+    }
+
+    private JSPromise<JSBoolean> generateWebAssembly(String requestId, WebAssemblyCompilationOptions options) {
+        var reg = compiler.onDiagnostic(diagnostic -> handleTeaVMDiagnostic((TeaVMDiagnostic) diagnostic, requestId));
+        try {
+            return compiler.generateWebAssembly(options).onSettled(() -> {
+                reg.destroy();
+                return null;
+            });
+        } catch (Throwable e) {
+            reg.destroy();
+            throw e;
+        }
+    }
+
+    private void reportPhase(WorkerMessage request, TeaVMPhase phase) {
+        TeaVMPhaseMessage phaseMessage = JSObjects.createWithoutProto();
+        phaseMessage.setId(request.getId());
+        phaseMessage.setCommand("phase");
+        phaseMessage.setPhase(phase.name());
+        Window.worker().postMessage(phaseMessage);
+    }
+
+    private void loadTeaVMClasslib(WorkerMessage request, String url, String runtimeUrl, Consumer<Boolean> next) {
+        File baseDir = new File("/teavm-stdlib");
+        baseDir.mkdirs();
+
+        JSPromise.all(JSArray.of(downloadFile(url), downloadFile(runtimeUrl)))
+                .then(arr -> {
+                    boolean success;
+                    var file = arr.get(0);
+                    var runtimeFile = arr.get(1);
+                    try {
+                        compiler.setSdk(file);
+                        compiler.setTeaVMClasslib(runtimeFile);
+                        success = true;
+                    } catch (IOException e) {
+                        success = false;
+                        Window.worker().postMessage(createErrorResponse(request, "Error occurred downloading classlib: "
+                                + e.getMessage()));
+                    }
+                    next.accept(success);
+                    return null;
+                });
+    }
+
+
+    private static JSPromise<Int8Array> downloadFile(String url) {
+        return new JSPromise<>((resolve, reject) -> {
+            var xhr = new XMLHttpRequest();
+            xhr.open("GET", url, true);
+            xhr.setResponseType("arraybuffer");
+            xhr.onComplete(() -> {
+                var buffer = (ArrayBuffer) xhr.getResponse();
+                resolve.accept(new Int8Array(buffer));
+            });
+            xhr.onError(ignore -> reject.accept(new RuntimeException("Error downloading file: " + url)));
+            xhr.send();
+        });
+    }
+
+    private void createSourceFiles(CompileMessage request) {
+        compiler.clearSourceFiles();
+        compiler.clearOutputFiles();
+        var files = request.getFiles();
+        for (var i = 0; i < files.getLength(); ++i) {
+            var file = files.get(i);
+            compiler.addSourceFile(file.getPath(), file.getContent());
+        }
+    }
+
+    private static void log(String message) {
+        System.out.println(message);
+    }
+
+    private Int8Array readResultingFile(String outputName) {
+        return compiler.getWebAssemblyOutputFile(outputName + ".wasm");
+    }
+}
