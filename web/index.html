@@ -27,22 +27,15 @@
       </nav>
     </header>
 
-    <main id="app" class="workbench" data-state="loading">
+    <main id="app" class="workbench" data-state="loading" data-view="demos">
       <section class="controls" aria-labelledby="controls-heading">
         <h2 id="controls-heading">Run</h2>
-        <div class="field">
+        <div class="field workbench-only">
           <label for="bundle">Bundle</label>
           <select id="bundle">
             <option value="sandbox">sandbox</option>
             <option value="example">example</option>
             <option value="app">app (JAR after make app)</option>
-          </select>
-        </div>
-        <div class="field">
-          <label for="backend">Backend</label>
-          <select id="backend">
-            <option value="wasm">wasm</option>
-            <option value="js">js</option>
           </select>
         </div>
         <div class="field">
@@ -52,6 +45,13 @@
           </select>
         </div>
         <div class="field">
+          <label for="backend">Backend</label>
+          <select id="backend">
+            <option value="wasm">wasm</option>
+            <option value="js">js</option>
+          </select>
+        </div>
+        <div class="field workbench-only">
           <label for="args">Arguments</label>
           <input id="args" type="text" placeholder="--frames 300" spellcheck="false" />
         </div>
