@@ -41,6 +41,7 @@ export default defineConfig({
         '**/crypto.spec.ts',
         '**/docs.spec.ts',
         '**/files.spec.ts',
+        '**/http.spec.ts',
         '**/image.spec.ts',
         '**/jdkgaps.spec.ts',
         '**/liveness.spec.ts',

@@ -26,6 +26,7 @@ dependencies {
     implementation(project(":toolchain:awt-classlib"))
     implementation(project(":toolchain:crypto-classlib"))
     implementation(project(":toolchain:concurrent-classlib"))
+    implementation(project(":toolchain:http-classlib"))
     implementation(project(":toolchain:reflect-policy"))
     implementation(project(":toolchain:jdk-shims"))
     compileOnly(absent.output)
@@ -45,6 +46,8 @@ tasks.named<Test>("test") {
         providers.systemProperty("flagon.serial.update").getOrElse("false"))
     systemProperty("flagon.concurrency.update",
         providers.systemProperty("flagon.concurrency.update").getOrElse("false"))
+    systemProperty("flagon.crypto.update",
+        providers.systemProperty("flagon.crypto.update").getOrElse("false"))
 }
 
 tasks.named<RunMain>("writeCatalog") {

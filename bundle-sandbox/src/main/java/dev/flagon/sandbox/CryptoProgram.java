@@ -44,6 +44,10 @@ public final class CryptoProgram implements Program {
         aes(console);
         handshake(console);
         refusals(console);
+        for (String line : CryptoChecks.run()) {
+            console.info("crypto: " + line);
+        }
+        console.info("crypto: done");
     }
 
     private void refusals(ConsoleSink console) {

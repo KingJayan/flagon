@@ -13,13 +13,23 @@ public abstract class Signature {
 
     public static Signature getInstance(String algorithm) throws NoSuchAlgorithmException {
         String asked = algorithm.toUpperCase(Locale.ROOT).replace("-", "");
-        String digest = switch (asked) {
-            case "SHA1WITHRSA", "SHAWITHRSA" -> "SHA-1";
-            case "SHA256WITHRSA" -> "SHA-256";
-            default -> throw new NoSuchAlgorithmException(algorithm
-                    + " is not written here; SHA1withRSA and SHA256withRSA are");
+        int with = asked.indexOf("WITH");
+        String digest = with < 0 ? "" : switch (asked.substring(0, with)) {
+            case "SHA", "SHA1" -> "SHA-1";
+            case "SHA256" -> "SHA-256";
+            case "SHA384" -> "SHA-384";
+            case "SHA512" -> "SHA-512";
+            default -> "";
         };
-        return new RsaSignature(algorithm, digest);
+        String key = with < 0 ? "" : asked.substring(with + 4);
+        if (!digest.isEmpty() && key.equals("RSA")) {
+            return new RsaSignature(algorithm, digest);
+        }
+        if (!digest.isEmpty() && key.equals("ECDSA")) {
+            return new EcSignature(algorithm, digest);
+        }
+        throw new NoSuchAlgorithmException(algorithm + " is not written here; SHA1, SHA256,"
+                + " SHA384 and SHA512 with RSA or ECDSA are");
     }
 
     public static Signature getInstance(String algorithm, String provider)
@@ -34,6 +44,14 @@ public abstract class Signature {
     public abstract void initVerify(PublicKey key) throws InvalidKeyException;
 
     public abstract void initSign(PrivateKey key) throws InvalidKeyException;
+
+    /** where a signature that needs randomness takes it from */
+    protected SecureRandom appRandom;
+
+    public final void initSign(PrivateKey key, SecureRandom random) throws InvalidKeyException {
+        appRandom = random;
+        initSign(key);
+    }
 
     public abstract void update(byte[] bytes, int at, int count) throws SignatureException;
 
@@ -148,11 +166,17 @@ public abstract class Signature {
             return block;
         }
 
-        /** 1.3.14.3.2.26 for sha-1, 2.16.840.1.101.3.4.2.1 for sha-256 */
+        /** 1.3.14.3.2.26 for sha-1, 2.16.840.1.101.3.4.2.1 to .3 for the sha-2 family */
         private byte[] digestId() {
-            return "SHA-1".equals(digestName)
-                    ? new byte[] {0x2B, 0x0E, 0x03, 0x02, 0x1A}
-                    : new byte[] {0x60, (byte) 0x86, 0x48, 0x01, 0x65, 0x03, 0x04, 0x02, 0x01};
+            if ("SHA-1".equals(digestName)) {
+                return new byte[] {0x2B, 0x0E, 0x03, 0x02, 0x1A};
+            }
+            byte last = switch (digestName) {
+                case "SHA-384" -> 0x02;
+                case "SHA-512" -> 0x03;
+                default -> 0x01;
+            };
+            return new byte[] {0x60, (byte) 0x86, 0x48, 0x01, 0x65, 0x03, 0x04, 0x02, last};
         }
 
         private static byte[] fixedLength(BigInteger value, int size) {
@@ -164,6 +188,81 @@ public abstract class Signature {
                 System.arraycopy(bytes, 0, out, size - bytes.length, bytes.length);
             }
             return out;
+        }
+    }
+
+    /** ecdsa over a digest; signatures are the der pair of r and s */
+    private static final class EcSignature extends Signature {
+
+        private final String digestName;
+
+        private MessageDigest digest;
+        private Ec.Public forVerify;
+        private Ec.Private forSign;
+
+        EcSignature(String algorithm, String digestName) {
+            super(algorithm);
+            this.digestName = digestName;
+        }
+
+        @Override
+        public void initVerify(PublicKey key) throws InvalidKeyException {
+            if (!(key instanceof Ec.Public found)) {
+                throw new InvalidKeyException("this signature takes an ec public key");
+            }
+            forVerify = found;
+            forSign = null;
+            start();
+        }
+
+        @Override
+        public void initSign(PrivateKey key) throws InvalidKeyException {
+            if (!(key instanceof Ec.Private found)) {
+                throw new InvalidKeyException("this signature takes an ec private key");
+            }
+            forSign = found;
+            forVerify = null;
+            if (appRandom == null) {
+                appRandom = new SecureRandom();
+            }
+            start();
+        }
+
+        private void start() {
+            try {
+                digest = MessageDigest.getInstance(digestName);
+            } catch (NoSuchAlgorithmException impossible) {
+                throw new IllegalStateException(impossible);
+            }
+        }
+
+        @Override
+        public void update(byte[] bytes, int at, int count) throws SignatureException {
+            if (digest == null) {
+                throw new SignatureException("this signature has no key yet");
+            }
+            digest.update(bytes, at, count);
+        }
+
+        @Override
+        public boolean verify(byte[] signature) throws SignatureException {
+            if (forVerify == null) {
+                throw new SignatureException("this signature has no public key to check with");
+            }
+            byte[] made = digest.digest();
+            try {
+                return Ec.verify(forVerify, made, signature);
+            } catch (IllegalArgumentException unreadable) {
+                throw new SignatureException("Invalid encoding for signature", unreadable);
+            }
+        }
+
+        @Override
+        public byte[] sign() throws SignatureException {
+            if (forSign == null) {
+                throw new SignatureException("this signature has no private key to sign with");
+            }
+            return Ec.sign(forSign, digest.digest(), appRandom);
         }
     }
 }

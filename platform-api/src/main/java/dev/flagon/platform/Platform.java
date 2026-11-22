@@ -3,6 +3,7 @@ package dev.flagon.platform;
 import dev.flagon.platform.audio.AudioDevice;
 import dev.flagon.platform.display.DisplaySurface;
 import dev.flagon.platform.fs.FileStore;
+import dev.flagon.platform.net.Fetch;
 import dev.flagon.platform.net.Network;
 
 /**
@@ -31,6 +32,11 @@ public interface Platform {
      *         out
      */
     Network network();
+
+    /** @return how {@code java.net.http} sends requests; refuses them where the host cannot */
+    default Fetch fetch() {
+        return Fetch.unavailable(name() + " cannot send http requests for java.net.http");
+    }
 
     /** @return whether this host can open a window at all. */
     boolean hasDisplay();

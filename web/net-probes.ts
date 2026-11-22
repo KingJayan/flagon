@@ -69,8 +69,41 @@ function sendFlood(asked: http.IncomingMessage, answer: http.ServerResponse): vo
   pump();
 }
 
+export const HTTP_ECHO = '/flagon-http-echo';
+export const HTTP_REDIRECT = '/flagon-http-redirect';
+export const HTTP_SLOW = '/flagon-http-slow';
+
+/** answers with the method, the x-flagon header and the body, at the status ?status= asks */
+function sendEcho(asked: http.IncomingMessage, answer: http.ServerResponse, url: URL): void {
+  const chunks: Buffer[] = [];
+  asked.on('data', (chunk: Buffer) => chunks.push(chunk));
+  asked.on('end', () => {
+    const marker = asked.headers['x-flagon'] ?? '-';
+    const body = `${asked.method} ${String(marker)} ${Buffer.concat(chunks).toString('utf8')}`;
+    answer.writeHead(Number(url.searchParams.get('status') ?? '200'), {
+      'content-type': 'text/plain; charset=utf-8',
+      'x-echo': 'yes',
+    });
+    answer.end(body);
+  });
+}
+
 export function answerNetProbe(asked: http.IncomingMessage, answer: http.ServerResponse): boolean {
-  const path = new URL(asked.url ?? '/', 'http://site.invalid').pathname;
+  const url = new URL(asked.url ?? '/', 'http://site.invalid');
+  const path = url.pathname;
+  if (path === HTTP_ECHO) {
+    sendEcho(asked, answer, url);
+    return true;
+  }
+  if (path === HTTP_REDIRECT) {
+    answer.writeHead(302, { location: `${HTTP_ECHO}?from=redirect` });
+    answer.end();
+    return true;
+  }
+  if (path === HTTP_SLOW) {
+    setTimeout(() => sendEcho(asked, answer, url), 3000);
+    return true;
+  }
   if (path === BULK_PROBE) {
     sendBulk(answer);
     return true;

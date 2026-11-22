@@ -10,10 +10,12 @@ import dev.flagon.platform.browser.audio.WebAudioDevice;
 import dev.flagon.platform.browser.display.CanvasSurface;
 import dev.flagon.platform.browser.fs.OpfsFileStore;
 import dev.flagon.platform.browser.fs.StoreFileSystem;
+import dev.flagon.platform.browser.net.BrowserFetch;
 import dev.flagon.platform.browser.net.ProxyNetwork;
 import dev.flagon.platform.display.DisplaySurface;
 import dev.flagon.platform.fs.FileStore;
 import dev.flagon.platform.fs.MemoryFileStore;
+import dev.flagon.platform.net.Fetch;
 import dev.flagon.platform.net.Network;
 import dev.flagon.platform.net.UnavailableNetwork;
 
@@ -25,6 +27,7 @@ public final class BrowserPlatform implements Platform {
     private final FileStore files;
     private final AudioDevice audio;
     private final Network network;
+    private final Fetch fetch = new BrowserFetch();
     private CanvasSurface surface;
 
     private BrowserPlatform(Clock clock, ConsoleSink console, RuntimeHost host, FileStore files,
@@ -128,6 +131,11 @@ public final class BrowserPlatform implements Platform {
     @Override
     public Network network() {
         return network;
+    }
+
+    @Override
+    public Fetch fetch() {
+        return fetch;
     }
 
     @Override

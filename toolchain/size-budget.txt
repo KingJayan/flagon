@@ -1,7 +1,7 @@
 # release bundle size limits, in bytes
-wasm/sandbox.wasm 1540000
-jspi/sandbox.wasm 1330000
-js/sandbox.js 1450000
+wasm/sandbox.wasm 1640000
+jspi/sandbox.wasm 1420000
+js/sandbox.js 1550000
 wasm/example.wasm 405000
 jspi/example.wasm 387000
 js/example.js 405000

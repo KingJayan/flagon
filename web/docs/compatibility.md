@@ -24,6 +24,7 @@ All bundles compile with TeaVM's strict mode, so a null dereference throws `Null
 | Files | Origin Private File System | Persistent per origin. See [Files](#files). |
 | Threads | none | Green threads on one core. See [Threads](#threads). |
 | Sockets, HTTP | WebSocket | Through the socket proxy. See [Networking](#networking). |
+| `java.net.http` | `fetch` | The page's CORS rules apply. See [Networking](#networking). |
 | Graphics | WebGL 2 | Desktop GL 1.1 to 3.3. See [OpenGL](#opengl). |
 | Audio | Web Audio | OpenAL 1.1. See [Audio](#audio). |
 | Input | DOM events, Pointer Lock | Keyboard, mouse, wheel and one touch point. |
@@ -103,12 +104,13 @@ These JDK calls act differently in a browser:
 | `Class.isAnonymousClass` | True when the name after the last `$` is all digits. |
 | `FileInputStream.getChannel`, `FileOutputStream.getChannel` | Return a `FileChannel` over the file. |
 | `Charset.isSupported` | True for the charsets TeaVM carries. |
+| `HexFormat` | Works. |
 
 ### Class libraries
 
 | Area | Supported | Not supported |
 | --- | --- | --- |
-| `java.security`, `javax.crypto` | `MessageDigest` MD5, SHA-1 and SHA-256. `Cipher` `AES/CFB8/NoPadding` and `RSA/ECB/PKCS1Padding`. `Signature` `SHA1withRSA` and `SHA256withRSA`. RSA `KeyPairGenerator` and `KeyFactory` with X.509 and PKCS#8 keys. `KeyGenerator` AES. | Other algorithms throw `NoSuchAlgorithmException`. No `KeyStore`. |
+| `java.security`, `javax.crypto` | `MessageDigest` MD5, SHA-1, SHA-256, SHA-384 and SHA-512. `Mac` HMAC over each. `SecretKeyFactory` `PBKDF2WithHmac*`. `Cipher` `AES/CFB8/NoPadding` and `RSA/ECB/PKCS1Padding`. `Signature` SHA-1 and SHA-2 with RSA or ECDSA. `KeyAgreement` ECDH. RSA and EC (secp256r1, secp384r1, secp521r1) keys from `KeyPairGenerator` and `KeyFactory`, with X.509 and PKCS#8 encodings. `KeyGenerator` AES. | Other algorithms throw `NoSuchAlgorithmException`. No `KeyStore`. EC math is not constant-time. |
 | `java.awt.image`, `javax.imageio` | `BufferedImage` with the integer, byte and gray types. `ImageIO` PNG read and write. | Other image formats. Drawing with `Graphics`. Windows. |
 | `java.awt.datatransfer` | A clipboard inside the page. | The system clipboard. |
 | `java.nio.channels` | `FileChannel`. `Selector.open()` with no keys: `select` waits for its timeout or `wakeup`, so a Netty event loop runs tasks and local channels. | `SocketChannel`, `ServerSocketChannel`, `DatagramChannel`. |
@@ -154,6 +156,22 @@ green thread  ──WebSocket──>  socket proxy  ──TCP/TLS──>  server
 | `DatagramSocket`, `MulticastSocket` | Throw: the transport carries streams only. |
 
 See [Socket proxy](packaging.md#socket-proxy) to run one.
+
+### java.net.http
+
+`HttpClient` sends each request with the page's `fetch`, not the socket proxy. `send` pauses the calling green thread. `sendAsync` runs `send` on the client's executor, or on a new thread.
+
+| API | Behavior |
+| --- | --- |
+| Cross-origin requests | The server must allow them with CORS headers. |
+| `Redirect.NEVER`, the default | A redirect throws `IOException`: a browser does not show where it points. Use `NORMAL` or `ALWAYS` to follow it. |
+| Request headers | The browser drops the ones it forbids, such as `Cookie`. |
+| `timeout`, `connectTimeout` | Cover the wait for the response headers. |
+| Response bodies | Arrive whole before a body handler sees them. `ofInputStream` reads from memory. |
+| `version()` of a response | `HTTP_1_1`. The browser does not tell. |
+| Cookies, proxies, TLS settings | The browser handles them. The builder has no `cookieHandler`, `proxy`, `sslContext` or `sslParameters`. |
+| `close`, `shutdownNow` | Stop new requests. Requests already sent still finish. |
+| `WebSocket` | Not supported. |
 
 ## Threads
 

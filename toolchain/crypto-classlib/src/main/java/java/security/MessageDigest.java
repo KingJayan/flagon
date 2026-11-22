@@ -16,8 +16,10 @@ public abstract class MessageDigest {
             case "MD5" -> new Digests.Md5();
             case "SHA", "SHA1" -> new Digests.Sha1();
             case "SHA256" -> new Digests.Sha256();
-            default -> throw new NoSuchAlgorithmException(
-                    algorithm + " is not written here; md5, sha-1 and sha-256 are");
+            case "SHA384" -> Digests.Sha512.cut();
+            case "SHA512" -> Digests.Sha512.full();
+            default -> throw new NoSuchAlgorithmException(algorithm
+                    + " is not written here; md5, sha-1, sha-256, sha-384 and sha-512 are");
         };
         return new Written(algorithm, running);
     }
