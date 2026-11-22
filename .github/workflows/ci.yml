@@ -32,7 +32,6 @@ jobs:
       - name: Unit tests
         run: make test
 
-      # main deploys, so it builds and tests the release bundles the site serves
       - uses: ./.github/actions/web-deps
         if: github.event_name == 'push'
 
@@ -46,7 +45,6 @@ jobs:
           path: web/public/flagon/
           retention-days: 1
 
-  # javac and teavm compiled to wasm change rarely, so the cache skips the 2-minute build
   playground:
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -106,7 +104,6 @@ jobs:
     needs: [build, web, playground]
     runs-on: ubuntu-latest
     timeout-minutes: 25
-    # keep the tag in step with @playwright/test in web/bun.lock
     container:
       image: mcr.microsoft.com/playwright:v1.62.0-noble
       options: --user 1001
@@ -178,7 +175,6 @@ jobs:
           name: playground
           path: site/flagon/playground/
 
-      # vercel deploys the site branch as it is; main's vercel.json keeps every other branch off
       - name: Push the site branch
         working-directory: site
         run: |

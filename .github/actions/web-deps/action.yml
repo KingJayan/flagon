@@ -4,7 +4,6 @@ description: install the pinned bun and the web dependencies
 runs:
   using: composite
   steps:
-    # npm needs no unzip, which the playwright image lacks
     - name: Install bun
       shell: bash
       run: |

@@ -22,7 +22,6 @@ jobs:
 
       - uses: gradle/actions/setup-gradle@v4
 
-      # wasm-opt comes from the binaryen package
       - uses: ./.github/actions/web-deps
 
       - name: Set version from tag
@@ -64,7 +63,6 @@ jobs:
     needs: [bundles, site]
     runs-on: ubuntu-latest
     timeout-minutes: 25
-    # keep the tag in step with @playwright/test in web/bun.lock
     container:
       image: mcr.microsoft.com/playwright:v1.62.0-noble
       options: --user 1001

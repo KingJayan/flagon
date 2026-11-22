@@ -13,8 +13,11 @@ vendor/*
 !vendor/.gitkeep
 
 .todo.md
-.vscode/settings.json
+.vscode/
 .claude/
+.agents/
+AGENTS.md
+CLAUDE.md
 
 .gradle/
 build/
