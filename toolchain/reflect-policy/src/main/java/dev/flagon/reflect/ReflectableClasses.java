@@ -3,6 +3,7 @@ package dev.flagon.reflect;
 import org.teavm.extension.introspect.IntrospectClass;
 import org.teavm.extension.introspect.IntrospectField;
 import org.teavm.extension.introspect.IntrospectMember;
+import org.teavm.extension.introspect.IntrospectParameter;
 import org.teavm.extension.introspect.IntrospectMethod;
 import org.teavm.extension.spi.GlobMatch;
 import org.teavm.extension.spi.reflection.SimpleReflectionPolicy;
@@ -26,6 +27,8 @@ import java.util.function.Predicate;
  */
 public final class ReflectableClasses extends SimpleReflectionPolicy {
 
+    private IntrospectClass<?> externalizable;
+
     public static final String PATTERNS = "flagon.reflect.classes";
     public static final String PROXIES = "flagon.reflect.proxies";
     /** a classpath resource that lists one class per line */
@@ -34,6 +37,7 @@ public final class ReflectableClasses extends SimpleReflectionPolicy {
     /** classes found by name and built through a static factory, like log4j plugins */
     public static final String PRESERVED = "META-INF/flagon/preserved.txt";
 
+    private static final String UNCONSTRUCTED = "dev.flagon.serial.Unconstructed";
     private static final Set<String> SERIAL_STATICS = Set.of("serialVersionUID",
             "serialPersistentFields");
     private static final Set<String> SERIAL_METHODS = Set.of("writeObject", "readObject",
@@ -66,11 +70,12 @@ public final class ReflectableClasses extends SimpleReflectionPolicy {
         }
 
         IntrospectClass<?> serializable = environment().findClass("java.io.Serializable");
+        externalizable = environment().findClass("java.io.Externalizable");
         if (serializable != null) {
             selectClasses(present(type -> !type.isInterface() && !jdk(type.name())
                     && serializable.isAssignableFrom(type)))
                     .foundByName()
-                    .reflectableMembers(ReflectableClasses::serializes);
+                    .reflectableMembers(this::serializes);
         }
         selectClasses(present(type -> type.name().equals("java.lang.Throwable")))
                 .reflectableMembers(member -> member.name().equals("message")
@@ -89,13 +94,27 @@ public final class ReflectableClasses extends SimpleReflectionPolicy {
         return type -> type != null && test.test(type);
     }
 
-    /** what java serialization reads and writes of a serializable class */
-    private static boolean serializes(IntrospectMember member) {
+    /**
+     * what java serialization reads and writes of a serializable class. of its constructors, only
+     * the ones deserialization calls, since keeping one keeps its code
+     */
+    private boolean serializes(IntrospectMember member) {
         if (member instanceof IntrospectField field) {
             return !Modifier.isStatic(field.modifiers()) || SERIAL_STATICS.contains(field.name());
         }
         IntrospectMethod method = (IntrospectMethod) member;
-        return method.isConstructor() || SERIAL_METHODS.contains(method.name());
+        if (!method.isConstructor()) {
+            return SERIAL_METHODS.contains(method.name());
+        }
+        IntrospectClass<?> owner = method.declaringClass();
+        List<? extends IntrospectParameter> parameters = method.parameters();
+        if (owner.isRecord()) {
+            return true;
+        }
+        if (parameters.isEmpty()) {
+            return externalizable != null && externalizable.isAssignableFrom(owner);
+        }
+        return parameters.size() == 1 && UNCONSTRUCTED.equals(parameters.get(0).type().name());
     }
 
     private static boolean jdk(String name) {
