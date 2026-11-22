@@ -195,6 +195,22 @@ public final class RuntimeSelfTestProgram implements Program {
             check("cause chaining", "root", wrapper.getCause().getMessage());
         }
 
+        RuntimeException plain = new RuntimeException("plain");
+        check("a new exception suppresses nothing", 0, plain.getSuppressed().length);
+        plain.addSuppressed(new IllegalStateException("later"));
+        check("an exception keeps what it suppressed", "later",
+                plain.getSuppressed()[0].getMessage());
+        try (AutoCloseable failing = () -> {
+            throw new IllegalStateException("closing");
+        }) {
+            throw new IllegalArgumentException("body");
+        } catch (Exception thrown) {
+            check("try-with-resources keeps the body's exception", "body", thrown.getMessage());
+            check("and suppresses the close's", "closing",
+                    thrown.getSuppressed().length == 1 ? thrown.getSuppressed()[0].getMessage()
+                            : thrown.getSuppressed().length + " suppressed");
+        }
+
         StringBuilder order = new StringBuilder();
         try {
             order.append("t");
