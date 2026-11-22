@@ -16,3 +16,5 @@ dev.flagon.shims.SendLoggerCalls
 dev.flagon.shims.WriteClassContext
 dev.flagon.shims.SendCharsetCalls
 dev.flagon.shims.KeepNamedClasses
+dev.flagon.shims.WriteReflectionData
+dev.flagon.shims.SendReflectionCalls

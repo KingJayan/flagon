@@ -61,6 +61,8 @@ Ahead-of-time (AOT) tree-shaking strips unreferenced class members by default. `
 
 ```
 
+* **What an opted-in class adds:** generic supertypes and type variable bounds, record components, permitted subclasses, the enclosing method or constructor, annotation member defaults, parameter names (when compiled with `-parameters`, else `argN`), and `Method.isDefault`. The build reads these from the class file. `getEnclosingMethod` also needs the enclosing class opted in.
+* **Every class:** typed `Field` and `Array` reads and writes (`getInt`, `setLong`, …) widen as on the JVM. `isRecord`, `getPackageName`, `arrayType`, `descriptorString` and `getAnnotationsByType` work without opting in.
 * **vendor/ constructors:** `make app` keeps constructors for every class in the jar and logs the count. Past 10,000 it warns; past 50,000 it stops. Narrow it with `-Pflagon.app.reflect=your.game.**`.
 
 ### ClassLoader & Resource Lookup
@@ -78,7 +80,7 @@ Ahead-of-time (AOT) tree-shaking strips unreferenced class members by default. `
 | `System.exit()`, `Runtime.exit()` | Invokes registered shutdown hooks sequentially. |
 | `Runtime.halt()` | Immediately halts execution without running hooks. |
 | `Shutdown Hooks` | Cooperative execution during standard exit. **Ignored on tab close/reload.** |
-| `Class.getGenericSuperclass()` | Raw class only (generics erased at compilation). |
+| `Class.getGenericSuperclass()` | Full generic type for opted-in classes and JDK collections; raw class otherwise. |
 | `Class.isAnonymousClass()` | `true` if the compiled class name ends with a digit. |
 | `Array.newInstance(Class, int...)` | Dynamically constructs nested arrays. |
 | `java.sql.Date`, `Time`, `Timestamp` | Type-mapping stubs provided by `toolchain/jdk-classlib`. |

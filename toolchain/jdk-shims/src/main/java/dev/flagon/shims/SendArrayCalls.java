@@ -13,7 +13,24 @@ public final class SendArrayCalls implements TeaVMPlugin, ClassHolderTransformer
     private static final String SUBJECT = "java.lang.reflect.Array";
     private static final String ARRAYS = "dev.flagon.platform.Arrays";
 
-    private static final Map<String, String> SENT = Map.of("newInstance:2", "newInstance");
+    private static final Map<String, String> SENT = Map.ofEntries(
+            Map.entry("newInstance:2", "newInstance"),
+            Map.entry("getBoolean", "getBoolean"),
+            Map.entry("getByte", "getByte"),
+            Map.entry("getChar", "getChar"),
+            Map.entry("getShort", "getShort"),
+            Map.entry("getInt", "getInt"),
+            Map.entry("getLong", "getLong"),
+            Map.entry("getFloat", "getFloat"),
+            Map.entry("getDouble", "getDouble"),
+            Map.entry("setBoolean", "setBoolean"),
+            Map.entry("setByte", "setByte"),
+            Map.entry("setChar", "setChar"),
+            Map.entry("setShort", "setShort"),
+            Map.entry("setInt", "setInt"),
+            Map.entry("setLong", "setLong"),
+            Map.entry("setFloat", "setFloat"),
+            Map.entry("setDouble", "setDouble"));
 
     private static final String[] NOT_OURS = {"org.teavm.", ARRAYS};
 

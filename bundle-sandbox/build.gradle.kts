@@ -10,6 +10,11 @@ val absent = sourceSets.create("absent") {
 
 sourceSets["main"].java.exclude("org/example/absent/**")
 
+// keeps parameter names, which reflection reads back
+tasks.named<JavaCompile>("compileJava") {
+    options.compilerArgs.add("-parameters")
+}
+
 dependencies {
     implementation(project(":runtime"))
     implementation(project(":platform-browser"))

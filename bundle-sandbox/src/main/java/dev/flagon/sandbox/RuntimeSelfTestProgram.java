@@ -55,6 +55,7 @@ public final class RuntimeSelfTestProgram implements Program {
         nioBuffers();
         reflection();
         optedInReflection();
+        classFileReflection();
         classDefinition();
         entryPointArguments(arguments);
 
@@ -400,6 +401,96 @@ public final class RuntimeSelfTestProgram implements Program {
                 + " reports "
                 + Reflected.class.getDeclaredMethods().length + " methods and "
                 + Reflected.class.getDeclaredFields().length + " fields");
+    }
+
+    /**
+     * what a class file says beyond its members: records, sealed types, generic supertypes,
+     * parameter names, annotation defaults, and the typed field and array calls
+     */
+    private void classFileReflection() {
+        java.lang.reflect.RecordComponent[] components =
+                ReflectedTypes.Point.class.getRecordComponents();
+        check("a record is a record", true, ReflectedTypes.Point.class.isRecord());
+        check("a record lists its components", "int x, java.lang.String label",
+                components[0] + ", " + components[1]);
+        try {
+            check("a component reads through its accessor", "here",
+                    components[1].getAccessor().invoke(new ReflectedTypes.Point(1, "here")));
+        } catch (ReflectiveOperationException failed) {
+            check("a component reads through its accessor", "here", "threw " + failed);
+        }
+        check("a plain class is no record", false, ReflectedTypes.Holder.class.isRecord());
+
+        check("a sealed interface is sealed", true, ReflectedTypes.Kind.class.isSealed());
+        Class<?>[] permitted = ReflectedTypes.Kind.class.getPermittedSubclasses();
+        check("it names what it permits", "Big Small",
+                permitted[0].getSimpleName() + " " + permitted[1].getSimpleName());
+
+        check("a generic superclass keeps its argument", "java.util.ArrayList<T>",
+                ReflectedTypes.Box.class.getGenericSuperclass().getTypeName());
+        check("a generic interface keeps its arguments",
+                "java.util.function.Supplier<java.util.Map<java.lang.String, T[]>>",
+                ReflectedTypes.Box.class.getGenericInterfaces()[0].getTypeName());
+        java.lang.reflect.TypeVariable<?> variable =
+                ReflectedTypes.Box.class.getTypeParameters()[0];
+        check("a type variable keeps its bound", "java.lang.Comparable<T>",
+                variable.getBounds()[0].getTypeName());
+
+        try {
+            java.lang.reflect.Method weight =
+                    ReflectedTypes.Tagged.class.getDeclaredMethod("weight");
+            check("an annotation member keeps its default", 7, weight.getDefaultValue());
+            check("an array default", "[a, b c]", java.util.Arrays.toString((String[])
+                    ReflectedTypes.Tagged.class.getDeclaredMethod("names").getDefaultValue()));
+            check("a class default", String.class,
+                    ReflectedTypes.Tagged.class.getDeclaredMethod("kind").getDefaultValue());
+            check("an enum default", java.util.concurrent.TimeUnit.SECONDS,
+                    ReflectedTypes.Tagged.class.getDeclaredMethod("unit").getDefaultValue());
+
+            java.lang.reflect.Method place = ReflectedTypes.Holder.class.getDeclaredMethod(
+                    "place", String.class, int.class);
+            java.lang.reflect.Parameter[] parameters = place.getParameters();
+            check("parameters keep their names", "where times",
+                    parameters[0].getName() + " " + parameters[1].getName());
+            check("a parameter knows its type", int.class, parameters[1].getType());
+            check("an interface method with a body is a default", true,
+                    ReflectedTypes.Named.class.getDeclaredMethod("name").isDefault());
+
+            ReflectedTypes.Holder holder = new ReflectedTypes.Holder();
+            java.lang.reflect.Field count = ReflectedTypes.Holder.class.getDeclaredField("count");
+            check("an int field reads as a long", 5L, count.getLong(holder));
+            count.setInt(holder, 9);
+            check("an int field takes an int", 9, holder.count);
+            check("a char field widens to an int", (int) 'x',
+                    ReflectedTypes.Holder.class.getDeclaredField("letter").getInt(holder));
+            ReflectedTypes.Holder.class.getDeclaredField("scale").setFloat(holder, 1.5f);
+            check("a double field takes a float", 1.5, holder.scale);
+        } catch (ReflectiveOperationException failed) {
+            check("members reflect", "no failure", "threw " + failed);
+        }
+
+        int[] numbers = {4, 5};
+        java.lang.reflect.Array.setInt(numbers, 1, 8);
+        check("an int array takes an int", 8, numbers[1]);
+        check("an int array reads as a double", 4.0, java.lang.reflect.Array.getDouble(numbers, 0));
+        try {
+            java.lang.reflect.Array.getInt(new Object[] {1}, 0);
+            check("an object array refuses getInt", "IllegalArgumentException", "returned");
+        } catch (IllegalArgumentException expected) {
+            check("an object array refuses getInt", true, true);
+        }
+
+        Class<?> inside = ReflectedTypes.local().getClass();
+        check("a local class knows its method", "local",
+                inside.getEnclosingMethod() == null ? null : inside.getEnclosingMethod().getName());
+        check("a class gives its package", "dev.flagon.sandbox",
+                ReflectedTypes.class.getPackageName());
+        check("an array type", int[].class, int.class.arrayType());
+        check("a descriptor", "[Ljava/lang/String;", String[].class.descriptorString());
+
+        Platforms.get().console().info("reflection: Point has "
+                + components.length + " components and Box extends "
+                + ReflectedTypes.Box.class.getGenericSuperclass().getTypeName());
     }
 
     private interface Shape {

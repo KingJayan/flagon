@@ -14,12 +14,12 @@ public final class ReflectionWatch {
     }
 
     public static Method[] declaredMethods(Class<?> type) {
-        Method[] found = type.getDeclaredMethods();
+        Method[] found = Classes.withoutData(type.getDeclaredMethods());
         return warnIfStripped(type, found, found.length, "declared methods");
     }
 
     public static Method[] methods(Class<?> type) {
-        Method[] found = type.getMethods();
+        Method[] found = Classes.withoutData(type.getMethods());
         return warnIfStripped(type, found, found.length, "public methods");
     }
 
