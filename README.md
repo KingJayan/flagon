@@ -4,8 +4,7 @@
     <a href="#quickstart">Quickstart</a> &nbsp;•&nbsp;
     <a href="docs/COMPATIBILITY.md">Compatibility</a> &nbsp;•&nbsp;
     <a href="docs/DOWNSTREAM.md">Packaging</a> &nbsp;•&nbsp;
-    <a href="docs/ARCHITECTURE.md">Architecture</a> &nbsp;•&nbsp;
-    <a href="docs/ROADMAP.md">Roadmap</a>
+    <a href="docs/ARCHITECTURE.md">Architecture</a>
   </p>
 
 [![TeaVM](https://img.shields.io/badge/TeaVM-434c5e?style=flat-square&logo=webassembly&logoColor=eceff4)](https://teavm.org)
@@ -21,10 +20,18 @@ Flagon compiles desktop Java bytecode into browser-native WebAssembly GC and Jav
 
 Try the demos and the Java playground at [flagon-nu.vercel.app](https://flagon-nu.vercel.app). The playground compiles with javac and TeaVM in the browser; build it with `make playground`.
 
-Current target is Minecraft 1.8.9, right now loads singleplayer worlds in Chromium.
+Current target is Minecraft 1.8.9, currently loads singleplayer worlds in Chromium.
 
 >[!IMPORTANT]
->This repo does not distribute any trademarked content. All custom JARs(such as Minecraft) must be provided locally.
+>Flagon is not affiliated with or endorsed by Mojang Studios or Microsoft. It does not distribute Minecraft or any proprietary third-party content. Users must independently supply their own JAR files and assets, and are responsible for ensuring they have the necessary rights to use them. Flagon is not intended to facilitate software piracy or copyright infringement.
+
+**Future**:
+- Speed up startup (especially [Firefox](https://github.com/KingJayan/flagon/issues/546)) and optimize bundle size
+- Native modded minecraft(packaged into bundle, FabricMC)
+- Equal functionality across 1.8.9, 1.12.x, 1.20.x, and modern versions
+- Flagon CLI on Homebrew/MacPorts
+- WebGPU renderer
+- Native C->Executable backend
 
 ## Quickstart
 
