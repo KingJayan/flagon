@@ -44,6 +44,7 @@ public final class SandboxMain {
                 .register(new FileSystemDemoProgram())
                 .register(new AudioDemoProgram())
                 .register(new NetDemoProgram())
-                .register(new CompilerShapesProgram());
+                .register(new CompilerShapesProgram())
+                .register(new SerialProgram());
     }
 }

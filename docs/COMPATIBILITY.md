@@ -65,6 +65,15 @@ Ahead-of-time (AOT) tree-shaking strips unreferenced class members by default. `
 * **Every class:** typed `Field` and `Array` reads and writes (`getInt`, `setLong`, …) widen as on the JVM. `isRecord`, `getPackageName`, `arrayType`, `descriptorString` and `getAnnotationsByType` work without opting in.
 * **vendor/ constructors:** `make app` keeps constructors for every class in the jar and logs the count. Past 10,000 it warns; past 50,000 it stops. Narrow it with `-Pflagon.app.reflect=your.game.**`.
 
+### Java Serialization
+
+`ObjectOutputStream` and `ObjectInputStream` read and write the JVM's stream format (protocol version 2). A stream written in the browser is byte-for-byte the stream the JVM writes for the same objects.
+
+* **Classes:** Every `Serializable` class is kept for reflection and found by name. The build computes the default `serialVersionUID` from the class file.
+* **Supported:** `writeObject`/`readObject`, `readObjectNoData`, `writeReplace`/`readResolve`, `Externalizable`, records, enums, arrays, `serialPersistentFields`, `putFields`/`readFields`, and `registerValidation`.
+* **JDK classes:** boxed primitives, `String`, `ArrayList`, `LinkedList`, `ArrayDeque`, `HashMap`, `LinkedHashMap`, `HashSet`, `LinkedHashSet`, `TreeMap`, `TreeSet`, `Date`, `UUID`, `List.of`/`Set.of`/`Map.of`, the `Collections` empty, singleton and unmodifiable wrappers, `StackTraceElement`, and `Throwable` with its common subclasses. Other JDK classes throw `NotSerializableException`.
+* **Limits:** No proxy classes. `HashMap` writes a bucket count sized from its entries. A `LinkedHashMap` in access order reads back in insertion order.
+
 ### ClassLoader & Resource Lookup
 
 * `getResourceAsStream`: Reads the resource pack. The build packs every file a jar carries beside its classes into `<bundle>.pack`, gzipped whole. The page fetches the pack alongside the bundle and unzips it as it downloads, and a resource is copied out of it only when it is read. A bundle that sets `apartFrom` keeps each file of that size or larger in `<bundle>.files/`, named by its SHA-256. The program starts without them, and the page fetches them in the background. A read never waits, since it may hold a lock: before its file arrives, it throws `IOException`. The page keeps the pack and those files in Cache Storage, and revalidates the pack on each load.

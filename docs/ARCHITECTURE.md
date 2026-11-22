@@ -51,10 +51,11 @@ The codebase is organized into strict layers. Higher layers depend solely on imm
 | `lwjgl3-compat` | Emulates LWJGL 3 core-profile APIs (`org.lwjgl.glfw.GLFW`, `GL11C`–`GL33C`, `MemoryUtil`, `MemoryStack`). |
 | `teavm` | Rebuilds `teavm-core` 0.15.0 with compiler fixes, some from later TeaVM commits and some that TeaVM does not have yet. It builds in `teavm-patches`, ahead of the main build, and the TeaVM plugin loads it in place of the stock jar. |
 | `teavm-jso` | Rebuilds `teavm-jso-impl` 0.15.0 so a simple `@JSBody` compiles to backend operations, not to text. |
-| `toolchain/reflect-policy` | Compiler plugin discovering classes that retain members and constructors during tree-shaking. |
+| `toolchain/reflect-policy` | Compiler plugin discovering classes that retain members and constructors during tree-shaking, including every serializable class. |
 | `toolchain/socket-classlib` | `--patch-module` library supplying missing `java.net.Socket` and `InetAddress` types for TeaVM. |
+| `toolchain/jdk-classlib` | Supplies JDK classes TeaVM lacks: java serialization (`ObjectOutputStream`, `ObjectInputStream`), `RecordComponent`, `Parameter`, and small stubs. |
 | `toolchain/concurrent-classlib` | Supplies missing `java.util.concurrent` classes (executors, latches, locks) mapped to green threads. |
-| `toolchain/jdk-shims` | Bytecode-rewriting shims rerouting unsupported JDK calls (`ManagementFactory`, `Runtime.maxMemory`) to runtime equivalents. |
+| `toolchain/jdk-shims` | Bytecode-rewriting shims rerouting unsupported JDK calls (`ManagementFactory`, `Runtime.maxMemory`) to runtime equivalents. Also writes the class-file facts TeaVM drops (generic signatures, record components, default `serialVersionUID`) into each reflectable class. |
 | `toolchain/app-entry` | Pre-compilation analyzer generating explicit programmatic entry points from scanned `vendor/*.jar` files. |
 | `toolchain/classfile` | Constant-pool reader deciding whether a classpath carries every class and method a class names. |
 

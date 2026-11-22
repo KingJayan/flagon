@@ -53,12 +53,6 @@ public final class CryptoProgram implements Program {
         } catch (java.net.SocketException refused) {
             console.info("crypto: a datagram socket is refused by name");
         }
-        try {
-            new java.io.ObjectOutputStream(new java.io.ByteArrayOutputStream());
-            console.info("crypto: an object stream opened, which cannot happen");
-        } catch (java.io.IOException refused) {
-            console.info("crypto: java serialisation is refused by name");
-        }
     }
 
     private void digests(ConsoleSink console) throws Exception {

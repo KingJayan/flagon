@@ -15,6 +15,7 @@ public final class Classes {
 
     private static final Object[] NO_SIGNERS = new Object[0];
     private static final int SYNTHETIC = 0x1000;
+    private static final String UNCONSTRUCTED = "dev.flagon.serial.Unconstructed";
 
     private Classes() {
     }
@@ -22,6 +23,26 @@ public final class Classes {
     /** without the method the build adds to carry a class's own reflection data */
     public static Method[] getDeclaredMethods(Class<?> type) {
         return withoutData(type.getDeclaredMethods());
+    }
+
+    /** without the constructor the build adds for java serialization */
+    public static Constructor<?>[] getDeclaredConstructors(Class<?> type) {
+        return withoutSerial(type.getDeclaredConstructors());
+    }
+
+    public static Constructor<?>[] getConstructors(Class<?> type) {
+        return withoutSerial(type.getConstructors());
+    }
+
+    static Constructor<?>[] withoutSerial(Constructor<?>[] all) {
+        int kept = 0;
+        for (Constructor<?> constructor : all) {
+            Class<?>[] parameters = constructor.getParameterTypes();
+            if (parameters.length != 1 || !parameters[0].getName().equals(UNCONSTRUCTED)) {
+                all[kept++] = constructor;
+            }
+        }
+        return kept == all.length ? all : java.util.Arrays.copyOf(all, kept);
     }
 
     public static Method[] getMethods(Class<?> type) {

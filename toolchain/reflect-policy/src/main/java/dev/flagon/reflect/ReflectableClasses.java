@@ -1,6 +1,8 @@
 package dev.flagon.reflect;
 
 import org.teavm.extension.introspect.IntrospectClass;
+import org.teavm.extension.introspect.IntrospectField;
+import org.teavm.extension.introspect.IntrospectMember;
 import org.teavm.extension.introspect.IntrospectMethod;
 import org.teavm.extension.spi.GlobMatch;
 import org.teavm.extension.spi.reflection.SimpleReflectionPolicy;
@@ -32,6 +34,11 @@ public final class ReflectableClasses extends SimpleReflectionPolicy {
     /** classes found by name and built through a static factory, like log4j plugins */
     public static final String PRESERVED = "META-INF/flagon/preserved.txt";
 
+    private static final Set<String> SERIAL_STATICS = Set.of("serialVersionUID",
+            "serialPersistentFields");
+    private static final Set<String> SERIAL_METHODS = Set.of("writeObject", "readObject",
+            "readObjectNoData", "writeReplace", "readResolve", "$flagon$reflection");
+
     @Override
     protected void setup() {
         keep(selectClasses(present(type -> type.hasAnnotation(Reflectable.class))));
@@ -58,6 +65,17 @@ public final class ReflectableClasses extends SimpleReflectionPolicy {
                     .reflectableMethods(method -> Modifier.isStatic(method.modifiers()));
         }
 
+        IntrospectClass<?> serializable = environment().findClass("java.io.Serializable");
+        if (serializable != null) {
+            selectClasses(present(type -> !type.isInterface() && !jdk(type.name())
+                    && serializable.isAssignableFrom(type)))
+                    .foundByName()
+                    .reflectableMembers(ReflectableClasses::serializes);
+        }
+        selectClasses(present(type -> type.name().equals("java.lang.Throwable")))
+                .reflectableMembers(member -> member.name().equals("message")
+                        || member.name().equals("cause"));
+
         Set<String> constructed = listed(CONSTRUCTED);
         if (!constructed.isEmpty()) {
             selectClasses(present(type -> constructed.contains(type.name())))
@@ -69,6 +87,20 @@ public final class ReflectableClasses extends SimpleReflectionPolicy {
     /** teavm passes null for a class it cannot find, and a missing class keeps nothing */
     private static Predicate<IntrospectClass<?>> present(Predicate<IntrospectClass<?>> test) {
         return type -> type != null && test.test(type);
+    }
+
+    /** what java serialization reads and writes of a serializable class */
+    private static boolean serializes(IntrospectMember member) {
+        if (member instanceof IntrospectField field) {
+            return !Modifier.isStatic(field.modifiers()) || SERIAL_STATICS.contains(field.name());
+        }
+        IntrospectMethod method = (IntrospectMethod) member;
+        return method.isConstructor() || SERIAL_METHODS.contains(method.name());
+    }
+
+    private static boolean jdk(String name) {
+        return name.startsWith("java.") || name.startsWith("javax.") || name.startsWith("jdk.")
+                || name.startsWith("sun.") || name.startsWith("org.teavm.");
     }
 
     /** valueOf(String) or a (String) constructor, which an option parser calls to read a value */
