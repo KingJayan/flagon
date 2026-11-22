@@ -204,7 +204,7 @@ function compile(): void {
       { path: `${LAUNCHER}.java`, content: LAUNCHER_SOURCE },
     ],
     options: { outputName: 'app', mainClass: LAUNCHER },
-  });
+  }, []);
 }
 
 function hear(message: FromCompiler): void {
@@ -215,7 +215,7 @@ function hear(message: FromCompiler): void {
         command: 'load-classlib',
         url: `${COMPILER}compile-classlib-teavm.bin`,
         runtimeUrl: `${COMPILER}runtime-classlib-teavm.bin`,
-      });
+      }, []);
       return;
     case 'ok':
       setState('ready');
