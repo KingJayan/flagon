@@ -16,6 +16,8 @@ public abstract class Image {
 
     public abstract int getHeight(java.awt.image.ImageObserver observer);
 
+    public abstract Graphics getGraphics();
+
     public void flush() {
     }
 }

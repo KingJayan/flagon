@@ -6,3 +6,7 @@ plugins {
 tasks.withType<JavaCompile>().configureEach {
     options.compilerArgs.addAll(listOf("--limit-modules", "java.base"))
 }
+
+dependencies {
+    api(project(":platform-api"))
+}

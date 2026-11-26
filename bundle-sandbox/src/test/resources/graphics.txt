@@ -1,0 +1,72 @@
+transform: translate scale rotate AffineTransform[[0.0, -2.0, 3.0], [2.0, -0.0, 4.0]]
+transform: about a point AffineTransform[[0.764842187284488, -0.644217687237691, 3.282344187097298], [0.644217687237691, 0.764842187284488, -0.992021810851027]]
+transform: shear translate rotate AffineTransform[[1.117295331192474, -0.040634257659017, 3.5], [0.698821179076796, 0.757726177239322, 3.5]]
+transform: inverse AffineTransform[[0.333333333333333, 0.0, 0.0], [0.0, 0.142857142857143, 0.0]]
+transform: inverse of a turn AffineTransform[[0.955336489125606, 0.29552020666134, -0.546376902448285], [-0.29552020666134, 0.955336489125606, 0.384847228410127]]
+transform: flat Determinant is 0.0
+transform: hash 1267466240 determinant -2.0
+transform: point Point2D.Double[12.0, 16.0] Point2D.Float[12.0, 16.0] delta Point2D.Double[7.0, 10.0]
+transform: back Point2D.Double[1.0, 2.0]
+transform: quarter AffineTransform[[0.0, -1.0, 0.0], [1.0, -0.0, 0.0]] half AffineTransform[[-1.0, 0.0, 0.0], [0.0, -1.0, 0.0]]
+transform: no turn AffineTransform[[1.0, -0.0, 0.0], [0.0, 1.0, 0.0]] right angle AffineTransform[[0.0, -1.0, 0.0], [1.0, 0.0, 0.0]]
+transform: by vector AffineTransform[[0.707106781186548, -0.707106781186548, 0.0], [0.707106781186548, 0.707106781186548, 0.0]] AffineTransform[[-1.0, -0.0, 0.0], [0.0, -1.0, 0.0]]
+transform: concatenate AffineTransform[[0.0, 2.0, 8.0], [6.5, 13.5, 25.5]] pre AffineTransform[[3.5, 8.0, 24.0], [6.0, 10.0, 34.0]]
+transform: in place [0.0, 0.0, 5.0, 6.0, 6.0, 8.0]
+transform: turned java.awt.geom.Rectangle2D$Double[x=-6.0,y=1.0,w=4.0,h=3.0] java.awt.Rectangle[x=-6,y=1,width=4,height=3]
+transform: identity true false equal true
+type: 0 1 2 4 8 10 12 64 66 8 74 74 12 76 77 2 4 32 32 82 20 16 19
+rectangle: java.awt.Rectangle[x=1,y=2,width=10,height=20] java.awt.Rectangle[x=5,y=2,width=6,height=5] java.awt.Rectangle[x=1,y=-3,width=14,height=25]
+rectangle: contains truefalsetruetruefalsefalse intersects truefalse
+rectangle: grown java.awt.Rectangle[x=-6,y=1,width=19,height=30] empty true
+rectangle: fraction java.awt.Rectangle[x=0,y=1,width=3,height=4] java.awt.geom.Rectangle2D$Double[x=0.5,y=1.25,w=10.5,h=20.75] java.awt.geom.Rectangle2D$Double[x=1.0,y=2.0,w=2.0,h=2.75]
+rectangle: outcode 3 0 12 2
+rectangle: line true false false
+rectangle: set java.awt.Rectangle[x=0,y=0,width=3,height=4] equal true hash 70778880 70778880
+line: ccw 1-11-10
+line: distance 2.23606797749979 4.47213595499958 5.0
+line: crosses true false true bounds java.awt.geom.Rectangle2D$Float[x=2.0,y=1.0,w=3.0,h=6.0]
+ellipse: 1: 0(9.0,4.0) 3(9.0,5.104569,7.209139,6.0,5.0,6.0) 3(2.790861,6.0,1.0,5.104569,1.0,4.0) 3(1.0,2.895431,2.790861,2.0,5.0,2.0) 3(7.209139,2.0,9.0,2.895431,9.0,4.0) 4
+ellipse: contains truefalsetrue intersects falsetrue bounds java.awt.Rectangle[x=1,y=2,width=8,height=4]
+round: 1: 0(0.0,1.0) 1(0.0,5.0) 3(0.0,5.552285,0.895431,6.0,2.0,6.0) 1(8.0,6.0) 3(9.104569,6.0,10.0,5.552285,10.0,5.0) 1(10.0,1.0) 3(10.0,0.447715,9.104569,0.0,8.0,0.0) 1(2.0,0.0) 3(0.895431,0.0,0.0,0.447715,0.0,1.0) 4
+round: contains falsetruetrue intersects falsetrue
+path: nonzero truetruefalse
+path: evenodd falsetrue bounds java.awt.geom.Rectangle2D$Double[x=0.0,y=0.0,w=10.0,h=10.0] rect truefalsetrue
+path: curve 1: 0(0.0,0.0) 2(5.0,10.0,10.0,0.0) 3(10.0,-4.0,0.0,-4.0,0.0,0.0) current Point2D.Float[0.0, 0.0]
+path: curve bounds 0 -3000 10000 5000
+path: append 1: 0(0.0,0.0) 1(2.0,0.0) 1(2.0,2.0) 1(0.0,2.0) 1(0.0,0.0) 4 1(2.0,2.0) 1(5.0,5.0) 1(7.0,7.0) 1(9.0,9.0)
+path: nowhere missing initial moveto in path definition
+path: scaled java.awt.geom.Rectangle2D$Double[x=2.0,y=3.0,w=4.0,h=6.0] 1: 0(2.0,1.0) 1(4.0,1.0) 1(4.0,3.0) 1(2.0,3.0) 1(2.0,1.0) 4
+polygon: bounds java.awt.Rectangle[x=0,y=0,width=8,height=8] contains falsetruefalsefalse
+polygon: 0: 0(1.0,4.0) 1(2.0,5.0) 1(3.0,7.0) 4
+color: java.awt.Color[r=200,g=100,b=50] 80c86432 brighter java.awt.Color[r=255,g=142,b=71] darker java.awt.Color[r=140,g=70,b=35] black brighter java.awt.Color[r=3,g=3,b=3] java.awt.Color[r=4,g=4,b=4]
+color: hsb 55556 750000 784314 back ffc86432 ff302040 ff00ffff java.awt.Color[r=77,g=70,b=61]
+color: decode java.awt.Color[r=18,g=52,b=86] java.awt.Color[r=0,g=0,b=16] float java.awt.Color[r=128,g=64,b=255] 128 255
+color: transparency 132 equal true java.awt.Color[r=255,g=200,b=0]java.awt.Color[r=255,g=175,b=175]
+color: Color parameter outside of expected range: Alpha Red Green
+stroke: hash -778043330 559401151 equal truetrue
+stroke: negative width, miter limit < 1, dash lengths all zero, illegal end cap value
+stroke: composite 3 0.5 6 true -1593835517 true
+font: java.awt.Font[family=Dialog,name=Dialog,style=bold,size=12] 21 20.6 2 0 truefalsefalse
+font: equal true true false
+state: java.awt.Color[r=255,g=255,b=255] java.awt.Color[r=0,g=0,b=0] java.awt.Font[family=Dialog,name=Dialog,style=plain,size=12] 3 AffineTransform[[1.0, 0.0, 0.0], [0.0, 1.0, 0.0]] null true true
+state: clip java.awt.Rectangle[x=2,y=2,width=3,height=3] java.awt.Rectangle[x=2,y=2,width=3,height=3] falsetrue
+state: copy AffineTransform[[2.0, 0.0, 3.0], [0.0, 2.0, 4.0]] java.awt.Rectangle[x=1,y=1,width=2,height=2] AffineTransform[[1.0, 0.0, 3.0], [0.0, 1.0, 4.0]] java.awt.Color[r=255,g=255,b=255]
+state: unclipped null true
+state: a hint refuses a value for another key
+pixels: filled 0 0 0 0 0 0 0 0 | 0 ff0000ff ff0000ff ff0000ff 0 0 0 0 | 0 ff0000ff ff0000ff ff0000ff 0 0 0 0 | 0 0 0 0 0 0 0 ffff0000 | 0 0 0 0 0 0 0 ffff0000 | ffff0000 ffff0000 ffff0000 ffff0000 ffff0000 ffff0000 ffff0000 ffff0000 | 0 0 0 0 0 0 0 ffff0000 | 0 0 0 0 0 0 0 ffff0000
+pixels: outlined ff00ff00 ff00ff00 ff00ff00 ff00ff00 ff00ff00 80204060 80204060 0 | ff00ff00 ff0000ff ff0000ff ff0000ff ff00ff00 80204060 80204060 0 | ff00ff00 ff0000ff ff0000ff ff0000ff ff00ff00 0 0 0 | ff00ff00 ff00ff00 ff00ff00 ff00ff00 ff00ff00 0 0 ffff0000 | 0 0 0 0 0 0 0 ffff0000 | ffff0000 ffff0000 ffff0000 ffff0000 ffff0000 ffff0000 ffff0000 ffff0000 | 0 0 0 0 0 0 0 ffff0000 | 0 0 0 0 0 0 0 ffff0000
+pixels: copied ff00ff00 ff00ff00 ff00ff00 ff00ff00 ff00ff00 80204060 80204060 0 | ff00ff00 ff0000ff ff0000ff ff0000ff ff00ff00 80204060 80204060 0 | ff00ff00 ff0000ff ff0000ff ff0000ff ff00ff00 0 0 0 | ff00ff00 ff00ff00 ff00ff00 ff00ff00 ff00ff00 0 0 ffff0000 | 0 0 0 0 ff00ff00 ff00ff00 ff00ff00 ffff0000 | ffff0000 ffff0000 ffff0000 ffff0000 ff00ff00 ff0000ff ff0000ff ffff0000 | 0 0 0 0 ff00ff00 ff0000ff ff0000ff ffff0000 | 0 0 0 0 0 0 0 ffff0000
+pixels: over ff80007f a0cc0033 80ff0000
+pixels: flipped ff0000c0 ff000080 ff000040 ff000000 doubled ff000000 ff000000 ff000040 ff000040 ff000080 ff000080 ff0000c0 ff0000c0 | ff000000 ff000000 ff000040 ff000040 ff000080 ff000080 ff0000c0 ff0000c0
+pixels: rules 280a141e 0 ffffffff
+pixels: rgb ff9a2b3c ff800000 raw 9a2b3c 13
+pixels: data is a copy true
+canvas: shapes 0 0 0 0 0 0 0 0 | 0 ffff0000 ffff0000 ffff0000 0 0 0 0 | 0 ffff0000 ffff0000 ffff0000 0 0 0 0 | 0 0 0 0 0 0 0 0 | ff0000ff ff0000ff 0 0 0 ff00ff00 ff00ff00 ff00ff00 | ff0000ff ff0000ff 0 0 0 ff00ff00 0 ff00ff00 | 0 0 0 0 0 ff00ff00 0 ff00ff00 | 0 0 0 0 0 ff00ff00 ff00ff00 ff00ff00
+canvas: turned 0 0 0 0 0 0 | 0 0 0 0 ffffffff 0 | 0 0 0 0 ffffffff 0 | 0 0 0 0 0 0 | 0 0 ffffff00 ffffff00 0 0 | 0 0 ffffff00 ffffff00 0 0
+canvas: placed 0 ff00ffff 0 ff00ffff ff00ffff ff00ffff | 0 0 0 ff00ffff ff00ffff ff00ffff
+imageio: bmp 4x2 ffff0000 ff00ff00 ff0000ff ffffffff | ff000000 ff808080 ff123456 fffedcba
+imageio: gif 4x2 ffff0000 ff00ff00 ff0000ff ffffffff | ff000000 ff808080 ff123456 0
+imageio: png 4x2 ffff0000 ff00ff00 ff0000ff ffffffff | ff000000 ff808080 ff123456 fffedcba
+imageio: jpeg 8x8 type 5 close to 3366cc true
+imageio: unknown null empty null
+imageio: a cut png fails
