@@ -43,6 +43,7 @@ listOf(
     "toolchain:http-classlib",
     "toolchain:jdk-classlib",
     "toolchain:jdk-shims",
+    "toolchain:js-types",
     "toolchain:nio-classlib",
     "toolchain:reflect-policy",
     "toolchain:resource-pack",

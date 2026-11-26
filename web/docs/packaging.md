@@ -268,6 +268,16 @@ A host page loads a bundle and sets `window.__flagonHost` to receive its events.
 
 The `@Export` methods of a WebAssembly bundle are on `globalThis.__flagonExports` once it starts. They take and return numbers, with no JavaScript between, so `__flagonExports.add(40, 2)` calls Java directly.
 
+A JavaScript bundle is an ES module. It exports `main`, the static `@JSExport` methods of the main class, and each class with `@JSExport` members. `js/<name>.d.ts` declares these for TypeScript, with the JSO interfaces they name:
+
+```ts
+import { greet } from './flagon/js/sandbox.js';
+
+greet('flagon'); // "Hello, flagon!"
+```
+
+A method cannot have both `@Export` and `@JSExport`. The WebAssembly bundle would export its name twice and fail to load.
+
 ## Stable API
 
 These are stable for downstream use. Everything else may change.
