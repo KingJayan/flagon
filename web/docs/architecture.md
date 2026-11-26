@@ -65,6 +65,7 @@ Each adds JDK classes that TeaVM lacks.
 | `toolchain/app-entry` | Reads the JARs in `vendor/` and writes the `app` bundle's entry point. |
 | `toolchain/classfile` | A constant-pool reader. It tells whether a classpath has every class and method a class names. |
 | `toolchain/resource-pack` | Writes `<bundle>.pack` and `<bundle>.files/`, and re-encodes Vorbis. |
+| `toolchain/js-types` | Writes `js/<bundle>.d.ts` from the class files of a bundle's `@JSExport` methods and the JSO types they name. |
 | `teavm/core` | `teavm-core` 0.15.0 rebuilt with compiler and class library fixes. |
 | `teavm/jso` | `teavm-jso-impl` 0.15.0 rebuilt so a simple `@JSBody` compiles to backend operations, not text. |
 | `teavm/patches` | Builds `teavm/core` and `teavm/jso` before the main build. The TeaVM plugin loads them in place of the stock JARs. |

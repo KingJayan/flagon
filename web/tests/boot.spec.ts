@@ -35,6 +35,26 @@ for (const backend of BACKENDS) {
       expect(await page.evaluate(() => globalThis.__flagonExports?.add?.(40, 2))).toBe(42);
     });
 
+    test('exports the functions its typescript declarations name', async ({ page }) => {
+      test.skip(backend !== 'js', 'only the javascript module ships declarations');
+      await open(page, backend, 'program=hello');
+
+      await expect(page.getByTestId('state')).toHaveText('exited', { timeout: 30_000 });
+      const { types, exported, greeting } = await page.evaluate(async () => {
+        const url = '/flagon/js/sandbox.js';
+        const module = (await import(/* @vite-ignore */ url)) as Record<string, unknown>;
+        return {
+          types: await (await fetch('/flagon/js/sandbox.d.ts')).text(),
+          exported: Object.keys(module).filter((name) => typeof module[name] === 'function'),
+          greeting: (module.greet as (name: string) => string)('flagon'),
+        };
+      });
+      const declared = [...types.matchAll(/^export function (\w+)/gm)].map((match) => match[1]);
+      expect(new Set(declared)).toEqual(new Set(exported));
+      expect(types).toContain('export function greet(name: string): string;');
+      expect(greeting).toBe('Hello, flagon!');
+    });
+
     test('passes arguments through to the program', async ({ page }) => {
       await open(page, backend, 'program=hello&arg=flagon');
 

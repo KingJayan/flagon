@@ -4,6 +4,7 @@ import dev.flagon.platform.browser.BrowserPlatform;
 import dev.flagon.runtime.FlagonRuntime;
 import dev.flagon.runtime.ProgramRegistry;
 import org.teavm.interop.Export;
+import org.teavm.jso.JSExport;
 
 /**
  entry point of sandbox bundle
@@ -13,10 +14,16 @@ public final class SandboxMain {
     private SandboxMain() {
     }
 
-    /** the page calls this as __flagonExports.add, with no javascript between */
+    /** a wasm page calls this as __flagonExports.add, with no javascript between */
     @Export(name = "add")
     public static int add(int a, int b) {
         return a + b;
+    }
+
+    /** the javascript module exports this, and its typescript declarations name it */
+    @JSExport
+    public static String greet(String name) {
+        return "Hello, " + name + "!";
     }
 
     public static void main(String[] arguments) {
