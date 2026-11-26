@@ -16,8 +16,6 @@ vendor/*
 .vscode/
 .claude/
 .agents/
-AGENTS.md
-CLAUDE.md
 
 .gradle/
 build/
