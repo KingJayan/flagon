@@ -22,6 +22,8 @@ declare global {
         take(hash: string): ArrayBuffer | null;
       }
     | undefined;
+  /** a wasm bundle's @Export methods, which take and give numbers */
+  var __flagonExports: Record<string, (...numbers: number[]) => number> | undefined;
 
   interface Window {
     __flagonCloseRequested?: boolean;
@@ -110,6 +112,7 @@ interface JsBundle {
 
 interface WasmBundle {
   exports: { main(args: string[]): void };
+  instance: WebAssembly.Instance;
 }
 
 interface WasmLoader {
@@ -312,5 +315,16 @@ async function runWasmBundle(
   if (typeof bundle.exports?.main !== 'function') {
     throw new Error(`bundle at ${absolute} does not export main()`);
   }
+  globalThis.__flagonExports = ownExports(bundle.instance);
   bundle.exports.main(args);
+}
+
+/** what the program exports, without teavm's own exports or the main its loader wraps */
+function ownExports(instance: WebAssembly.Instance): Record<string, (...numbers: number[]) => number> {
+  return Object.fromEntries(
+    Object.entries(instance.exports).filter(
+      (entry): entry is [string, (...numbers: number[]) => number] =>
+        typeof entry[1] === 'function' && !entry[0].startsWith('teavm'),
+    ),
+  );
 }

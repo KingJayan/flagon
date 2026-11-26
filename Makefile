@@ -14,7 +14,7 @@ VENDOR_JARS := $(wildcard vendor/*.jar)
 
 
 .PHONY: help setup deps browsers fast bundles app verify-bundles \
-        playground minecraft bundles-release size test browser flake typecheck lint build-site \
+        playground minecraft bundles-release size test wasi browser flake typecheck lint build-site \
         deploy-private dev serve check report merge-reports watch version release publish clean
 
 help: ## show available commands
@@ -106,6 +106,9 @@ size: ## check release bundles against their size budgets
 
 test: ## run JVM unit tests
 	$(GRADLE) test
+
+wasi: ## build the wasi sample component and run its programs under wasmtime
+	$(GRADLE) :bundle-wasi:wasiTest
 
 browser: ## run Playwright browser tests
 	@test -d $(BUNDLES) || { \

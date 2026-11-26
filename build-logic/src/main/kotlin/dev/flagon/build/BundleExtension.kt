@@ -8,6 +8,9 @@ interface BundleExtension {
 
     val mainClass: Property<String>
 
+    /** the main class of the wasi component the wasi task builds; mainClass when unset */
+    val wasiMainClass: Property<String>
+
     val catalogClass: Property<String>
 
     val resourcesFrom: DirectoryProperty

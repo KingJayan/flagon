@@ -201,6 +201,24 @@ For parallel work, `Platforms.get().workers().spawn(program)` starts the bundle 
 
 The `java.util.concurrent` self-test prints the same lines in the browser as on the JVM.
 
+## WASI
+
+A [WASI component](packaging.md#wasi) runs headless in a WASI preview 2 host. wasmtime 51 and later runs it with `-W gc=y,function-references=y,exceptions=y`.
+
+| Area | Behavior |
+| --- | --- |
+| Arguments | The first picks the program. The rest go to it. |
+| `System.out`, `System.err` | stdout and stderr, as UTF-8. |
+| Clocks, `Thread.sleep` | WASI clocks. A sleep on every thread blocks the component. |
+| Threads | Green threads on one core, as in a page. |
+| Files | `java.io` under the first preopened directory, which is `/`. With none, files are in memory until exit. |
+| Exit status | `System.exit` runs the shutdown hooks. Preview 2 reports success or failure, so a status other than 0 exits with 1. |
+| `@Export` methods | Functions of the component. Primitives only. |
+| Exceptions | The class and message print. There is no stack trace. |
+| Sockets | A connection throws `NetworkException`. |
+| Display, `java.net.http`, `java.awt` drawing, bundle workers | Refused with `UnsupportedCapabilityException`. `ImageIO` throws `IOException`. |
+| Audio | Plays silently. |
+
 ## LWJGL
 
 | Module | Supplies |

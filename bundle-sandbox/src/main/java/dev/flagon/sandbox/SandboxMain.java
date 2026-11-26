@@ -3,6 +3,7 @@ package dev.flagon.sandbox;
 import dev.flagon.platform.browser.BrowserPlatform;
 import dev.flagon.runtime.FlagonRuntime;
 import dev.flagon.runtime.ProgramRegistry;
+import org.teavm.interop.Export;
 
 /**
  entry point of sandbox bundle
@@ -10,6 +11,12 @@ import dev.flagon.runtime.ProgramRegistry;
 public final class SandboxMain {
 
     private SandboxMain() {
+    }
+
+    /** the page calls this as __flagonExports.add, with no javascript between */
+    @Export(name = "add")
+    public static int add(int a, int b) {
+        return a + b;
     }
 
     public static void main(String[] arguments) {

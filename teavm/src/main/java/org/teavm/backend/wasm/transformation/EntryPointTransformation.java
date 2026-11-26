@@ -28,6 +28,7 @@ import org.teavm.model.MethodDescriptor;
 import org.teavm.model.MethodHolder;
 import org.teavm.model.MethodReader;
 import org.teavm.model.MethodReference;
+import org.teavm.model.ValueType;
 import org.teavm.model.emit.ProgramEmitter;
 import org.teavm.model.emit.ValueEmitter;
 import org.teavm.runtime.Fiber;
@@ -38,6 +39,7 @@ public class EntryPointTransformation implements ClassHolderTransformer {
     private String entryPoint;
     private String entryPointName;
     private boolean jspi;
+    private boolean wasi;
 
     public void setEntryPoint(String entryPoint) {
         this.entryPoint = entryPoint;
@@ -49,6 +51,10 @@ public class EntryPointTransformation implements ClassHolderTransformer {
 
     public void setJspi(boolean jspi) {
         this.jspi = jspi;
+    }
+
+    public void setWasi(boolean wasi) {
+        this.wasi = wasi;
     }
 
     @Override
@@ -92,6 +98,10 @@ public class EntryPointTransformation implements ClassHolderTransformer {
 
     private void generateMainMethodCaller(MethodReader mainMethod, ClassHolder cls,
             ClassHolderTransformerContext context) {
+        if (wasi) {
+            generateWasiStart(cls, context);
+            return;
+        }
         var mainMethodCaller = new MethodHolder(mainMethod.getName() + "_$caller", mainMethod.getSignature());
         mainMethodCaller.setLevel(AccessLevel.PUBLIC);
         mainMethodCaller.getModifiers().add(ElementModifier.STATIC);
@@ -108,6 +118,20 @@ public class EntryPointTransformation implements ClassHolderTransformer {
                 ? pe.var(1, String[].class)
                 : pe.constantNull(String[].class);
         pe.invoke(Fiber.class, "startMain", arg);
+        pe.exit();
+    }
+
+    // flagon: a wasi command runs _start, which reads the arguments and runs main to its end
+    private void generateWasiStart(ClassHolder cls, ClassHolderTransformerContext context) {
+        var start = new MethodHolder("_start$caller", ValueType.VOID);
+        start.setLevel(AccessLevel.PUBLIC);
+        start.getModifiers().add(ElementModifier.STATIC);
+        cls.addMethod(start);
+        var export = new AnnotationHolder("org.teavm.interop.Export");
+        export.getValues().put("name", new AnnotationValue("_start"));
+        start.getAnnotations().add(export);
+        var pe = ProgramEmitter.create(start, context.getHierarchy());
+        pe.invoke(new MethodReference("org.teavm.runtime.wasi.Wasi", "run", ValueType.VOID));
         pe.exit();
     }
 

@@ -30,6 +30,7 @@ class ApiReferenceTest {
             "runtime/src/main/java",
             "platform-api/src/main/java",
             "platform-browser/src/main/java",
+            "platform-wasi/src/main/java",
             "toolchain/reflect-policy/src/main/java/dev/flagon/reflect/Reflectable.java");
     /** members mirror a web api, which the reference links to instead */
     private static final Set<String> MIRRORS = Set.of("WebGL2");

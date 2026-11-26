@@ -1,7 +1,11 @@
 import dev.flagon.build.BundleExtension
+import dev.flagon.build.DownloadFile
+import dev.flagon.build.WASI_ADAPTER_SHA256
+import dev.flagon.build.WASI_ADAPTER_URL
 import dev.flagon.build.RunMain
 import dev.flagon.build.UntrackedArguments
 import dev.flagon.build.WASM_FEATURES
+import dev.flagon.build.wasmTools
 import org.gradle.accessors.dm.LibrariesForLibs
 import org.teavm.gradle.api.JSModuleType
 import org.teavm.gradle.api.OptimizationLevel
@@ -243,4 +247,67 @@ tasks.register("bundleFast") {
     group = "flagon"
     description = "compile this module to webassembly gc only"
     dependsOn(built)
+}
+
+// a wasi preview 2 component: webassembly gc that imports wasi in place of javascript
+val wasiDir = layout.buildDirectory.dir("wasi")
+val generateWasi = tasks.register<GenerateWasmGCTask>("generateWasi") {
+    description = "compile this module to a webassembly gc core module that imports wasi preview 1"
+    classpath.from(generateWasmGC.map { it.classpath })
+    mainClass.set(bundle.wasiMainClass.orElse(bundle.mainClass))
+    outputDir.set(layout.buildDirectory.dir("teavm/wasi").map { it.asFile })
+    targetFileName.set(bundle.bundleName.map { "$it.core.wasm" })
+    optimization.set(generateWasmGC.flatMap { it.optimization })
+    // wasm-tools refuses the name section teavm writes, and wasi prints no stack anyway
+    obfuscated.set(true)
+    strict.set(generateWasmGC.flatMap { it.strict })
+    sourceMap.set(false)
+    debugInformation.set(false)
+    properties.putAll(generateWasmGC.flatMap { it.properties })
+    properties.put("flagon.wasi", "true")
+}
+
+val wasiAdapter = tasks.register<DownloadFile>("wasiAdapter") {
+    description = "fetch the wasmtime adapter from wasi preview 1 to preview 2"
+    url.set(WASI_ADAPTER_URL)
+    sha256.set(WASI_ADAPTER_SHA256)
+    output.set(layout.buildDirectory.file("wasi-adapter/wasi_snapshot_preview1.command.wasm"))
+}
+
+val wasmToolsPath = providers.gradleProperty("flagon.wasmTools")
+val core = generateWasi.flatMap { task ->
+    task.outputDir.zip(task.targetFileName) { dir, name -> File(dir, name) }
+}
+val embedded = layout.buildDirectory.file("teavm/wasi/embedded.wasm")
+val embedWasi = tasks.register<Exec>("embedWasi") {
+    description = "embed the wit world of the module's @Export methods"
+    dependsOn(generateWasi)
+    inputs.files(generateWasi).withPropertyName("core").withPathSensitivity(PathSensitivity.NONE)
+    outputs.file(embedded)
+    argumentProviders.add(objects.newInstance<UntrackedArguments>().apply {
+        arguments.set(core.zip(embedded) { wasm, out ->
+            listOf("component", "embed", wasm.path.removeSuffix(".wasm") + ".wit", wasm.path,
+                "--world", "bundle", "-o", out.asFile.path)
+        })
+    })
+    val tools = wasmToolsPath
+    doFirst { executable = wasmTools(tools.orNull) }
+}
+
+tasks.register<Exec>("wasi") {
+    group = "flagon"
+    description = "build this module as a wasi preview 2 component, with no javascript in it"
+    dependsOn(embedWasi, wasiAdapter)
+    val component = wasiDir.zip(bundle.bundleName) { dir, name -> dir.file("$name.wasm") }
+    inputs.files(embedWasi).withPropertyName("embedded").withPathSensitivity(PathSensitivity.NONE)
+    inputs.files(wasiAdapter).withPropertyName("adapter").withPathSensitivity(PathSensitivity.NONE)
+    outputs.file(component)
+    argumentProviders.add(objects.newInstance<UntrackedArguments>().apply {
+        arguments.set(component.zip(wasiAdapter.flatMap { it.output }) { out, adapter ->
+            listOf("--adapt", "wasi_snapshot_preview1=" + adapter.asFile.path, "-o",
+                out.asFile.path)
+        }.zip(embedded) { rest, from -> listOf("component", "new", from.asFile.path) + rest })
+    })
+    val tools = wasmToolsPath
+    doFirst { executable = wasmTools(tools.orNull) }
 }

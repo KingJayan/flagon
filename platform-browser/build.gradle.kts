@@ -13,7 +13,7 @@ dependencies {
 tasks.test {
     val root = rootProject.layout.projectDirectory
     inputs.file(root.file("web/docs/api.md")).withPathSensitivity(PathSensitivity.RELATIVE)
-    listOf("runtime", "platform-api", "platform-browser", "toolchain/reflect-policy").forEach {
+    listOf("runtime", "platform-api", "platform-browser", "platform-wasi", "toolchain/reflect-policy").forEach {
         inputs.dir(root.dir("$it/src/main/java")).withPathSensitivity(PathSensitivity.RELATIVE)
     }
 }
