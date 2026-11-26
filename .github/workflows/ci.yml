@@ -45,6 +45,39 @@ jobs:
           path: web/public/flagon/
           retention-days: 1
 
+  wasi:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      WASM_TOOLS: wasm-tools-1.263.0-x86_64-linux
+      WASMTIME: wasmtime-v51.0.0-x86_64-linux
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '25'
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Install wasm-tools and wasmtime
+        run: |
+          cd "$RUNNER_TEMP"
+          curl -fsSLO "https://github.com/bytecodealliance/wasm-tools/releases/download/v1.263.0/$WASM_TOOLS.tar.gz"
+          curl -fsSLO "https://github.com/bytecodealliance/wasmtime/releases/download/v51.0.0/$WASMTIME.tar.xz"
+          sha256sum -c <<EOF
+          21c036c1740a0552124c79c6e2170cb61c5b016005671a6d5bc06cf642165431  $WASM_TOOLS.tar.gz
+          a18020674fac4107f329bc9ed720ea9c88e4b30a61e8a527787bcce051123d32  $WASMTIME.tar.xz
+          EOF
+          tar -xzf "$WASM_TOOLS.tar.gz"
+          tar -xJf "$WASMTIME.tar.xz"
+          echo "$RUNNER_TEMP/$WASM_TOOLS" >> "$GITHUB_PATH"
+          echo "$RUNNER_TEMP/$WASMTIME" >> "$GITHUB_PATH"
+
+      - name: Run the wasi component
+        run: make wasi
+
   playground:
     runs-on: ubuntu-latest
     timeout-minutes: 20

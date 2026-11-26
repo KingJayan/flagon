@@ -1,6 +1,6 @@
 # API reference
 
-Every public type in `runtime`, `platform-api`, `platform-browser` and `@Reflectable`. The [stable API](packaging.md#stable-api) is `FlagonRuntime`, the program types, `BrowserPlatform.create` and `@Reflectable`. Everything else may change between releases.
+Every public type in `runtime`, `platform-api`, `platform-browser`, `platform-wasi` and `@Reflectable`. The [stable API](packaging.md#stable-api) is `FlagonRuntime`, the program types, `BrowserPlatform.create` and `@Reflectable`. Everything else may change between releases.
 
 `platform-api` holds the host contracts and the targets of the build's JDK reroutes. Application code does not call the reroute targets: the build sends JDK calls to them.
 
@@ -756,6 +756,16 @@ A `FileStore` in the heap.
 ```java
 class MemoryFileStore implements FileStore
     MemoryFileStore();
+```
+
+### StoreFileSystem
+
+Puts `java.io.File` and the file streams on a `FileStore`.
+
+```java
+class StoreFileSystem implements VirtualFileSystem
+    StoreFileSystem(FileStore store); // writes each close and flush to the store before returning
+    static void install(FileStore store); // closes and flushes reach the store on a thread of their own
 ```
 
 ## dev.flagon.platform.graphics
@@ -1572,6 +1582,17 @@ interface Workers
     static Workers unavailable(String reason); // refuses every spawn with this reason.
 ```
 
+## dev.flagon.platform.wasi
+
+### WasiPlatform
+
+The headless `Platform` of a [WASI component](packaging.md#wasi): stdio, clocks, arguments and files. `create` takes the arguments `main` received. `java.io` works below the first preopened directory, as `/`, or in memory when there is none.
+
+```java
+class WasiPlatform implements Platform
+    static WasiPlatform create(String[] arguments);
+```
+
 ## dev.flagon.platform.browser
 
 ### BrowserClock
@@ -1664,16 +1685,6 @@ The `FileStore` on the Origin Private File System.
 ```java
 class OpfsFileStore implements FileStore
     static OpfsFileStore createIfAvailable();
-```
-
-### StoreFileSystem
-
-Puts `java.io.File` and the file streams on a `FileStore`.
-
-```java
-class StoreFileSystem implements VirtualFileSystem
-    StoreFileSystem(FileStore store); // writes each close and flush to the store before returning
-    static void install(FileStore store); // closes and flushes reach the store on a thread of their own
 ```
 
 ## dev.flagon.platform.browser.graphics

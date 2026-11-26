@@ -162,6 +162,7 @@ public final class BrowserCatalog {
 | `vorbisQuality` | unset | Re-encodes Ogg Vorbis at this quality. Unset keeps the files. |
 | `apartFrom` | 0 | Resources this size in bytes or larger load beside the pack. 0 keeps all of them in it. |
 | `shrinkCoroutineWasm` | true | Runs `wasm-opt` on the coroutine WebAssembly in release builds. |
+| `wasiMainClass` | `mainClass` | The entry point of the [WASI component](#wasi). |
 
 ### Gradle properties
 
@@ -170,6 +171,8 @@ public final class BrowserCatalog {
 | `-Pflagon.release` | Release build: optimized, obfuscated, shrunk with `wasm-opt`. |
 | `-Pflagon.preserve=globs` | Classes that only a classpath scan names. Defaults to `vendor/preserve.txt`. |
 | `-Pflagon.app.reflect=globs` | Narrows the constructors `make app` keeps. |
+| `-Pflagon.wasmTools=path` | The `wasm-tools` the `wasi` task runs. Defaults to the one on `PATH`. |
+| `-Pflagon.wasmtime=path` | The `wasmtime` that `wasiTest` runs. Defaults to the one on `PATH`. |
 
 ## Output
 
@@ -185,6 +188,49 @@ Each bundle writes these files to `build/flagon/`. `make bundles` copies them to
 | `<name>.catalog.json` | The program list, when `catalogClass` is set. |
 
 Serve all of them. The page picks the backend at load time.
+
+## WASI
+
+The `wasi` task builds a bundle module as a WASI preview 2 component, with no JavaScript in it. It needs [wasm-tools](https://github.com/bytecodealliance/wasm-tools). `bundle-wasi` is a complete example, and `make wasi` builds it and runs its programs under wasmtime.
+
+The entry point boots on `WasiPlatform` and exits with the status `boot` returns:
+
+```kotlin
+dependencies {
+    implementation(project(":runtime"))
+    implementation(project(":platform-wasi"))
+    implementation(project(":toolchain:jdk-shims"))
+}
+
+bundle {
+    mainClass.set("com.example.ToolMain")
+}
+```
+
+```java
+public static void main(String[] arguments) {
+    System.exit(FlagonRuntime.boot(WasiPlatform.create(arguments), registry()));
+}
+```
+
+`./gradlew :your-bundle:wasi` writes `build/wasi/<name>.wasm`. Run it with the WebAssembly proposals it uses, and preopen a directory for `java.io`:
+
+```bash
+wasmtime run -W gc=y,function-references=y,exceptions=y --dir ./data::/ build/wasi/tool.wasm game --verbose
+```
+
+The first argument picks the program, as `?program=` does in a page. A static method with `@Export` that takes and returns only primitives is a function of the component, which runs with no program started:
+
+```java
+@Export(name = "checksum")
+public static long checksum(int seed) { ... }
+```
+
+```bash
+wasmtime run -W gc=y,function-references=y,exceptions=y --invoke 'checksum(7)' build/wasi/tool.wasm
+```
+
+Export names are kebab case. An export that takes or returns an object fails the build. A bundle that reaches browser code also fails the build, which names the methods that reach it. See [WASI](compatibility.md#wasi) for what runs.
 
 ## Deploy
 
@@ -219,6 +265,8 @@ Open the page with `?proxytoken=<token>`.
 ### Embedding
 
 A host page loads a bundle and sets `window.__flagonHost` to receive its events. See [Host bridge](architecture.md#host-bridge).
+
+The `@Export` methods of a WebAssembly bundle are on `globalThis.__flagonExports` once it starts. They take and return numbers, with no JavaScript between, so `__flagonExports.add(40, 2)` calls Java directly.
 
 ## Stable API
 

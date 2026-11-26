@@ -1,6 +1,5 @@
-package dev.flagon.platform.browser.fs;
+package dev.flagon.platform.fs;
 
-import dev.flagon.platform.fs.FileStore;
 
 import java.util.Iterator;
 import java.util.LinkedHashMap;

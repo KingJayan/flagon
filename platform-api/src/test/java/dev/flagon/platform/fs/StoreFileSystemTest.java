@@ -1,8 +1,6 @@
-package dev.flagon.platform.browser.fs;
+package dev.flagon.platform.fs;
 
 import dev.flagon.platform.Resources;
-import dev.flagon.platform.fs.FileStore;
-import dev.flagon.platform.fs.MemoryFileStore;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

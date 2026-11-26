@@ -69,6 +69,7 @@ import org.teavm.backend.wasm.runtime.WasmGCResources;
 import org.teavm.backend.wasm.transformation.BaseClassesTransformation;
 import org.teavm.backend.wasm.transformation.ClassLoaderResourceTransformation;
 import org.teavm.backend.wasm.transformation.EntryPointTransformation;
+import org.teavm.backend.wasm.transformation.WasiTransformation;
 import org.teavm.backend.wasm.transformation.ReferenceQueueTransformation;
 import org.teavm.backend.wasm.vtable.WasmGCVirtualTableProvider;
 import org.teavm.classlib.ReflectionSupplier;
@@ -122,6 +123,8 @@ public class WasmGCTarget implements TeaVMTarget, TeaVMWasmGCHost {
     private List<WasmGCCustomTypeMapperFactory> customTypeMapperFactories = new ArrayList<>();
     private EntryPointTransformation entryPointTransformation = new EntryPointTransformation();
     private boolean jspi;
+    private boolean wasi;
+    private final WasiTransformation wasiTransformation = new WasiTransformation();
     private List<Supplier<Collection<MethodReference>>> additionalMethodsOnCallSites = new ArrayList<>();
     private List<WasmGCCodeGenContributor> intrinsicContributors = new ArrayList<>();
 
@@ -213,7 +216,8 @@ public class WasmGCTarget implements TeaVMTarget, TeaVMWasmGCHost {
                 new BaseClassesTransformation(),
                 new ClassLoaderResourceTransformation(),
                 new ReferenceQueueTransformation(),
-                entryPointTransformation
+                entryPointTransformation,
+                wasiTransformation
         );
     }
 
@@ -222,6 +226,13 @@ public class WasmGCTarget implements TeaVMTarget, TeaVMWasmGCHost {
         // the controller comes after analysis, which already ran the transformers
         jspi = Boolean.parseBoolean(dependencyAnalyzer.extensionEnvironment().property("flagon.jspi"));
         entryPointTransformation.setJspi(jspi);
+        // flagon: flagon.wasi builds a module that imports wasi preview 1 and nothing from javascript
+        wasi = Boolean.parseBoolean(dependencyAnalyzer.extensionEnvironment().property("flagon.wasi"));
+        entryPointTransformation.setWasi(wasi);
+        wasiTransformation.setEnabled(wasi);
+        if (wasi) {
+            WasiImports.link(dependencyAnalyzer);
+        }
         var deps = new WasmGCDependencies(dependencyAnalyzer);
         deps.contribute();
         deps.contributeStandardExports();
@@ -286,8 +297,12 @@ public class WasmGCTarget implements TeaVMTarget, TeaVMWasmGCHost {
     @Override
     public void emit(ListableClassHolderSource classes, BuildTarget buildTarget, String outputName) throws IOException {
         var module = new WasmModule();
-        module.memoryImportName = "memory";
-        module.memoryImportModule = "env";
+        if (wasi) {
+            module.memoryExportName = "memory";
+        } else {
+            module.memoryImportName = "memory";
+            module.memoryImportModule = "env";
+        }
         controller.addVirtualMethods(reflection::isVirtual);
         addMethodsOnCallSites(reflection::getVirtualCallSites);
         var inlineIntrinsics = new DefaultIntrinsicRegistry<WasmGCInlineIntrinsic>(classes);
@@ -368,10 +383,19 @@ public class WasmGCTarget implements TeaVMTarget, TeaVMWasmGCHost {
                 }
             }
         }
+        if (wasi) {
+            WasiImports.declare(declarationsGenerator);
+        }
         moduleGenerator.generate();
         resourceGenerator.writeModule(module);
         generateExceptionExports(declarationsGenerator);
         adjustModuleMemory(module, moduleGenerator, buffersHeap);
+        if (wasi) {
+            WasiImports.retarget(module, declarationsGenerator, controller.getDependencyInfo());
+            try (var world = buildTarget.createResource(outputName.replaceFirst("\\.wasm$", "") + ".wit")) {
+                world.write(WasiWorld.write(classes).getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            }
+        }
 
         emitWasmFile(module, buildTarget, outputName, debugInfoBuilder);
     }
@@ -505,14 +529,19 @@ public class WasmGCTarget implements TeaVMTarget, TeaVMWasmGCHost {
 
         var heapOffset = new WasmGlobal("heapOffset", WasmType.INT32);
         heapOffset.setImmutable(true);
-        heapOffset.setImportModule("teavmMemory");
-        heapOffset.setImportName("heapOffset");
-        module.globals.add(heapOffset);
-
         var maxSize = new WasmGlobal("maxSize", WasmType.INT32);
         maxSize.setImmutable(true);
-        maxSize.setImportModule("teavmMemory");
-        maxSize.setImportName("maxSize");
+        if (wasi) {
+            // nothing outside lays out the memory, so the heap starts after the data
+            heapOffset.getInitialValue().builder().i32Const(((memorySize - 1) / 256 + 1) * 256);
+            maxSize.getInitialValue().builder().i32Const(Integer.MAX_VALUE);
+        } else {
+            heapOffset.setImportModule("teavmMemory");
+            heapOffset.setImportName("heapOffset");
+            maxSize.setImportModule("teavmMemory");
+            maxSize.setImportName("maxSize");
+        }
+        module.globals.add(heapOffset);
         module.globals.add(maxSize);
 
         dataSize = memorySize;

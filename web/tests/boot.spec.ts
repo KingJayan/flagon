@@ -27,6 +27,14 @@ for (const backend of BACKENDS) {
       expect(failures).toEqual([]);
     });
 
+    test('gives the page the numbers-only exports of a wasm bundle', async ({ page }) => {
+      test.skip(backend !== 'wasm', 'only webassembly exports functions');
+      await open(page, backend, 'program=hello');
+
+      await expect(page.getByTestId('state')).toHaveText('exited', { timeout: 30_000 });
+      expect(await page.evaluate(() => globalThis.__flagonExports?.add?.(40, 2))).toBe(42);
+    });
+
     test('passes arguments through to the program', async ({ page }) => {
       await open(page, backend, 'program=hello&arg=flagon');
 

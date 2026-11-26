@@ -118,10 +118,15 @@ public class TThrowable extends RuntimeException {
         if (PlatformDetector.isLowLevel()) {
             stackTrace = (TStackTraceElement[]) (Object) ExceptionHandling.fillStackTrace();
         } else if (PlatformDetector.isWebAssemblyGC()) {
-            lazyStackTrace = takeWasmGCStack(JSString.valueOf(getClass().getName()));
-            decorateException(this);
+            captureWasmGCStack();
         }
         return this;
+    }
+
+    // flagon: the stack comes from javascript; under wasi these two keep no stack at all
+    private void captureWasmGCStack() {
+        lazyStackTrace = takeWasmGCStack(JSString.valueOf(getClass().getName()));
+        decorateException(this);
     }
 
     private void initNativeException() {
@@ -138,22 +143,27 @@ public class TThrowable extends RuntimeException {
 
     private void ensureStackTrace() {
         if (PlatformDetector.isWebAssemblyGC()) {
-            if (lazyStackTrace != null) {
-                var supplier = lazyStackTrace;
-                lazyStackTrace = null;
-                var nativeStack = supplier.getStack();
-                if (nativeStack == null) {
-                    return;
-                }
-                var stack = new TStackTraceElement[nativeStack.getLength()];
-                for (var i = 0; i < nativeStack.getLength(); ++i) {
-                    var frame = nativeStack.get(i);
-                    stack[i] = new TStackTraceElement(frame.getClassName(), frame.getMethod(), frame.getFile(),
-                            frame.getLine());
-                }
-                stackTrace = stack;
-            }
+            readWasmGCStack();
         }
+    }
+
+    private void readWasmGCStack() {
+        if (lazyStackTrace == null) {
+            return;
+        }
+        var supplier = lazyStackTrace;
+        lazyStackTrace = null;
+        var nativeStack = supplier.getStack();
+        if (nativeStack == null) {
+            return;
+        }
+        var stack = new TStackTraceElement[nativeStack.getLength()];
+        for (var i = 0; i < nativeStack.getLength(); ++i) {
+            var frame = nativeStack.get(i);
+            stack[i] = new TStackTraceElement(frame.getClassName(), frame.getMethod(), frame.getFile(),
+                    frame.getLine());
+        }
+        stackTrace = stack;
     }
 
     @Import(name = "takeStackTrace")

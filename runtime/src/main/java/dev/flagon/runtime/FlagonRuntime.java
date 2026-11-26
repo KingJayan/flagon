@@ -39,7 +39,7 @@ public final class FlagonRuntime {
 
             ConsoleSink console = platform.console();
             ConsoleStreams.install(console);
-            console.info("Flagon runtime starting on platform '" + platform.name() + "'");
+            console.debug("Flagon runtime starting on platform '" + platform.name() + "'");
 
             NetworkUrls.install(platform.network(), console);
 
@@ -54,7 +54,7 @@ public final class FlagonRuntime {
                     ? arguments
                     : Arrays.copyOfRange(arguments, 1, arguments.length);
             host.status(PHASE_SELECT, program.id());
-            console.info("Selected program '" + program.id() + "' — " + program.description());
+            console.debug("Selected program '" + program.id() + "' — " + program.description());
 
             phase = PHASE_PROGRAM;
             host.status(PHASE_PROGRAM, program.id());
@@ -62,7 +62,7 @@ public final class FlagonRuntime {
             program.run(programArguments);
             ShutdownHooks.runAll();
 
-            console.info("Program '" + program.id() + "' completed");
+            console.debug("Program '" + program.id() + "' completed");
             host.exited(0);
             return 0;
         } catch (Throwable error) {

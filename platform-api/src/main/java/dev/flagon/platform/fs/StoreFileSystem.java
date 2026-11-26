@@ -1,7 +1,5 @@
-package dev.flagon.platform.browser.fs;
+package dev.flagon.platform.fs;
 
-import dev.flagon.platform.fs.FilePaths;
-import dev.flagon.platform.fs.FileStore;
 import org.teavm.runtime.fs.VirtualFile;
 import org.teavm.runtime.fs.VirtualFileSystem;
 import org.teavm.runtime.fs.VirtualFileSystemProvider;

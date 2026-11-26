@@ -16,11 +16,12 @@ lwjgl-core                        GL and AL state, fixed-function pipeline, GLSL
 platform-api                      host contracts: graphics, audio, files, input, network, clock
         │
 platform-browser                  WebGL 2, Web Audio, OPFS, DOM events, WebSocket tunnel
+platform-wasi                     headless: WASI preview 1 files, clocks, args and stdio
 ```
 
 ### Rules
 
-1. **Host isolation.** Only `platform-browser` uses browser APIs. No other module names `window`, `document` or WebGL.
+1. **Host isolation.** Only `platform-browser` uses browser APIs, and only `platform-wasi` uses WASI. No other module names `window`, `document` or WebGL.
 2. **JVM tests.** `lwjgl-core` and the compat layers use only `platform-api`. Their tests run on a desktop JVM with recording and in-memory devices: `RecordingGraphicsDevice`, `SilentAudioDevice`, `MemoryFileStore` and `MemoryNetwork`.
 3. **Static access.** LWJGL calls are static, such as `Display.create()` and `GL11.glClear()`. The runtime installs the active `Platform` in `Platforms` at boot, and static code reads it from there.
 
@@ -32,6 +33,7 @@ platform-browser                  WebGL 2, Web Audio, OPFS, DOM events, WebSocke
 | --- | --- |
 | `platform-api` | Host contracts: `Platform`, `GraphicsDevice`, `DisplaySurface`, `AudioDevice`, `FileStore`, `InputSource`, `Network`, `Clock`, `RuntimeHost`. Also the JDK reroute targets. |
 | `platform-browser` | Implements `platform-api` in the browser. |
+| `platform-wasi` | Implements `platform-api` headless, over WASI, for a [WASI component](packaging.md#wasi). |
 | `runtime` | Boots a platform, picks a program, runs it, and reports to the host. Installs `System.out`, URL handlers and shutdown hooks. |
 | `lwjgl-core` | GL and AL state machines, immediate mode, display lists, the fixed-function shader generator and the GLSL translator. No `org.lwjgl` classes. |
 | `lwjgl2-compat` | The LWJGL 2 API. |
@@ -72,6 +74,7 @@ Each adds JDK classes that TeaVM lacks.
 | --- | --- |
 | `bundle-sandbox` | The self-tests the browser tests run, and the LWJGL demos. |
 | `bundle-pausing` | A program that pauses during class setup, for the coroutine backend. |
+| `bundle-wasi` | Headless programs and exports for the WASI component, which `make wasi` runs under wasmtime. |
 | `examples/app`, `examples/thirdparty` | Sample LWJGL 2 programs and LWJGL's own LWJGL 3 sample, built against the real LWJGL. |
 | `examples/bundle` | The `example` bundle of those programs. |
 | `bundle-app` | The `app` bundle from `vendor/`. Present when `vendor/` has JARs. |
@@ -94,7 +97,8 @@ TeaVM (patched 0.15.0)
   │
   ├─► wasm/<name>.wasm   WebAssembly GC, coroutine pauses
   ├─► jspi/<name>.wasm   WebAssembly GC, JSPI pauses
-  └─► js/<name>.js       JavaScript
+  ├─► js/<name>.js       JavaScript
+  └─► wasi/<name>.wasm   WASI preview 2 component, by the wasi task
 resources ─► <name>.pack, <name>.files/
 ```
 
@@ -103,6 +107,7 @@ resources ─► <name>.pack, <name>.files/
 - **WebAssembly GC.** Java objects and arrays live in the GC heap. `JsArrays` copies data out when it crosses into browser APIs, such as a WebGL upload.
 - **JSPI.** The same program without the coroutine rewrite. `WebAssembly.Suspending` parks the whole stack, so the code is smaller and faster.
 - **JavaScript.** Java arrays are typed arrays and cross into browser APIs without a copy.
+- **WASI.** The coroutine build with `flagon.wasi` set. Each JavaScript import TeaVM would make becomes Java over WASI preview 1, and the heap's memory is exported. `wasm-tools` embeds the WIT world of the `@Export` methods and adapts preview 1 to preview 2 with wasmtime's adapter.
 
 ### Pausing
 
@@ -124,7 +129,7 @@ Browser APIs are asynchronous, and Java code expects blocking calls. TeaVM finds
 
 ### Files
 
-`OpfsFileStore` holds the files in OPFS. `StoreFileSystem` puts `java.io` on any `FileStore`. A file loads into memory when it opens and writes back on `flush` and `close`. `RandomAccessFile` writes through in `rwd` and `rws` modes.
+`OpfsFileStore` holds the files in OPFS. `StoreFileSystem`, in `platform-api`, puts `java.io` on any `FileStore`. A file loads into memory when it opens and writes back on `flush` and `close`. `RandomAccessFile` writes through in `rwd` and `rws` modes.
 
 ### Audio
 

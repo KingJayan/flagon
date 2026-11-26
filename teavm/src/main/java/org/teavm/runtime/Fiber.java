@@ -390,6 +390,12 @@ public class Fiber {
         start(() -> runMain(args), false);
     }
 
+    // flagon: under wasi nothing outside runs the event loop, so main's caller does
+    public static void runToEnd(String[] args) {
+        startMain(args);
+        EventQueue.process();
+    }
+
     public static native void runMain(String[] args);
 
     private void start() {
