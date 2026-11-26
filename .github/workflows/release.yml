@@ -43,7 +43,7 @@ jobs:
 
   ci:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 40
     permissions:
       actions: read
       contents: read
@@ -61,7 +61,12 @@ jobs:
         run: |
           ignored='^([^/]+\.md|web/docs/images/.*|LICENSE)$'
           for sha in $(git rev-list --first-parent -n 50 "$GITHUB_SHA"); do
-            result=$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/ci.yml/runs?head_sha=$sha&event=push" \
+            runs="repos/$GITHUB_REPOSITORY/actions/workflows/ci.yml/runs?head_sha=$sha&event=push"
+            # the version bump's own run starts with the tag, so wait for it
+            while [ "$(gh api "$runs" --jq '[.workflow_runs[] | select(.status != "completed")] | length')" != 0 ]; do
+              sleep 30
+            done
+            result=$(gh api "$runs" \
               --jq '[.workflow_runs[] | select(.status == "completed")] | sort_by(.run_attempt) | last | .conclusion // ""')
             if [ -z "$result" ]; then continue; fi
             if [ "$result" != success ]; then
