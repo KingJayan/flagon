@@ -1,0 +1,46 @@
+number: us 1,234,567.891
+number: de 1.234.567,891
+number: percent 26%
+number: currency $1,234.50
+number: de symbols ,.
+number: pattern 1.234,50
+date: us 1/2/06
+date: us Jan 2, 2006
+date: us January 2, 2006
+date: us Monday, January 2, 2006
+date: de 02.01.2006
+date: fr lundi 2 janvier 2006
+date: time 15:04
+date: pattern Mon, 2 Jan 2006 15:04:05 +0000
+date: fr months janvier févr.
+date: de monday Montag
+date: eras [BC, AD]
+name: Germany, allemand, Japan
+name: € Euro
+collator: sorted [a, A, ä, b, c]
+collator: primary true, secondary false, case true
+time: date 2006-01-02 MONDAY 2
+time: months 2024-02-29 2023-02-28
+time: between 6632 P18Y1M27D 216
+time: epoch 1969-12-31 13150 -0001-12-31 -0221-09-04
+time: adjusters 2024-02-29 2006-01-06
+time: local 2006-01-02T15:04:05.123 15:04 00:00:00.500
+time: hours -2 PT24H0.000000005S
+time: instant 2006-01-02T15:04:05.123Z 1969-12-31T23:59:59Z 1136214245500
+time: duration PT8H3M20.123S PT-0.999999995S 90 48
+time: period P1Y2M25D P1Y2M
+time: compare true 1 true
+zone: 2006-01-02T10:04:05-05:00[America/New_York] +05:30
+zone: gap 2024-03-10T03:30-04:00[America/New_York]
+zone: overlap 2024-11-03T01:30-04:00[America/New_York] 2024-11-03T01:30-05:00[America/New_York]
+zone: across 2024-03-10T03:30-04:00[America/New_York] 2024-03-10T12:30-04:00[America/New_York]
+zone: offsets 19800 -03:30 UTC GMT+02:00 false
+zone: offset date time 2006-01-02T08:04:05Z 2006-01-02T15:04:05Z
+format: iso 2006-01-02T15:04:05 2006-01-02T15:04:05-05:00 20060102 2006-01-02T15:04:05-05:00[America/New_York]
+format: pattern Monday, 2 January 2006 15:04 | 3:04 PM | 2 janv. 2006 | 2006-01-02T15:04:05-05:00 [America/New_York]
+format: parse 2006-01-02 2006-01-02 2006-01-02T15:04:05 15:04 2006-01-02
+format: localized Jan 2, 2006 | Monday, January 2, 2006 | 2. Januar 2006 | 3:04 PM
+format: names janvier Montag Mar
+format: error Text '2006-13-01' could not be parsed: Invalid value for MonthOfYear (valid values 1 - 12): 13 at 0
+format: error Text '2023-02-29' could not be parsed: Invalid date 'February 29' as '2023' is not a leap year at 0
+format: error Text '2006-01-02x' could not be parsed, unparsed text found at index 10 at 10

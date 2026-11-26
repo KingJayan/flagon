@@ -49,6 +49,7 @@ listOf(
     "toolchain:resource-pack",
     "toolchain:socket-classlib",
     "toolchain:sound-classlib",
+    "toolchain:time-classlib",
 ).forEach(::module)
 
 if (file("vendor").listFiles()?.any { it.name.endsWith(".jar") } == true) {

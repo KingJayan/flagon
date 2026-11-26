@@ -47,7 +47,8 @@ Each adds JDK classes that TeaVM lacks.
 
 | Module | Adds |
 | --- | --- |
-| `toolchain/jdk-classlib` | Java serialization, `RecordComponent`, `Parameter`, `java.lang.management`, `javax.xml.parsers` with a DOM, `java.sql` dates, `javax.naming` and small stubs. |
+| `toolchain/jdk-classlib` | Java serialization, `RecordComponent`, `Parameter`, `java.lang.management`, `javax.xml.parsers` with a DOM, `java.sql` dates, `javax.naming`, `Collator` and small stubs. |
+| `toolchain/time-classlib` | `java.time`, with locale data and zone rules from the page's `Intl`. |
 | `toolchain/concurrent-classlib` | `java.util.concurrent` executors, futures, locks and queues on green threads. |
 | `toolchain/socket-classlib` | `java.net` sockets and addresses over the socket proxy. |
 | `toolchain/http-classlib` | `java.net.http` over the page's `fetch`. |
@@ -66,7 +67,7 @@ Each adds JDK classes that TeaVM lacks.
 | `toolchain/classfile` | A constant-pool reader. It tells whether a classpath has every class and method a class names. |
 | `toolchain/resource-pack` | Writes `<bundle>.pack` and `<bundle>.files/`, and re-encodes Vorbis. |
 | `toolchain/js-types` | Writes `js/<bundle>.d.ts` from the class files of a bundle's `@JSExport` methods and the JSO types they name. |
-| `teavm/core` | `teavm-core` 0.15.0 rebuilt with compiler and class library fixes. |
+| `teavm/core` | `teavm-core` 0.15.0 rebuilt with compiler and class library fixes. `java.text` and `Locale` read their locale data from the page's `Intl`, not from CLDR data in the bundle. |
 | `teavm/jso` | `teavm-jso-impl` 0.15.0 rebuilt so a simple `@JSBody` compiles to backend operations, not text. |
 | `teavm/patches` | Builds `teavm/core` and `teavm/jso` before the main build. The TeaVM plugin loads them in place of the stock JARs. |
 | `build-logic` | The Gradle convention plugins, including `flagon.bundle`. |

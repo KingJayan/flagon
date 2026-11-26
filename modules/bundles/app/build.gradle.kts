@@ -35,6 +35,7 @@ dependencies {
     implementation(project(":toolchain:sound-classlib"))
     implementation(project(":toolchain:crypto-classlib"))
     implementation(project(":toolchain:concurrent-classlib"))
+    implementation(project(":toolchain:time-classlib"))
     implementation(project(":toolchain:reflect-policy"))
     implementation(project(":toolchain:jdk-shims"))
     implementation(files(vendorJar))

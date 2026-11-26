@@ -46,6 +46,7 @@ export default defineConfig({
         '**/image.spec.ts',
         '**/jdkgaps.spec.ts',
         '**/liveness.spec.ts',
+        '**/locale.spec.ts',
         '**/lwjgl3.spec.ts',
         '**/net.spec.ts',
         '**/pausing.spec.ts',

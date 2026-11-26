@@ -119,6 +119,8 @@ These JDK calls act differently in a browser:
 | `javax.sound.midi` | The types. | Every device: `MidiSystem` throws `MidiUnavailableException`. |
 | `javax.xml.parsers`, `org.w3c.dom` | `DocumentBuilder` parses XML into a DOM. | Schema validation, XSLT. |
 | `java.sql` | `Date`, `Time`, `Timestamp`. | JDBC. |
+| `java.text`, `java.util.Locale` | `NumberFormat`, `DecimalFormat`, `DateFormat`, `SimpleDateFormat`, `DateFormatSymbols`, `Collator`, and locale and currency names, with the page's `Intl` data for each locale. | `RuleBasedCollator`, `BreakIterator`, `Normalizer`. A `CollationKey` compares, but its bytes do not sort. |
+| `java.time` | `LocalDate`, `LocalTime`, `LocalDateTime`, `Instant`, `Duration`, `Period`, `ZonedDateTime`, `OffsetDateTime`, `Year`, `YearMonth`, `Clock`, and `ZoneId` with the page's zone rules. `DateTimeFormatter` with the ISO formats, patterns and localized styles. The `ChronoField` and `ChronoUnit` fields and units, and `TemporalAdjusters`. | Other calendars, week fields, `MonthDay`, `OffsetTime`, `DateTimeFormatterBuilder`, `ZoneId.getAvailableZoneIds`. |
 | `javax.naming` | The types. | Every lookup throws `NameNotFoundException`. |
 
 ## Files
@@ -218,6 +220,7 @@ A [WASI component](packaging.md#wasi) runs headless in a WASI preview 2 host. wa
 | Sockets | A connection throws `NetworkException`. |
 | Display, `java.net.http`, `java.awt` drawing, bundle workers | Refused with `UnsupportedCapabilityException`. `ImageIO` throws `IOException`. |
 | Audio | Plays silently. |
+| Locale data | en-US for every locale. Every zone is UTC. |
 
 ## LWJGL
 

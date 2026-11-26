@@ -63,6 +63,7 @@ public final class SandboxMain {
                 .register(new CompilerShapesProgram())
                 .register(new SerialProgram())
                 .register(new ConcurrencyProgram())
+                .register(new LocaleProgram())
                 .register(new WorkersProgram())
                 .register(new WorkersProgram.Echo());
     }
