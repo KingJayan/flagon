@@ -35,6 +35,6 @@ public final class Frames {
     private static native void requestAnimationFrame(FrameHandler handler);
 
     // the browser tests read this count
-    @JSBody(params = "count", script = "window.__flagonFrames = count;")
+    @JSBody(params = "count", script = "self.__flagonFrames = count;")
     private static native void countFrame(int count);
 }

@@ -4,7 +4,6 @@ import org.teavm.jso.JSBody;
 import org.teavm.jso.JSIndexer;
 import org.teavm.jso.JSObject;
 import org.teavm.jso.JSProperty;
-import org.teavm.jso.browser.Window;
 import org.teavm.jso.core.JSObjects;
 
 final class HostBridges {
@@ -25,19 +24,23 @@ final class HostBridges {
     }
 
     static HostBridge installed() {
-        HostBridge host = Window.current().<Hosting>cast().getHost();
+        HostBridge host = scope().<Hosting>cast().getHost();
         if (host == null || JSObjects.isUndefined(host)) {
             return null;
         }
         Named calls = host.cast();
         for (String call : CALLS) {
             if (!"function".equals(JSObjects.typeOf(calls.get(call)))) {
-                warn("[flagon] ignoring window.__flagonHost: missing " + call + "()");
+                warn("[flagon] ignoring self.__flagonHost: missing " + call + "()");
                 return null;
             }
         }
         return host;
     }
+
+    /** the page's window, or a worker's global scope */
+    @JSBody(script = "return self;")
+    static native JSObject scope();
 
     @JSBody(params = "text", script = "console.warn(text);")
     private static native void warn(String text);

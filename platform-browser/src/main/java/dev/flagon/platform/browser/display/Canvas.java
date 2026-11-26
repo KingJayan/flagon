@@ -141,9 +141,9 @@ final class Canvas {
     @JSBody(params = "canvas", script = "canvas.remove();")
     private static native void detach(JSObject canvas);
 
-    @JSBody(script = "return window.__flagonCloseRequested === true;")
+    @JSBody(script = "return self.__flagonCloseRequested === true;")
     static native boolean isCloseRequested();
 
-    @JSBody(script = "window.__flagonCloseRequested = true;")
+    @JSBody(script = "self.__flagonCloseRequested = true;")
     static native void requestClose();
 }

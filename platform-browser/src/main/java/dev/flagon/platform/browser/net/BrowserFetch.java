@@ -55,7 +55,7 @@ public final class BrowserFetch implements Fetch {
     @Override
     public Response send(Request request) {
         if (!hasFetch()) {
-            throw new NetworkException("no window.__flagonFetch on this page; the flagon bundle"
+            throw new NetworkException("no self.__flagonFetch on this page; the flagon bundle"
                     + " loader installs it");
         }
         StringBuilder lines = new StringBuilder();
@@ -99,11 +99,11 @@ public final class BrowserFetch implements Fetch {
         });
     }
 
-    @JSBody(script = "return typeof window.__flagonFetch !== 'undefined';")
+    @JSBody(script = "return typeof self.__flagonFetch !== 'undefined';")
     private static native boolean hasFetch();
 
     @JSBody(params = {"method", "url", "headers", "body", "timeout", "follow", "done"},
-            script = "window.__flagonFetch.send(method, url, headers, body, timeout, follow,"
+            script = "self.__flagonFetch.send(method, url, headers, body, timeout, follow,"
                     + " done);")
     private static native void start(String method, String url, String headers, Int8Array body,
                                      int timeout, boolean follow, Settled done);

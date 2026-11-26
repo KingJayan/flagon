@@ -1,6 +1,7 @@
 import { installFetch } from './fetch';
 import { installImages } from './images';
 import { installTunnel } from './tunnel';
+import { installWorkers } from './workers';
 
 export interface HostBridge {
   log(level: string, text: string): void;
@@ -12,13 +13,17 @@ export interface HostBridge {
 }
 
 declare global {
+  // on globalThis, so a bundle worker has them too
+  var __flagonHost: HostBridge | undefined;
+  var __flagonResources: ArrayBuffer | undefined;
+  var __flagonApart:
+    | {
+        want(hashes: string): void;
+        take(hash: string): ArrayBuffer | null;
+      }
+    | undefined;
+
   interface Window {
-    __flagonHost?: HostBridge;
-    __flagonResources?: ArrayBuffer;
-    __flagonApart?: {
-      want(hashes: string): void;
-      take(hash: string): ArrayBuffer | null;
-    };
     __flagonCloseRequested?: boolean;
     __flagonFrames?: number;
   }
@@ -194,7 +199,7 @@ function serveApart(packUrl: string, cache: Cache | undefined): void {
     }
   }
 
-  window.__flagonApart = {
+  globalThis.__flagonApart = {
     want(hashes: string): void {
       const wanted = hashes.split(',').filter((hash) => hash.length > 0);
       queue.push(...wanted);
@@ -227,7 +232,7 @@ function serveApart(packUrl: string, cache: Cache | undefined): void {
 }
 
 async function fetchPack(bundleUrl: string): Promise<void> {
-  delete window.__flagonResources;
+  globalThis.__flagonResources = undefined;
   const url = packUrlOf(bundleUrl);
   try {
     const cache = await openPackCache();
@@ -240,7 +245,7 @@ async function fetchPack(bundleUrl: string): Promise<void> {
     const unzipped = response.body.pipeThrough(new DecompressionStream('gzip'));
     const pack = await new Response(unzipped).arrayBuffer();
     if (pack.byteLength > 0) {
-      window.__flagonResources = pack;
+      globalThis.__flagonResources = pack;
     }
   } catch {}
 }
@@ -249,11 +254,13 @@ async function fetchPack(bundleUrl: string): Promise<void> {
 export class MissingBundle extends Error {}
 
 export async function runBundle(url: string, host: HostBridge, args: string[]): Promise<void> {
-  window.__flagonHost = host;
+  globalThis.__flagonHost = host;
   installTunnel();
   installFetch();
   installImages();
+  installWorkers();
   const absolute = new URL(url, location.origin).href;
+  globalThis.__flagonBundle = absolute;
   // the pack and the bundle come down together; the program starts once both are in
   const pack = fetchPack(absolute);
   try {

@@ -48,6 +48,8 @@ public final class SandboxMain {
                 .register(new NetDemoProgram())
                 .register(new CompilerShapesProgram())
                 .register(new SerialProgram())
-                .register(new ConcurrencyProgram());
+                .register(new ConcurrencyProgram())
+                .register(new WorkersProgram())
+                .register(new WorkersProgram.Echo());
     }
 }

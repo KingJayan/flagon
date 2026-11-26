@@ -22,9 +22,7 @@ export interface Fetcher {
 }
 
 declare global {
-    interface Window {
-        __flagonFetch?: Fetcher;
-    }
+    var __flagonFetch: Fetcher | undefined;
 }
 
 /** what a request reports when its timeout aborted it; BrowserFetch knows it by name */
@@ -101,5 +99,5 @@ export function fetcher(): Fetcher {
 }
 
 export function installFetch(): void {
-    window.__flagonFetch ??= fetcher();
+    globalThis.__flagonFetch ??= fetcher();
 }

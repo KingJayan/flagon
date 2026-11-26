@@ -115,7 +115,7 @@ for (const backend of BACKENDS) {
         .poll(() => lines.some((line) => line.includes('Hello, bare!')), { timeout: 30_000 })
         .toBe(true);
 
-      expect(lines.some((line) => line.includes('no window.__flagonHost installed'))).toBe(true);
+      expect(lines.some((line) => line.includes('no self.__flagonHost installed'))).toBe(true);
       expect(crashes).toEqual([]);
     });
   });

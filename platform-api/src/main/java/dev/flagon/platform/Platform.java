@@ -6,6 +6,7 @@ import dev.flagon.platform.fs.FileStore;
 import dev.flagon.platform.graphics.Drawing;
 import dev.flagon.platform.net.Fetch;
 import dev.flagon.platform.net.Network;
+import dev.flagon.platform.workers.Workers;
 
 /**
   prereq services
@@ -42,6 +43,11 @@ public interface Platform {
     /** @return the 2d raster {@code java.awt} draws and {@code javax.imageio} decodes with */
     default Drawing drawing() {
         return Drawing.unavailable(name() + " has no 2d canvas for java.awt");
+    }
+
+    /** @return how a bundle starts copies of itself on other threads; refuses where it cannot */
+    default Workers workers() {
+        return Workers.unavailable(name() + " cannot start bundle workers");
     }
 
     /** @return whether this host can open a window at all. */
