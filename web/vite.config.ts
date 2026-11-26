@@ -27,11 +27,14 @@ function netProbes(): Plugin {
 
 export default defineConfig({
   plugins: [tcpProxy({ allow: ['localhost:*', '127.0.0.1:*'] }), netProbes()],
-  // one literal for bind and address; 'localhost' is ::1 alone on some hosts
   server: {
     host: '127.0.0.1',
     port: 5273,
     strictPort: true,
+    watch: { ignored: ['**/playground/{build,compiler,javac,gradle}/**', '**/.gradle/**'] },
+  },
+  optimizeDeps: {
+    entries: ['index.html', 'play/index.html', 'playground/index.html', 'docs/index.html'],
   },
   preview: {
     host: '127.0.0.1',

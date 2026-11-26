@@ -19,6 +19,9 @@ plugins {
 }
 
 val libs = the<LibrariesForLibs>()
+// apart from the published modules, so :bundles:wasi and :platform:wasi are two modules
+group = "dev.flagon.bundles"
+
 val bundle = extensions.create<BundleExtension>("bundle")
 val mainSources = the<SourceSetContainer>()["main"]
 

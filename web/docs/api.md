@@ -1,8 +1,8 @@
 # API reference
 
-Every public type in `runtime`, `platform-api`, `platform-browser`, `platform-wasi` and `@Reflectable`. The [stable API](packaging.md#stable-api) is `FlagonRuntime`, the program types, `BrowserPlatform.create` and `@Reflectable`. Everything else may change between releases.
+Every public type in `runtime`, `platform/api`, `platform/browser`, `platform/wasi` and `@Reflectable`. The [stable API](packaging.md#stable-api) is `FlagonRuntime`, the program types, `BrowserPlatform.create` and `@Reflectable`. Everything else may change between releases.
 
-`platform-api` holds the host contracts and the targets of the build's JDK reroutes. Application code does not call the reroute targets: the build sends JDK calls to them.
+`platform/api` holds the host contracts and the targets of the build's JDK reroutes. Application code does not call the reroute targets: the build sends JDK calls to them.
 
 ## dev.flagon.runtime
 

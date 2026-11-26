@@ -4,7 +4,7 @@ import { BACKENDS, open, watchForFailures } from './harness';
 
 // the jdk wrote these lines; CryptoChecksTest keeps them true
 const EXPECTED = readFileSync(
-  new URL('../../bundle-sandbox/src/test/resources/crypto.txt', import.meta.url),
+  new URL('../../modules/bundles/sandbox/src/test/resources/crypto.txt', import.meta.url),
   'utf8',
 )
   .split('\n')

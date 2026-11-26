@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="docs/images/flagon-banner-nobg.png" alt="Flagon" width="350" />
+  <img src="web/docs/images/flagon-banner-nobg.png" alt="Flagon" width="350" />
 <p>
     <a href="#quickstart">Quickstart</a> &nbsp;•&nbsp;
     <a href="https://flagon-nu.vercel.app/docs/">Docs</a> &nbsp;•&nbsp;

@@ -13,7 +13,7 @@ tasks.withType<JavaCompile>().configureEach {
 
 checkstyle {
     toolVersion = libs.versions.checkstyle.get()
-    configFile = rootProject.file("toolchain/checkstyle/checkstyle.xml")
+    configFile = rootProject.file("modules/toolchain/checkstyle/checkstyle.xml")
 }
 
 tasks.withType<Checkstyle>().configureEach {
