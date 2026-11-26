@@ -343,10 +343,15 @@ public final class RuntimeSelfTestProgram implements Program {
                 + (canDefine ? "possible" : "impossible") + " here");
     }
 
-    /**
-     * the other half: what a class opted into member reflection can do
-     */
     private void optedInReflection() {
+        Class<?> firstCreate = null;
+        for (java.lang.reflect.Method method : ReflectedByFactoryChild.class.getMethods()) {
+            if (firstCreate == null && method.getName().equals("create")) {
+                firstCreate = method.getDeclaringClass();
+            }
+        }
+        check("getMethods lists declared methods first", ReflectedByFactoryChild.class,
+                firstCreate);
         check("annotated fields survive", 2, Reflected.class.getDeclaredFields().length);
         check("annotated constructors survive", 2,
                 Reflected.class.getDeclaredConstructors().length);
