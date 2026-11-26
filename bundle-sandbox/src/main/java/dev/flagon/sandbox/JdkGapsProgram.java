@@ -69,6 +69,11 @@ public final class JdkGapsProgram implements Program {
         console.info("jdkgaps: a string is anonymous " + String.class.isAnonymousClass());
 
         console.info("jdkgaps: punycode writes a name as " + IDN.toASCII("münchen.de"));
+        console.info("jdkgaps: rint and round give " + Math.rint(2.5) + " " + Math.rint(-0.3)
+                + " " + Math.rint(3.5) + " " + Math.round(-2.5) + " "
+                + Math.round(0.49999999999999994) + " " + Math.round(-2.5f));
+        double zero = Double.parseDouble(arguments.length > 99 ? "1" : "0");
+        console.info("jdkgaps: negated zeros are " + -zero + " " + -(float) zero);
         console.info("jdkgaps: a replacement with an unmatched group gives "
                 + Pattern.compile("%(\\d+\\$)?[\\d\\.]*[df]")
                         .matcher("%d and %2$d").replaceAll("%$1s"));

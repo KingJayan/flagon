@@ -86,6 +86,7 @@ import org.teavm.backend.wasm.model.instruction.WasmCastCondition;
 import org.teavm.backend.wasm.model.instruction.WasmCatchClause;
 import org.teavm.backend.wasm.model.instruction.WasmFloatBinaryOperation;
 import org.teavm.backend.wasm.model.instruction.WasmFloatType;
+import org.teavm.backend.wasm.model.instruction.WasmFloatUnaryOperation;
 import org.teavm.backend.wasm.model.instruction.WasmFragmentBuilder;
 import org.teavm.backend.wasm.model.instruction.WasmInstructionBuilder;
 import org.teavm.backend.wasm.model.instruction.WasmInstructionList;
@@ -506,33 +507,25 @@ public class WasmGCInstructionGenerationVisitor implements StatementVisitor, Exp
                 builder.negate();
                 break;
             case NEGATE:
+                // flagon: floats negate with neg, since 0 - x turns -0.0 into 0.0
                 switch (expr.getType()) {
                     case INT:
                         builder.i32Const(0);
-                        break;
-                    case LONG:
-                        builder.i64Const(0L);
-                        break;
-                    case FLOAT:
-                        builder.f32Const(0f);
-                        break;
-                    case DOUBLE:
-                        builder.f64Const(0.0);
-                        break;
-                }
-                accept(expr.getOperand());
-                switch (expr.getType()) {
-                    case INT:
+                        accept(expr.getOperand());
                         builder.intBinary(WasmIntType.INT32, WasmIntBinaryOperation.SUB);
                         break;
                     case LONG:
+                        builder.i64Const(0L);
+                        accept(expr.getOperand());
                         builder.intBinary(WasmIntType.INT64, WasmIntBinaryOperation.SUB);
                         break;
                     case FLOAT:
-                        builder.floatBinary(WasmFloatType.FLOAT32, WasmFloatBinaryOperation.SUB);
+                        accept(expr.getOperand());
+                        builder.floatUnary(WasmFloatType.FLOAT32, WasmFloatUnaryOperation.NEG);
                         break;
                     case DOUBLE:
-                        builder.floatBinary(WasmFloatType.FLOAT64, WasmFloatBinaryOperation.SUB);
+                        accept(expr.getOperand());
+                        builder.floatUnary(WasmFloatType.FLOAT64, WasmFloatUnaryOperation.NEG);
                         break;
                 }
                 break;

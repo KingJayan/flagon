@@ -21,6 +21,8 @@ for (const backend of BACKENDS) {
       await expect(page.getByTestId('state')).toHaveText('exited', { timeout: 30_000 });
       const log = page.getByTestId('log');
       await expect(log).toContainText('jdkgaps: the superclass of a string is class java.lang.Object');
+      await expect(log).toContainText('jdkgaps: rint and round give 2.0 -0.0 4.0 -2 0 -2');
+      await expect(log).toContainText('jdkgaps: negated zeros are -0.0 -0.0');
       await expect(log).toContainText('jdkgaps: an array list extends java.util.AbstractList<E>');
       await expect(log).toContainText('jdkgaps: a string is anonymous false');
       await expect(log).toContainText('jdkgaps: punycode writes a name as xn--mnchen-3ya.de');
