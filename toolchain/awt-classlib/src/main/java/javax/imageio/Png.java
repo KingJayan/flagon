@@ -24,6 +24,11 @@ final class Png {
     private Png() {
     }
 
+    /** whether the header asks for adam7, which only the browser reads here */
+    static boolean interlaced(byte[] file) {
+        return file.length > 28 && file[28] != 0;
+    }
+
     static BufferedImage read(InputStream from) throws IOException {
         byte[] file = readAll(from);
         requireSignature(file);

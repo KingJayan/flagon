@@ -48,6 +48,8 @@ tasks.named<Test>("test") {
         providers.systemProperty("flagon.concurrency.update").getOrElse("false"))
     systemProperty("flagon.crypto.update",
         providers.systemProperty("flagon.crypto.update").getOrElse("false"))
+    systemProperty("flagon.graphics.update",
+        providers.systemProperty("flagon.graphics.update").getOrElse("false"))
 }
 
 tasks.named<RunMain>("writeCatalog") {

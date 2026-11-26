@@ -48,7 +48,7 @@ Each adds JDK classes that TeaVM lacks.
 | `toolchain/socket-classlib` | `java.net` sockets and addresses over the socket proxy. |
 | `toolchain/http-classlib` | `java.net.http` over the page's `fetch`. |
 | `toolchain/nio-classlib` | `FileChannel`, `Selector` and the channel types. |
-| `toolchain/awt-classlib` | `BufferedImage`, `ImageIO` PNG and an in-page clipboard. |
+| `toolchain/awt-classlib` | `Graphics2D` on an `OffscreenCanvas`, `java.awt.geom`, `BufferedImage`, `ImageIO` and an in-page clipboard. |
 | `toolchain/crypto-classlib` | Digests, HMAC, PBKDF2, AES, RSA, EC keys, ECDSA and ECDH. |
 | `toolchain/sound-classlib` | `javax.sound` types with no devices. |
 

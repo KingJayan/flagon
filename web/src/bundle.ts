@@ -1,4 +1,5 @@
 import { installFetch } from './fetch';
+import { installImages } from './images';
 import { installTunnel } from './tunnel';
 
 export interface HostBridge {
@@ -251,6 +252,7 @@ export async function runBundle(url: string, host: HostBridge, args: string[]): 
   window.__flagonHost = host;
   installTunnel();
   installFetch();
+  installImages();
   const absolute = new URL(url, location.origin).href;
   // the pack and the bundle come down together; the program starts once both are in
   const pack = fetchPack(absolute);

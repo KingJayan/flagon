@@ -18,6 +18,11 @@ public abstract class Toolkit {
 
     public abstract Clipboard getSystemClipboard();
 
+    @Deprecated
+    public FontMetrics getFontMetrics(Font font) {
+        return dev.flagon.awt.Text.metrics(font);
+    }
+
     public void beep() {
     }
 

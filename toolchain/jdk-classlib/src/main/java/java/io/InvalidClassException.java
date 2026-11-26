@@ -13,6 +13,15 @@ public class InvalidClassException extends ObjectStreamException {
         classname = cname;
     }
 
+    public InvalidClassException(String reason, Throwable cause) {
+        super(reason, cause);
+    }
+
+    public InvalidClassException(String cname, String reason, Throwable cause) {
+        super(reason, cause);
+        classname = cname;
+    }
+
     @Override
     public String getMessage() {
         return classname == null ? super.getMessage() : classname + "; " + super.getMessage();

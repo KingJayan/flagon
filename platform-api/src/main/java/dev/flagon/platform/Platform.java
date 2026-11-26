@@ -3,6 +3,7 @@ package dev.flagon.platform;
 import dev.flagon.platform.audio.AudioDevice;
 import dev.flagon.platform.display.DisplaySurface;
 import dev.flagon.platform.fs.FileStore;
+import dev.flagon.platform.graphics.Drawing;
 import dev.flagon.platform.net.Fetch;
 import dev.flagon.platform.net.Network;
 
@@ -36,6 +37,11 @@ public interface Platform {
     /** @return how {@code java.net.http} sends requests; refuses them where the host cannot */
     default Fetch fetch() {
         return Fetch.unavailable(name() + " cannot send http requests for java.net.http");
+    }
+
+    /** @return the 2d raster {@code java.awt} draws and {@code javax.imageio} decodes with */
+    default Drawing drawing() {
+        return Drawing.unavailable(name() + " has no 2d canvas for java.awt");
     }
 
     /** @return whether this host can open a window at all. */

@@ -192,6 +192,7 @@ interface Platform
     AudioDevice audio();
     Network network();
     default Fetch fetch(); // how java.net.http sends requests; refuses them by default.
+    default Drawing drawing(); // the 2d canvas java.awt draws on; refuses by default.
     boolean hasDisplay();
     DisplaySurface display(int width, int height, String title); // opens the window or returns current.
 ```
@@ -840,6 +841,41 @@ enum BufferUsage
     static final BufferUsage STREAM;
 ```
 
+### Canvas2D
+
+A 2D canvas with the HTML canvas model: one current path, a transform, and state that `save` and `restore` stack. Colors are `0xAARRGGBB`, not premultiplied.
+
+```java
+interface Canvas2D
+    int width();
+    int height();
+    void put(int[] argb, int offset, int stride, int x, int y, int width, int height);
+    void get(int[] argb, int offset, int stride, int x, int y, int width, int height);
+    void save();
+    void restore();
+    void setTransform(double m00, double m10, double m01, double m11, double m02, double m12);
+    void beginPath();
+    void moveTo(double x, double y);
+    void lineTo(double x, double y);
+    void quadTo(double cx, double cy, double x, double y);
+    void curveTo(double cx1, double cy1, double cx2, double cy2, double x, double y);
+    void ellipse(double cx, double cy, double rx, double ry, double start, double end, boolean counterclockwise); // radians, clockwise
+    void closePath();
+    void clip(boolean evenOdd);
+    void fill(boolean evenOdd);
+    void stroke();
+    void clearRect(double x, double y, double width, double height);
+    void color(int argb);
+    void line(double width, String cap, String join, double miterLimit, double[] dash, double dashPhase);
+    void alpha(double alpha);
+    void composite(String operation); // a canvas globalCompositeOperation
+    void smoothing(boolean smooth);
+    void font(String font); // a CSS font
+    void fillText(String text, double x, double y);
+    double[] measure(String text); // width, ascent and descent
+    void drawImage(Canvas2D source, double sx, double sy, double sw, double sh, double dx, double dy, double dw, double dh);
+```
+
 ### CompareFunc
 
 A depth, stencil or texture comparison.
@@ -865,6 +901,26 @@ enum CullFace
     static final CullFace FRONT;
     static final CullFace BACK;
     static final CullFace FRONT_AND_BACK;
+```
+
+### Drawing
+
+The host's 2D raster: the canvases `java.awt` draws on, and the image files `javax.imageio` decodes. `decode` pauses only the calling green thread.
+
+```java
+interface Drawing
+    boolean isAvailable();
+    Canvas2D canvas(int width, int height); // a transparent canvas
+    Decoded decode(byte[] file); // throws IOException when the host cannot read the file.
+    static Drawing unavailable(String reason); // refuses every call with this reason.
+```
+
+### Drawing.Decoded
+
+A decoded image: one `0xAARRGGBB` int per pixel, row by row, not premultiplied.
+
+```java
+record Drawing.Decoded(int width, int height, int[] argb)
 ```
 
 ### FramebufferAttachment
@@ -1574,6 +1630,14 @@ class StoreFileSystem implements VirtualFileSystem
 ```
 
 ## dev.flagon.platform.browser.graphics
+
+### BrowserDrawing
+
+The `Drawing` over `OffscreenCanvas`. It decodes with `createImageBitmap`, through `self.__flagonImages`.
+
+```java
+class BrowserDrawing implements Drawing
+```
 
 ### WebGL2
 

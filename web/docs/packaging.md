@@ -103,7 +103,7 @@ Add the class libraries the application needs:
 | `:toolchain:socket-classlib` | `java.net.Socket` and `InetAddress` through the socket proxy. |
 | `:toolchain:http-classlib` | `java.net.http.HttpClient` through the page's `fetch`. |
 | `:toolchain:nio-classlib` | `FileChannel`, `Selector` and the NIO channel types. |
-| `:toolchain:awt-classlib` | `BufferedImage`, `ImageIO` (PNG) and the clipboard. |
+| `:toolchain:awt-classlib` | `Graphics2D`, `java.awt.geom`, `BufferedImage`, `ImageIO` and the clipboard. |
 | `:toolchain:crypto-classlib` | `MessageDigest`, `Mac`, `Cipher`, `Signature`, `KeyAgreement`, PBKDF2, RSA and EC keys. |
 | `:toolchain:sound-classlib` | `javax.sound` types that report no device. |
 | `:toolchain:reflect-policy` | `@Reflectable` and the reflection policy. |
