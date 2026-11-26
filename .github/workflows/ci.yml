@@ -13,9 +13,9 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build:
+  lint:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v5
 
@@ -28,6 +28,19 @@ jobs:
 
       - name: Check java style
         run: ./gradlew lintJava
+
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '25'
+
+      - uses: gradle/actions/setup-gradle@v4
 
       - name: Unit tests
         run: make test
@@ -61,7 +74,16 @@ jobs:
 
       - uses: gradle/actions/setup-gradle@v4
 
+      - id: wasm-cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ${{ runner.temp }}/${{ env.WASM_TOOLS }}
+            ${{ runner.temp }}/${{ env.WASMTIME }}
+          key: wasm-${{ env.WASM_TOOLS }}-${{ env.WASMTIME }}
+
       - name: Install wasm-tools and wasmtime
+        if: steps.wasm-cache.outputs.cache-hit != 'true'
         run: |
           cd "$RUNNER_TEMP"
           curl -fsSLO "https://github.com/bytecodealliance/wasm-tools/releases/download/v1.263.0/$WASM_TOOLS.tar.gz"
@@ -72,6 +94,9 @@ jobs:
           EOF
           tar -xzf "$WASM_TOOLS.tar.gz"
           tar -xJf "$WASMTIME.tar.xz"
+
+      - name: Put wasm-tools and wasmtime on the path
+        run: |
           echo "$RUNNER_TEMP/$WASM_TOOLS" >> "$GITHUB_PATH"
           echo "$RUNNER_TEMP/$WASMTIME" >> "$GITHUB_PATH"
 
@@ -186,7 +211,7 @@ jobs:
           retention-days: 7
 
   site:
-    needs: browser
+    needs: [lint, browser]
     if: github.event_name == 'push'
     runs-on: ubuntu-latest
     timeout-minutes: 10
