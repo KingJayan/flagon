@@ -8,6 +8,7 @@ dependencies {
     implementation(project(":runtime"))
     implementation(project(":platform:wasi"))
     implementation(project(":toolchain:jdk-shims"))
+    implementation(project(":toolchain:time-classlib"))
 }
 
 bundle {

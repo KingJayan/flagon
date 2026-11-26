@@ -3,6 +3,11 @@ plugins {
     id("flagon.published")
 }
 
+dependencies {
+    compileOnly("dev.flagon:teavm-core-patched:${project.version}")
+    compileOnly(libs.teavm.jso)
+}
+
 tasks.withType<JavaCompile>().configureEach {
     options.compilerArgs.addAll(listOf("--limit-modules", "java.base"))
 }

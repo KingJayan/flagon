@@ -2,6 +2,7 @@
 package org.teavm.backend.wasm.transformation;
 
 import java.util.List;
+import org.teavm.model.AccessLevel;
 import org.teavm.model.ClassHolder;
 import org.teavm.model.ClassHolderTransformer;
 import org.teavm.model.ClassHolderTransformerContext;
@@ -17,6 +18,9 @@ public class WasiTransformation implements ClassHolderTransformer {
     private static final String WASI = "org.teavm.runtime.wasi.Wasi";
     private static final String QUEUE = "org.teavm.runtime.EventQueue";
     private static final String EVENT = "org.teavm.runtime.EventQueue$Event";
+    /** each public method of INTL runs its namesake in INTL_ROOT, which has no javascript */
+    private static final String INTL = "org.teavm.classlib.impl.unicode.Intl";
+    private static final String INTL_ROOT = "org.teavm.classlib.impl.unicode.IntlRoot";
 
     /** a method, and the static method that takes its place; null for an empty body */
     private record Replacement(String className, MethodDescriptor method, MethodReference target) {
@@ -49,6 +53,14 @@ public class WasiTransformation implements ClassHolderTransformer {
     @Override
     public void transformClass(ClassHolder cls, ClassHolderTransformerContext context) {
         if (!enabled) {
+            return;
+        }
+        if (cls.getName().equals(INTL)) {
+            for (var method : cls.getMethods()) {
+                if (method.hasModifier(ElementModifier.STATIC) && method.getLevel() == AccessLevel.PUBLIC) {
+                    replace(method, new MethodReference(INTL_ROOT, method.getDescriptor()), context);
+                }
+            }
             return;
         }
         for (var replacement : REPLACEMENTS) {

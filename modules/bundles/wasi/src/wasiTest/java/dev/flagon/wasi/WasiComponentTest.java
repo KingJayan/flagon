@@ -30,6 +30,7 @@ class WasiComponentTest {
                 Hello, Ada Lovelace!
                 sin(1) = 0.8414709848078965, 2^0.5 = 1.4142135623730951
                 the clock is running: true
+                1,234,567.891 on Monday, 2 January 2006
                 """, run.out());
         assertEquals("and stderr is separate\n", run.err());
     }
