@@ -25,9 +25,9 @@ public final class ThreadsProgram implements Program {
         long start = System.nanoTime();
         for (String name : new String[] {"slow", "quick", "middle"}) {
             int millis = switch (name) {
-                case "slow" -> 60;
-                case "middle" -> 40;
-                default -> 20;
+                case "slow" -> 300;
+                case "middle" -> 200;
+                default -> 100;
             };
             Thread thread = new Thread(() -> {
                 try {
@@ -45,6 +45,6 @@ public final class ThreadsProgram implements Program {
         }
         long took = (System.nanoTime() - start) / 1_000_000;
         System.out.println("woke in order: " + String.join(", ", woke));
-        System.out.println("together, not one after another: " + (took >= 60 && took < 120));
+        System.out.println("together, not one after another: " + (took >= 300 && took < 600));
     }
 }
