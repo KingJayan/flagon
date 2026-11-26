@@ -193,6 +193,7 @@ interface Platform
     Network network();
     default Fetch fetch(); // how java.net.http sends requests; refuses them by default.
     default Drawing drawing(); // the 2d canvas java.awt draws on; refuses by default.
+    default Workers workers(); // bundle workers; refuses by default.
     boolean hasDisplay();
     DisplaySurface display(int width, int height, String title); // opens the window or returns current.
 ```
@@ -1525,6 +1526,52 @@ class UnavailableNetwork implements Network
     UnavailableNetwork(String reason);
 ```
 
+## dev.flagon.platform.workers
+
+Bundle workers: the running bundle started again in a Web Worker, which runs one catalog program and talks to its parent by messages.
+
+```java
+Channel echo = Platforms.get().workers().spawn("worker-echo");
+echo.send(new Message("frame", pixels));
+Message answer = echo.receive();
+echo.close();
+```
+
+### Channel
+
+One end of the channel between a bundle and a worker. Messages keep their order. `receive` pauses only the calling green thread.
+
+```java
+interface Channel extends AutoCloseable
+    void send(Message message);
+    default void send(String text);
+    default void send(byte[] data);
+    Message receive(); // null once the other end has closed and every message is read.
+    Message poll(); // null when none has arrived yet.
+    boolean isOpen(); // false once the other end has closed or the worker has exited.
+    void close(); // closing a spawned worker's channel stops the worker.
+```
+
+### Message
+
+Text, bytes or both. The bytes cross to the other thread as a copy in a transferred `ArrayBuffer`.
+
+```java
+record Message(String text, byte[] data)
+```
+
+### Workers
+
+Starts workers and finds the parent. A worker has no display and no audio output. Its console lines reach the parent's console, prefixed with the program id.
+
+```java
+interface Workers
+    boolean isAvailable();
+    Channel spawn(String program, String... arguments); // runs this catalog program in a new worker.
+    Channel parent(); // the spawning bundle's channel; null outside a worker.
+    static Workers unavailable(String reason); // refuses every spawn with this reason.
+```
+
 ## dev.flagon.platform.browser
 
 ### BrowserClock
@@ -1692,4 +1739,14 @@ The `Network` over WebSockets to the socket proxy.
 ```java
 class ProxyNetwork implements Network
     static ProxyNetwork createIfAvailable();
+```
+
+## dev.flagon.platform.browser.workers
+
+### BrowserWorkers
+
+The `Workers` over Web Workers, through `self.__flagonWorkers`. A worker loads the same bundle URL as the page.
+
+```java
+class BrowserWorkers implements Workers
 ```

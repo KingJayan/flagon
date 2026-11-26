@@ -7,7 +7,6 @@ import dev.flagon.platform.browser.js.JsArrays;
 import org.teavm.jso.JSBody;
 import org.teavm.jso.JSObject;
 import org.teavm.jso.JSProperty;
-import org.teavm.jso.browser.Window;
 import org.teavm.jso.core.JSObjects;
 import org.teavm.jso.typedarrays.ArrayBuffer;
 import org.teavm.jso.typedarrays.Int8Array;
@@ -71,14 +70,14 @@ final class ResourcePack {
                 : JsArrays.bytesOf(new Int8Array(arrived));
     }
 
-    @JSBody(script = "return typeof window.__flagonApart !== 'undefined';")
+    @JSBody(script = "return typeof self.__flagonApart !== 'undefined';")
     private static native boolean servesApart();
 
-    @JSBody(params = "hash", script = "return window.__flagonApart.take(hash);")
+    @JSBody(params = "hash", script = "return self.__flagonApart.take(hash);")
     private static native ArrayBuffer takeApart(String hash);
 
     /** the page fetches these, joined with commas, and drops cached files it is not given */
-    @JSBody(params = "hashes", script = "window.__flagonApart.want(hashes);")
+    @JSBody(params = "hashes", script = "self.__flagonApart.want(hashes);")
     private static native void wantApart(String hashes);
 
     interface Packed extends JSObject {
@@ -86,11 +85,11 @@ final class ResourcePack {
         ArrayBuffer getResources();
     }
 
-    @JSBody(script = "window.__flagonResources = undefined;")
+    @JSBody(script = "self.__flagonResources = undefined;")
     private static native void dropSupplied();
 
     private static Int8Array supplied() {
-        ArrayBuffer pack = Window.current().<Packed>cast().getResources();
+        ArrayBuffer pack = HostBridges.scope().<Packed>cast().getResources();
         return pack == null || JSObjects.isUndefined(pack) ? null : new Int8Array(pack);
     }
 }

@@ -23,6 +23,7 @@ All bundles compile with TeaVM's strict mode, so a null dereference throws `Null
 | `System.out`, `System.err` | `console` | Line-buffered. Also sent to the host page. |
 | Files | Origin Private File System | Persistent per origin. See [Files](#files). |
 | Threads | none | Green threads on one core. See [Threads](#threads). |
+| Bundle workers | Web Workers | `dev.flagon.platform.workers` runs a catalog program on another core and passes it messages. See [Threads](#threads). |
 | Sockets, HTTP | WebSocket | Through the socket proxy. See [Networking](#networking). |
 | `java.net.http` | `fetch` | The page's CORS rules apply. See [Networking](#networking). |
 | Graphics | WebGL 2 | Desktop GL 1.1 to 3.3. See [OpenGL](#opengl). |
@@ -36,7 +37,7 @@ All bundles compile with TeaVM's strict mode, so a null dereference throws `Null
 - **Class loading at run time.** There is no bytecode in the page, so `ClassLoader.defineClass` and runtime ASM, Mixin, Forge or Fabric loaders cannot work. Transform the JARs before the build.
 - **Processes and native code.** `Runtime.exec`, `System.loadLibrary` and `System.load` throw `UnsupportedOperationException`.
 - **Listening sockets and UDP.** `ServerSocket`, `DatagramSocket` and `MulticastSocket` throw.
-- **Parallel CPU work.** Threads take turns on one core.
+- **Parallel CPU work with shared memory.** Threads take turns on one core. A bundle worker runs on another core, but shares no heap: it talks by messages.
 
 ### Reflection
 
@@ -177,6 +178,8 @@ See [Socket proxy](packaging.md#socket-proxy) to run one.
 ## Threads
 
 Threads are green threads on the page's one thread. They give concurrency, not parallelism. A thread yields when it waits; code that never waits holds the page until it returns.
+
+For parallel work, `Platforms.get().workers().spawn(program)` starts the bundle again in a Web Worker and runs that catalog program there. The two sides pass text and bytes over a `Channel`. A worker has no display and no audio output. See [the API reference](api.md#devflagonplatformworkers).
 
 | API | Behavior |
 | --- | --- |

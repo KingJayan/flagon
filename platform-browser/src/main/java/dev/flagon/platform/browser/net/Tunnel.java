@@ -5,7 +5,6 @@ import org.teavm.interop.Async;
 import org.teavm.interop.AsyncCallback;
 import org.teavm.jso.JSBody;
 import org.teavm.jso.browser.Location;
-import org.teavm.jso.browser.Window;
 import org.teavm.jso.JSFunctor;
 import org.teavm.jso.JSObject;
 import org.teavm.jso.typedarrays.Int8Array;
@@ -44,11 +43,14 @@ final class Tunnel {
     @JSBody(script = "return typeof WebSocket !== 'undefined';")
     private static native boolean hasWebSocket();
 
+    @JSBody(script = "return self.location;")
+    private static native Location location();
+
     @JSBody(script = "return typeof location !== 'undefined';")
     private static native boolean hasLocation();
 
     static String endpoint(String host, int port, String path, boolean secure) {
-        Location page = Window.current().getLocation();
+        Location page = location();
         String scheme = "https:".equals(page.getProtocol()) ? "wss://" : "ws://";
         StringBuilder url = new StringBuilder(scheme)
                 .append(page.getHost())
@@ -70,10 +72,10 @@ final class Tunnel {
     @JSBody(params = "text", script = "return encodeURIComponent(text);")
     private static native String encode(String text);
 
-    @JSBody(script = "return typeof window.__flagonProxyToken === 'string';")
+    @JSBody(script = "return typeof self.__flagonProxyToken === 'string';")
     private static native boolean hasProxyToken();
 
-    @JSBody(script = "return window.__flagonProxyToken;")
+    @JSBody(script = "return self.__flagonProxyToken;")
     private static native String proxyToken();
 
     @Async
@@ -123,25 +125,25 @@ final class Tunnel {
         };
     }
 
-    @JSBody(script = "return typeof window.__flagonNet !== 'undefined';")
+    @JSBody(script = "return typeof self.__flagonNet !== 'undefined';")
     static native boolean isInstalled();
 
-    @JSBody(params = {"url", "done"}, script = "window.__flagonNet.open(url, done);")
+    @JSBody(params = {"url", "done"}, script = "self.__flagonNet.open(url, done);")
     private static native void netOpen(String url, Settled done);
 
-    @JSBody(params = {"handle", "done"}, script = "window.__flagonNet.receive(handle, done);")
+    @JSBody(params = {"handle", "done"}, script = "self.__flagonNet.receive(handle, done);")
     private static native void netReceive(Handle handle, Settled done);
 
-    @JSBody(params = {"handle"}, script = "return window.__flagonNet.available(handle);")
+    @JSBody(params = {"handle"}, script = "return self.__flagonNet.available(handle);")
     static native int available(Handle handle);
 
-    @JSBody(params = {"handle"}, script = "return window.__flagonNet.isOpen(handle);")
+    @JSBody(params = {"handle"}, script = "return self.__flagonNet.isOpen(handle);")
     static native boolean isOpen(Handle handle);
 
-    @JSBody(params = {"handle", "data"}, script = "window.__flagonNet.send(handle, data);")
+    @JSBody(params = {"handle", "data"}, script = "self.__flagonNet.send(handle, data);")
     private static native void netSend(Handle handle, Int8Array data);
 
-    @JSBody(params = {"handle"}, script = "return window.__flagonNet.buffered(handle);")
+    @JSBody(params = {"handle"}, script = "return self.__flagonNet.buffered(handle);")
     private static native int buffered(Handle handle);
 
     @JSBody(params = {"done"}, script = "setTimeout(done, 4);")
@@ -154,6 +156,6 @@ final class Tunnel {
         return (long) clock();
     }
 
-    @JSBody(params = {"handle"}, script = "window.__flagonNet.close(handle);")
+    @JSBody(params = {"handle"}, script = "self.__flagonNet.close(handle);")
     static native void close(Handle handle);
 }

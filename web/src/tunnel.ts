@@ -32,9 +32,7 @@ export interface Tunnel {
 }
 
 declare global {
-  interface Window {
-    __flagonNet?: Tunnel;
-  }
+  var __flagonNet: Tunnel | undefined;
 }
 
 function missingAt(url: string): string {
@@ -158,5 +156,5 @@ export function tunnel(): Tunnel {
 }
 
 export function installTunnel(): void {
-  window.__flagonNet ??= tunnel();
+  globalThis.__flagonNet ??= tunnel();
 }

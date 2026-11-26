@@ -58,6 +58,7 @@ export default defineConfig({
         '**/shutdownhook.spec.ts',
         '**/tls.spec.ts',
         '**/tunnel.spec.ts',
+        '**/workers.spec.ts',
       ],
       use: { ...devices['Desktop Firefox'] },
     },
