@@ -25,6 +25,11 @@ group = "dev.flagon.bundles"
 val bundle = extensions.create<BundleExtension>("bundle")
 val mainSources = the<SourceSetContainer>()["main"]
 
+// keeps parameter names, which reflection and the typescript declarations read back
+tasks.named<JavaCompile>("compileJava") {
+    options.compilerArgs.add("-parameters")
+}
+
 bundle.bundleName.convention(project.name.removePrefix("bundle-"))
 bundle.resourcesFrom.convention(
     layout.dir(provider { mainSources.output.resourcesDir }),
@@ -59,6 +64,7 @@ val reflected = bundle.reflectClasses.zip(vendorGlobs("reflect.txt")) { own, ven
 
 val teavmClasspath = configurations.named("teavmClasspath")
 val bundleTools = configurations.create("bundleTools")
+val typesTool = configurations.create("typesTool")
 
 val teavmPatched = configurations.create("teavmPatched") {
     isTransitive = false
@@ -71,6 +77,7 @@ val teavmCompiler = configurations.create("teavmCompiler") {
 
 dependencies {
     bundleTools(project(":toolchain:resource-pack"))
+    typesTool(project(":toolchain:js-types"))
     compileOnly(project(":toolchain:resource-pack"))
     compileOnly("dev.flagon:teavm-core-patched:${project.version}")
     compileOnly("dev.flagon:teavm-jso-impl-patched:${project.version}")
@@ -191,6 +198,18 @@ val writeResourcePack = tasks.register<RunMain>("writeResourcePack") {
     arguments.addAll(bundle.vorbisQuality.map { listOf("--vorbis-quality=$it") }.orElse(listOf()))
 }
 
+val typesDir = layout.buildDirectory.dir("types")
+val writeTypes = tasks.register<RunMain>("writeTypes") {
+    description = "declare the javascript module's exports for typescript"
+    val out = typesDir.zip(bundle.bundleName) { dir, name -> dir.file("js/$name.d.ts") }
+    runtimeClasspath.from(mainSources.runtimeClasspath, typesTool)
+    mainClass.set("dev.flagon.types.WriteTypes")
+    outputs.file(out)
+    outputs.cacheIf { true }
+    paths.add(out)
+    arguments.add(bundle.mainClass)
+}
+
 fun optimizing(variant: String, compile: TaskProvider<GenerateWasmGCTask>): Provider<out Task> {
     if (!releaseBuild) {
         return compile
@@ -237,13 +256,14 @@ configurations.consumable("bundleFast")
 
 artifacts {
     add("bundleFull", bundlesDir) { builtBy(built, "generateJavaScript") }
+    add("bundleFull", typesDir) { builtBy(writeTypes) }
     add("bundleFast", bundlesDir) { builtBy(built) }
 }
 
 tasks.register("bundle") {
     group = "flagon"
     description = "compile this module to webassembly gc and to javascript"
-    dependsOn(built, "generateJavaScript")
+    dependsOn(built, "generateJavaScript", writeTypes)
 }
 
 tasks.register("bundleFast") {
