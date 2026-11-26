@@ -8,7 +8,7 @@ import { OPENED, PAUSE, RESUME, TCP_PROXY_PATH } from '../wire';
 const here = path.dirname(fileURLToPath(import.meta.url));
 const TUNNEL_JAVA = path.join(
   here,
-  '../../platform-browser/src/main/java/dev/flagon/platform/browser/net/Tunnel.java',
+  '../../modules/platform/browser/src/main/java/dev/flagon/platform/browser/net/Tunnel.java',
 );
 
 test.describe('the words both sides of the tunnel say', () => {

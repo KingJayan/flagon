@@ -223,10 +223,10 @@ A [WASI component](packaging.md#wasi) runs headless in a WASI preview 2 host. wa
 
 | Module | Supplies |
 | --- | --- |
-| `lwjgl2-compat` | `Display`, `GL11` to `GL20` and `GL11C` to `GL20C`, the common ARB and EXT extensions, `Keyboard`, `Mouse`, `AL10`, `ALC10`, `BufferUtils`, `GLU`, `util.vector` and `WaveData`. |
-| `lwjgl3-compat` | `GLFW` with its callbacks, `GL30` to `GL33` and `GL30C` to `GL33C`, `MemoryUtil`, `MemoryStack` and `PointerBuffer`. |
+| `lwjgl/lwjgl2` | `Display`, `GL11` to `GL20` and `GL11C` to `GL20C`, the common ARB and EXT extensions, `Keyboard`, `Mouse`, `AL10`, `ALC10`, `BufferUtils`, `GLU`, `util.vector` and `WaveData`. |
+| `lwjgl/lwjgl3` | `GLFW` with its callbacks, `GL30` to `GL33` and `GL30C` to `GL33C`, `MemoryUtil`, `MemoryStack` and `PointerBuffer`. |
 
-An LWJGL 3 program needs both modules. `lwjgl3-compat` has no LWJGL 3 OpenAL binding (`ALC.create`, `ALCapabilities`).
+An LWJGL 3 program needs both modules. `lwjgl/lwjgl3` has no LWJGL 3 OpenAL binding (`ALC.create`, `ALCapabilities`).
 
 ### Display
 

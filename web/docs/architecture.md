@@ -9,35 +9,37 @@ Each layer uses only the layer under it.
 ```text
 application JAR, unmodified
         │  compiled ahead of time
-lwjgl2-compat · lwjgl3-compat     org.lwjgl.* APIs
+lwjgl/lwjgl2 · lwjgl/lwjgl3     org.lwjgl.* APIs
         │
-lwjgl-core                        GL and AL state, fixed-function pipeline, GLSL translator
+lwjgl/core                        GL and AL state, fixed-function pipeline, GLSL translator
         │
-platform-api                      host contracts: graphics, audio, files, input, network, clock
+platform/api                      host contracts: graphics, audio, files, input, network, clock
         │
-platform-browser                  WebGL 2, Web Audio, OPFS, DOM events, WebSocket tunnel
-platform-wasi                     headless: WASI preview 1 files, clocks, args and stdio
+platform/browser                  WebGL 2, Web Audio, OPFS, DOM events, WebSocket tunnel
+platform/wasi                     headless: WASI preview 1 files, clocks, args and stdio
 ```
 
 ### Rules
 
-1. **Host isolation.** Only `platform-browser` uses browser APIs, and only `platform-wasi` uses WASI. No other module names `window`, `document` or WebGL.
-2. **JVM tests.** `lwjgl-core` and the compat layers use only `platform-api`. Their tests run on a desktop JVM with recording and in-memory devices: `RecordingGraphicsDevice`, `SilentAudioDevice`, `MemoryFileStore` and `MemoryNetwork`.
+1. **Host isolation.** Only `platform/browser` uses browser APIs, and only `platform/wasi` uses WASI. No other module names `window`, `document` or WebGL.
+2. **JVM tests.** `lwjgl/core` and the compat layers use only `platform/api`. Their tests run on a desktop JVM with recording and in-memory devices: `RecordingGraphicsDevice`, `SilentAudioDevice`, `MemoryFileStore` and `MemoryNetwork`.
 3. **Static access.** LWJGL calls are static, such as `Display.create()` and `GL11.glClear()`. The runtime installs the active `Platform` in `Platforms` at boot, and static code reads it from there.
 
 ## Modules
+
+The Gradle modules live in `modules/`. The project `:platform:api` is the directory `modules/platform/api`, and it publishes as `dev.flagon:platform-api`.
 
 ### Runtime
 
 | Module | Role |
 | --- | --- |
-| `platform-api` | Host contracts: `Platform`, `GraphicsDevice`, `DisplaySurface`, `AudioDevice`, `FileStore`, `InputSource`, `Network`, `Clock`, `RuntimeHost`. Also the JDK reroute targets. |
-| `platform-browser` | Implements `platform-api` in the browser. |
-| `platform-wasi` | Implements `platform-api` headless, over WASI, for a [WASI component](packaging.md#wasi). |
+| `platform/api` | Host contracts: `Platform`, `GraphicsDevice`, `DisplaySurface`, `AudioDevice`, `FileStore`, `InputSource`, `Network`, `Clock`, `RuntimeHost`. Also the JDK reroute targets. |
+| `platform/browser` | Implements `platform/api` in the browser. |
+| `platform/wasi` | Implements `platform/api` headless, over WASI, for a [WASI component](packaging.md#wasi). |
 | `runtime` | Boots a platform, picks a program, runs it, and reports to the host. Installs `System.out`, URL handlers and shutdown hooks. |
-| `lwjgl-core` | GL and AL state machines, immediate mode, display lists, the fixed-function shader generator and the GLSL translator. No `org.lwjgl` classes. |
-| `lwjgl2-compat` | The LWJGL 2 API. |
-| `lwjgl3-compat` | The LWJGL 3 API. |
+| `lwjgl/core` | GL and AL state machines, immediate mode, display lists, the fixed-function shader generator and the GLSL translator. No `org.lwjgl` classes. |
+| `lwjgl/lwjgl2` | The LWJGL 2 API. |
+| `lwjgl/lwjgl3` | The LWJGL 3 API. |
 
 ### Class libraries
 
@@ -58,27 +60,27 @@ Each adds JDK classes that TeaVM lacks.
 
 | Module | Role |
 | --- | --- |
-| `toolchain/jdk-shims` | TeaVM class transformers. They reroute JDK calls that TeaVM lacks to `platform-api`, and write the class-file facts TeaVM drops (generic signatures, record components, parameter names, default `serialVersionUID`) into each reflectable class. |
+| `toolchain/jdk-shims` | TeaVM class transformers. They reroute JDK calls that TeaVM lacks to `platform/api`, and write the class-file facts TeaVM drops (generic signatures, record components, parameter names, default `serialVersionUID`) into each reflectable class. |
 | `toolchain/reflect-policy` | `@Reflectable` and the compiler plugin that decides which classes keep their members. |
 | `toolchain/app-entry` | Reads the JARs in `vendor/` and writes the `app` bundle's entry point. |
 | `toolchain/classfile` | A constant-pool reader. It tells whether a classpath has every class and method a class names. |
 | `toolchain/resource-pack` | Writes `<bundle>.pack` and `<bundle>.files/`, and re-encodes Vorbis. |
-| `teavm` | `teavm-core` 0.15.0 rebuilt with compiler and class library fixes. |
-| `teavm-jso` | `teavm-jso-impl` 0.15.0 rebuilt so a simple `@JSBody` compiles to backend operations, not text. |
-| `teavm-patches` | Builds `teavm` and `teavm-jso` before the main build. The TeaVM plugin loads them in place of the stock JARs. |
+| `teavm/core` | `teavm-core` 0.15.0 rebuilt with compiler and class library fixes. |
+| `teavm/jso` | `teavm-jso-impl` 0.15.0 rebuilt so a simple `@JSBody` compiles to backend operations, not text. |
+| `teavm/patches` | Builds `teavm/core` and `teavm/jso` before the main build. The TeaVM plugin loads them in place of the stock JARs. |
 | `build-logic` | The Gradle convention plugins, including `flagon.bundle`. |
 
 ### Bundles and examples
 
 | Module | Contents |
 | --- | --- |
-| `bundle-sandbox` | The self-tests the browser tests run, and the LWJGL demos. |
-| `bundle-pausing` | A program that pauses during class setup, for the coroutine backend. |
-| `bundle-wasi` | Headless programs and exports for the WASI component, which `make wasi` runs under wasmtime. |
+| `bundles/sandbox` | The self-tests the browser tests run, and the LWJGL demos. |
+| `bundles/pausing` | A program that pauses during class setup, for the coroutine backend. |
+| `bundles/wasi` | Headless programs and exports for the WASI component, which `make wasi` runs under wasmtime. |
 | `examples/app`, `examples/thirdparty` | Sample LWJGL 2 programs and LWJGL's own LWJGL 3 sample, built against the real LWJGL. |
 | `examples/bundle` | The `example` bundle of those programs. |
-| `bundle-app` | The `app` bundle from `vendor/`. Present when `vendor/` has JARs. |
-| `playground` | A separate build. Compiles javac and TeaVM 0.17 to WebAssembly for the playground. |
+| `bundles/app` | The `app` bundle from `vendor/`. Present when `vendor/` has JARs. |
+| `web/playground` | A separate build. Compiles javac and TeaVM 0.17 to WebAssembly for the playground. |
 | `web` | The site, the bundle loader, the socket proxy and the Playwright tests. |
 
 ## Build pipeline
@@ -129,7 +131,7 @@ Browser APIs are asynchronous, and Java code expects blocking calls. TeaVM finds
 
 ### Files
 
-`OpfsFileStore` holds the files in OPFS. `StoreFileSystem`, in `platform-api`, puts `java.io` on any `FileStore`. A file loads into memory when it opens and writes back on `flush` and `close`. `RandomAccessFile` writes through in `rwd` and `rws` modes.
+`OpfsFileStore` holds the files in OPFS. `StoreFileSystem`, in `platform/api`, puts `java.io` on any `FileStore`. A file loads into memory when it opens and writes back on `flush` and `close`. `RandomAccessFile` writes through in `rwd` and `rws` modes.
 
 ### Audio
 

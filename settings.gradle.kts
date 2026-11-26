@@ -14,17 +14,27 @@ dependencyResolutionManagement {
     }
 }
 
-include(
-    "platform-api",
-    "platform-browser",
-    "platform-wasi",
+// a project at :a:b lives in modules/a/b
+fun module(path: String) {
+    include(path)
+    val parts = path.split(":")
+    parts.indices.forEach { i ->
+        val sub = parts.take(i + 1)
+        project(":" + sub.joinToString(":")).projectDir = file("modules/" + sub.joinToString("/"))
+    }
+}
+
+listOf(
+    "platform:api",
+    "platform:browser",
+    "platform:wasi",
     "runtime",
-    "lwjgl-core",
-    "lwjgl2-compat",
-    "lwjgl3-compat",
-    "bundle-sandbox",
-    "bundle-pausing",
-    "bundle-wasi",
+    "lwjgl:core",
+    "lwjgl:lwjgl2",
+    "lwjgl:lwjgl3",
+    "bundles:sandbox",
+    "bundles:pausing",
+    "bundles:wasi",
     "toolchain:app-entry",
     "toolchain:awt-classlib",
     "toolchain:classfile",
@@ -38,13 +48,15 @@ include(
     "toolchain:resource-pack",
     "toolchain:socket-classlib",
     "toolchain:sound-classlib",
-)
+).forEach(::module)
 
 if (file("vendor").listFiles()?.any { it.name.endsWith(".jar") } == true) {
-    include("bundle-app")
+    module("bundles:app")
 }
 
-includeBuild("teavm-patches")
+includeBuild("modules/teavm/patches") {
+    name = "teavm-patches"
+}
 
 include("example-app")
 project(":example-app").projectDir = file("examples/app")

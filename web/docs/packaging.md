@@ -77,8 +77,8 @@ plugins {
 
 dependencies {
     implementation(project(":runtime"))
-    implementation(project(":platform-browser"))
-    implementation(project(":lwjgl2-compat")) // or :lwjgl3-compat, or both
+    implementation(project(":platform:browser"))
+    implementation(project(":lwjgl:lwjgl2")) // or :lwjgl:lwjgl3, or both
 
     implementation("com.example:your-app:1.0.0") {
         exclude(group = "org.lwjgl")
@@ -191,14 +191,14 @@ Serve all of them. The page picks the backend at load time.
 
 ## WASI
 
-The `wasi` task builds a bundle module as a WASI preview 2 component, with no JavaScript in it. It needs [wasm-tools](https://github.com/bytecodealliance/wasm-tools). `bundle-wasi` is a complete example, and `make wasi` builds it and runs its programs under wasmtime.
+The `wasi` task builds a bundle module as a WASI preview 2 component, with no JavaScript in it. It needs [wasm-tools](https://github.com/bytecodealliance/wasm-tools). `bundles/wasi` is a complete example, and `make wasi` builds it and runs its programs under wasmtime.
 
 The entry point boots on `WasiPlatform` and exits with the status `boot` returns:
 
 ```kotlin
 dependencies {
     implementation(project(":runtime"))
-    implementation(project(":platform-wasi"))
+    implementation(project(":platform:wasi"))
     implementation(project(":toolchain:jdk-shims"))
 }
 

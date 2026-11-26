@@ -4,10 +4,10 @@ plugins {
 
 dependencies {
     implementation(project(":runtime"))
-    implementation(project(":platform-browser"))
+    implementation(project(":platform:browser"))
 
-    implementation(project(":lwjgl2-compat"))
-    implementation(project(":lwjgl3-compat"))
+    implementation(project(":lwjgl:lwjgl2"))
+    implementation(project(":lwjgl:lwjgl3"))
     implementation(project(":example-app"))
     implementation(project(":thirdparty-app"))
 }

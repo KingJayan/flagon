@@ -3,9 +3,9 @@ name: ci
 on:
   push:
     branches: [main]
-    paths-ignore: ['*.md', 'docs/**', 'LICENSE']
+    paths-ignore: ['*.md', 'web/docs/images/**', 'LICENSE']
   pull_request:
-    paths-ignore: ['*.md', 'docs/**', 'LICENSE']
+    paths-ignore: ['*.md', 'web/docs/images/**', 'LICENSE']
   workflow_dispatch:
 
 concurrency:
@@ -87,8 +87,8 @@ jobs:
       - id: cache
         uses: actions/cache@v4
         with:
-          path: playground/compiler/build/dist
-          key: playground-${{ hashFiles('playground/**', 'gradle/wrapper/gradle-wrapper.properties') }}
+          path: web/playground/compiler/build/dist
+          key: playground-${{ hashFiles('web/playground/**', '!web/playground/index.html', 'gradle/wrapper/gradle-wrapper.properties') }}
 
       - uses: actions/setup-java@v5
         if: steps.cache.outputs.cache-hit != 'true'
@@ -101,12 +101,12 @@ jobs:
 
       - name: Build the playground compiler
         if: steps.cache.outputs.cache-hit != 'true'
-        run: ./gradlew -p playground :compiler:dist
+        run: ./gradlew -p web/playground :compiler:dist
 
       - uses: actions/upload-artifact@v5
         with:
           name: playground
-          path: playground/compiler/build/dist/
+          path: web/playground/compiler/build/dist/
           retention-days: 1
 
   web:

@@ -5,10 +5,10 @@ plugins {
 }
 
 val bundleProjects = listOf(
-    ":bundle-sandbox",
-    ":bundle-pausing",
+    ":bundles:sandbox",
+    ":bundles:pausing",
     ":bundle-example",
-    ":bundle-app",
+    ":bundles:app",
 ).filter { findProject(it) != null }
 
 val bundleFull = configurations.dependencyScope("bundleFull")
@@ -26,7 +26,7 @@ dependencies {
 fun Sync.intoWeb(bundles: Provider<ResolvableConfiguration>) {
     group = "flagon"
     from(bundles)
-    from("teavm/src/main/resources/org/teavm/backend/wasm/wasm-gc-module-runtime.js") {
+    from("modules/teavm/core/src/main/resources/org/teavm/backend/wasm/wasm-gc-module-runtime.js") {
         into("wasm")
     }
     into(layout.projectDirectory.dir("web/public/flagon"))

@@ -40,10 +40,10 @@ bundles: ## compile Java to WebAssembly and JavaScript
 	@$(MAKE) verify-bundles
 
 playground: ## compile javac and TeaVM to wasm for the in-browser playground
-	$(GRADLE) -p playground :compiler:dist
+	$(GRADLE) -p web/playground :compiler:dist
 	rm -rf $(BUNDLES)/playground
 	mkdir -p $(BUNDLES)
-	cp -R playground/compiler/build/dist $(BUNDLES)/playground
+	cp -R web/playground/compiler/build/dist $(BUNDLES)/playground
 
 app: ## build the JARs in vendor/ as runnable app bundles
 	@test -n "$(VENDOR_JARS)" || { \
@@ -98,7 +98,7 @@ size: ## check release bundles against their size budgets
 		left=$$((limit - size)); \
 		printf "%-16s %10s %10s %8s\n" "$$name" "$$size" "$$limit" "$$left"; \
 		test $$size -le $$limit || over=1; \
-	done < toolchain/size-budget.txt; \
+	done < modules/toolchain/size-budget.txt; \
 	test $$over -eq 0 || { \
 		echo "one or more bundles exceed their size budget"; \
 		exit 1; \
@@ -108,7 +108,7 @@ test: ## run JVM unit tests
 	$(GRADLE) test
 
 wasi: ## build the wasi sample component and run its programs under wasmtime
-	$(GRADLE) :bundle-wasi:wasiTest
+	$(GRADLE) :bundles:wasi:wasiTest
 
 browser: ## run Playwright browser tests
 	@test -d $(BUNDLES) || { \
@@ -143,11 +143,11 @@ deploy-private: ## deploy the public site plus a release app bundle behind Verce
 		exit 1; \
 	}; \
 	git diff --quiet HEAD || { echo "commit or stash your changes so the app matches the site"; exit 1; }
-	$(GRADLE) -Pflagon.release :bundle-app:bundle
+	$(GRADLE) -Pflagon.release :bundles:app:bundle
 	rm -rf build/private
 	mkdir -p build/private
 	git archive origin/site | tar -x -C build/private
-	cp -R bundle-app/build/flagon/. build/private/flagon/
+	cp -R modules/bundles/app/build/flagon/. build/private/flagon/
 	cd build/private && vercel link --yes --project flagon > /dev/null && vercel deploy --yes
 
 dev: ## start the development server on port 5273
