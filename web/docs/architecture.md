@@ -157,9 +157,9 @@ The compiler removes members nothing calls by name. These settings keep them:
 | Members of a class | `@Reflectable`, `flagon.reflect.classes` | Fields, methods, constructors and their metadata. |
 | Members in `vendor/` | `vendor/reflect.txt` | Adds its globs to `flagon.reflect.classes`. |
 | Proxies | `flagon.reflect.proxies` | A proxy class made at compile time. |
-| Constructors in `vendor/` | `META-INF/flagon/constructed.txt` | Constructors. `-Pflagon.app.reflect` narrows them. |
+| Constructors in `vendor/` | `META-INF/flagon/constructed.txt` | Constructors of the classes the JARs name by a literal, a string, a resource or a field type. `-Pflagon.app.reflect` narrows them. |
 | Classpath scans | `flagon.preserve`, `vendor/preserve.txt` | Classes that only a scan names. |
-| Serialization | `Serializable` | Fields, the serial methods and a constructor that skips the serializable ones. |
+| Serialization | `Serializable` | Fields, the serial methods and a constructor that skips the serializable ones. An enum keeps none, since it goes by name. |
 
 There is no bytecode in the page. Transform the JARs before the build.
 

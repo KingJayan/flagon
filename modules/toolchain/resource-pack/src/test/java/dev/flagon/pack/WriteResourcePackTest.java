@@ -13,6 +13,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.HexFormat;
+import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.zip.GZIPInputStream;
@@ -91,15 +93,10 @@ class WriteResourcePackTest {
         ByteArrayOutputStream bytes = new ByteArrayOutputStream();
         WriteResourcePack.write(WriteResourcePack.collect(work), bytes);
 
-        ByteBuffer read = ByteBuffer.wrap(bytes.toByteArray());
-        read.position(WriteResourcePack.MAGIC.length + 4);
-        skipName(read);
-        read.position(read.position() + 4);
-        assertEquals(WriteResourcePack.INSIDE, read.get());
-        read.position(read.position() + 3);
-        skipName(read);
-        read.position(read.position() + 4);
-        assertEquals(WriteResourcePack.INSIDE | WriteResourcePack.SHIPPED, read.get());
+        Map<String, Integer> places = places(bytes.toByteArray());
+        assertEquals(WriteResourcePack.INSIDE, places.get("inside.txt"));
+        assertEquals(WriteResourcePack.INSIDE | WriteResourcePack.SHIPPED,
+                places.get("assets/beside.txt"));
     }
 
     @Test
@@ -164,10 +161,15 @@ class WriteResourcePackTest {
         Path apart = work.resolve("app.files");
 
         ByteArrayOutputStream bytes = new ByteArrayOutputStream();
-        WriteResourcePack.write(WriteResourcePack.collect(resources), Map.of(), 10, apart, bytes);
+        WriteResourcePack.write(WriteResourcePack.collect(resources), Map.of(),
+                new WriteResourcePack.Options(null, 10, List.of(), null), apart, bytes);
 
         ByteBuffer read = ByteBuffer.wrap(bytes.toByteArray());
         read.position(WriteResourcePack.MAGIC.length + 4);
+        skipName(read);
+        assertEquals(2, read.getInt());
+        assertEquals(WriteResourcePack.INSIDE, read.get());
+        read.position(read.position() + 2);
         skipName(read);
         assertEquals(10, read.getInt());
         assertEquals(WriteResourcePack.APART, read.get());
@@ -176,9 +178,63 @@ class WriteResourcePackTest {
         Path file = apart.resolve(HexFormat.of().formatHex(hash));
         assertEquals("0123456789", Files.readString(file));
         assertArrayEquals(hash, Hashes.sha256(Files.readAllBytes(file)));
-        skipName(read);
-        assertEquals(2, read.getInt());
-        assertEquals(WriteResourcePack.INSIDE, read.get());
+    }
+
+    @Test
+    void putsResourcesApartByNameOrByTheirAssetIndexName(@TempDir Path work) throws IOException {
+        Path resources = Files.createDirectory(work.resolve("in"));
+        Files.createDirectories(resources.resolve("assets/indexes"));
+        Files.createDirectories(resources.resolve("assets/objects/ab"));
+        String hash = "ab" + "0".repeat(38);
+        Files.writeString(resources.resolve("assets/indexes/1.8.json"), "{\"objects\": {"
+                + "\"minecraft/lang/de_DE.lang\": {\"hash\": \"" + hash + "\", \"size\": 2}}}");
+        Files.writeString(resources.resolve("assets/objects/ab/" + hash), "de");
+        Files.createDirectories(resources.resolve("presets"));
+        Files.writeString(resources.resolve("presets/a.png"), "a");
+        Files.writeString(resources.resolve("en_US.lang"), "en");
+        var options = WriteResourcePack.Options.parse(new String[] {
+            "--apart=minecraft/lang/*.lang, presets/**"});
+
+        ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+        WriteResourcePack.write(WriteResourcePack.collect(resources), Map.of(), options,
+                work.resolve("app.files"), bytes);
+
+        Map<String, Integer> places = places(bytes.toByteArray());
+        assertEquals(WriteResourcePack.APART, places.get("assets/objects/ab/" + hash));
+        assertEquals(WriteResourcePack.APART, places.get("presets/a.png"));
+        assertEquals(WriteResourcePack.INSIDE, places.get("en_US.lang"));
+        assertEquals(WriteResourcePack.INSIDE, places.get("assets/indexes/1.8.json"));
+    }
+
+    /** gzip looks only 32 KiB back, so vorbis sits with vorbis and png with png */
+    @Test
+    void groupsResourcesOfOneKind(@TempDir Path work) throws IOException {
+        Files.write(work.resolve("a.ogg"), vorbis(40));
+        Files.writeString(work.resolve("b.txt"), "b");
+        Files.write(work.resolve("c.png"), "\u0089PNG".getBytes(StandardCharsets.ISO_8859_1));
+        Files.write(work.resolve("d.ogg"), vorbis(40));
+
+        ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+        WriteResourcePack.write(WriteResourcePack.collect(work), bytes);
+
+        assertEquals(List.of("a.ogg", "d.ogg", "c.png", "b.txt"),
+                List.copyOf(places(bytes.toByteArray()).keySet()));
+    }
+
+    /** the page fetches the files kept apart in pack order */
+    @Test
+    void putsTheResourcesApartLastAndSmallestFirst(@TempDir Path work) throws IOException {
+        Files.writeString(work.resolve("a.txt"), "long enough");
+        Files.writeString(work.resolve("b.txt"), "short!");
+        Files.writeString(work.resolve("c.txt"), "s");
+
+        ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+        WriteResourcePack.write(WriteResourcePack.collect(work), Map.of(),
+                new WriteResourcePack.Options(null, 5, List.of(), null), work.resolve("apart"),
+                bytes);
+
+        assertEquals(List.of("c.txt", "b.txt", "a.txt"),
+                List.copyOf(places(bytes.toByteArray()).keySet()));
     }
 
     @Test
@@ -228,15 +284,35 @@ class WriteResourcePackTest {
     @Test
     void readsItsOptions() {
         var options = WriteResourcePack.Options.parse(new String[] {
-            "--vorbis-quality=0", "--apart-from=262144", "build/audio"});
+            "--vorbis-quality=0", "--apart-from=262144", "--apart=a/*,b/**", "build/audio"});
 
         assertEquals(0, options.vorbisQuality());
         assertEquals(262144, options.apartFrom());
+        assertEquals(2, options.apart().size());
+        assertTrue(options.apart().get(0).matcher("a/x.lang").matches());
+        assertFalse(options.apart().get(0).matcher("a/b/x.lang").matches());
+        assertTrue(options.apart().get(1).matcher("b/c/x.png").matches());
         assertEquals(Path.of("build/audio"), options.cache());
         assertThrows(IllegalArgumentException.class,
                 () -> WriteResourcePack.Options.parse(new String[] {"--vorbis-quality=0"}));
         assertThrows(IllegalArgumentException.class,
                 () -> WriteResourcePack.Options.parse(new String[] {"--fast"}));
+    }
+
+    /** each resource's place in the pack, in pack order */
+    private static Map<String, Integer> places(byte[] pack) {
+        ByteBuffer read = ByteBuffer.wrap(pack);
+        read.position(WriteResourcePack.MAGIC.length);
+        Map<String, Integer> places = new LinkedHashMap<>();
+        for (int count = read.getInt(); count > 0; count--) {
+            byte[] name = new byte[read.getInt()];
+            read.get(name);
+            int length = read.getInt();
+            int place = read.get();
+            places.put(new String(name, StandardCharsets.UTF_8), place);
+            read.position(read.position() + (place == WriteResourcePack.APART ? 32 : length));
+        }
+        return places;
     }
 
     private static void skipName(ByteBuffer read) {

@@ -36,6 +36,8 @@ public final class ReflectableClasses extends SimpleReflectionPolicy {
     public static final String CONVERTED = "flagon.reflect.converted";
     /** classes found by name and built through a static factory, like log4j plugins */
     public static final String PRESERVED = "META-INF/flagon/preserved.txt";
+    /** globs of the classes a classpath scan finds, as {@code KeepNamedClasses} keeps them */
+    public static final String SCANNED = "flagon.preserve";
 
     private static final String UNCONSTRUCTED = "dev.flagon.serial.Unconstructed";
     private static final Set<String> SERIAL_STATICS = Set.of("serialVersionUID",
@@ -60,6 +62,11 @@ public final class ReflectableClasses extends SimpleReflectionPolicy {
             selectClasses(present(type -> GlobMatch.match(pattern, type.name())))
                     .foundByName()
                     .reflectableMethods(ReflectableClasses::convertsFromText);
+        }
+
+        // a classpath scan loads every class it lists by name
+        for (String pattern : patterns(SCANNED)) {
+            selectClasses(present(type -> GlobMatch.match(pattern, type.name()))).foundByName();
         }
 
         Set<String> preserved = listed(PRESERVED);
@@ -99,6 +106,10 @@ public final class ReflectableClasses extends SimpleReflectionPolicy {
      * the ones deserialization calls, since keeping one keeps its code
      */
     private boolean serializes(IntrospectMember member) {
+        // an enum constant goes by its name alone
+        if (isEnum(member.declaringClass())) {
+            return false;
+        }
         if (member instanceof IntrospectField field) {
             return !Modifier.isStatic(field.modifiers()) || SERIAL_STATICS.contains(field.name());
         }
@@ -115,6 +126,12 @@ public final class ReflectableClasses extends SimpleReflectionPolicy {
             return externalizable != null && externalizable.isAssignableFrom(owner);
         }
         return parameters.size() == 1 && UNCONSTRUCTED.equals(parameters.get(0).type().name());
+    }
+
+    /** an enum, or the class body of one of its constants */
+    private static boolean isEnum(IntrospectClass<?> type) {
+        IntrospectClass<?> parent = type.superclass();
+        return type.isEnum() || parent != null && parent.isEnum();
     }
 
     private static boolean jdk(String name) {

@@ -88,7 +88,7 @@ The build puts every non-class file of the JARs into `<bundle>.pack`, gzipped. T
 - `getResourceAsStream` reads from the pack. `Class.getResourceAsStream` resolves a relative name beside the class.
 - `getResource` returns a `flagon:` URL for a file in the pack, and `null` for other names. `openStream` on the URL reads the file.
 - `getResources` returns at most one URL. A bundle holds one copy of each name, so a `META-INF/services` scan finds one file.
-- Files of `apartFrom` size or larger load in the background after the program starts. A read of one before it arrives throws `IOException`. Reads never wait, because the reader can hold a lock.
+- Files of `apartFrom` size or larger, or named in `vendor/apart.txt`, load in the background after the program starts, smallest first. A read of one before it arrives throws `IOException`. Reads never wait, because the reader can hold a lock. On a later visit, the files already in the browser cache are in before the program starts.
 
 ### JDK shims
 

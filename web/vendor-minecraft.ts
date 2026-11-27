@@ -32,6 +32,8 @@ const SKIPPED = [
 const PRESERVED = "org.apache.logging.log4j.core.pattern.*\n";
 // paulscode calls static methods on its sound library by name
 const REFLECTED = "paulscode.sound.libraries.*\n";
+// the languages besides en_US and the world preset images load after the game starts
+const APART = "minecraft/lang/*.lang\nassets/minecraft/textures/gui/presets/*\n";
 
 const version = process.argv[2] ?? "1.8.9";
 const launcher = resolve(process.argv[3] ?? defaultLauncher());
@@ -55,6 +57,7 @@ for (const entry of readdirSync(vendor)) {
 }
 writeFileSync(join(vendor, "preserve.txt"), PRESERVED);
 writeFileSync(join(vendor, "reflect.txt"), REFLECTED);
+writeFileSync(join(vendor, "apart.txt"), APART);
 copyFileSync(
     join(launcher, "versions", version, `${version}.jar`),
     join(vendor, `${version}.jar`),

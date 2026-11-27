@@ -9,6 +9,8 @@ import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.jar.Attributes;
 import java.util.jar.JarEntry;
@@ -113,39 +115,65 @@ class WriteAppEntryTest {
         assertTrue(entryFor(vendor).contains("real.Entry.main(arguments)"));
     }
 
-    /** the compiler is told which classes may be constructed by name, libraries included */
+    /**
+     * reflection constructs a class it has a Class object of and no instance: one named by a
+     * literal or a string, one a signature names, and the types gson fills their fields with
+     */
     @Test
-    void listsEveryClassTheJarsCarry() throws Exception {
+    void listsTheClassesTheJarsCanConstructByName() throws Exception {
         Path vendor = Files.createDirectories(directory.resolve("vendor"));
-        Files.move(jar("real.Entry", "real.Entry"), vendor.resolve("app.jar"));
-        Files.move(jar("library.Tool", null), vendor.resolve("library.jar"));
+        sources(vendor.resolve("app.jar"), Map.of(
+                "app.Entry", """
+                        public class Entry {
+                            static Object made = Made.class;
+                            static Object token = new Token();
+                            public static void main(String[] args) throws Exception {
+                                switch (args.length) {
+                                    case 0, 1, 2, 3 -> new Unnamed();
+                                    default -> { }
+                                }
+                                switch (args.length) {
+                                    case 1, 1000, 100000 -> Class.forName("app.Named");
+                                    default -> { }
+                                }
+                                System.out.println(Late.class);
+                            }
+                        }""",
+                "app.Made", "public class Made { Filled filled; java.util.List<Listed> listed; }",
+                "app.Filled", "public class Filled { }",
+                "app.Listed", "public class Listed { }",
+                "app.Named", "public class Named { }",
+                "app.Unnamed", "public class Unnamed { Filled filled; }",
+                "app.Base", "public class Base<T> { }",
+                "app.Token", "public class Token extends Base<Read> { }",
+                "app.Read", "public class Read { }",
+                "app.Late", "public class Late { }"));
         Path listed = directory.resolve("listed/classes.txt");
 
         WriteAppEntry.main(new String[] {
             vendor.toString(), directory.resolve("out").toString(), listed.toString()});
 
-        assertEquals(List.of("library.Tool", "real.Entry"),
+        assertEquals(List.of("app.Filled", "app.Late", "app.Listed", "app.Made", "app.Named",
+                "app.Read"),
                 Files.readAllLines(listed).stream().sorted().toList());
     }
 
     @Test
     void keepsOnlyTheClassesAGlobNames() throws Exception {
         Path vendor = Files.createDirectories(directory.resolve("vendor"));
-        Files.move(jar("real.Entry", "real.Entry"), vendor.resolve("app.jar"));
-        Files.move(jar("library.Tool", null), vendor.resolve("library.jar"));
+        sources(vendor.resolve("app.jar"), naming("real.Made", "library.Tool"));
         Path listed = directory.resolve("listed/classes.txt");
 
         WriteAppEntry.main(new String[] {
             vendor.toString(), directory.resolve("out").toString(), listed.toString(), "real.**"});
 
-        assertEquals(List.of("real.Entry"), Files.readAllLines(listed));
+        assertEquals(List.of("real.Made"), Files.readAllLines(listed));
     }
 
     @Test
     void takesSeveralGlobsAndStopsAPackageGlobAtItsBoundary() throws Exception {
         Path vendor = Files.createDirectories(directory.resolve("vendor"));
-        Files.move(jar("real.deep.Entry", null), vendor.resolve("app.jar"));
-        Files.move(jar("library.Tool", null), vendor.resolve("library.jar"));
+        sources(vendor.resolve("app.jar"), naming("real.deep.Made", "library.Tool"));
         Path shallow = directory.resolve("listed/shallow.txt");
         Path both = directory.resolve("listed/both.txt");
 
@@ -155,20 +183,20 @@ class WriteAppEntryTest {
 
         WriteAppEntry.main(new String[] {vendor.toString(), directory.resolve("out").toString(),
             both.toString(), "real.**, library.*"});
-        assertEquals(List.of("library.Tool", "real.deep.Entry"),
+        assertEquals(List.of("library.Tool", "real.deep.Made"),
                 Files.readAllLines(both).stream().sorted().toList());
     }
 
     @Test
     void listsEverythingWhenGivenNoGlobs() throws Exception {
         Path vendor = Files.createDirectories(directory.resolve("vendor"));
-        Files.move(jar("real.Entry", "real.Entry"), vendor.resolve("app.jar"));
+        sources(vendor.resolve("app.jar"), naming("real.Made"));
         Path listed = directory.resolve("listed/classes.txt");
 
         WriteAppEntry.main(new String[] {
             vendor.toString(), directory.resolve("out").toString(), listed.toString(), "  "});
 
-        assertEquals(List.of("real.Entry"), Files.readAllLines(listed));
+        assertEquals(List.of("real.Made"), Files.readAllLines(listed));
     }
 
     @Test
@@ -244,6 +272,48 @@ class WriteAppEntryTest {
             }
         }
         return jar;
+    }
+
+    /** an entry class that names each of {@code named} by a class literal, and those classes */
+    private static Map<String, String> naming(String... named) {
+        Map<String, String> sources = new LinkedHashMap<>();
+        StringBuilder literals = new StringBuilder();
+        for (String type : named) {
+            literals.append(type).append(".class, ");
+            sources.put(type, "public class " + type.substring(type.lastIndexOf('.') + 1)
+                    + " { }");
+        }
+        sources.put("entry.Entry", "public class Entry { static Object[] named = {" + literals
+                + "}; public static void main(String[] args) { } }");
+        return sources;
+    }
+
+    /** compiles each source, keyed by its class, into one jar */
+    private void sources(Path jar, Map<String, String> sources) throws IOException {
+        Path root = Files.createTempDirectory(directory, "sources");
+        Path classes = Files.createDirectories(root.resolve("classes"));
+        List<String> arguments = new ArrayList<>(List.of("-d", classes.toString()));
+        for (Map.Entry<String, String> source : sources.entrySet()) {
+            String type = source.getKey();
+            int dot = type.lastIndexOf('.');
+            Path file = Files.createDirectories(root.resolve(type.substring(0, dot)))
+                    .resolve(type.substring(dot + 1) + ".java");
+            Files.writeString(file, "package " + type.substring(0, dot) + ";\n"
+                    + source.getValue());
+            arguments.add(file.toString());
+        }
+        int failed = ToolProvider.getSystemJavaCompiler().run(null, null, null,
+                arguments.toArray(new String[0]));
+        assertTrue(failed == 0, "test fixture did not compile");
+        try (JarOutputStream out = new JarOutputStream(Files.newOutputStream(jar));
+             var tree = Files.walk(classes)) {
+            for (Path file : tree.filter(Files::isRegularFile).sorted().toList()) {
+                out.putNextEntry(new JarEntry(classes.relativize(file).toString()
+                        .replace('\\', '/')));
+                Files.copy(file, (OutputStream) out);
+                out.closeEntry();
+            }
+        }
     }
 
     private Path compile(String type) throws IOException {

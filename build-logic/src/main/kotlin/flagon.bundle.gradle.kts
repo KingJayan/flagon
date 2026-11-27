@@ -207,6 +207,9 @@ val writeResourcePack = tasks.register<RunMain>("writeResourcePack") {
     paths.add(out)
     paths.add(layout.buildDirectory.dir("transcoded"))
     arguments.add(bundle.apartFrom.map { "--apart-from=$it" })
+    val apart = vendorGlobs("apart.txt")
+    inputs.property("apart", apart)
+    arguments.add(apart.map { "--apart=$it" })
     arguments.addAll(bundle.vorbisQuality.map { listOf("--vorbis-quality=$it") }.orElse(listOf()))
 }
 

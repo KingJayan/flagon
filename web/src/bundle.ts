@@ -166,15 +166,19 @@ const APART_FETCHES = 4;
 
 /**
  * fetches the resources kept beside the pack in the background, from the cache where it can, and
- * hands each to the program once it is in; a read cannot wait, since it may hold a lock
+ * hands each to the program once it is in; a read cannot wait, since it may hold a lock. the
+ * promise settles once the cached ones are in, so a later visit reads them from the start
  */
-function serveApart(packUrl: string, cache: Cache | undefined): void {
+function serveApart(packUrl: string, cache: Cache | undefined): Promise<void> {
   const base = new URL(packUrl.replace(/\.pack$/, '.files/'), location.origin).href;
   const arrived = new Map<string, ArrayBuffer>();
   const queue: string[] = [];
 
   async function load(hash: string): Promise<void> {
     const url = base + hash;
+    if (arrived.has(hash)) {
+      return;
+    }
     try {
       const kept = await cache?.match(url);
       if (kept) {
@@ -210,6 +214,11 @@ function serveApart(packUrl: string, cache: Cache | undefined): void {
         void work();
       }
       const urls = new Set(wanted.map((hash) => base + hash));
+      for (const hash of arrived.keys()) {
+        if (!urls.has(base + hash)) {
+          arrived.delete(hash);
+        }
+      }
       cache
         ?.keys()
         .then((keys) => {
@@ -232,6 +241,22 @@ function serveApart(packUrl: string, cache: Cache | undefined): void {
       return null;
     },
   };
+
+  return (async () => {
+    try {
+      const keys = (await cache?.keys()) ?? [];
+      await Promise.all(
+        keys
+          .filter((key) => key.url.startsWith(base))
+          .map(async (key) => {
+            const kept = await cache?.match(key);
+            if (kept) {
+              arrived.set(key.url.slice(base.length), await kept.arrayBuffer());
+            }
+          }),
+      );
+    } catch {}
+  })();
 }
 
 async function fetchPack(bundleUrl: string): Promise<void> {
@@ -239,7 +264,7 @@ async function fetchPack(bundleUrl: string): Promise<void> {
   const url = packUrlOf(bundleUrl);
   try {
     const cache = await openPackCache();
-    serveApart(url, cache);
+    const cached = serveApart(url, cache);
     const response = await revalidated(url, cache);
     if (!isServed(response) || !response.body) {
       return;
@@ -250,6 +275,7 @@ async function fetchPack(bundleUrl: string): Promise<void> {
     if (pack.byteLength > 0) {
       globalThis.__flagonResources = pack;
     }
+    await cached;
   } catch {}
 }
 

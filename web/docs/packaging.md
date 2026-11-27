@@ -26,13 +26,15 @@ The build:
 
 Folders in `vendor/` ship with the bundle. The program reads their files by path from the working directory `/`. They are read-only. See [Shipped files](compatibility.md#shipped-files).
 
-### vendor/preserve.txt and vendor/reflect.txt
+### vendor/preserve.txt, vendor/reflect.txt and vendor/apart.txt
 
 Some libraries find their own classes by scanning the classpath. Log4j 2 finds its pattern converters this way. List the packages such a library scans in `vendor/preserve.txt`.
 
 A library that calls methods or reads fields by name needs its classes in `vendor/reflect.txt`.
 
-Both files take one glob per line. `*` stops at a package boundary and `**` does not. A line that starts with `#` is a comment.
+`vendor/apart.txt` lists resources that load after the program starts, outside the pack. A glob matches a resource name, or the name a launcher asset index gives an object. Use it for files the program does not read at startup.
+
+The three files take one glob per line. `*` stops at a package boundary and `**` does not. A line that starts with `#` is a comment.
 
 ```text
 # vendor/reflect.txt
@@ -42,7 +44,15 @@ com.example.model.**
 
 ### Constructors
 
-`make app` keeps the constructors of every class in the JARs, so `Class.newInstance` and `Constructor.newInstance` work. It logs the count. It warns past 10,000 constructors and stops past 50,000. Narrow it to your packages:
+`make app` keeps the constructors of the classes that the JARs can get a `Class` object of without an instance, so `Class.newInstance` and `Constructor.newInstance` work for them:
+
+- a class literal, such as `Foo.class`;
+- a string that holds a class name, as `Class.forName` takes it;
+- a class name in a file under `META-INF/`, such as a service list;
+- a type argument in a class's generic signature, as a Gson `TypeToken` subclass has;
+- a field type of a class above, which Gson constructs.
+
+A class found only by a name built at run time needs a line in `vendor/reflect.txt`. `make app` logs the count. It warns past 10,000 constructors and stops past 50,000. Narrow it to your packages:
 
 ```bash
 ./gradlew bundles "-Pflagon.app.reflect=com.example.**"
@@ -50,11 +60,11 @@ com.example.model.**
 
 ### Audio
 
-`make app` re-encodes Ogg Vorbis files at quality 0 through `ffmpeg`. It keeps the original where the new file saves less than 15%. Files of 256 KiB or more, such as music, load after the program starts.
+`make app` re-encodes Ogg Vorbis files at quality 0 through `ffmpeg`. It keeps the original where the new file saves less than 15%. Files of 256 KiB or more, such as music, load after the program starts, smallest first.
 
 ### Minecraft
 
-`make minecraft` fills `vendor/` from a local launcher install: the game, the libraries that run in a browser, the assets in the launcher's layout, and both glob files.
+`make minecraft` fills `vendor/` from a local launcher install: the game, the libraries that run in a browser, the assets in the launcher's layout, and the three glob files. Languages other than English and the world preset images load after the game starts.
 
 ```bash
 make minecraft MINECRAFT=1.8.9 LAUNCHER=~/.minecraft
@@ -187,7 +197,7 @@ Each bundle writes these files to `build/flagon/`. `make bundles` copies them to
 | `wasm/<name>.wasm.map`, `wasm/src/` | The source map and the Java sources it points to, in `-Pflagon.debug` builds. The same for `jspi/`. |
 | `js/<name>.js` | JavaScript, for browsers without WebAssembly GC. |
 | `<name>.pack` | The resource pack: every non-class file, gzipped. |
-| `<name>.files/` | Resources of `apartFrom` size or larger, named by SHA-256. |
+| `<name>.files/` | Resources of `apartFrom` size or larger, or named in `vendor/apart.txt`, by SHA-256. |
 | `<name>.catalog.json` | The program list, when `catalogClass` is set. |
 
 Serve all of them. The page picks the backend at load time.
