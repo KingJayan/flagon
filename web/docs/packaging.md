@@ -169,6 +169,7 @@ public final class BrowserCatalog {
 | Property | Use |
 | --- | --- |
 | `-Pflagon.release` | Release build: optimized, obfuscated, shrunk with `wasm-opt`. |
+| `-Pflagon.debug` | WebAssembly keeps its names and gets a source map and the Java sources. Skips `wasm-opt`. |
 | `-Pflagon.preserve=globs` | Classes that only a classpath scan names. Defaults to `vendor/preserve.txt`. |
 | `-Pflagon.app.reflect=globs` | Narrows the constructors `make app` keeps. |
 | `-Pflagon.wasmTools=path` | The `wasm-tools` the `wasi` task runs. Defaults to the one on `PATH`. |
@@ -182,6 +183,7 @@ Each bundle writes these files to `build/flagon/`. `make bundles` copies them to
 | --- | --- |
 | `wasm/<name>.wasm` | WebAssembly GC. Pauses with a coroutine rewrite. |
 | `jspi/<name>.wasm` | WebAssembly GC. Pauses with JSPI, so it is smaller and faster. |
+| `wasm/<name>.wasm.map`, `wasm/src/` | The source map and the Java sources it points to, in `-Pflagon.debug` builds. The same for `jspi/`. |
 | `js/<name>.js` | JavaScript, for browsers without WebAssembly GC. |
 | `<name>.pack` | The resource pack: every non-class file, gzipped. |
 | `<name>.files/` | Resources of `apartFrom` size or larger, named by SHA-256. |

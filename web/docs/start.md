@@ -55,6 +55,7 @@ The `wasm` backend loads the JSPI build when the browser has `WebAssembly.Suspen
 | `make setup` | Installs web dependencies and Playwright browsers. |
 | `make bundles` | Compiles every bundle. |
 | `make fast` | Compiles only the WebAssembly bundles, for quicker development builds. |
+| `make debug` | Compiles every bundle with WebAssembly source maps, so browser devtools step through the Java sources. |
 | `make bundles-release` | Compiles release bundles and checks their size budgets. |
 | `make app` | Compiles the JARs in `vendor/` into the `app` bundle. |
 | `make minecraft` | Fills `vendor/` from a local launcher install. Set `MINECRAFT` and `LAUNCHER` to change the version or install. |
