@@ -1,6 +1,6 @@
 package org.lwjgl.openal;
 
-/** what a device reports, as {@link ALC#createCapabilities} makes it: openal 1.1 and no extension */
+/** what a device reports, as {@link ALC#createCapabilities} makes it: openal 1.1, no extension */
 public final class ALCCapabilities {
 
     public final boolean OpenALC10;

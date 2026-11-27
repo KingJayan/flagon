@@ -25,7 +25,7 @@ public final class ALC {
 
     public static ALCCapabilities getCapabilities() {
         if (capabilities == null) {
-            throw new IllegalStateException("no ALCCapabilities; call ALC.createCapabilities first");
+            throw new IllegalStateException("no ALCCapabilities; call createCapabilities first");
         }
         return capabilities;
     }

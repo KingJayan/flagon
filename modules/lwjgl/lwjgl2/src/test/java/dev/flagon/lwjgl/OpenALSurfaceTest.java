@@ -27,9 +27,10 @@ class OpenALSurfaceTest {
     private static final Set<String> NATIVE = Set.of(
             "ALC.create(Lorg/lwjgl/system/FunctionProviderLocal;)V",
             "ALC.getFunctionProvider()Lorg/lwjgl/system/FunctionProviderLocal;",
-            "ALC.createCapabilities(JLjava/util/function/IntFunction;)Lorg/lwjgl/openal/ALCCapabilities;",
-            "AL.createCapabilities(Lorg/lwjgl/openal/ALCCapabilities;Ljava/util/function/IntFunction;)"
-                    + "Lorg/lwjgl/openal/ALCapabilities;",
+            "ALC.createCapabilities(JLjava/util/function/IntFunction;)"
+                    + "Lorg/lwjgl/openal/ALCCapabilities;",
+            "AL.createCapabilities(Lorg/lwjgl/openal/ALCCapabilities;"
+                    + "Ljava/util/function/IntFunction;)Lorg/lwjgl/openal/ALCapabilities;",
             "ALCCapabilities.getAddressBuffer()Lorg/lwjgl/PointerBuffer;",
             "ALCapabilities.getAddressBuffer()Lorg/lwjgl/PointerBuffer;",
             "ALC10.alcGetCurrentContext()J");

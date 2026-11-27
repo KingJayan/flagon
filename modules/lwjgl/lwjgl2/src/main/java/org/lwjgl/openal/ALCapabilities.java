@@ -1,6 +1,6 @@
 package org.lwjgl.openal;
 
-/** what a context reports, as {@link AL#createCapabilities} makes it: openal 1.1 and no extension */
+/** what a context reports, as {@link AL#createCapabilities} makes it: openal 1.1, no extension */
 public final class ALCapabilities {
 
     public final boolean OpenAL10;
