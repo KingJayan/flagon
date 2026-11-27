@@ -77,6 +77,14 @@ val writeAppEntry = tasks.register<JavaExec>("writeAppEntry") {
 sourceSets["main"].java.srcDir(writeAppEntry.map { generatedSources })
 sourceSets["main"].resources.srcDir(writeAppEntry.map { generatedResources })
 
+// one glob per line in a vendor/ file, joined the way the compiler properties take them
+fun vendorGlobs(name: String): Provider<String> =
+    providers.fileContents(vendorDir.file(name)).asText
+        .map { text ->
+            text.lines().map { it.trim() }.filter { it.isNotEmpty() && !it.startsWith("#") }
+                .joinToString(",")
+        }.orElse("")
+
 bundle {
     mainClass.set("dev.flagon.app.AppMain")
     catalogClass.set("dev.flagon.app.AppCatalog")
@@ -85,6 +93,9 @@ bundle {
     shrinkCoroutineWasm.set(false)
     vorbisQuality.set(0)
     apartFrom.set(256 * 1024)
+    apart.set(vendorGlobs("apart.txt"))
+    reflectClasses.set(vendorGlobs("reflect.txt"))
+    preserve.set(providers.gradleProperty("flagon.preserve").orElse(vendorGlobs("preserve.txt")))
     reflectConverted.set(
         "java.lang.Boolean, java.lang.Byte, java.lang.Short, java.lang.Integer, "
             + "java.lang.Long, java.lang.Float, java.lang.Double, java.lang.String, java.io.File",
