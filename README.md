@@ -20,13 +20,13 @@ Flagon compiles desktop Java bytecode into browser-native WebAssembly GC and Jav
 
 Try the demos and the Java playground at [flagon-nu.vercel.app](https://flagon-nu.vercel.app). The playground compiles with javac and TeaVM in the browser; build it with `make playground`. The [docs](https://flagon-nu.vercel.app/docs/) are on the same site.
 
-Current target is Minecraft 1.8.9, currently loads singleplayer worlds in Chromium.
+Current target is Minecraft 1.8.9, currently loads singleplayer worlds in Chromium and Firefox.
 
 >[!IMPORTANT]
 >Flagon is not affiliated with or endorsed by Mojang Studios or Microsoft. It does not distribute Minecraft or any proprietary third-party content. Users must independently supply their own JAR files and assets, and are responsible for ensuring they have the necessary rights to use them. Flagon is not intended to facilitate software piracy or copyright infringement.
 
 **Future**:
-- **Speed up startup** (especially [Firefox](https://github.com/KingJayan/flagon/issues/546)) and optimize bundle size
+- **Speed up startup** and optimize bundle size
 - Native modded minecraft(packaged into bundle, FabricMC)
 - Equal functionality across 1.8.9, 1.12.x, 1.20.x, and modern versions
 - Flagon CLI on Homebrew/MacPorts
