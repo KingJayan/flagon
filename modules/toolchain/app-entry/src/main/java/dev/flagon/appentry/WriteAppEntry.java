@@ -1,5 +1,6 @@
 package dev.flagon.appentry;
 
+import dev.flagon.classfile.ClassNames;
 import dev.flagon.classfile.Loadable;
 
 import java.io.BufferedInputStream;
@@ -73,7 +74,7 @@ public final class WriteAppEntry {
         if (args.length > 2 && args[2] != null && !args[2].isBlank()) {
             String narrowing = args.length > 3 && args[3] != null ? args[3] : "";
 
-            List<String> classes = narrow(classesIn(jars), narrowing);
+            List<String> classes = narrow(constructibleIn(jars), narrowing);
 
             if (classes.size() > LIMIT) {
                 throw new IllegalStateException(classes.size() + " classes is more than the "
@@ -104,7 +105,15 @@ public final class WriteAppEntry {
 
     private static List<String> namedByResources(OpenJars jars) throws IOException {
         Map<String, JarClasses.Where> carriers = carriersIn(jars);
-        Set<String> carried = carriers.keySet();
+        Set<String> named = resourceNames(jars, carriers.keySet());
+        Loadable loadable = new Loadable(new JarClasses(carriers));
+        return named.stream().sorted().filter(loadable::test)
+                .filter(type -> type.indexOf('$') < 0 && loadable.isPublic(type)).toList();
+    }
+
+    /** the carried classes that a file under META-INF/ names, such as a service list */
+    private static Set<String> resourceNames(OpenJars jars, Set<String> carried)
+            throws IOException {
         Set<String> named = new LinkedHashSet<>();
         for (OpenJars.Opened opened : jars.all()) {
             for (JarEntry entry : opened.entries()) {
@@ -119,9 +128,49 @@ public final class WriteAppEntry {
                 }
             }
         }
-        Loadable loadable = new Loadable(new JarClasses(carriers));
-        return named.stream().sorted().filter(loadable::test)
-                .filter(type -> type.indexOf('$') < 0 && loadable.isPublic(type)).toList();
+        return named;
+    }
+
+    static List<String> constructibleIn(List<Path> paths) throws IOException {
+        try (OpenJars jars = new OpenJars(paths)) {
+            return constructibleIn(jars);
+        }
+    }
+
+    /**
+     * the classes reflection may construct: those the jars get a Class object of without an
+     * instance, by a class literal, a string or a resource, and what gson reads into their fields
+     */
+    private static List<String> constructibleIn(OpenJars jars) throws IOException {
+        Map<String, JarClasses.Where> carriers = carriersIn(jars);
+        JarClasses classes = new JarClasses(carriers);
+        Map<String, ClassNames> parsed = new HashMap<>();
+        for (String type : carriers.keySet()) {
+            ClassNames names = ClassNames.of(classes.read(type));
+            if (names != null) {
+                parsed.put(type, names);
+            }
+        }
+        Set<String> reached = new LinkedHashSet<>(resourceNames(jars, carriers.keySet()));
+        for (ClassNames names : parsed.values()) {
+            reached.addAll(names.literals());
+            reached.addAll(names.strings());
+            reached.addAll(names.signatureTypes());
+        }
+        reached.retainAll(carriers.keySet());
+        List<String> pending = new ArrayList<>(reached);
+        while (!pending.isEmpty()) {
+            ClassNames names = parsed.get(pending.remove(pending.size() - 1));
+            if (names == null) {
+                continue;
+            }
+            for (String field : names.fieldTypes()) {
+                if (carriers.containsKey(field) && reached.add(field)) {
+                    pending.add(field);
+                }
+            }
+        }
+        return carriers.keySet().stream().filter(reached::contains).toList();
     }
 
     /** log4j scans for these by name; it cannot find a class the compiler dropped */
@@ -187,14 +236,6 @@ public final class WriteAppEntry {
         try (var in = opened.getInputStream(entry)) {
             return new String(in.readAllBytes(), StandardCharsets.ISO_8859_1);
         }
-    }
-
-    private static List<String> classesIn(OpenJars jars) {
-        List<String> classes = new ArrayList<>();
-        for (OpenJars.Opened opened : jars.all()) {
-            classes.addAll(classesOf(opened));
-        }
-        return classes;
     }
 
     private static List<String> classesOf(OpenJars.Opened opened) {

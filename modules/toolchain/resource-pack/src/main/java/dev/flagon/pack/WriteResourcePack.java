@@ -20,15 +20,18 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.zip.GZIPOutputStream;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
 /**
  * packs a bundle's resources: {@code <resources> <pack> [<cache>] [--vorbis-quality=N]
- * [--apart-from=BYTES]}, where the cache keeps transcoded audio between builds. resources at
- * least {@code --apart-from} bytes go beside the pack in {@code <name>.files/}, named by their
- * sha-256, and the page fetches them after the program starts.
+ * [--apart-from=BYTES] [--apart=GLOB,...]}, where the cache keeps transcoded audio between builds.
+ * resources at least {@code --apart-from} bytes, or named by an {@code --apart} glob, go beside
+ * the pack in {@code <name>.files/}, named by their sha-256, and the page fetches them after the
+ * program starts. a glob also matches a launcher asset object by its names in the asset index.
  */
 public final class WriteResourcePack {
 
@@ -46,11 +49,12 @@ public final class WriteResourcePack {
     }
 
     /** how to pack; a null quality leaves audio as it is, and an apartFrom of 0 keeps all in */
-    record Options(Integer vorbisQuality, int apartFrom, Path cache) {
+    record Options(Integer vorbisQuality, int apartFrom, List<Pattern> apart, Path cache) {
 
         static Options parse(String[] args) {
             Integer quality = null;
             int apartFrom = 0;
+            List<Pattern> apart = new ArrayList<>();
             Path cache = null;
             for (String arg : args) {
                 String value = arg.substring(arg.indexOf('=') + 1);
@@ -58,6 +62,12 @@ public final class WriteResourcePack {
                     quality = Integer.valueOf(value);
                 } else if (arg.startsWith("--apart-from=")) {
                     apartFrom = Integer.parseInt(value);
+                } else if (arg.startsWith("--apart=")) {
+                    for (String glob : value.split(",")) {
+                        if (!glob.isBlank()) {
+                            apart.add(glob(glob.trim()));
+                        }
+                    }
                 } else if (!arg.startsWith("--")) {
                     cache = Path.of(arg);
                 } else {
@@ -67,8 +77,27 @@ public final class WriteResourcePack {
             if (quality != null && cache == null) {
                 throw new IllegalArgumentException("--vorbis-quality needs a cache folder");
             }
-            return new Options(quality, apartFrom, cache);
+            return new Options(quality, apartFrom, List.copyOf(apart), cache);
         }
+    }
+
+    /** {@code **} matches across folders, {@code *} and {@code ?} within one */
+    static Pattern glob(String glob) {
+        StringBuilder regex = new StringBuilder();
+        for (int at = 0; at < glob.length(); at++) {
+            char next = glob.charAt(at);
+            if (glob.startsWith("**", at)) {
+                regex.append(".*");
+                at++;
+            } else if (next == '*') {
+                regex.append("[^/]*");
+            } else if (next == '?') {
+                regex.append("[^/]");
+            } else {
+                regex.append(Pattern.quote(String.valueOf(next)));
+            }
+        }
+        return Pattern.compile(regex.toString());
     }
 
     private WriteResourcePack() {
@@ -90,7 +119,7 @@ public final class WriteResourcePack {
         // resource then sits in it as is, ready to read
         try (OutputStream out = new GZIPOutputStream(
                 new BufferedOutputStream(Files.newOutputStream(pack), BUFFER), BUFFER)) {
-            write(files, shrunk, options.apartFrom(), apart, out);
+            write(files, shrunk, options, apart, out);
         }
         System.out.println(files.isEmpty()
                 ? "no resources in " + given + ", so the bundle carries an empty pack"
@@ -245,39 +274,111 @@ public final class WriteResourcePack {
     }
 
     static void write(Map<String, Item> files, OutputStream out) throws IOException {
-        write(files, Map.of(), 0, null, out);
+        write(files, Map.of(), new Options(null, 0, List.of(), null), null, out);
     }
 
-    /** resources {@code apartFrom} bytes or larger go to {@code apart}, when it is above 0 */
-    static void write(Map<String, Item> files, Map<String, byte[]> replaced, int apartFrom,
+    /** one resource as it goes into the pack */
+    private record Packed(String name, Item item, byte[] raw, boolean apart) {
+    }
+
+    /** resources the options keep apart go to {@code apart} */
+    static void write(Map<String, Item> files, Map<String, byte[]> replaced, Options options,
                       Path apart, OutputStream out) throws IOException {
-        DataOutputStream data = new DataOutputStream(out);
-        data.write(MAGIC);
-        data.writeInt(files.size());
+        Map<String, byte[]> read = new LinkedHashMap<>();
         try (Jars open = new Jars()) {
             for (Map.Entry<String, Item> file : files.entrySet()) {
-                byte[] label = file.getKey().getBytes(StandardCharsets.UTF_8);
                 byte[] raw = replaced.get(file.getKey());
-                if (raw == null) {
-                    raw = open.read(file.getValue());
-                }
-                data.writeInt(label.length);
-                data.write(label);
-                data.writeInt(raw.length);
-                int shipped = file.getValue().shipped() ? SHIPPED : 0;
-                if (apartFrom > 0 && raw.length >= apartFrom) {
-                    byte[] hash = Hashes.sha256(raw);
-                    Files.createDirectories(apart);
-                    Files.write(apart.resolve(HexFormat.of().formatHex(hash)), raw);
-                    data.writeByte(APART | shipped);
-                    data.write(hash);
-                } else {
-                    data.writeByte(INSIDE | shipped);
-                    data.write(raw);
-                }
+                read.put(file.getKey(), raw == null ? open.read(file.getValue()) : raw);
+            }
+        }
+        Map<String, List<String>> indexed = assetNames(read);
+        List<Packed> packed = new ArrayList<>();
+        for (Map.Entry<String, Item> file : files.entrySet()) {
+            byte[] raw = read.get(file.getKey());
+            packed.add(new Packed(file.getKey(), file.getValue(), raw,
+                    isApart(file.getKey(), raw, indexed, options)));
+        }
+        // gzip finds repeats only 32 KiB back, so files of one kind go together. the page
+        // fetches the ones kept apart in pack order, so the smallest come in first
+        packed.sort(Comparator.comparing(Packed::apart)
+                .thenComparingInt(file -> file.apart() ? file.raw().length : kindOf(file.raw()))
+                .thenComparing(Packed::name));
+        DataOutputStream data = new DataOutputStream(out);
+        data.write(MAGIC);
+        data.writeInt(packed.size());
+        for (Packed file : packed) {
+            byte[] label = file.name().getBytes(StandardCharsets.UTF_8);
+            byte[] raw = file.raw();
+            data.writeInt(label.length);
+            data.write(label);
+            data.writeInt(raw.length);
+            int shipped = file.item().shipped() ? SHIPPED : 0;
+            if (file.apart()) {
+                byte[] hash = Hashes.sha256(raw);
+                Files.createDirectories(apart);
+                Files.write(apart.resolve(HexFormat.of().formatHex(hash)), raw);
+                data.writeByte(APART | shipped);
+                data.write(hash);
+            } else {
+                data.writeByte(INSIDE | shipped);
+                data.write(raw);
             }
         }
         data.flush();
+    }
+
+    private static boolean isApart(String name, byte[] raw, Map<String, List<String>> indexed,
+                                   Options options) {
+        if (options.apartFrom() > 0 && raw.length >= options.apartFrom()) {
+            return true;
+        }
+        List<String> names = new ArrayList<>(List.of(name));
+        names.addAll(indexed.getOrDefault(name, List.of()));
+        return options.apart().stream()
+                .anyMatch(glob -> names.stream().anyMatch(one -> glob.matcher(one).matches()));
+    }
+
+    private static final Pattern INDEX = Pattern.compile("(?:.*/)?assets/indexes/[^/]+\\.json");
+    private static final Pattern OBJECT =
+            Pattern.compile("\"([^\"]+)\"\\s*:\\s*\\{\\s*\"hash\"\\s*:\\s*\"([0-9a-f]{40})\"");
+
+    /** the names a launcher asset index gives each object under assets/objects/, by entry */
+    private static Map<String, List<String>> assetNames(Map<String, byte[]> read) {
+        Map<String, List<String>> names = new LinkedHashMap<>();
+        for (Map.Entry<String, byte[]> file : read.entrySet()) {
+            if (!INDEX.matcher(file.getKey()).matches()) {
+                continue;
+            }
+            String objects = file.getKey().substring(0, file.getKey().lastIndexOf("indexes/"))
+                    + "objects/";
+            Matcher object = OBJECT.matcher(new String(file.getValue(), StandardCharsets.UTF_8));
+            while (object.find()) {
+                String hash = object.group(2);
+                names.computeIfAbsent(objects + hash.substring(0, 2) + "/" + hash,
+                        entry -> new ArrayList<>()).add(object.group(1));
+            }
+        }
+        return names;
+    }
+
+    /** vorbis, then png, then the rest */
+    private static int kindOf(byte[] raw) {
+        if (startsWith(raw, "OggS")) {
+            return 0;
+        }
+        return startsWith(raw, "\u0089PNG") ? 1 : 2;
+    }
+
+    private static boolean startsWith(byte[] raw, String magic) {
+        if (raw.length < magic.length()) {
+            return false;
+        }
+        for (int at = 0; at < magic.length(); at++) {
+            if ((raw[at] & 0xff) != magic.charAt(at)) {
+                return false;
+            }
+        }
+        return true;
     }
 
     /** holds one jar open across its resources */

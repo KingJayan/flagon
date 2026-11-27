@@ -29,6 +29,6 @@ interface BundleExtension {
     /** resources this many bytes or larger load from beside the pack when read; 0 keeps all in */
     val apartFrom: Property<Int>
 
-    /** release wasm-opt on the coroutine build; binaryen crashes on the app's */
+    /** release wasm-opt on the coroutine build; the app crashes the page once optimized */
     val shrinkCoroutineWasm: Property<Boolean>
 }
