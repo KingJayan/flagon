@@ -8,18 +8,22 @@ import dev.flagon.platform.audio.AudioFormat;
 import dev.flagon.platform.audio.SourceState;
 
 import java.nio.ByteBuffer;
+import java.nio.DoubleBuffer;
 import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
+import java.nio.ShortBuffer;
 
 /**
  * openal 1.0 over plat mixe
  */
-public final class AL10 {
+public class AL10 {
 
+    public static final int AL_INVALID = -1;
     public static final int AL_NONE = 0;
     public static final int AL_FALSE = 0;
     public static final int AL_TRUE = 1;
 
+    public static final int AL_SOURCE_ABSOLUTE = 0x201;
     public static final int AL_SOURCE_RELATIVE = 0x202;
     public static final int AL_CONE_INNER_ANGLE = 0x1001;
     public static final int AL_CONE_OUTER_ANGLE = 0x1002;
@@ -33,6 +37,9 @@ public final class AL10 {
     public static final int AL_MIN_GAIN = 0x100D;
     public static final int AL_MAX_GAIN = 0x100E;
     public static final int AL_ORIENTATION = 0x100F;
+
+    public static final int AL_SOURCE_TYPE = 0x1027;
+    public static final int AL_CHANNEL_MASK = 0x3000;
 
     public static final int AL_SOURCE_STATE = 0x1010;
     public static final int AL_INITIAL = 0x1011;
@@ -52,11 +59,17 @@ public final class AL10 {
     public static final int AL_FORMAT_MONO16 = 0x1101;
     public static final int AL_FORMAT_STEREO8 = 0x1102;
     public static final int AL_FORMAT_STEREO16 = 0x1103;
+    public static final int AL_FORMAT_VORBIS_EXT = 0x10003;
 
     public static final int AL_FREQUENCY = 0x2001;
     public static final int AL_BITS = 0x2002;
     public static final int AL_CHANNELS = 0x2003;
     public static final int AL_SIZE = 0x2004;
+    public static final int AL_DATA = 0x2005;
+
+    public static final int AL_UNUSED = 0x2010;
+    public static final int AL_PENDING = 0x2011;
+    public static final int AL_PROCESSED = 0x2012;
 
     public static final int AL_NO_ERROR = ALState.NO_ERROR;
     public static final int AL_INVALID_NAME = ALState.INVALID_NAME;
@@ -82,14 +95,14 @@ public final class AL10 {
     public static final int AL_EXPONENT_DISTANCE = ALState.EXPONENT_DISTANCE;
     public static final int AL_EXPONENT_DISTANCE_CLAMPED = ALState.EXPONENT_DISTANCE_CLAMPED;
 
-    private AL10() {
+    protected AL10() {
     }
 
-    private static ALState state() {
+    static ALState state() {
         return ALState.get();
     }
 
-    private static AudioDevice device() {
+    static AudioDevice device() {
         return ALState.get().device();
     }
 
@@ -140,12 +153,49 @@ public final class AL10 {
         }
     }
 
+    public static void alGenBuffers(int[] buffers) {
+        alGenBuffers(IntBuffer.wrap(buffers));
+    }
+
+    public static void alDeleteBuffers(int[] buffers) {
+        alDeleteBuffers(IntBuffer.wrap(buffers));
+    }
+
     public static boolean alIsBuffer(int buffer) {
         return device().isBuffer(buffer);
     }
 
     /** the data is raw pcm; openal never took anything else, and neither does this. */
     public static void alBufferData(int buffer, int format, ByteBuffer data, int frequency) {
+        bufferData(buffer, format, Buffers.readRemaining(data), frequency);
+    }
+
+    /** the samples as the native call reads them: their bytes in native order */
+    public static void alBufferData(int buffer, int format, ShortBuffer data, int frequency) {
+        bufferData(buffer, format, Buffers.readRemaining(data), frequency);
+    }
+
+    public static void alBufferData(int buffer, int format, IntBuffer data, int frequency) {
+        bufferData(buffer, format, Buffers.readRemaining(data), frequency);
+    }
+
+    public static void alBufferData(int buffer, int format, FloatBuffer data, int frequency) {
+        bufferData(buffer, format, Buffers.readRemaining(data), frequency);
+    }
+
+    public static void alBufferData(int buffer, int format, short[] data, int frequency) {
+        alBufferData(buffer, format, ShortBuffer.wrap(data), frequency);
+    }
+
+    public static void alBufferData(int buffer, int format, int[] data, int frequency) {
+        alBufferData(buffer, format, IntBuffer.wrap(data), frequency);
+    }
+
+    public static void alBufferData(int buffer, int format, float[] data, int frequency) {
+        alBufferData(buffer, format, FloatBuffer.wrap(data), frequency);
+    }
+
+    private static void bufferData(int buffer, int format, byte[] bytes, int frequency) {
         if (!device().isBuffer(buffer)) {
             state().fail(AL_INVALID_NAME);
             return;
@@ -155,7 +205,6 @@ public final class AL10 {
             state().fail(AL_INVALID_ENUM);
             return;
         }
-        byte[] bytes = Buffers.readRemaining(data);
         try {
             device().bufferData(buffer, pcm, bytes, bytes.length, frequency);
         } catch (AudioException failed) {
@@ -184,6 +233,28 @@ public final class AL10 {
         }
     }
 
+    public static void alGetBufferi(int buffer, int parameter, IntBuffer value) {
+        value.put(value.position(), alGetBufferi(buffer, parameter));
+    }
+
+    public static void alGetBufferi(int buffer, int parameter, int[] value) {
+        value[0] = alGetBufferi(buffer, parameter);
+    }
+
+    /** openal 1.1 has no float property on a buffer */
+    public static float alGetBufferf(int buffer, int parameter) {
+        state().fail(device().isBuffer(buffer) ? AL_INVALID_ENUM : AL_INVALID_NAME);
+        return 0.0f;
+    }
+
+    public static void alGetBufferf(int buffer, int parameter, FloatBuffer value) {
+        value.put(value.position(), alGetBufferf(buffer, parameter));
+    }
+
+    public static void alGetBufferf(int buffer, int parameter, float[] value) {
+        value[0] = alGetBufferf(buffer, parameter);
+    }
+
     // sources
 
     public static int alGenSources() {
@@ -209,6 +280,14 @@ public final class AL10 {
         for (int at = sources.position(); at < sources.limit(); at++) {
             alDeleteSources(sources.get(at));
         }
+    }
+
+    public static void alGenSources(int[] sources) {
+        alGenSources(IntBuffer.wrap(sources));
+    }
+
+    public static void alDeleteSources(int[] sources) {
+        alDeleteSources(IntBuffer.wrap(sources));
     }
 
     public static boolean alIsSource(int source) {
@@ -297,14 +376,25 @@ public final class AL10 {
         }
     }
 
-    /** the buffer form openal has for the vector parameters, read from the buffer's position. */
-    public static void alSource(int source, int parameter, FloatBuffer values) {
-        if (values == null || values.remaining() < 3) {
-            state().fail(AL_INVALID_VALUE);
+    /** a vector parameter from the buffer's position, or a scalar one as its first value */
+    public static void alSourcefv(int source, int parameter, FloatBuffer values) {
+        float[] read = read(values, vectorSize(parameter));
+        if (read == null) {
             return;
         }
-        int at = values.position();
-        alSource3f(source, parameter, values.get(at), values.get(at + 1), values.get(at + 2));
+        if (read.length == 3) {
+            alSource3f(source, parameter, read[0], read[1], read[2]);
+        } else {
+            alSourcef(source, parameter, read[0]);
+        }
+    }
+
+    public static void alSourcefv(int source, int parameter, float[] values) {
+        alSourcefv(source, parameter, FloatBuffer.wrap(values));
+    }
+
+    public static void alSource(int source, int parameter, FloatBuffer values) {
+        alSourcefv(source, parameter, values);
     }
 
     public static int alGetSourcei(int source, int parameter) {
@@ -355,25 +445,106 @@ public final class AL10 {
         }
     }
 
+    public static void alGetSourcef(int source, int parameter, FloatBuffer value) {
+        value.put(value.position(), alGetSourcef(source, parameter));
+    }
+
+    public static void alGetSourcef(int source, int parameter, float[] value) {
+        value[0] = alGetSourcef(source, parameter);
+    }
+
+    public static void alGetSource3f(int source, int parameter, FloatBuffer x, FloatBuffer y,
+                                     FloatBuffer z) {
+        float[] vector = sourceVector(source, parameter, "alGetSource3f");
+        if (vector != null) {
+            x.put(x.position(), vector[0]);
+            y.put(y.position(), vector[1]);
+            z.put(z.position(), vector[2]);
+        }
+    }
+
+    public static void alGetSource3f(int source, int parameter, float[] x, float[] y, float[] z) {
+        alGetSource3f(source, parameter, FloatBuffer.wrap(x), FloatBuffer.wrap(y),
+                FloatBuffer.wrap(z));
+    }
+
+    public static void alGetSourcefv(int source, int parameter, FloatBuffer values) {
+        getSource(source, parameter, values, "alGetSourcefv");
+    }
+
+    public static void alGetSourcefv(int source, int parameter, float[] values) {
+        alGetSourcefv(source, parameter, FloatBuffer.wrap(values));
+    }
+
     public static void alGetSource(int source, int parameter, FloatBuffer values) {
+        getSource(source, parameter, values, "alGetSource");
+    }
+
+    public static void alGetSourcei(int source, int parameter, IntBuffer value) {
+        value.put(value.position(), alGetSourcei(source, parameter));
+    }
+
+    public static void alGetSourcei(int source, int parameter, int[] value) {
+        value[0] = alGetSourcei(source, parameter);
+    }
+
+    public static void alGetSourceiv(int source, int parameter, IntBuffer values) {
+        if (vectorSize(parameter) == 1) {
+            alGetSourcei(source, parameter, values);
+            return;
+        }
+        float[] vector = sourceVector(source, parameter, "alGetSourceiv");
+        if (vector != null) {
+            write(values, vector);
+        }
+    }
+
+    public static void alGetSourceiv(int source, int parameter, int[] values) {
+        alGetSourceiv(source, parameter, IntBuffer.wrap(values));
+    }
+
+    private static void getSource(int source, int parameter, FloatBuffer values, String call) {
+        if (vectorSize(parameter) == 1) {
+            alGetSourcef(source, parameter, values);
+            return;
+        }
+        float[] vector = sourceVector(source, parameter, call);
+        if (vector != null) {
+            write(values, vector);
+        }
+    }
+
+    /** @return null once the error is latched */
+    static float[] sourceVector(int source, int parameter, String call) {
         AudioDevice device = device();
         if (!device.isSource(source)) {
             state().fail(AL_INVALID_NAME);
-            return;
+            return null;
         }
         float[] vector = new float[3];
         switch (parameter) {
             case AL_POSITION:
                 device.sourcePosition(source, vector);
-                break;
+                return vector;
             case AL_VELOCITY:
                 device.sourceVelocity(source, vector);
-                break;
+                return vector;
             default:
-                unsupportedSourceParameter("alGetSource", parameter);
-                return;
+                unsupportedSourceParameter(call, parameter);
+                return null;
         }
-        write(values, vector);
+    }
+
+    /** how many values a source parameter has */
+    static int vectorSize(int parameter) {
+        switch (parameter) {
+            case AL_POSITION:
+            case AL_VELOCITY:
+            case AL_DIRECTION:
+                return 3;
+            default:
+                return 1;
+        }
     }
 
     public static void alSourcePlay(int source) {
@@ -424,6 +595,38 @@ public final class AL10 {
         each(sources, AL10::alSourceRewind);
     }
 
+    public static void alSourcePlayv(IntBuffer sources) {
+        alSourcePlay(sources);
+    }
+
+    public static void alSourcePausev(IntBuffer sources) {
+        alSourcePause(sources);
+    }
+
+    public static void alSourceStopv(IntBuffer sources) {
+        alSourceStop(sources);
+    }
+
+    public static void alSourceRewindv(IntBuffer sources) {
+        alSourceRewind(sources);
+    }
+
+    public static void alSourcePlayv(int[] sources) {
+        alSourcePlay(IntBuffer.wrap(sources));
+    }
+
+    public static void alSourcePausev(int[] sources) {
+        alSourcePause(IntBuffer.wrap(sources));
+    }
+
+    public static void alSourceStopv(int[] sources) {
+        alSourceStop(IntBuffer.wrap(sources));
+    }
+
+    public static void alSourceRewindv(int[] sources) {
+        alSourceRewind(IntBuffer.wrap(sources));
+    }
+
     public static void alSourceQueueBuffers(int source, IntBuffer buffers) {
         int[] names = new int[buffers.remaining()];
         for (int at = 0; at < names.length; at++) {
@@ -442,6 +645,15 @@ public final class AL10 {
         for (int at = 0; at < taken.length; at++) {
             buffers.put(buffers.position() + at, taken[at]);
         }
+    }
+
+    public static void alSourceQueueBuffers(int source, int[] buffers) {
+        queue(source, buffers.clone());
+    }
+
+    public static void alSourceUnqueueBuffers(int source, int[] buffers) {
+        int[] taken = unqueue(source, buffers.length);
+        System.arraycopy(taken, 0, buffers, 0, taken.length);
     }
 
     public static int alSourceUnqueueBuffers(int source) {
@@ -528,6 +740,26 @@ public final class AL10 {
         }
     }
 
+    /** openal 1.1 has no integer property on the listener */
+    public static void alListeneri(int parameter, int value) {
+        state().fail(AL_INVALID_ENUM);
+    }
+
+    public static void alListenerfv(int parameter, FloatBuffer values) {
+        if (parameter != AL_GAIN) {
+            alListener(parameter, values);
+            return;
+        }
+        float[] gain = read(values, 1);
+        if (gain != null) {
+            alListenerf(parameter, gain[0]);
+        }
+    }
+
+    public static void alListenerfv(int parameter, float[] values) {
+        alListenerfv(parameter, FloatBuffer.wrap(values));
+    }
+
     public static float alGetListenerf(int parameter) {
         if (parameter == AL_GAIN) {
             return device().listenerGain();
@@ -536,28 +768,82 @@ public final class AL10 {
         return 0.0f;
     }
 
+    public static void alGetListenerf(int parameter, FloatBuffer value) {
+        value.put(value.position(), alGetListenerf(parameter));
+    }
+
+    public static void alGetListenerf(int parameter, float[] value) {
+        value[0] = alGetListenerf(parameter);
+    }
+
+    public static int alGetListeneri(int parameter) {
+        state().fail(AL_INVALID_ENUM);
+        return 0;
+    }
+
+    public static void alGetListeneri(int parameter, IntBuffer value) {
+        alGetListeneri(parameter);
+    }
+
+    public static void alGetListeneri(int parameter, int[] value) {
+        alGetListeneri(parameter);
+    }
+
+    public static void alGetListener3f(int parameter, FloatBuffer x, FloatBuffer y, FloatBuffer z) {
+        if (parameter == AL_ORIENTATION) {
+            state().fail(AL_INVALID_ENUM);
+            return;
+        }
+        float[] vector = listenerVector(parameter);
+        if (vector != null) {
+            x.put(x.position(), vector[0]);
+            y.put(y.position(), vector[1]);
+            z.put(z.position(), vector[2]);
+        }
+    }
+
+    public static void alGetListener3f(int parameter, float[] x, float[] y, float[] z) {
+        alGetListener3f(parameter, FloatBuffer.wrap(x), FloatBuffer.wrap(y), FloatBuffer.wrap(z));
+    }
+
+    public static void alGetListenerfv(int parameter, FloatBuffer values) {
+        if (parameter == AL_GAIN) {
+            alGetListenerf(parameter, values);
+        } else {
+            alGetListener(parameter, values);
+        }
+    }
+
+    public static void alGetListenerfv(int parameter, float[] values) {
+        alGetListenerfv(parameter, FloatBuffer.wrap(values));
+    }
+
     public static void alGetListener(int parameter, FloatBuffer values) {
+        float[] vector = listenerVector(parameter);
+        if (vector != null) {
+            write(values, vector);
+        }
+    }
+
+    /** the position, velocity or orientation; null once the error is latched */
+    static float[] listenerVector(int parameter) {
+        float[] vector;
         switch (parameter) {
-            case AL_POSITION: {
-                float[] position = new float[3];
-                device().listenerPosition(position);
-                write(values, position);
-                return;
-            }
-            case AL_VELOCITY: {
-                float[] velocity = new float[3];
-                device().listenerVelocity(velocity);
-                write(values, velocity);
-                return;
-            }
-            case AL_ORIENTATION: {
-                float[] orientation = new float[6];
-                device().listenerOrientation(orientation);
-                write(values, orientation);
-                return;
-            }
+            case AL_POSITION:
+                vector = new float[3];
+                device().listenerPosition(vector);
+                return vector;
+            case AL_VELOCITY:
+                vector = new float[3];
+                device().listenerVelocity(vector);
+                return vector;
+            case AL_ORIENTATION:
+                vector = new float[6];
+                device().listenerOrientation(vector);
+                return vector;
             default:
                 state().fail(AL_INVALID_ENUM);
+                return null;
         }
     }
 
@@ -569,12 +855,70 @@ public final class AL10 {
         }
     }
 
-    public static int alGetInteger(int parameter) {
-        if (parameter == AL_DISTANCE_MODEL) {
-            return state().distanceModel();
-        }
+    /** openal 1.1 has no capability to enable */
+    public static void alEnable(int capability) {
         state().fail(AL_INVALID_ENUM);
-        return 0;
+    }
+
+    public static void alDisable(int capability) {
+        state().fail(AL_INVALID_ENUM);
+    }
+
+    public static boolean alIsEnabled(int capability) {
+        state().fail(AL_INVALID_ENUM);
+        return false;
+    }
+
+    public static boolean alGetBoolean(int parameter) {
+        return number(parameter) != 0.0;
+    }
+
+    public static int alGetInteger(int parameter) {
+        return (int) number(parameter);
+    }
+
+    public static double alGetDouble(int parameter) {
+        return number(parameter);
+    }
+
+    public static void alGetBooleanv(int parameter, ByteBuffer value) {
+        value.put(value.position(), (byte) (alGetBoolean(parameter) ? AL_TRUE : AL_FALSE));
+    }
+
+    public static void alGetIntegerv(int parameter, IntBuffer value) {
+        value.put(value.position(), alGetInteger(parameter));
+    }
+
+    public static void alGetIntegerv(int parameter, int[] value) {
+        value[0] = alGetInteger(parameter);
+    }
+
+    public static void alGetInteger(int parameter, IntBuffer value) {
+        alGetIntegerv(parameter, value);
+    }
+
+    public static void alGetFloatv(int parameter, FloatBuffer value) {
+        value.put(value.position(), alGetFloat(parameter));
+    }
+
+    public static void alGetFloatv(int parameter, float[] value) {
+        value[0] = alGetFloat(parameter);
+    }
+
+    public static void alGetFloat(int parameter, FloatBuffer value) {
+        alGetFloatv(parameter, value);
+    }
+
+    public static void alGetDoublev(int parameter, DoubleBuffer value) {
+        value.put(value.position(), alGetDouble(parameter));
+    }
+
+    public static void alGetDoublev(int parameter, double[] value) {
+        value[0] = alGetDouble(parameter);
+    }
+
+    public static void alGetDouble(int parameter, DoubleBuffer value) {
+        alGetDoublev(parameter, value);
     }
 
     public static void alDopplerFactor(float factor) {
@@ -606,7 +950,14 @@ public final class AL10 {
     }
 
     public static float alGetFloat(int parameter) {
+        return (float) number(parameter);
+    }
+
+    /** a global state value, which openal answers in any number type */
+    private static double number(int parameter) {
         switch (parameter) {
+            case AL_DISTANCE_MODEL:
+                return state().distanceModel();
             case AL_DOPPLER_FACTOR:
                 return device().dopplerFactor();
             case AL_DOPPLER_VELOCITY:
@@ -614,8 +965,43 @@ public final class AL10 {
                 return device().speedOfSound();
             default:
                 state().fail(AL_INVALID_ENUM);
-                return 0.0f;
+                return 0.0;
         }
+    }
+
+    // names
+
+    public static boolean alIsExtensionPresent(String name) {
+        return false;
+    }
+
+    public static boolean alIsExtensionPresent(CharSequence name) {
+        return false;
+    }
+
+    public static boolean alIsExtensionPresent(ByteBuffer name) {
+        return false;
+    }
+
+    public static int alGetEnumValue(String name) {
+        return Enums.valueOf(name);
+    }
+
+    public static int alGetEnumValue(CharSequence name) {
+        return Enums.valueOf(name.toString());
+    }
+
+    public static int alGetEnumValue(ByteBuffer name) {
+        return Enums.valueOf(Enums.text(name));
+    }
+
+    /** there is no native function to hand out */
+    public static long alGetProcAddress(CharSequence name) {
+        return 0L;
+    }
+
+    public static long alGetProcAddress(ByteBuffer name) {
+        return 0L;
     }
 
     private static int sourceState(SourceState state) {
@@ -657,8 +1043,8 @@ public final class AL10 {
     }
 
     /** @return null once the error is latched, so callers stop rather than read past the end */
-    private static float[] read(FloatBuffer values, int count) {
-        if (values.remaining() < count) {
+    static float[] read(FloatBuffer values, int count) {
+        if (values == null || values.remaining() < count) {
             state().fail(AL_INVALID_VALUE);
             return null;
         }
@@ -669,7 +1055,17 @@ public final class AL10 {
         return read;
     }
 
-    private static void write(FloatBuffer values, float[] vector) {
+    static void write(IntBuffer values, float[] vector) {
+        if (values.remaining() < vector.length) {
+            state().fail(AL_INVALID_VALUE);
+            return;
+        }
+        for (int at = 0; at < vector.length; at++) {
+            values.put(values.position() + at, (int) vector[at]);
+        }
+    }
+
+    static void write(FloatBuffer values, float[] vector) {
         if (values.remaining() < vector.length) {
             state().fail(AL_INVALID_VALUE);
             return;
@@ -679,7 +1075,7 @@ public final class AL10 {
         }
     }
 
-    private static void unsupportedSourceParameter(String call, int parameter) {
+    static void unsupportedSourceParameter(String call, int parameter) {
         switch (parameter) {
             case AL_MIN_GAIN:
             case AL_MAX_GAIN:

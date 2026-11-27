@@ -78,6 +78,14 @@ for (const backend of BACKENDS) {
       );
     });
 
+    test('plays through the handles an lwjgl 3 program opens', async ({ page }) => {
+      await runDemo(page, backend);
+
+      await expect(page.getByTestId('log')).toContainText(
+        'lwjgl 3: OpenAL11 true, buffered 4410 bytes, playing, no error true',
+      );
+    });
+
     test('reads a wave file into a buffer', async ({ page }) => {
       await runDemo(page, backend);
 

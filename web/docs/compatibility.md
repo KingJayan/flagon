@@ -227,10 +227,10 @@ A [WASI component](packaging.md#wasi) runs headless in a WASI preview 2 host. wa
 
 | Module | Supplies |
 | --- | --- |
-| `lwjgl/lwjgl2` | `Display`, `GL11` to `GL20` and `GL11C` to `GL20C`, the common ARB and EXT extensions, `Keyboard`, `Mouse`, `AL10`, `ALC10`, `BufferUtils`, `GLU`, `util.vector` and `WaveData`. |
+| `lwjgl/lwjgl2` | `Display`, `GL11` to `GL20` and `GL11C` to `GL20C`, the common ARB and EXT extensions, `Keyboard`, `Mouse`, OpenAL, `BufferUtils`, `GLU`, `util.vector` and `WaveData`. |
 | `lwjgl/lwjgl3` | `GLFW` with its callbacks, `GL30` to `GL33` and `GL30C` to `GL33C`, `MemoryUtil`, `MemoryStack` and `PointerBuffer`. |
 
-An LWJGL 3 program needs both modules. `lwjgl/lwjgl3` has no LWJGL 3 OpenAL binding (`ALC.create`, `ALCapabilities`).
+An LWJGL 3 program needs both modules. A class that LWJGL 2 and LWJGL 3 both name is in `lwjgl/lwjgl2` and has both forms. For example, `ALC10` takes an `ALCdevice` or a `long` handle.
 
 ### Display
 
@@ -281,6 +281,8 @@ OpenAL 1.1 on Web Audio.
 - Inverse, linear and exponential distance models map to `PannerNode`. Distances are clamped.
 - Doppler changes the playback rate from the source and listener velocities.
 - Streaming with `alSourceQueueBuffers` and `alSourceUnqueueBuffers` works.
+- OpenAL is the LWJGL 2 and the LWJGL 3 form: `AL10`, `AL11`, `ALC10`, `ALC11`, and the LWJGL 3 `ALC`, `ALCCapabilities` and `ALCapabilities`. The capabilities report OpenAL 1.1 and no extension.
+- `ALC10.alcGetCurrentContext()` returns the LWJGL 2 `ALCcontext`. Java cannot also declare the LWJGL 3 form, which returns a `long`.
 - Not supported: capture (`ALC11`), cone outer gain, and unclamped distance models.
 
 ## Input

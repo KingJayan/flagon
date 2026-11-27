@@ -32,11 +32,11 @@ class ALC10Test {
     /** what a game does before its first al* call, and what has to work for the rest to */
     @Test
     void opensADeviceAndMakesAContextOnItCurrent() {
-        ALCdevice device = ALC10.alcOpenDevice(null);
+        ALCdevice device = ALC10.alcOpenDevice((String) null);
         assertNotNull(device);
 
         ALCcontext context = ALC10.alcCreateContext(device, null);
-        assertTrue(ALC10.alcMakeContextCurrent(context));
+        assertEquals(ALC10.ALC_TRUE, ALC10.alcMakeContextCurrent(context));
 
         assertSame(context, ALC10.alcGetCurrentContext());
         assertSame(device, ALC10.alcGetContextsDevice(context));
@@ -77,11 +77,11 @@ class ALC10Test {
 
     @Test
     void refusesAContextThatHasBeenDestroyed() {
-        ALCdevice device = ALC10.alcOpenDevice(null);
+        ALCdevice device = ALC10.alcOpenDevice((String) null);
         ALCcontext context = ALC10.alcCreateContext(device, null);
         ALC10.alcDestroyContext(context);
 
-        assertFalse(ALC10.alcMakeContextCurrent(context));
+        assertEquals(ALC10.ALC_FALSE, ALC10.alcMakeContextCurrent(context));
         assertEquals(ALC10.ALC_INVALID_CONTEXT, ALC10.alcGetError(device));
     }
 }

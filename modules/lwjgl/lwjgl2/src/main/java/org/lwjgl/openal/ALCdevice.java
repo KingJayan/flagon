@@ -6,10 +6,13 @@ package org.lwjgl.openal;
  */
 public final class ALCdevice {
 
+    /** the number lwjgl 3 passes for this device */
+    final long handle;
     private final String specifier;
     private boolean open = true;
 
-    ALCdevice(String specifier) {
+    ALCdevice(long handle, String specifier) {
+        this.handle = handle;
         this.specifier = specifier;
     }
 
