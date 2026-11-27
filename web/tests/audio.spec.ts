@@ -98,5 +98,11 @@ for (const backend of BACKENDS) {
       await expect(page.getByTestId('log')).toContainText('released: true true');
       await expect(page.getByTestId('log')).toContainText('teardown: no error');
     });
+
+    test('plays again once destroyed and created anew', async ({ page }) => {
+      await runDemo(page, backend);
+
+      await expect(page.getByTestId('log')).toContainText('restarted: output live true');
+    });
   });
 }

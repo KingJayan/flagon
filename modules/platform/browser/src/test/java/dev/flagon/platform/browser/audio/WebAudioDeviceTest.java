@@ -295,15 +295,23 @@ class WebAudioDeviceTest {
         assertThrows(AudioException.class, () -> device.sourcePosition(source, new float[2]));
     }
 
+    /** the platform hands the same device to the next context, so it has to keep playing */
     @Test
-    void letsEverythingGoOnShutdown() {
+    void letsEverythingGoOnShutdownAndPlaysAgain() {
         int source = sourceWithSound();
+        device.setListenerGain(0.5f);
+        device.setDopplerFactor(2.0f);
         device.play(source);
 
         device.shutdown();
 
         assertFalse(device.isSource(source));
-        assertEquals(1, audio.count("close"));
+        assertEquals(0, audio.count("close"));
+        assertEquals(1.0f, device.listenerGain());
+        assertEquals(1.0f, device.dopplerFactor());
+        int next = sourceWithSound();
+        device.play(next);
+        assertEquals(SourceState.PLAYING, device.sourceState(next));
     }
 
     private long placements() {
