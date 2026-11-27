@@ -95,6 +95,9 @@ jobs:
       - name: Set version from tag
         run: make version VERSION="${GITHUB_REF_NAME#v}"
 
+      - name: Build a bundle outside this build
+        run: make standalone
+
       - name: Publish
         run: make publish
         env:

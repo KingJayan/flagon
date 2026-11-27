@@ -1,6 +1,7 @@
 package dev.flagon.build
 
 import org.gradle.api.file.DirectoryProperty
+import org.gradle.api.file.RegularFileProperty
 import org.gradle.api.provider.Property
 
 interface BundleExtension {
@@ -28,6 +29,15 @@ interface BundleExtension {
 
     /** resources this many bytes or larger load from beside the pack when read; 0 keeps all in */
     val apartFrom: Property<Int>
+
+    /** globs of resources that load from beside the pack whatever their size */
+    val apart: Property<String>
+
+    /** globs of the classes only a classpath scan names; -Pflagon.preserve when unset */
+    val preserve: Property<String>
+
+    /** the binaryen wasm-opt a release build shrinks with; -Pflagon.wasmOpt or the PATH when unset */
+    val wasmOpt: RegularFileProperty
 
     /** release wasm-opt on the coroutine build; the app crashes the page once optimized */
     val shrinkCoroutineWasm: Property<Boolean>

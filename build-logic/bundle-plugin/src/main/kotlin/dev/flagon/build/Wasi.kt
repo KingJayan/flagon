@@ -49,6 +49,15 @@ fun wasmTools(configured: String?): String =
 fun wasmtime(configured: String?): String =
     tool("wasmtime", configured, "flagon.wasmtime", "https://wasmtime.dev")
 
+/** @return wasm-opt from the bundle's wasmOpt, -Pflagon.wasmOpt or the PATH */
+fun wasmOpt(configured: File?): String {
+    if (configured != null) {
+        check(configured.canExecute()) { "wasm-opt is missing at $configured" }
+        return configured.absolutePath
+    }
+    return tool("wasm-opt", null, "flagon.wasmOpt", "https://github.com/WebAssembly/binaryen")
+}
+
 private fun tool(name: String, configured: String?, property: String, home: String): String {
     if (configured != null) {
         return configured
@@ -56,6 +65,6 @@ private fun tool(name: String, configured: String?, property: String, home: Stri
     val found = System.getenv("PATH").orEmpty().split(File.pathSeparator)
         .map { File(it, name) }.firstOrNull { it.canExecute() }
     return checkNotNull(found) {
-        "a wasi component needs $name; install it from $home or pass -P$property=<path>"
+        "the build needs $name; install it from $home or pass -P$property=<path>"
     }.absolutePath
 }

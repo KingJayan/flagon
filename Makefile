@@ -15,7 +15,7 @@ VENDOR_JARS := $(wildcard vendor/*.jar)
 
 .PHONY: help setup deps browsers fast bundles app verify-bundles \
         playground minecraft bundles-release size test wasi browser flake typecheck lint build-site \
-        deploy-private dev serve check report merge-reports watch version release publish clean
+        deploy-private dev serve check report merge-reports watch version release publish standalone clean
 
 help: ## show available commands
 	@grep -hE '^[a-z-]+:.*## ' $(MAKEFILE_LIST) \
@@ -205,6 +205,11 @@ release: ## create and push a release tag (VERSION=1.2.3)
 
 publish: ## publish Gradle artifacts to the package registry
 	$(GRADLE) publish
+
+standalone: ## build examples/standalone, a project of its own, against the modules installed in Maven local
+	$(GRADLE) publishToMavenLocal
+	$(GRADLE) -p examples/standalone bundle
+	test -s examples/standalone/build/flagon/wasm/standalone.wasm
 
 clean: ## remove generated build and test output
 	$(GRADLE) clean

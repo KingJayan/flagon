@@ -70,7 +70,7 @@ Each adds JDK classes that TeaVM lacks.
 | `teavm/core` | `teavm-core` 0.15.0 rebuilt with compiler and class library fixes. `java.text` and `Locale` read their locale data from the page's `Intl`, not from CLDR data in the bundle. |
 | `teavm/jso` | `teavm-jso-impl` 0.15.0 rebuilt so a simple `@JSBody` compiles to backend operations, not text. |
 | `teavm/patches` | Builds `teavm/core` and `teavm/jso` before the main build. The TeaVM plugin loads them in place of the stock JARs. |
-| `build-logic` | The Gradle convention plugins, including `flagon.bundle`. |
+| `build-logic` | The Gradle convention plugins. `flagon.bundle` applies the published `dev.flagon.bundle` from `build-logic/bundle-plugin`. |
 
 ### Bundles and examples
 
@@ -81,6 +81,7 @@ Each adds JDK classes that TeaVM lacks.
 | `bundles/wasi` | Headless programs and exports for the WASI component, which `make wasi` runs under wasmtime. |
 | `examples/app`, `examples/thirdparty` | Sample LWJGL 2 programs and LWJGL's own LWJGL 3 sample, built against the real LWJGL. |
 | `examples/bundle` | The `example` bundle of those programs. |
+| `examples/standalone` | A build of its own that applies `dev.flagon.bundle` from the local Maven repository. `make standalone` builds it. |
 | `bundles/app` | The `app` bundle from `vendor/`. Present when `vendor/` has JARs. |
 | `web/playground` | A separate build. Compiles javac and TeaVM 0.17 to WebAssembly for the playground. |
 | `web` | The site, the bundle loader, the socket proxy and the Playwright tests. |
