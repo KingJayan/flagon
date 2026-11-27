@@ -13,6 +13,7 @@ sourceSets["main"].java.exclude("org/example/absent/**")
 dependencies {
     implementation(project(":runtime"))
     implementation(project(":platform:browser"))
+    implementation(project(":platform:web"))
     implementation(project(":lwjgl:lwjgl2"))
     implementation(project(":lwjgl:lwjgl3"))
     implementation(project(":toolchain:socket-classlib"))

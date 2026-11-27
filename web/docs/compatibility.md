@@ -29,6 +29,7 @@ All bundles compile with TeaVM's strict mode, so a null dereference throws `Null
 | Graphics | WebGL 2 | Desktop GL 1.1 to 3.3. See [OpenGL](#opengl). |
 | Audio | Web Audio | OpenAL 1.1. See [Audio](#audio). |
 | Input | DOM events, Pointer Lock | Keyboard, mouse, wheel and one touch point. |
+| Web APIs | WebCodecs, WebTransport, WebRTC, Web Bluetooth, WebUSB, IndexedDB | Bindings in `platform/web`. Firefox has no Web Bluetooth or WebUSB, so `get()` returns null there. See the [API reference](api.md#web-api-bindings). |
 
 ## Java runtime
 
