@@ -146,7 +146,7 @@ shaders: ## validate the fixed-function shaders under every feature define
 			bit=$$((bit + 1)); \
 		done; \
 		for shader in $(SHADERS)/*.vert $(SHADERS)/*.frag; do \
-			glslangValidator $$flags $$shader > /dev/null || { glslangValidator $$flags $$shader; exit 1; }; \
+			glslangValidator -l $$flags $$shader > /dev/null || { glslangValidator -l $$flags $$shader; exit 1; }; \
 		done; \
 	done
 
