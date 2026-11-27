@@ -39,6 +39,10 @@ bundles: ## compile Java to WebAssembly and JavaScript
 	$(GRADLE) bundles
 	@$(MAKE) verify-bundles
 
+debug: ## compile the bundles with WebAssembly source maps for browser devtools
+	$(GRADLE) -Pflagon.debug bundles
+	@$(MAKE) verify-bundles
+
 playground: ## compile javac and TeaVM to wasm for the in-browser playground
 	$(GRADLE) -p web/playground :compiler:dist
 	rm -rf $(BUNDLES)/playground
