@@ -64,6 +64,7 @@ public final class SandboxMain {
                 .register(new SerialProgram())
                 .register(new ConcurrencyProgram())
                 .register(new LocaleProgram())
+                .register(new WebApisProgram())
                 .register(new WorkersProgram())
                 .register(new WorkersProgram.Echo());
     }

@@ -1,6 +1,6 @@
 # API reference
 
-Every public type in `runtime`, `platform/api`, `platform/browser`, `platform/wasi` and `@Reflectable`. The [stable API](packaging.md#stable-api) is `FlagonRuntime`, the program types, `BrowserPlatform.create` and `@Reflectable`. Everything else may change between releases.
+Every public type in `runtime`, `platform/api`, `platform/browser`, `platform/wasi`, `platform/web` and `@Reflectable`. The [stable API](packaging.md#stable-api) is `FlagonRuntime`, the program types, `BrowserPlatform.create` and `@Reflectable`. Everything else may change between releases.
 
 `platform/api` holds the host contracts and the targets of the build's JDK reroutes. Application code does not call the reroute targets: the build sends JDK calls to them.
 
@@ -1761,3 +1761,110 @@ The `Workers` over Web Workers, through `self.__flagonWorkers`. A worker loads t
 ```java
 class BrowserWorkers implements Workers
 ```
+
+## dev.flagon.web
+
+`platform/web`, published as `dev.flagon:platform-web`: JSO bindings for the web APIs that TeaVM's `jso-apis` lacks, and an IndexedDB store. Add it to a bundle that uses them.
+
+Each binding tells whether the browser has its API: `isSupported()`, or `get()` that returns null. A method that returns a `JSPromise` does not wait. `Promises.await` waits for it.
+
+```java
+RTCPeerConnection peer = new RTCPeerConnection();
+RTCSessionDescriptionInit offer = Promises.await(peer.createOffer());
+```
+
+### Promises
+
+Waits for a promise. The Java thread parks, and the page keeps running.
+
+```java
+final class Promises
+    static <T> T await(JSPromise<T> promise); // the value; throws WebException when it rejects
+```
+
+### WebException
+
+What a web API rejected with.
+
+```java
+class WebException extends RuntimeException
+    WebException(String name, String message);
+    String name(); // the DOMException name, such as NotFoundError or SecurityError
+    static RuntimeException of(Object error); // the exception for a rejection value
+```
+
+## dev.flagon.web.indexeddb
+
+### IndexedDb
+
+An IndexedDB database. Each call parks the Java thread until the browser answers.
+
+```java
+final class IndexedDb implements AutoCloseable
+    static boolean isSupported();
+    static IndexedDb open(String name, int version, String... stores); // makes the stores it lacks
+    static IndexedDb open(String name, int version, Upgrade upgrade); // an exception from upgrade aborts it and is thrown here
+    static void delete(String name); // once every other connection closes
+    String name();
+    int version();
+    String[] stores();
+    Store store(String name); // throws WebException NotFoundError
+    void close();
+```
+
+The database closes itself when another tab opens a newer version.
+
+### IndexedDb.Upgrade
+
+Changes the stores when the database is new or older than the version that `open` asks for.
+
+```java
+interface Upgrade
+    void upgrade(Schema schema, int from, int to); // from is 0 for a new database
+```
+
+### Schema
+
+The stores of a database during its upgrade.
+
+```java
+final class Schema
+    boolean has(String store);
+    String[] stores();
+    void create(String store);
+    void delete(String store);
+    void clear(String store);
+```
+
+### Store
+
+One object store. Its keys are strings, and its values are bytes or strings. Each call is one transaction. A write returns when it commits.
+
+```java
+final class Store
+    String name();
+    byte[] get(String key); // null when missing; throws IllegalStateException for a string
+    String getString(String key); // null when missing; throws IllegalStateException for bytes
+    void put(String key, byte[] value);
+    void put(String key, String value);
+    boolean has(String key);
+    void delete(String key);
+    List<String> keys(); // in IndexedDB order
+    int size();
+    void clear();
+```
+
+## Web API bindings
+
+The members of these types mirror the web APIs. Their names match the API's names. Dictionaries have a static `create` for their required members, and `@JSProperty` setters for the rest.
+
+| Package | API | Types |
+| --- | --- | --- |
+| `dev.flagon.web.codecs` | [WebCodecs](https://developer.mozilla.org/docs/Web/API/WebCodecs_API) | `VideoEncoder`, `VideoDecoder`, `AudioEncoder`, `AudioDecoder`, `VideoFrame`, `AudioData`, `EncodedVideoChunk`, `EncodedAudioChunk`, `VideoEncoderConfig`, `VideoDecoderConfig`, `AudioEncoderConfig`, `AudioDecoderConfig`, `VideoEncoderInit`, `VideoDecoderInit`, `AudioEncoderInit`, `AudioDecoderInit`, `VideoEncoderEncodeOptions`, `VideoFrameInit`, `VideoFrameBufferInit`, `AudioDataInit`, `AudioDataCopyToOptions`, `EncodedChunkInit`, `CodecSupport`, `EncodedVideoChunkOutputCallback`, `EncodedAudioChunkOutputCallback`, `VideoFrameOutputCallback`, `AudioDataOutputCallback`, `WebCodecsErrorCallback` |
+| `dev.flagon.web.transport` | [WebTransport](https://developer.mozilla.org/docs/Web/API/WebTransport_API) | `WebTransport`, `WebTransportBidirectionalStream`, `WebTransportDatagramDuplexStream`, `WebTransportOptions`, `WebTransportHash`, `WebTransportCloseInfo` |
+| `dev.flagon.web.streams` | [Streams](https://developer.mozilla.org/docs/Web/API/Streams_API) | `WritableStream`, `WritableStreamDefaultWriter`. TeaVM's `org.teavm.jso.streams` has the readable side. |
+| `dev.flagon.web.rtc` | [WebRTC](https://developer.mozilla.org/docs/Web/API/WebRTC_API) | `RTCPeerConnection`, `RTCDataChannel`, `RTCConfiguration`, `RTCIceServer`, `RTCDataChannelInit`, `RTCSessionDescriptionInit`, `RTCIceCandidateInit`, `RTCPeerConnectionIceEvent`, `RTCDataChannelEvent` |
+| `dev.flagon.web.bluetooth` | [Web Bluetooth](https://developer.mozilla.org/docs/Web/API/Web_Bluetooth_API) | `Bluetooth`, `RequestDeviceOptions`, `BluetoothLEScanFilter`, `BluetoothDevice`, `BluetoothRemoteGATTServer`, `BluetoothRemoteGATTService`, `BluetoothRemoteGATTCharacteristic`, `BluetoothCharacteristicProperties` |
+| `dev.flagon.web.usb` | [WebUSB](https://developer.mozilla.org/docs/Web/API/WebUSB_API) | `USB`, `USBDevice`, `USBConfiguration`, `USBDeviceRequestOptions`, `USBDeviceFilter`, `USBControlTransferParameters`, `USBInTransferResult`, `USBOutTransferResult`, `USBConnectionEvent` |
+
+`Bluetooth.requestDevice` and `USB.requestDevice` show a device chooser. Call them from a click or key press, or they reject with `SecurityError`.

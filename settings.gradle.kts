@@ -28,6 +28,7 @@ listOf(
     "platform:api",
     "platform:browser",
     "platform:wasi",
+    "platform:web",
     "runtime",
     "lwjgl:core",
     "lwjgl:lwjgl2",

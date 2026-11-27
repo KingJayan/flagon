@@ -107,6 +107,7 @@ Add the class libraries the application needs:
 | `:toolchain:crypto-classlib` | `MessageDigest`, `Mac`, `Cipher`, `Signature`, `KeyAgreement`, PBKDF2, RSA and EC keys. |
 | `:toolchain:sound-classlib` | `javax.sound` types that report no device. |
 | `:toolchain:reflect-policy` | `@Reflectable` and the reflection policy. |
+| `:platform:web` | JSO bindings for WebCodecs, WebTransport, WebRTC, Web Bluetooth and WebUSB, and an IndexedDB store. See the [API reference](api.md). |
 
 ### 2. Write the entry point
 

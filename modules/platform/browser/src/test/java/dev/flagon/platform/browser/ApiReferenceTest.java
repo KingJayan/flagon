@@ -31,9 +31,14 @@ class ApiReferenceTest {
             "modules/platform/api/src/main/java",
             "modules/platform/browser/src/main/java",
             "modules/platform/wasi/src/main/java",
+            "modules/platform/web/src/main/java",
             "modules/toolchain/reflect-policy/src/main/java/dev/flagon/reflect/Reflectable.java");
     /** members mirror a web api, which the reference links to instead */
     private static final Set<String> MIRRORS = Set.of("WebGL2");
+    /** packages of web api bindings, whose types the reference names in a table */
+    private static final Set<String> BINDINGS = Set.of("dev.flagon.web.codecs",
+            "dev.flagon.web.transport", "dev.flagon.web.streams", "dev.flagon.web.rtc",
+            "dev.flagon.web.bluetooth", "dev.flagon.web.usb");
 
     @Test
     void namesEveryPublicTypeAndMember() throws IOException {
@@ -50,10 +55,16 @@ class ApiReferenceTest {
                 List.of("-proc:none"), null, files.getJavaFileObjectsFromPaths(sources));
         List<String> missing = new ArrayList<>();
         for (CompilationUnitTree unit : task.parse()) {
+            boolean binding = BINDINGS.contains(unit.getPackageName().toString());
             for (Tree type : unit.getTypeDecls()) {
-                if (type instanceof ClassTree declared
-                        && declared.getModifiers().getFlags().contains(Modifier.PUBLIC)) {
+                if (!(type instanceof ClassTree declared)
+                        || !declared.getModifiers().getFlags().contains(Modifier.PUBLIC)) {
+                    continue;
+                }
+                if (!binding) {
                     check(reference, declared, "", missing);
+                } else if (!reference.contains("`" + declared.getSimpleName() + "`")) {
+                    missing.add(declared.getSimpleName().toString());
                 }
             }
         }
