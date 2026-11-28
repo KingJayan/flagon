@@ -129,6 +129,13 @@ public final class MemoryStack implements AutoCloseable, Pointer {
         return typed(calloc(Short.BYTES, size * Short.BYTES).asShortBuffer());
     }
 
+    public ShortBuffer shorts(short... values) {
+        ShortBuffer block = mallocShort(values.length);
+        block.put(values);
+        block.flip();
+        return block;
+    }
+
     public IntBuffer mallocInt(int size) {
         return typed(malloc(Integer.BYTES, size * Integer.BYTES).asIntBuffer());
     }

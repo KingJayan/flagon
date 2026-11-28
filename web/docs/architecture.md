@@ -33,7 +33,7 @@ The Gradle modules live in `modules/`. The project `:platform:api` is the direct
 
 | Module | Role |
 | --- | --- |
-| `platform/api` | Host contracts: `Platform`, `GraphicsDevice`, `DisplaySurface`, `AudioDevice`, `FileStore`, `InputSource`, `Network`, `Clock`, `RuntimeHost`. Also the JDK reroute targets. |
+| `platform/api` | Host contracts: `Platform`, `GraphicsDevice`, `EsContext`, `DisplaySurface`, `AudioDevice`, `FileStore`, `InputSource`, `Network`, `Clock`, `RuntimeHost`. Also the JDK reroute targets. |
 | `platform/browser` | Implements `platform/api` in the browser. |
 | `platform/wasi` | Implements `platform/api` headless, over WASI, for a [WASI component](packaging.md#wasi). |
 | `runtime` | Boots a platform, picks a program, runs it, and reports to the host. Installs `System.out`, URL handlers and shutdown hooks. |
@@ -127,6 +127,7 @@ Browser APIs are asynchronous, and Java code expects blocking calls. TeaVM finds
 - Immediate mode, client arrays and display lists go into stream buffers.
 - `FixedFunctionPipeline` generates a shader for each combination of lighting, texturing, fog and alpha test in use.
 - `GlslTranslator` parses desktop GLSL 1.10 to 3.30 and writes GLSL ES 1.00 or 3.00.
+- GL ES calls skip `GLState`. They go to the device's `EsContext`, which the browser runs on the same WebGL 2 context.
 
 ### Threads
 

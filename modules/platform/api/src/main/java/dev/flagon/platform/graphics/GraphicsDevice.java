@@ -281,4 +281,9 @@ public interface GraphicsDevice {
     String information(GraphicsInfo information);
 
     int limit(GraphicsLimit limit);
+
+    /** the same context, driven as gl es 3.0 */
+    default EsContext es() {
+        throw new UnsupportedOperationException("this graphics device has no gl es context");
+    }
 }
