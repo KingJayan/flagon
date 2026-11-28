@@ -8,6 +8,7 @@ import dev.flagon.platform.graphics.BufferTarget;
 import dev.flagon.platform.graphics.BufferUsage;
 import dev.flagon.platform.graphics.CompareFunc;
 import dev.flagon.platform.graphics.CullFace;
+import dev.flagon.platform.graphics.EsContext;
 import dev.flagon.platform.graphics.FramebufferAttachment;
 import dev.flagon.platform.graphics.FramebufferStatus;
 import dev.flagon.platform.graphics.GraphicsDevice;
@@ -75,6 +76,7 @@ public final class WebGLGraphicsDevice implements GraphicsDevice {
     private int screenWidth;
     private int screenHeight;
     private int boundProgram = NO_PROGRAM;
+    private WebGLEsContext es;
 
     private final List<Attributes> arrays = new ArrayList<>();
     private int boundArray = NO_VERTEX_ARRAY;
@@ -145,11 +147,19 @@ public final class WebGLGraphicsDevice implements GraphicsDevice {
         gl.bindRenderbuffer(WebGL2.RENDERBUFFER, screenDepth);
         gl.renderbufferStorage(WebGL2.RENDERBUFFER, WebGL2.DEPTH24_STENCIL8, screenWidth,
                 screenHeight);
-        bindRenderbuffer(boundRenderbuffer);
+        if (es != null) {
+            es.restoreRenderbuffer();
+        } else {
+            bindRenderbuffer(boundRenderbuffer);
+        }
     }
 
     /** copies the finished frame to the canvas */
     public void presentScreen() {
+        if (es != null) {
+            es.present(screenWidth, screenHeight);
+            return;
+        }
         boolean scissored = capabilityKnown[3] && capabilityOn[3];
         if (scissored) {
             gl.disable(WebGL2.SCISSOR_TEST);
@@ -1560,5 +1570,13 @@ public final class WebGLGraphicsDevice implements GraphicsDevice {
             case MAX_COMBINED_TEXTURE_UNITS -> WebGL2.MAX_COMBINED_TEXTURE_IMAGE_UNITS;
             case MAX_ARRAY_TEXTURE_LAYERS -> WebGL2.MAX_ARRAY_TEXTURE_LAYERS;
         });
+    }
+
+    @Override
+    public EsContext es() {
+        if (es == null) {
+            es = new WebGLEsContext(gl, screen, defaultVertexArray);
+        }
+        return es;
     }
 }

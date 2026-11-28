@@ -7,6 +7,7 @@ import dev.flagon.platform.graphics.BufferTarget;
 import dev.flagon.platform.graphics.BufferUsage;
 import dev.flagon.platform.graphics.CompareFunc;
 import dev.flagon.platform.graphics.CullFace;
+import dev.flagon.platform.graphics.EsContext;
 import dev.flagon.platform.graphics.FramebufferAttachment;
 import dev.flagon.platform.graphics.FramebufferStatus;
 import dev.flagon.platform.graphics.GraphicsDevice;
@@ -788,5 +789,13 @@ final class RecordingGraphicsDevice implements GraphicsDevice {
     @Override
     public void activeTexture(int unit) {
         calls.add("activeTexture " + unit);
+    }
+
+    /** the gl es context a test hands in; none until then */
+    EsContext es;
+
+    @Override
+    public EsContext es() {
+        return es != null ? es : GraphicsDevice.super.es();
     }
 }

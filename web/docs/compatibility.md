@@ -228,7 +228,7 @@ A [WASI component](packaging.md#wasi) runs headless in a WASI preview 2 host. wa
 | Module | Supplies |
 | --- | --- |
 | `lwjgl/lwjgl2` | `Display`, `GL11` to `GL20` and `GL11C` to `GL20C`, the common ARB and EXT extensions, `Keyboard`, `Mouse`, OpenAL, `BufferUtils`, `GLU`, `util.vector` and `WaveData`. |
-| `lwjgl/lwjgl3` | `GLFW` with its callbacks, `GL30` to `GL33` and `GL30C` to `GL33C`, `MemoryUtil`, `MemoryStack` and `PointerBuffer`. |
+| `lwjgl/lwjgl3` | `GLFW` with its callbacks, `GL30` to `GL33` and `GL30C` to `GL33C`, `GLES20`, `GLES30`, `GLES`, `GLESCapabilities`, `MemoryUtil`, `MemoryStack` and `PointerBuffer`. |
 
 An LWJGL 3 program needs both modules. A class that LWJGL 2 and LWJGL 3 both name is in `lwjgl/lwjgl2` and has both forms. For example, `ALC10` takes an `ALCdevice` or a `long` handle.
 
@@ -272,6 +272,18 @@ The build-time translator rewrites desktop GLSL for WebGL 2:
 - A constant uniform initializer is set after the program links.
 - Fixed-function built-ins work: the matrices (`gl_ModelViewMatrix` and so on) become uniforms, and `gl_Vertex`, `gl_Color`, `gl_Normal` and `gl_MultiTexCoord*` become attributes.
 - A program with only one stage gets a generated other stage.
+
+## OpenGL ES
+
+GL ES 2.0 and 3.0 through LWJGL 3's `GLES20` and `GLES30`. WebGL 2 is GL ES 3.0, so each call goes straight to it.
+
+- Shaders compile as written: GLSL ES 1.00 and 3.00.
+- `GLESCapabilities` reports GL ES 3.0 and the WebGL 2 extensions it maps, such as `GL_EXT_color_buffer_float`. No GL ES 3.1 or 3.2.
+- Client arrays and client indices are copied into buffers before each draw. A `long` pointer with no buffer bound is an address.
+- `glMapBufferRange` returns a copy. Writes go back at `glFlushMappedBufferRange` or `glUnmapBuffer`.
+- `glGetQueryObjectui(GL_QUERY_RESULT)` and `glClientWaitSync` let the page run until WebGL answers. WebGL answers only between frames.
+- No shader or program binaries: `glShaderBinary` and `glProgramBinary` raise `GL_INVALID_ENUM`.
+- Use GL ES or desktop GL in a program, not both.
 
 ## Audio
 

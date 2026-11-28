@@ -190,7 +190,13 @@ public final class GLFW {
     public static final int GLFW_OPENGL_FORWARD_COMPAT = 0x00022006;
     public static final int GLFW_OPENGL_DEBUG_CONTEXT = 0x00022007;
     public static final int GLFW_OPENGL_PROFILE = 0x00022008;
+    public static final int GLFW_CONTEXT_CREATION_API = 0x0002200B;
+    public static final int GLFW_NO_API = 0;
     public static final int GLFW_OPENGL_API = 0x00030001;
+    public static final int GLFW_OPENGL_ES_API = 0x00030002;
+    public static final int GLFW_NATIVE_CONTEXT_API = 0x00036001;
+    public static final int GLFW_EGL_CONTEXT_API = 0x00036002;
+    public static final int GLFW_OSMESA_CONTEXT_API = 0x00036003;
     public static final int GLFW_OPENGL_ANY_PROFILE = 0;
     public static final int GLFW_OPENGL_CORE_PROFILE = 0x00032001;
     public static final int GLFW_OPENGL_COMPAT_PROFILE = 0x00032002;
