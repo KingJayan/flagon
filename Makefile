@@ -14,7 +14,7 @@ VENDOR_JARS := $(wildcard vendor/*.jar)
 
 
 .PHONY: help setup deps browsers fast bundles app verify-bundles \
-        playground minecraft bundles-release size test wasi browser flake typecheck lint build-site \
+        playground minecraft bundles-release size test wasi browser flake typecheck lint shaders build-site \
         deploy-private dev serve check report merge-reports watch version release publish standalone clean
 
 help: ## show available commands
@@ -134,6 +134,21 @@ typecheck: ## type-check the web application
 lint: ## run Java and web linters
 	$(GRADLE) lintJava
 	cd $(WEB) && bun run lint
+
+SHADERS := modules/lwjgl/core/src/main/glsl
+SHADER_DEFINES := COMBINE GENERATE LIGHTING FOG MULTITEXTURE
+
+shaders: ## validate the fixed-function shaders under every feature define
+	@for mask in $$(seq 0 31); do \
+		flags=; bit=0; \
+		for define in $(SHADER_DEFINES); do \
+			if [ $$((mask >> bit & 1)) = 1 ]; then flags="$$flags -D$$define"; fi; \
+			bit=$$((bit + 1)); \
+		done; \
+		for shader in $(SHADERS)/*.vert $(SHADERS)/*.frag; do \
+			glslangValidator -l $$flags $$shader > /dev/null || { glslangValidator -l $$flags $$shader; exit 1; }; \
+		done; \
+	done
 
 build-site: ## build the web application for deployment
 	cd $(WEB) && bun run build
