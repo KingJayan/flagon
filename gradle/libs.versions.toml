@@ -32,6 +32,7 @@ lwjgl2 = { module = "org.lwjgl.lwjgl:lwjgl", version.ref = "lwjgl2" }
 lwjgl3 = { module = "org.lwjgl:lwjgl", version.ref = "lwjgl3" }
 lwjgl3-glfw = { module = "org.lwjgl:lwjgl-glfw", version.ref = "lwjgl3" }
 lwjgl3-opengl = { module = "org.lwjgl:lwjgl-opengl", version.ref = "lwjgl3" }
+lwjgl3-openal = { module = "org.lwjgl:lwjgl-openal", version.ref = "lwjgl3" }
 
 [plugins]
 teavm = { id = "org.teavm", version.ref = "teavm" }

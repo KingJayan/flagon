@@ -7,13 +7,16 @@ import dev.flagon.runtime.Program;
 import org.lwjgl.BufferUtils;
 import org.lwjgl.openal.AL;
 import org.lwjgl.openal.AL10;
+import org.lwjgl.openal.ALC;
 import org.lwjgl.openal.ALC10;
+import org.lwjgl.openal.ALCCapabilities;
 import org.lwjgl.openal.ALCcontext;
 import org.lwjgl.openal.ALCdevice;
 import org.lwjgl.util.WaveData;
 
 import java.io.ByteArrayOutputStream;
 import java.nio.ByteBuffer;
+import java.nio.IntBuffer;
 
 /**
  unmodified openal against the browser's mixer, from raw pcm to a source running out
@@ -38,6 +41,7 @@ public final class AudioDemoProgram implements Program {
     public void run(String[] arguments) throws Exception {
         ConsoleSink console = Platforms.get().console();
         context(console);
+        lwjgl3(console);
         AL.create();
         try {
             console.info("audio device: " + AL10.alGetString(AL10.AL_RENDERER));
@@ -74,7 +78,23 @@ public final class AudioDemoProgram implements Program {
             AL10.alDeleteBuffers(buffer);
             console.info("released: " + !AL10.alIsSource(source) + " " + !AL10.alIsBuffer(buffer));
             check(console, "teardown");
-            console.info("audio: done");
+        } finally {
+            AL.destroy();
+        }
+        restart(console);
+        console.info("audio: done");
+    }
+
+    /** a game that reloads its sounds destroys openal and creates it again on the same mixer */
+    private void restart(ConsoleSink console) throws Exception {
+        AL.create();
+        try {
+            int buffer = AL10.alGenBuffers();
+            AL10.alBufferData(buffer, AL10.AL_FORMAT_MONO16, tone(), SAMPLE_RATE);
+            int source = AL10.alGenSources();
+            AL10.alSourcei(source, AL10.AL_BUFFER, buffer);
+            console.info("restarted: output live " + Platforms.get().audio().isOutputLive());
+            play(console, source);
         } finally {
             AL.destroy();
         }
@@ -102,12 +122,35 @@ public final class AudioDemoProgram implements Program {
 
     /** the context layer a game opens before its first al* call */
     private void context(ConsoleSink console) {
-        ALCdevice device = ALC10.alcOpenDevice(null);
+        ALCdevice device = ALC10.alcOpenDevice((String) null);
         ALCcontext context = ALC10.alcCreateContext(device, null);
-        boolean current = ALC10.alcMakeContextCurrent(context);
+        boolean current = ALC10.alcMakeContextCurrent(context) == ALC10.ALC_TRUE;
         console.info("alc: " + ALC10.alcGetString(device, ALC10.ALC_DEFAULT_DEVICE_SPECIFIER)
                 + ", current: " + current
                 + ", no error: " + (ALC10.alcGetError(device) == ALC10.ALC_NO_ERROR));
+    }
+
+    /** the same mixer through lwjgl 3's handles, which stays current for the rest */
+    private void lwjgl3(ConsoleSink console) {
+        long device = ALC10.alcOpenDevice((ByteBuffer) null);
+        ALCCapabilities deviceCapabilities = ALC.createCapabilities(device);
+        long context = ALC10.alcCreateContext(device, (IntBuffer) null);
+        ALC10.alcMakeContextCurrent(context);
+        boolean openal11 = AL.createCapabilities(deviceCapabilities).OpenAL11;
+
+        int buffer = AL10.alGenBuffers();
+        AL10.alBufferData(buffer, AL10.AL_FORMAT_MONO16, new short[SAMPLE_RATE / 10], SAMPLE_RATE);
+        int[] sources = new int[1];
+        AL10.alGenSources(sources);
+        AL10.alSourcei(sources[0], AL10.AL_BUFFER, buffer);
+        AL10.alSourcePlayv(sources);
+        console.info("lwjgl 3: OpenAL11 " + openal11 + ", buffered "
+                + AL10.alGetBufferi(buffer, AL10.AL_SIZE) + " bytes, "
+                + name(AL10.alGetSourcei(sources[0], AL10.AL_SOURCE_STATE)) + ", no error "
+                + (AL10.alGetError() == AL10.AL_NO_ERROR && ALC10.alcGetError(device) == 0));
+        AL10.alSourceStopv(sources);
+        AL10.alDeleteSources(sources);
+        AL10.alDeleteBuffers(buffer);
     }
 
     /** what music is: buffers queued ahead, taken back as they play, and filled again */

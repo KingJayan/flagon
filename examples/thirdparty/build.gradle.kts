@@ -1,5 +1,5 @@
 plugins {
-    id("flagon.published")
+    id("flagon.java")
 }
 
 dependencies {

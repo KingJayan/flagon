@@ -64,15 +64,27 @@ tasks.register("test") {
     dependsOn(patches.map { gradle.includedBuild("teavm-patches").task(":$it:test") })
 }
 
+// the published builds beside this one: the patched teavm and the bundle plugin
+fun includedPublish(task: String) =
+    patches.map { gradle.includedBuild("teavm-patches").task(":$it:$task") } +
+        gradle.includedBuild("build-logic").task(":bundle-plugin:$task")
+
 val publishAll = tasks.register("publish") {
     group = "publishing"
     description = "deploy every module to the package registry"
-    dependsOn(patches.map { gradle.includedBuild("teavm-patches").task(":$it:publish") })
+    dependsOn(includedPublish("publish"))
+}
+
+val publishLocal = tasks.register("publishToMavenLocal") {
+    group = "publishing"
+    description = "install every module in the local maven repository"
+    dependsOn(includedPublish("publishToMavenLocal"))
 }
 
 subprojects {
     val module = this
     plugins.withId("flagon.published") {
         publishAll.configure { dependsOn(module.tasks.named("publish")) }
+        publishLocal.configure { dependsOn(module.tasks.named("publishToMavenLocal")) }
     }
 }

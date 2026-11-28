@@ -2,12 +2,11 @@
 
 A browser cannot load a JAR at run time. The build links the application, its libraries and Flagon into one bundle ahead of time.
 
-There are two ways to make a bundle:
+There are three ways to make a bundle:
 
 - **`vendor/`**: put the JARs in a folder and run `make app`. No build files.
 - **A bundle module**: a Gradle module in this repository that applies the `flagon.bundle` plugin. Use it for several programs, your own entry point or custom settings.
-
-Both ways need this repository. The patched TeaVM and the `flagon.bundle` plugin are not published yet ([#570](https://github.com/KingJayan/flagon/issues/570)).
+- **Your own project**: a Gradle build outside this repository that applies the published `dev.flagon.bundle` plugin. See [From your own project](#from-your-own-project).
 
 ## From vendor/
 
@@ -172,6 +171,9 @@ public final class BrowserCatalog {
 | `compilerMemory` | 1024 | The TeaVM heap in MB. |
 | `vorbisQuality` | unset | Re-encodes Ogg Vorbis at this quality. Unset keeps the files. |
 | `apartFrom` | 0 | Resources this size in bytes or larger load beside the pack. 0 keeps all of them in it. |
+| `apart` | empty | Globs of resources that load beside the pack at any size. The app bundle reads `vendor/apart.txt`. |
+| `preserve` | `-Pflagon.preserve` | Globs of classes that only a classpath scan names. The app bundle reads `vendor/preserve.txt`. |
+| `wasmOpt` | `-Pflagon.wasmOpt`, then the `PATH` | The binaryen `wasm-opt` that release builds run. In this repository, the one in `web/node_modules`. |
 | `shrinkCoroutineWasm` | true | Runs `wasm-opt` on the coroutine WebAssembly in release builds. |
 | `wasiMainClass` | `mainClass` | The entry point of the [WASI component](#wasi). |
 
@@ -181,10 +183,64 @@ public final class BrowserCatalog {
 | --- | --- |
 | `-Pflagon.release` | Release build: optimized, obfuscated, shrunk with `wasm-opt`. |
 | `-Pflagon.debug` | WebAssembly keeps its names and gets a source map and the Java sources. Skips `wasm-opt`. |
-| `-Pflagon.preserve=globs` | Classes that only a classpath scan names. Defaults to `vendor/preserve.txt`. |
+| `-Pflagon.preserve=globs` | Classes that only a classpath scan names. Defaults to `vendor/preserve.txt` in the app bundle. |
 | `-Pflagon.app.reflect=globs` | Narrows the constructors `make app` keeps. |
+| `-Pflagon.wasmOpt=path` | The `wasm-opt` that release builds run. Defaults to the one on `PATH`. |
 | `-Pflagon.wasmTools=path` | The `wasm-tools` the `wasi` task runs. Defaults to the one on `PATH`. |
 | `-Pflagon.wasmtime=path` | The `wasmtime` that `wasiTest` runs. Defaults to the one on `PATH`. |
+
+## From your own project
+
+Flagon publishes its modules and the `dev.flagon.bundle` plugin to GitHub Packages. GitHub Packages needs a token with `read:packages`, also for public packages. Put it in `~/.gradle/gradle.properties` as `flagonUsername` and `flagonPassword`. `examples/standalone` is a complete project. `make standalone` builds it against the local Maven repository.
+
+Run Gradle on JDK 25. The patched TeaVM and the Flagon build tools are Java 25 classes, and they run in the Gradle JVM. Set `toolchainVersion=25` in `gradle/gradle-daemon-jvm.properties`.
+
+```kotlin
+// settings.gradle.kts
+pluginManagement {
+    repositories {
+        maven("https://maven.pkg.github.com/KingJayan/flagon") {
+            name = "flagon"
+            credentials(PasswordCredentials::class)
+        }
+        gradlePluginPortal()
+    }
+}
+
+dependencyResolutionManagement {
+    repositories {
+        maven("https://maven.pkg.github.com/KingJayan/flagon") {
+            name = "flagon"
+            credentials(PasswordCredentials::class)
+        }
+        mavenCentral()
+    }
+}
+```
+
+```kotlin
+// build.gradle.kts
+import dev.flagon.build.FlagonVersions
+
+plugins {
+    id("dev.flagon.bundle") version "x.y.z" // a flagon release
+}
+
+dependencies {
+    implementation("dev.flagon:runtime:${FlagonVersions.flagon}")
+    implementation("dev.flagon:platform-browser:${FlagonVersions.flagon}")
+    implementation("dev.flagon:lwjgl2-compat:${FlagonVersions.flagon}")
+}
+
+bundle {
+    mainClass.set("com.example.BrowserMain")
+    catalogClass.set("com.example.BrowserCatalog")
+}
+```
+
+`FlagonVersions.flagon` is the plugin's version, so the modules match it. A module published from `:toolchain:<name>` is `dev.flagon:<name>`, and one from `:platform:<name>` is `dev.flagon:platform-<name>`. `:lwjgl:lwjgl2` and `:lwjgl:lwjgl3` are `lwjgl2-compat` and `lwjgl3-compat`.
+
+The entry point, the catalog and the settings are the same as in a [bundle module](#bundle-modules). The tasks are `bundle` and `bundleFast`.
 
 ## Output
 
@@ -304,3 +360,4 @@ These are stable for downstream use. Everything else may change.
 | `@Reflectable`, `flagon.reflect.*` | Controls what reflection keeps. |
 | `window.__flagonHost` | The host page bridge. |
 | `dev.flagon:*` | Published module coordinates. |
+| `dev.flagon.bundle` | The bundle plugin and its `bundle` settings. |

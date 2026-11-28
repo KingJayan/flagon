@@ -696,6 +696,10 @@ public final class WebAudioDevice implements AudioDevice {
         System.arraycopy(listenerOrientation, 0, into, 0, 6);
     }
 
+    /**
+     * lets every buffer and source go and resets what a new context starts with. the platform
+     * hands this device to the next context, so the audio context stays open
+     */
     @Override
     public void shutdown() {
         for (Object held : objects) {
@@ -704,9 +708,13 @@ public final class WebAudioDevice implements AudioDevice {
             }
         }
         objects.clear();
-        forgetGesture();
-        master.disconnect();
-        context.close();
+        setDistanceModel(DistanceModel.INVERSE_CLAMPED);
+        setDopplerFactor(Doppler.DEFAULT_FACTOR);
+        setSpeedOfSound(Doppler.DEFAULT_SPEED_OF_SOUND);
+        setListenerGain(1.0f);
+        setListenerPosition(0.0f, 0.0f, 0.0f);
+        setListenerVelocity(0.0f, 0.0f, 0.0f);
+        setListenerOrientation(new float[]{0.0f, 0.0f, -1.0f, 0.0f, 1.0f, 0.0f});
     }
 
     private void applyListenerOrientation() {

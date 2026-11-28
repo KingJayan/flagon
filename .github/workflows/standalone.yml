@@ -1,0 +1,39 @@
+name: standalone
+
+# a project outside this build applies the published plugin and modules, so check it whenever
+# what gets published or how it builds changes
+on:
+  push:
+    branches: [main]
+    paths: &paths
+      - 'build-logic/**'
+      - 'examples/standalone/**'
+      - '**/build.gradle.kts'
+      - '**/settings.gradle.kts'
+      - 'gradle/**'
+      - 'gradle.properties'
+      - '.github/workflows/standalone.yml'
+  pull_request:
+    paths: *paths
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  standalone:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '25'
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Build a bundle outside this build
+        run: make standalone
