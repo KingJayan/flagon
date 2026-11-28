@@ -9,10 +9,10 @@ async function paste(page: Page, source: string): Promise<void> {
     getSelection()!.selectAllChildren(code);
     const data = new DataTransfer();
     data.setData('text/plain', text);
-    const paste = new ClipboardEvent('paste', { cancelable: true });
+    const event = new ClipboardEvent('paste', { cancelable: true });
     // firefox drops clipboardData passed to the constructor
-    Object.defineProperty(paste, 'clipboardData', { value: data });
-    code.dispatchEvent(paste);
+    Object.defineProperty(event, 'clipboardData', { value: data });
+    code.dispatchEvent(event);
   }, source);
 }
 
