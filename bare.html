@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Flagon</title>
+  </head>
+  <body>
+    <p>Loads the bundle with no window.__flagonHost. Output goes to the devtools console.</p>
+    <script type="module">
+
+      const backend = new URLSearchParams(location.search).get('backend') ?? 'wasm';
+      const args = ['hello', 'bare'];
+      if (backend === 'wasm') {
+        const { load } = await import('/flagon/wasm/wasm-gc-module-runtime.js');
+        const bundle = await load('/flagon/wasm/sandbox.wasm');
+        bundle.exports.main(args);
+      } else {
+        const { main } = await import('/flagon/js/sandbox.js');
+        main(args);
+      }
+    </script>
+  </body>
+</html>
