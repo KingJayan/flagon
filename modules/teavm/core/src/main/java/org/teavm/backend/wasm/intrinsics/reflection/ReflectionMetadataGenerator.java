@@ -13,13 +13,15 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-// flagon: backports konsoletyper/teavm@3bda84730 onto 0.15.0
+// flagon: backports konsoletyper/teavm@3bda84730 onto 0.15.0, and names each type and list of types
+// the metadata repeats once, as an immutable global
 package org.teavm.backend.wasm.intrinsics.reflection;
 
 import java.lang.annotation.Annotation;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -38,6 +40,7 @@ import org.teavm.backend.wasm.generate.methods.WasmGCVirtualCallGenerator;
 import org.teavm.backend.wasm.generate.strings.WasmGCStringProvider;
 import org.teavm.backend.wasm.model.WasmArray;
 import org.teavm.backend.wasm.model.WasmFunction;
+import org.teavm.backend.wasm.model.WasmGlobal;
 import org.teavm.backend.wasm.model.WasmLocal;
 import org.teavm.backend.wasm.model.WasmModule;
 import org.teavm.backend.wasm.model.WasmType;
@@ -82,6 +85,8 @@ public class ReflectionMetadataGenerator {
     private Predicate<MethodReference> asyncMethods;
     private boolean innerClassesRequired;
     private Set<String> innerClassesAccessed = new HashSet<>();
+    private Map<ValueType, WasmGlobal> derivedClasses = new HashMap<>();
+    private Map<List<ValueType>, WasmGlobal> derivedClassLists = new HashMap<>();
 
     private WasmFunction initFunction;
 
@@ -324,29 +329,18 @@ public class ReflectionMetadataGenerator {
             }
 
             if (methodInfoStruct.parameterTypesIndex() >= 0) {
-                var paramTypes = method.getParameterTypes();
-                var derivedClassInfoStruct = classInfoProvider.reflectionTypes().derivedClassInfo();
-                if (paramTypes.length == 0) {
-                    builder.nullConst(derivedClassInfoStruct.array().getReference());
-                } else {
-                    for (var param : paramTypes) {
-                        generateDerivedClass(builder, param);
-                    }
-                    builder.arrayNewFixed(derivedClassInfoStruct.array(), paramTypes.length);
-                }
+                generateDerivedClasses(builder, List.of(method.getParameterTypes()));
             }
 
             if (methodInfoStruct.checkedExceptionTypesIndex() >= 0) {
                 var thrownTypes = method.getThrownTypes();
-                var derivedClassInfoStruct = classInfoProvider.reflectionTypes().derivedClassInfo();
-                if (thrownTypes == null || thrownTypes.isEmpty()) {
-                    builder.nullConst(derivedClassInfoStruct.array().getReference());
-                } else {
+                var types = new ArrayList<ValueType>();
+                if (thrownTypes != null) {
                     for (var thrownType : thrownTypes) {
-                        generateDerivedClass(builder, ValueType.object(thrownType));
+                        types.add(ValueType.object(thrownType));
                     }
-                    builder.arrayNewFixed(derivedClassInfoStruct.array(), thrownTypes.size());
                 }
+                generateDerivedClasses(builder, types);
             }
 
             if (methodInfoStruct.callerIndex() >= 0) {
@@ -624,15 +618,58 @@ public class ReflectionMetadataGenerator {
     }
 
     private void generateDerivedClass(WasmInstructionBuilder builder, ValueType type) {
+        builder.getGlobal(derivedClass(type));
+    }
+
+    /** the metadata names a few hundred types tens of thousands of times, and reads them only */
+    private WasmGlobal derivedClass(ValueType type) {
+        var global = derivedClasses.get(type);
+        if (global != null) {
+            return global;
+        }
+        var itemType = type;
         var degree = 0;
-        while (type instanceof ValueType.Array) {
-            type = ((ValueType.Array) type).getItemType();
+        while (itemType instanceof ValueType.Array) {
+            itemType = ((ValueType.Array) itemType).getItemType();
             ++degree;
         }
-        builder
-                .getGlobal(classInfoProvider.getClassInfo(type).getPointer())
+        var pointer = classInfoProvider.getClassInfo(itemType).getPointer();
+        var structure = classInfoProvider.reflectionTypes().derivedClassInfo().structure();
+        global = new WasmGlobal(names.topLevel("teavm@derivedClass"), structure.getNonNullReference());
+        global.getInitialValue().builder()
+                .getGlobal(pointer)
                 .i32Const(degree)
-                .structNew(classInfoProvider.reflectionTypes().derivedClassInfo().structure());
+                .structNew(structure);
+        global.setImmutable(true);
+        module.globals.add(global);
+        derivedClasses.put(type, global);
+        return global;
+    }
+
+    /** a parameter or exception list, shared like the types in it; null when empty */
+    private void generateDerivedClasses(WasmInstructionBuilder builder, List<ValueType> types) {
+        var array = classInfoProvider.reflectionTypes().derivedClassInfo().array();
+        if (types.isEmpty()) {
+            builder.nullConst(array.getReference());
+            return;
+        }
+        var global = derivedClassLists.get(types);
+        if (global == null) {
+            var items = new ArrayList<WasmGlobal>();
+            for (var type : types) {
+                items.add(derivedClass(type));
+            }
+            global = new WasmGlobal(names.topLevel("teavm@derivedClasses"), array.getNonNullReference());
+            var init = global.getInitialValue().builder();
+            for (var item : items) {
+                init.getGlobal(item);
+            }
+            init.arrayNewFixed(array, items.size());
+            global.setImmutable(true);
+            module.globals.add(global);
+            derivedClassLists.put(List.copyOf(types), global);
+        }
+        builder.getGlobal(global);
     }
 
     private WasmFunction generateGetter(FieldReader field) {
