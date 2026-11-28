@@ -244,10 +244,15 @@ class SilentAudioDeviceTest {
         int source = device.createSource();
         int buffer = oneSecondBuffer();
 
+        device.setDistanceModel(DistanceModel.LINEAR);
+        device.setListenerGain(0.5f);
+
         device.shutdown();
 
         assertFalse(device.isSource(source));
         assertFalse(device.isBuffer(buffer));
+        assertEquals(DistanceModel.INVERSE_CLAMPED, device.distanceModel());
+        assertEquals(1.0f, device.listenerGain());
     }
 
     /** a queue is played through in order, and its clock keeps running as buffers are taken back */

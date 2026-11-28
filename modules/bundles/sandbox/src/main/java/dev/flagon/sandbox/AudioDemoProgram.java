@@ -78,7 +78,23 @@ public final class AudioDemoProgram implements Program {
             AL10.alDeleteBuffers(buffer);
             console.info("released: " + !AL10.alIsSource(source) + " " + !AL10.alIsBuffer(buffer));
             check(console, "teardown");
-            console.info("audio: done");
+        } finally {
+            AL.destroy();
+        }
+        restart(console);
+        console.info("audio: done");
+    }
+
+    /** a game that reloads its sounds destroys openal and creates it again on the same mixer */
+    private void restart(ConsoleSink console) throws Exception {
+        AL.create();
+        try {
+            int buffer = AL10.alGenBuffers();
+            AL10.alBufferData(buffer, AL10.AL_FORMAT_MONO16, tone(), SAMPLE_RATE);
+            int source = AL10.alGenSources();
+            AL10.alSourcei(source, AL10.AL_BUFFER, buffer);
+            console.info("restarted: output live " + Platforms.get().audio().isOutputLive());
+            play(console, source);
         } finally {
             AL.destroy();
         }

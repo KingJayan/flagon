@@ -421,9 +421,17 @@ public final class SilentAudioDevice implements AudioDevice {
         System.arraycopy(listenerOrientation, 0, into, 0, 6);
     }
 
+    /** lets every buffer and source go and resets what a new context starts with */
     @Override
     public void shutdown() {
         objects.clear();
+        distanceModel = DistanceModel.INVERSE_CLAMPED;
+        dopplerFactor = Doppler.DEFAULT_FACTOR;
+        speedOfSound = Doppler.DEFAULT_SPEED_OF_SOUND;
+        listenerGain = 1.0f;
+        setListenerPosition(0.0f, 0.0f, 0.0f);
+        setListenerVelocity(0.0f, 0.0f, 0.0f);
+        setListenerOrientation(new float[]{0.0f, 0.0f, -1.0f, 0.0f, 1.0f, 0.0f});
     }
 
     private SourceState settle(Source source) {
