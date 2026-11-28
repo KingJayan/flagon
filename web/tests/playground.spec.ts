@@ -2,10 +2,24 @@ import { test, expect, type Page } from '@playwright/test';
 
 test.describe.configure({ timeout: 90_000 });
 
+/** replaces the editor's text the way a paste does */
+async function paste(page: Page, source: string): Promise<void> {
+  await page.locator('#code').evaluate((code, text) => {
+    code.focus();
+    getSelection()!.selectAllChildren(code);
+    const data = new DataTransfer();
+    data.setData('text/plain', text);
+    const event = new ClipboardEvent('paste', { cancelable: true });
+    // firefox drops clipboardData passed to the constructor
+    Object.defineProperty(event, 'clipboardData', { value: data });
+    code.dispatchEvent(event);
+  }, source);
+}
+
 async function write(page: Page, source: string): Promise<void> {
   await page.goto('/playground/');
   await expect(page.getByTestId('state')).toHaveText('ready', { timeout: 60_000 });
-  await page.locator('#code').fill(source);
+  await paste(page, source);
   await page.locator('#run').click();
 }
 
@@ -46,10 +60,31 @@ test.describe('the playground', () => {
     await expect(problem).toHaveCount(1);
     await expect(problem).toContainText('3:');
     await problem.click();
-    const selected = await page
-      .locator('#code')
-      .evaluate((area: HTMLTextAreaElement) => area.value.slice(area.selectionStart, area.selectionEnd));
-    expect(selected).toBe('        int x = "text";');
+    expect(await page.evaluate(() => getSelection()!.toString())).toBe('        int x = "text";');
+  });
+
+  test('highlights java and completes words', async ({ page }) => {
+    await page.goto('/playground/');
+    const code = page.locator('#code');
+    await paste(page, 'public class Main {\n    // note\n    String text = "hi";\n}');
+    await page.keyboard.press('Enter');
+    await expect(code.locator('.keyword').first()).toHaveText('public');
+    await expect(code.locator('.comment')).toHaveText('// note');
+    await expect(code.locator('.string')).toHaveText('"hi"');
+    await expect(code.locator('.type').first()).toHaveText('Main');
+
+    await page.keyboard.type('Sys');
+    const listed = page.locator('#completions [role="option"]');
+    await expect(listed.first()).toHaveText('System');
+    await page.keyboard.press('Enter');
+    await expect(page.locator('#completions')).toBeHidden();
+    await expect(code).toHaveText(/\}\nSystem$/);
+    expect(await page.evaluate(() => localStorage.getItem('flagon:playground:source'))).toMatch(/System$/);
+
+    await page.keyboard.press('Enter');
+    await page.keyboard.press('Tab');
+    await page.keyboard.type('x');
+    await expect(code).toHaveText(/\nSystem\n {4}x\n?$/);
   });
 
   test('stops a program that never ends', async ({ page }) => {

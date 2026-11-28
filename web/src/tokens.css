@@ -9,6 +9,7 @@
   --paper-accent: #b5490f;
   --paper-ok: #2f7a3f;
   --paper-bad: #b3261e;
+  --paper-literal: #2b59a8;
   --paper-umbra: rgb(16 24 40 / 0.08);
   --paper-on-accent: #ffffff;
 
@@ -21,6 +22,7 @@
   --night-accent: #f08a3c;
   --night-ok: #7cc48b;
   --night-bad: #f2857c;
+  --night-literal: #8db4f0;
   --night-umbra: rgb(0 0 0 / 0.4);
   --night-on-accent: #16191d;
 
@@ -47,6 +49,7 @@
   --accent: var(--paper-accent);
   --ok: var(--paper-ok);
   --bad: var(--paper-bad);
+  --literal: var(--paper-literal);
   --umbra: var(--paper-umbra);
   --on-accent: var(--paper-on-accent);
 
@@ -68,6 +71,8 @@
     --accent: var(--night-accent);
     --ok: var(--night-ok);
     --bad: var(--night-bad);
+  --literal: var(--night-literal);
+    --literal: var(--night-literal);
     --umbra: var(--night-umbra);
     --on-accent: var(--night-on-accent);
     --bar: var(--night);
