@@ -1,4 +1,5 @@
 import { supportsWasmGc } from './bundle';
+import { createEditor } from './editor';
 import { EXAMPLES } from './examples';
 import { Log } from './log';
 import { COMPILER } from './playground-paths';
@@ -51,7 +52,7 @@ type FromCompiler =
 
 const app = document.querySelector<HTMLElement>('#app')!;
 const stateBadge = document.querySelector<HTMLElement>('#state')!;
-const code = document.querySelector<HTMLTextAreaElement>('#code')!;
+const code = document.querySelector<HTMLElement>('#code')!;
 const gutter = document.querySelector<HTMLElement>('#gutter')!;
 const runButton = document.querySelector<HTMLButtonElement>('#run')!;
 const stopButton = document.querySelector<HTMLButtonElement>('#stop')!;
@@ -66,6 +67,16 @@ let deadline = 0;
 let printed = 0;
 let asked = 0;
 let numbered = 0;
+
+const editor = createEditor(
+  code,
+  document.querySelector<HTMLUListElement>('#completions')!,
+  () => {
+    number();
+    save();
+  },
+  compile,
+);
 
 function setState(next: State): void {
   state = next;
@@ -91,13 +102,13 @@ function load(): string {
 
 function save(): void {
   try {
-    localStorage.setItem(SAVED, code.value);
+    localStorage.setItem(SAVED, editor.value);
   } catch {
   }
 }
 
 function number(): void {
-  const lines = code.value.split('\n').length;
+  const lines = editor.value.split('\n').length;
   if (numbered !== lines) {
     numbered = lines;
     gutter.textContent = Array.from({ length: lines }, (_, at) => at + 1).join('\n');
@@ -106,16 +117,7 @@ function number(): void {
 }
 
 function show(source: string): void {
-  code.value = source;
-  number();
-  save();
-}
-
-function selectLine(line: number): void {
-  const lines = code.value.split('\n');
-  const start = lines.slice(0, line - 1).reduce((sum, text) => sum + text.length + 1, 0);
-  code.focus();
-  code.setSelectionRange(start, start + (lines[line - 1]?.length ?? 0));
+  editor.value = source;
 }
 
 function problem(line: number, column: number, message: string, error: boolean): void {
@@ -124,7 +126,7 @@ function problem(line: number, column: number, message: string, error: boolean):
   button.type = 'button';
   button.className = error ? 'error' : 'warn';
   button.textContent = `${line}:${column} ${message}`;
-  button.addEventListener('click', () => selectLine(line));
+  button.addEventListener('click', () => editor.selectLine(line));
   item.append(button);
   problems.append(item);
 }
@@ -186,7 +188,7 @@ function compile(): void {
   if (!compiler || state === 'loading' || state === 'compiling') {
     return;
   }
-  if (code.value.length > MAX_SOURCE) {
+  if (editor.value.length > MAX_SOURCE) {
     fail(`the source is over ${MAX_SOURCE / 1024} KB`);
     return;
   }
@@ -200,7 +202,7 @@ function compile(): void {
     id: String(asked),
     command: 'compile',
     files: [
-      { path: 'Main.java', content: code.value },
+      { path: 'Main.java', content: editor.value },
       { path: `${LAUNCHER}.java`, content: LAUNCHER_SOURCE },
     ],
     options: { outputName: 'app', mainClass: LAUNCHER },
@@ -273,31 +275,8 @@ exampleSelect.addEventListener('change', () => {
   exampleSelect.value = '';
 });
 
-code.addEventListener('input', () => {
-  number();
-  save();
-});
 code.addEventListener('scroll', () => {
   gutter.scrollTop = code.scrollTop;
-});
-code.addEventListener('keydown', (event) => {
-  if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
-    event.preventDefault();
-    compile();
-  } else if (event.key === 'Tab' && !event.shiftKey && !code.dataset.leaving) {
-    event.preventDefault();
-    code.setRangeText('    ', code.selectionStart, code.selectionEnd, 'end');
-    number();
-    save();
-  } else if (event.key === 'Escape') {
-    code.dataset.leaving = 'true';
-  }
-});
-code.addEventListener('blur', () => delete code.dataset.leaving);
-code.addEventListener('keyup', (event) => {
-  if (event.key !== 'Escape' && event.key !== 'Tab') {
-    delete code.dataset.leaving;
-  }
 });
 
 runButton.addEventListener('click', compile);

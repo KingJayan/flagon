@@ -43,6 +43,7 @@ select.compact {
 }
 
 .editor {
+  position: relative;
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
   height: calc(100vh - 13rem);
@@ -67,20 +68,63 @@ select.compact {
   margin: 0;
   padding: 0.85rem 1rem;
   overflow: auto;
-  font: inherit;
   color: var(--ink);
-  white-space: pre;
   tab-size: 4;
-  resize: none;
-  background: transparent;
-  border: 0;
-  border-radius: 0;
-  box-shadow: none;
+  caret-color: var(--ink);
 }
 
 #code:focus-visible {
-  outline: 2px solid color-mix(in srgb, var(--accent) 45%, transparent);
+  outline: 2px solid color-mix(in srgb, var(--accent) 45%, transparent) !important;
   outline-offset: -2px;
+}
+
+#code .keyword {
+  color: var(--accent);
+}
+
+#code .type {
+  font-weight: 600;
+}
+
+#code .string {
+  color: var(--ok);
+}
+
+#code .literal {
+  color: var(--literal);
+}
+
+#code .comment {
+  font-style: italic;
+  color: var(--muted);
+}
+
+.completions {
+  position: absolute;
+  z-index: 1;
+  min-width: 10rem;
+  margin: 0;
+  padding: 0.25rem;
+  list-style: none;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  box-shadow: var(--stand);
+}
+
+.completions[hidden] {
+  display: none;
+}
+
+.completions li {
+  padding: 0.1rem 0.5rem;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.completions li[aria-selected='true'] {
+  color: var(--on-accent);
+  background: var(--accent);
 }
 
 .hint {

@@ -50,17 +50,20 @@
         </div>
         <div class="editor">
           <pre class="gutter" id="gutter" aria-hidden="true"></pre>
-          <textarea
+          <div
             id="code"
-            spellcheck="false"
-            autocapitalize="off"
-            autocomplete="off"
+            role="textbox"
+            aria-multiline="true"
             aria-label="Java source"
             aria-describedby="editor-hint"
-          ></textarea>
+            aria-autocomplete="list"
+            aria-controls="completions"
+            autocapitalize="off"
+          ></div>
+          <ul id="completions" class="completions" role="listbox" aria-label="Completions" hidden></ul>
         </div>
         <p id="editor-hint" class="hint">
-          Ctrl+Enter runs. Tab indents; press Esc, then Tab, to leave the editor.
+          Ctrl+Enter runs. Ctrl+Space completes. Tab indents; press Esc, then Tab, to leave the editor.
         </p>
       </section>
 
