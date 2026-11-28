@@ -9,7 +9,7 @@ import {
 } from './bundle';
 import { watchFrames, type Frames } from './frames';
 import { kindOf, Log, type Line } from './log';
-import { DEMOS, isWorkbench, keyOf } from './site';
+import { DEMOS, isWorkbench, keyOf, SOURCE_ROOT } from './site';
 import { installStop } from './stopping';
 
 const app = document.querySelector<HTMLElement>('#app')!;
@@ -180,6 +180,16 @@ function showDemos(current: { bundle: string; program: string }): void {
   programSelect.value = keyOf(current);
 }
 
+const codeLink = document.querySelector<HTMLAnchorElement>('#code')!;
+
+function showSource(): void {
+  const demo = DEMOS.find((entry) => keyOf(entry) === keyOf(chosen()));
+  codeLink.hidden = !demo;
+  if (demo) {
+    codeLink.href = SOURCE_ROOT + demo.source;
+  }
+}
+
 function chosen(): { bundle: string; program: string } {
   if (workbench) {
     return { bundle: bundleSelect.value, program: programSelect.value };
@@ -216,9 +226,12 @@ if (!request.program) {
   playing.delete('program');
 }
 document.querySelector<HTMLAnchorElement>('#player')!.search = playing.toString();
+showSource();
+programSelect.addEventListener('change', showSource);
 
 bundleSelect.addEventListener('change', () => {
   offer(bundleSelect.value, '');
+  showSource();
 });
 
 runButton.addEventListener('click', () => {

@@ -228,6 +228,15 @@ button,
     border-color 120ms ease-out;
 }
 
+.tools {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.tool[hidden] {
+  display: none;
+}
+
 .tool {
   min-height: 2rem;
   padding: 0.25rem 0.65rem;

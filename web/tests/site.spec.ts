@@ -1,5 +1,7 @@
 // needs a display
+import { existsSync } from 'node:fs';
 import { test, expect } from '@playwright/test';
+import { DEMOS, SOURCE_ROOT } from '../src/site';
 
 test.describe('the public site', () => {
   test('lists demos only and hides the workbench fields', async ({ page }) => {
@@ -32,6 +34,17 @@ test.describe('the public site', () => {
       return gone;
     });
     expect(missing).toEqual([]);
+  });
+
+  test('links each demo to its Java source', async ({ page }) => {
+    for (const demo of DEMOS) {
+      expect(existsSync(new URL(`../../${demo.source}`, import.meta.url)), demo.source).toBe(true);
+    }
+    await page.goto('/?view=demos&backend=js');
+    const code = page.locator('#code');
+    await expect(code).toHaveAttribute('href', SOURCE_ROOT + DEMOS[0]!.source);
+    await page.locator('#program').selectOption('sandbox/audio');
+    await expect(code).toHaveAttribute('href', /AudioDemoProgram\.java$/);
   });
 
   test('runs the demo it is given', async ({ page }) => {
