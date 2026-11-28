@@ -9,7 +9,10 @@ async function paste(page: Page, source: string): Promise<void> {
     getSelection()!.selectAllChildren(code);
     const data = new DataTransfer();
     data.setData('text/plain', text);
-    code.dispatchEvent(new ClipboardEvent('paste', { clipboardData: data, cancelable: true }));
+    const paste = new ClipboardEvent('paste', { cancelable: true });
+    // firefox drops clipboardData passed to the constructor
+    Object.defineProperty(paste, 'clipboardData', { value: data });
+    code.dispatchEvent(paste);
   }, source);
 }
 
@@ -63,7 +66,8 @@ test.describe('the playground', () => {
   test('highlights java and completes words', async ({ page }) => {
     await page.goto('/playground/');
     const code = page.locator('#code');
-    await paste(page, 'public class Main {\n    // note\n    String text = "hi";\n}\n');
+    await paste(page, 'public class Main {\n    // note\n    String text = "hi";\n}');
+    await page.keyboard.press('Enter');
     await expect(code.locator('.keyword').first()).toHaveText('public');
     await expect(code.locator('.comment')).toHaveText('// note');
     await expect(code.locator('.string')).toHaveText('"hi"');
